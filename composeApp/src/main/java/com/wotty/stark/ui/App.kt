@@ -8,17 +8,17 @@ import androidx.compose.ui.unit.dp
 import com.wotty.stark.data.repository.DataModeManager
 import com.wotty.stark.ui.screen.DashboardScreen
 import com.wotty.stark.ui.screen.SettingsScreen
+import com.wotty.stark.ui.screen.TransactionScreen
 import com.wotty.stark.ui.theme.StarTheme
+import com.wotty.stark.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(dataModeManager: DataModeManager) {
+    val viewModel = remember { MainViewModel(dataModeManager) }
+
     StarTheme {
         var selectedTab by remember { mutableIntStateOf(0) }
-        val currentMode by dataModeManager.currentMode.collectAsState()
-
-        val tabs = listOf("首页", "记账", "报表", "设置")
-        val icons = listOf("📊", "💳", "📈", "⚙️")
 
         Scaffold(
             topBar = {
@@ -32,11 +32,12 @@ fun App(dataModeManager: DataModeManager) {
             },
             bottomBar = {
                 NavigationBar {
-                    tabs.forEachIndexed { index, title ->
+                    val tabs = listOf("首页" to "📊", "记账" to "💳", "报表" to "📈", "设置" to "⚙️")
+                    tabs.forEachIndexed { index, (title, icon) ->
                         NavigationBarItem(
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
-                            icon = { Text(icons[index]) },
+                            icon = { Text(icon) },
                             label = { Text(title) }
                         )
                     }
@@ -45,10 +46,10 @@ fun App(dataModeManager: DataModeManager) {
         ) { padding ->
             Box(Modifier.padding(padding)) {
                 when (selectedTab) {
-                    0 -> DashboardScreen(dataModeManager)
-                    1 -> TransactionScreen(dataModeManager)
-                    2 -> Text("报表（待实现）", Modifier.padding(16.dp))
-                    3 -> SettingsScreen(dataModeManager)
+                    0 -> DashboardScreen(viewModel)
+                    1 -> TransactionScreen(viewModel)
+                    2 -> ReportsScreen()
+                    3 -> SettingsScreen(viewModel)
                 }
             }
         }
@@ -56,6 +57,6 @@ fun App(dataModeManager: DataModeManager) {
 }
 
 @Composable
-private fun TransactionScreen(dataModeManager: DataModeManager) {
-    Text("记账页面（待实现）", Modifier.padding(16.dp))
+private fun ReportsScreen() {
+    Text("报表页面（待实现）", Modifier.padding(16.dp))
 }

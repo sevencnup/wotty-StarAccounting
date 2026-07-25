@@ -5,12 +5,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.wotty.stark.data.model.DataMode
-import com.wotty.stark.data.repository.DataModeManager
+import com.wotty.stark.ui.viewmodel.MainViewModel
 
 @Composable
-fun SettingsScreen(dataModeManager: DataModeManager) {
-    val currentMode by dataModeManager.currentMode.collectAsState()
+fun SettingsScreen(viewModel: MainViewModel) {
+    val currentMode by viewModel.currentMode.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(16.dp)) {
         Text("设置", style = MaterialTheme.typography.headlineMedium)
@@ -20,10 +19,7 @@ fun SettingsScreen(dataModeManager: DataModeManager) {
             Column(Modifier.padding(16.dp)) {
                 Text("数据存储", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))
-                Text(when (currentMode) {
-                    DataMode.LOCAL -> "📍 本地模式 - 数据存储在设备 JSON 文件中"
-                    DataMode.CLOUD -> "☁️ 云端模式 - 数据存储在 MySQL 数据库"
-                })
+                Text("📍 本地模式 - 数据存储在设备 JSON 文件中")
             }
         }
 
