@@ -15,4 +15,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "wotty-stark"
 include(":composeApp")
-include(":api-server")
