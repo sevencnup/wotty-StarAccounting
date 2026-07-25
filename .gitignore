@@ -1,0 +1,14 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!/**/build/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Misc
+local.properties
+*.log
