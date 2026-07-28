@@ -13,8 +13,8 @@ android {
         applicationId = "com.wotty.stark"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 25
+        versionName = "0.0.25"
     }
 
     buildTypes {
@@ -45,6 +45,7 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.foundation)
     implementation(libs.activity.compose)
     implementation(libs.navigation.compose)

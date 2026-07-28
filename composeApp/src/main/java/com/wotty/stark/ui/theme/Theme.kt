@@ -1,37 +1,29 @@
 package com.wotty.stark.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF1976D2),
+    primary = Color(0xFF2678FF),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFBBDEFB),
-    onPrimaryContainer = Color(0xFF004BA0),
+    primaryContainer = Color(0xFFE7F0FF),
+    onPrimaryContainer = Color(0xFF1556C8),
     secondary = Color(0xFF43A047),
     onSecondary = Color.White,
-    background = Color(0xFFF5F5F5),
+    background = Color(0xFFF4F7FB),
     surface = Color.White,
-    error = Color(0xFFE53935)
-)
-
-private val DarkColors = darkColorScheme(
-    primary = Color(0xFF90CAF9),
-    onPrimary = Color(0xFF0D47A1),
-    primaryContainer = Color(0xFF1565C0),
-    secondary = Color(0xFF81C784),
-    onSecondary = Color(0xFF1B5E20),
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
-    error = Color(0xFFEF9A9A)
+    surfaceVariant = Color.White,
+    onSurface = Color(0xFF1A1A1A),
+    onSurfaceVariant = Color(0xFF666666),
+    error = Color(0xFFE53935),
+    outline = Color(0xFFE0E0E0)
 )
 
 @Composable
-fun StarTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun StarTheme(content: @Composable () -> Unit) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = LightColors,
         content = content
     )
 }
