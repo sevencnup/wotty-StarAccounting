@@ -39,7 +39,7 @@ android {
     applicationVariants.all {
         outputs.all {
             if (this is com.android.build.gradle.internal.api.ApkVariantOutputImpl) {
-                outputFileName = "wotty-stark-${name}-v${versionName}.apk"
+                outputFileName = "wotty-stark-${name}-v${versionName}-c${versionCode}.apk"
             }
         }
     }
