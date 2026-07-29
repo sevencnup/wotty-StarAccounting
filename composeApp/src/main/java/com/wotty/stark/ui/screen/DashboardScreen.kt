@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
 import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material.icons.outlined.Fastfood
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LocalAtm
 import androidx.compose.material.icons.outlined.Savings
 import androidx.compose.material.icons.outlined.Search
@@ -80,7 +81,7 @@ import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-private val HomeBg = Color(0xFFF4F5F7)
+private val HomeBg = Color(0xFFEFF8FF)
 private val HomeCardBg = Color.White
 private val HomeText = Color(0xFF11182D)
 private val HomeSubtle = Color(0xFF65718A)
@@ -185,11 +186,11 @@ fun DashboardScreen(viewModel: MainViewModel, scrollState: ScrollState) {
         modifier = Modifier
             .fillMaxSize()
             .background(HomeBg)
-            .statusBarsPadding()
     ) {
         Column(
             modifier = Modifier
                 .verticalScroll(scrollState)
+                .statusBarsPadding()
                 .padding(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 84.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -281,7 +282,10 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
                     Icon(Icons.Outlined.Visibility, null, tint = Color.White, modifier = Modifier.size(20.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                Text(monthLabel, color = Color.White, fontSize = 13.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(monthLabel, color = Color.White, fontSize = 13.sp)
+                    Icon(Icons.Outlined.KeyboardArrowDown, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                }
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -291,7 +295,7 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
                 Column(Modifier.weight(1f)) {
                     Text("总收入", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
                     Spacer(Modifier.height(6.dp))
-                    Text(formatMoney(summary.income), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                    Text("¥ ${formatMoney(summary.income)}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
                     DeltaLine(summary.incomeChange, onDark = true)
                 }
                 Box(
@@ -303,7 +307,7 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
                     Text("总支出", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
                     Spacer(Modifier.height(6.dp))
-                    Text(formatMoney(summary.expense), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                    Text("¥ ${formatMoney(summary.expense)}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
                     DeltaLine(summary.expenseChange * -1, onDark = true)
                 }
             }
@@ -974,7 +978,7 @@ private fun buildTrendOptionJson(trend: TrendBundle): String = buildJsonObject {
     })
     put("tooltip", buildJsonObject {
         put("trigger", "axis")
-        put("formatter", "{b}<br/>{a}: ¥{c}")
+        put("_fmt", "money")
         put("backgroundColor", "rgba(19,27,48,0.92)")
         put("borderWidth", 0)
         put("textStyle", buildJsonObject {
@@ -994,12 +998,21 @@ private fun buildTrendOptionJson(trend: TrendBundle): String = buildJsonObject {
         put("axisTick", buildJsonObject { put("show", false) })
         put("axisLabel", buildJsonObject { put("color", "#74819a"); put("fontSize", 10); put("margin", 8) })
     })
+    val maxRaw = maxOf(trend.expense.maxOrNull() ?: 0.0, trend.income.maxOrNull() ?: 0.0, 8000.0)
+    val maxValue = kotlin.math.ceil(maxRaw / 2000.0) * 2000
     put("yAxis", buildJsonObject {
         put("type", "value")
+        put("min", 0)
+        put("max", maxValue.toInt())
+        put("splitNumber", 4)
         put("splitLine", buildJsonObject { put("show", false) })
         put("axisLine", buildJsonObject { put("show", false) })
         put("axisTick", buildJsonObject { put("show", false) })
-        put("axisLabel", buildJsonObject { put("color", "#74819a"); put("fontSize", 10) })
+        put("axisLabel", buildJsonObject {
+            put("color", "#74819a")
+            put("fontSize", 10)
+            put("_fmt", "k")
+        })
     })
     put("series", buildJsonArray {
         add(buildJsonObject {
@@ -1038,7 +1051,7 @@ private fun buildRatioOptionJson(ratios: List<ExpenseRatio>): String = buildJson
     put("tooltip", buildJsonObject {
         put("trigger", "item")
         put("confine", true)
-        put("formatter", "{b}<br/>¥{c} ({d}%)")
+        put("_fmt", "ratio")
         put("backgroundColor", "rgba(19,27,48,0.92)")
         put("borderWidth", 0)
         put("textStyle", buildJsonObject { put("color", "#ffffff"); put("fontSize", 12) })

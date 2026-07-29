@@ -12,6 +12,32 @@
 (function () {
   var chart = null;
   var pending = null;
+  function money(v) {
+    return '¥ ' + Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function applyFormatters(opt) {
+    if (opt && opt.tooltip) {
+      if (opt.tooltip._fmt === 'money') {
+        opt.tooltip.valueFormatter = function (v) { return money(v); };
+        delete opt.tooltip._fmt;
+      } else if (opt.tooltip._fmt === 'ratio') {
+        opt.tooltip.formatter = function (p) {
+          return (p.name || '') + '<br/>' + money(p.value) + ' (' + (p.percent || 0) + '%)';
+        };
+        delete opt.tooltip._fmt;
+      }
+    }
+    ['xAxis', 'yAxis'].forEach(function (key) {
+      var a = opt && opt[key];
+      if (!a) return;
+      (Array.isArray(a) ? a : [a]).forEach(function (item) {
+        if (item && item.axisLabel && item.axisLabel._fmt === 'k') {
+          item.axisLabel.formatter = function (v) { return v === 0 ? '0' : Math.round(v / 1000) + 'K'; };
+          delete item.axisLabel._fmt;
+        }
+      });
+    });
+  }
   function init() {
     var el = document.getElementById('chart');
     var w = window.innerWidth;
@@ -33,6 +59,7 @@
   window.setOptionB64 = function (b64) {
     try {
       var opt = JSON.parse(atob(b64));
+      applyFormatters(opt);
       if (chart) { chart.setOption(opt, true); chart.resize(); }
       else { pending = opt; }
     } catch (e) {}
