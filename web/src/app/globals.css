@@ -30,6 +30,12 @@ body {
 
 * {
   box-sizing: border-box;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
 }
 
 button,
@@ -58,12 +64,37 @@ button {
 .tabs-shell {
   width: min(100%, 430px);
   margin: 0 auto;
-  padding: 14px 10px 96px;
+  padding: 2px 10px 96px;
 }
 
 .home-screen {
   display: grid;
   gap: 10px;
+}
+
+.skeleton {
+  border-radius: 12px;
+  background: linear-gradient(100deg, #e6eef9 25%, #f3f8ff 45%, #e6eef9 65%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-hero {
+  height: 168px;
+  border-radius: 14px;
+}
+
+.skeleton-page-hero {
+  height: 96px;
+}
+
+.skeleton-card {
+  height: 124px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 220% 0; }
+  100% { background-position: -220% 0; }
 }
 
 .page-stack {
@@ -92,6 +123,9 @@ button {
 .page-hero {
   padding: 14px 16px 15px;
   color: #ffffff;
+}
+
+.home-card.page-hero {
   background: linear-gradient(135deg, #3f86ff 0%, #5da0ff 50%, #4d8cf7 100%);
 }
 
@@ -325,7 +359,8 @@ button {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  min-height: 40px;
+  min-height: 0;
+  padding: 2px 0;
 }
 
 .home-topbar h1 {
@@ -349,8 +384,8 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -358,8 +393,8 @@ button {
 }
 
 .home-header-action svg {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
 }
 
 .home-bell-dot {
@@ -389,6 +424,7 @@ button {
 }
 
 .overview-hero {
+  position: relative;
   padding: 14px 16px 15px;
   color: #ffffff;
   background: linear-gradient(135deg, #3f86ff 0%, #5da0ff 50%, #4d8cf7 100%);
@@ -616,6 +652,8 @@ button {
 }
 
 .progress-money {
+  display: grid;
+  gap: 4px;
   color: #11182d;
   font-size: 14px;
   line-height: 1;
@@ -623,8 +661,14 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.progress-money span {
+.progress-money-current {
+  color: #11182d;
+  font-weight: 500;
+}
+
+.progress-money-total {
   color: #6f7c9b;
+  font-size: 12px;
   font-weight: 400;
 }
 
@@ -821,23 +865,17 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.recent-icon img {
   width: 28px;
   height: 28px;
-  border-radius: 9px;
-  color: #ffffff;
+  object-fit: contain;
 }
-
-.recent-icon svg {
-  width: 15px;
-  height: 15px;
-}
-
-.recent-icon.yellow { background: linear-gradient(135deg, #ffc830, #ffb11c); }
-.recent-icon.blue { background: linear-gradient(135deg, #4c9aff, #337cff); }
-.recent-icon.orange { background: linear-gradient(135deg, #ffb347, #ff9730); }
-.recent-icon.green { background: linear-gradient(135deg, #66d6b2, #43bea0); }
-.recent-icon.purple { background: linear-gradient(135deg, #9a68ff, #8350ec); }
-.recent-icon.mint { background: linear-gradient(135deg, #75d9bd, #4fc2a3); }
 
 .recent-title,
 .recent-amount {
@@ -885,7 +923,7 @@ button {
 
 .mobile-bottom-nav-inner {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   width: min(100%, 430px);
   margin: 0 auto;
   padding: 8px 6px 7px;

@@ -9,6 +9,7 @@ export const NAV_ITEMS = [
   { href: "/consumption", label: "消费", icon: "/nav-icons/xiaofei.png" },
   { href: "/savings", label: "储蓄", icon: "/nav-icons/chuxv.png" },
   { href: "/loans", label: "贷款", icon: "/nav-icons/daikuan.png" },
+  { href: "/assets", label: "资产", icon: "/nav-icons/zichan.png" },
   { href: "/accounts", label: "账户", icon: "/nav-icons/zhanghu.png" },
 ] as const;
 

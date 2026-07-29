@@ -5,6 +5,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { Skeleton } from "@/components/stark/Skeleton";
 import { buildHomeSummary, type HomeRatio, type HomeRecentItem, type HomeSummary, type HomeTrend } from "@/lib/stark/dashboard/summary";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
@@ -32,15 +33,6 @@ function SearchIcon(props: IconProps) {
     <IconBase {...props}>
       <circle cx="11" cy="11" r="7" />
       <path d="m16.5 16.5 4 4" />
-    </IconBase>
-  );
-}
-
-function BellIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-      <path d="M10 21h4" />
     </IconBase>
   );
 }
@@ -94,90 +86,11 @@ function BankIcon(props: IconProps) {
   );
 }
 
-function WalletIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M4 7.5h13.5A2.5 2.5 0 0 1 20 10v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17V7.5Z" />
-      <path d="M4 8.5 15.5 5a2 2 0 0 1 2.5 1.9v.6" />
-      <path d="M16.8 13.5h.2" />
-    </IconBase>
-  );
-}
-
-function FoodIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M7 3v7" />
-      <path d="M5 3v4" />
-      <path d="M9 3v4" />
-      <path d="M7 10v10" />
-      <path d="M16 3v17" />
-      <path d="M16 3c2 1.7 3 3.7 3 6 0 1.9-1.1 3-3 3" />
-    </IconBase>
-  );
-}
-
-function BusIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M6 17V6.5C6 5.1 7.2 4 8.6 4h6.8C16.8 4 18 5.1 18 6.5V17" />
-      <path d="M6 9h12" />
-      <path d="M8.2 19h.1" />
-      <path d="M15.7 19h.1" />
-      <path d="M8.5 14h.1" />
-      <path d="M15.4 14h.1" />
-      <path d="M8 21h8" />
-    </IconBase>
-  );
-}
-
-function BagIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M6 8h12l-1 12H7L6 8Z" />
-      <path d="M9 8a3 3 0 0 1 6 0" />
-    </IconBase>
-  );
-}
-
-function FilmIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <circle cx="12" cy="12" r="8" />
-      <circle cx="9" cy="9" r="1" />
-      <circle cx="15" cy="9" r="1" />
-      <circle cx="9" cy="15" r="1" />
-      <circle cx="15" cy="15" r="1" />
-      <path d="M12 12h.01" />
-    </IconBase>
-  );
-}
-
-function BriefcaseIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M4 8h16v11H4V8Z" />
-      <path d="M9 8V6h6v2" />
-      <path d="M4 12h16" />
-      <path d="M11 12h2" />
-    </IconBase>
-  );
-}
-
 function HeaderAction({ children, label }: PropsWithChildren<{ label: string }>) {
   return (
     <button type="button" className="home-header-action" aria-label={label} title={label}>
       {children}
     </button>
-  );
-}
-
-function BellAction() {
-  return (
-    <HeaderAction label="通知">
-      <BellIcon size={28} strokeWidth={1.9} />
-      <span className="home-bell-dot" />
-    </HeaderAction>
   );
 }
 
@@ -242,7 +155,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
         fontSize: 10,
         formatter: (value: number) => (value === 0 ? "0" : `${Math.round(value / 1000)}K`),
       },
-      splitLine: { lineStyle: { color: "#e3ebf4" } },
+      splitLine: { show: false },
     },
     series: [
       {
@@ -392,7 +305,10 @@ function ProgressRow({ title, current, total, percent, color, icon }: { title: s
         <h3>{title}</h3>
         <span className="progress-icon" style={{ color, background: `${color}20` }}>{icon}</span>
       </div>
-      <div className="progress-money">¥ {formatMoney(current)} <span>/ ¥ {formatMoney(total)}</span></div>
+      <div className="progress-money">
+        <span className="progress-money-current">¥ {formatMoney(current)}</span>
+        <span className="progress-money-total">¥ {formatMoney(total)}</span>
+      </div>
       <div className="progress-track-row">
         <div className="progress-track">
           <span style={{ width: `${Math.max(4, Math.min(percent, 100))}%`, background: color }} />
@@ -482,28 +398,31 @@ function LoanSummaryCard({ value, delta, loans }: { value: number; delta: number
   );
 }
 
-function iconForRecent(item: HomeRecentItem) {
-  if (item.positive) return <BriefcaseIcon size={18} strokeWidth={2} />;
-  if (item.subtitle.includes("餐") || item.title.includes("咖啡")) return <FoodIcon size={18} strokeWidth={2} />;
-  if (item.subtitle.includes("交") || item.title.includes("地铁")) return <BusIcon size={18} strokeWidth={2} />;
-  if (item.subtitle.includes("购") || item.title.includes("超市")) return <BagIcon size={18} strokeWidth={2} />;
-  if (item.subtitle.includes("娱") || item.title.includes("电影")) return <FilmIcon size={18} strokeWidth={2} />;
-  return <WalletIcon size={18} strokeWidth={2} />;
-}
-
-function recentTone(item: HomeRecentItem) {
-  if (item.positive) return "green";
-  if (item.subtitle.includes("餐")) return "yellow";
-  if (item.subtitle.includes("交")) return "blue";
-  if (item.subtitle.includes("购")) return "orange";
-  if (item.subtitle.includes("娱")) return "purple";
-  return "mint";
+function categoryIconSrc(item: HomeRecentItem) {
+  const text = `${item.subtitle}${item.title}`;
+  if (item.positive) return "/category-icons/jiaoyi.png";
+  if (text.includes("餐") || text.includes("咖啡")) return "/category-icons/canyin.png";
+  if (text.includes("交") || text.includes("地铁")) return "/category-icons/jiaotong.png";
+  if (text.includes("购") || text.includes("超市")) return "/category-icons/gouwu.png";
+  if (text.includes("娱") || text.includes("电影")) return "/category-icons/yule.png";
+  if (text.includes("生活") || text.includes("日用")) return "/category-icons/riyong.png";
+  if (text.includes("医")) return "/category-icons/yiliao.png";
+  if (text.includes("住")) return "/category-icons/zhufang.png";
+  if (text.includes("旅")) return "/category-icons/lvxing.png";
+  if (text.includes("美")) return "/category-icons/meirong.png";
+  if (text.includes("宠")) return "/category-icons/chongwu.png";
+  if (text.includes("服")) return "/category-icons/fuzhuang.png";
+  if (text.includes("通")) return "/category-icons/tongxun.png";
+  if (text.includes("运")) return "/category-icons/yundong.png";
+  return "/category-icons/qita.png";
 }
 
 function RecentRow({ item }: { item: HomeRecentItem }) {
   return (
     <div className="recent-row">
-      <span className={`recent-icon ${recentTone(item)}`}>{iconForRecent(item)}</span>
+      <span className="recent-icon">
+        <img src={categoryIconSrc(item)} alt={item.subtitle} />
+      </span>
       <strong className="recent-title">{item.title}</strong>
       <span className="recent-category">{item.subtitle}</span>
       <span className="recent-time">{item.time}</span>
@@ -532,6 +451,7 @@ export default function HomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const repo = manager.getRepository();
@@ -547,6 +467,7 @@ export default function HomePage() {
       setBudgets(b);
       setLoans(l);
       setSavingsGoals(s);
+      setLoading(false);
     });
   }, []);
 
@@ -555,6 +476,30 @@ export default function HomePage() {
     [transactions, assets, budgets, loans, savingsGoals],
   );
 
+  if (loading) {
+    return (
+      <div className="home-screen" aria-busy="true">
+        <header className="home-topbar">
+          <span />
+          <h1>首页</h1>
+          <div className="home-actions">
+            <HeaderAction label="搜索"><SearchIcon size={24} strokeWidth={1.8} /></HeaderAction>
+          </div>
+        </header>
+        <Skeleton className="skeleton-hero" />
+        <div className="home-main-grid">
+          <Skeleton className="skeleton-card" />
+          <Skeleton className="skeleton-card" />
+        </div>
+        <div className="summary-grid">
+          <Skeleton className="skeleton-card" />
+          <Skeleton className="skeleton-card" />
+        </div>
+        <Skeleton className="skeleton-card" />
+      </div>
+    );
+  }
+
   return (
     <div className="home-screen">
       <header className="home-topbar">
@@ -562,7 +507,6 @@ export default function HomePage() {
         <h1>首页</h1>
         <div className="home-actions">
           <HeaderAction label="搜索"><SearchIcon size={24} strokeWidth={1.8} /></HeaderAction>
-          <BellAction />
         </div>
       </header>
 
