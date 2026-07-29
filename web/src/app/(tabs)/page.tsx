@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
+import type { EChartsCoreOption } from "echarts/core";
+import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary, type HomeRatio, type HomeRecentItem, type HomeSummary, type HomeTrend } from "@/lib/stark/dashboard/summary";
 import { formatMoney } from "@/lib/stark/utils/format";
@@ -9,14 +11,10 @@ import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/
 
 const manager = new DataModeManager();
 
-const CARD = "#ffffff";
-const INK = "#11182d";
-const SOFT_INK = "#6a7691";
-const HAIRLINE = "rgba(111, 132, 166, 0.18)";
 const INCOME_BLUE = "#3d86ff";
 const EXPENSE_ORANGE = "#ff7a32";
-const UP = "#ff6848";
-const DOWN = "#67caa9";
+const POSITIVE = "#ff6848";
+const NEGATIVE = "#67caa9";
 const GREEN = "#63c7a8";
 
 type IconProps = { size?: number; color?: string; strokeWidth?: number };
@@ -72,16 +70,6 @@ function ChevronRightIcon(props: IconProps) {
   );
 }
 
-function WalletIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M4 7.5h13.5A2.5 2.5 0 0 1 20 10v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17V7.5Z" />
-      <path d="M4 8.5 15.5 5a2 2 0 0 1 2.5 1.9v.6" />
-      <path d="M16.8 13.5h.2" />
-    </IconBase>
-  );
-}
-
 function PiggyIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -102,6 +90,16 @@ function BankIcon(props: IconProps) {
       <path d="M19 10v8" />
       <path d="M4 18h16" />
       <path d="M12 4 4 8h16l-8-4Z" />
+    </IconBase>
+  );
+}
+
+function WalletIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 7.5h13.5A2.5 2.5 0 0 1 20 10v7a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17V7.5Z" />
+      <path d="M4 8.5 15.5 5a2 2 0 0 1 2.5 1.9v.6" />
+      <path d="M16.8 13.5h.2" />
     </IconBase>
   );
 }
@@ -177,7 +175,7 @@ function HeaderAction({ children, label }: PropsWithChildren<{ label: string }>)
 function BellAction() {
   return (
     <HeaderAction label="通知">
-      <BellIcon size={29} strokeWidth={1.9} />
+      <BellIcon size={28} strokeWidth={1.9} />
       <span className="home-bell-dot" />
     </HeaderAction>
   );
@@ -207,83 +205,114 @@ function TrendLegend() {
   );
 }
 
-function TrendChart({ trend }: { trend: HomeTrend }) {
+function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
   const maxRaw = Math.max(...trend.expense, ...trend.income, 8000);
   const maxValue = Math.ceil(maxRaw / 2000) * 2000;
-  const width = 100;
-  const height = 72;
-  const left = 7.5;
-  const right = 4;
-  const top = 4;
-  const bottom = 12;
-  const chartWidth = width - left - right;
-  const chartHeight = height - top - bottom;
-  const stepX = chartWidth / Math.max(trend.labels.length - 1, 1);
-  const yTicks = [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue];
 
-  function point(index: number, value: number) {
-    return {
-      x: left + stepX * index,
-      y: top + chartHeight - (value / maxValue) * chartHeight,
-    };
-  }
+  return {
+    animationDuration: 450,
+    animationEasing: "cubicOut",
+    grid: { left: 26, right: 10, top: 16, bottom: 24 },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      axisPointer: { type: "line", lineStyle: { color: "rgba(61,134,255,0.28)" } },
+      valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
+    },
+    xAxis: {
+      type: "category",
+      boundaryGap: false,
+      data: trend.labels,
+      axisLine: { lineStyle: { color: "#e1e8f2" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#74819a", fontSize: 10, margin: 8 },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: maxValue,
+      splitNumber: 4,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: "#74819a",
+        fontSize: 10,
+        formatter: (value: number) => (value === 0 ? "0" : `${Math.round(value / 1000)}K`),
+      },
+      splitLine: { lineStyle: { color: "#e3ebf4" } },
+    },
+    series: [
+      {
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        data: trend.income,
+        lineStyle: { width: 2, color: INCOME_BLUE },
+        itemStyle: { color: INCOME_BLUE, borderColor: "#ffffff", borderWidth: 1.2 },
+      },
+      {
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        data: trend.expense,
+        lineStyle: { width: 2, color: EXPENSE_ORANGE },
+        itemStyle: { color: EXPENSE_ORANGE, borderColor: "#ffffff", borderWidth: 1.2 },
+      },
+    ],
+  };
+}
 
-  function path(values: number[]) {
-    return values
-      .map((value, index) => point(index, value))
-      .reduce((nextPath, current, index, points) => {
-        if (index === 0) return `M ${current.x} ${current.y}`;
-        const previous = points[index - 1];
-        const midX = (previous.x + current.x) / 2;
-        return `${nextPath} C ${midX} ${previous.y}, ${midX} ${current.y}, ${current.x} ${current.y}`;
-      }, "");
-  }
+function buildRatioOption(ratios: HomeRatio[]): EChartsCoreOption {
+  return {
+    animationDuration: 450,
+    tooltip: {
+      trigger: "item",
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      formatter: (params: { name?: string; value?: number; percent?: number }) => `${params.name ?? ""}<br/>¥ ${formatMoney(Number(params.value ?? 0))} (${params.percent ?? 0}%)`,
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["56%", "78%"],
+        center: ["50%", "52%"],
+        avoidLabelOverlap: true,
+        label: { show: false },
+        labelLine: { show: false },
+        emphasis: { scale: false },
+        itemStyle: { borderColor: "#ffffff", borderWidth: 2 },
+        data: ratios.map((item) => ({ name: item.name, value: item.amount, itemStyle: { color: item.color } })),
+      },
+    ],
+  };
+}
 
-  function dots(values: number[], color: string) {
-    return values.map((value, index) => {
-      const p = point(index, value);
-      return <circle key={`${color}-${index}`} cx={p.x} cy={p.y} r="1.65" fill={color} stroke="#ffffff" strokeWidth="0.9" />;
-    });
-  }
-
-  return (
-    <div className="trend-chart">
-      <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label="本月收支趋势图">
-        {yTicks.map((tick) => {
-          const y = top + chartHeight - (tick / maxValue) * chartHeight;
-          return (
-            <g key={tick}>
-              <line x1={left} y1={y} x2={width - right} y2={y} stroke="#dfe7f0" strokeWidth="0.5" />
-              <text x="0.3" y={y + 1.5} fontSize="4.1" fill="#6f7c9b">{tick === 0 ? "0" : `${Math.round(tick / 1000)}K`}</text>
-            </g>
-          );
-        })}
-        <path d={path(trend.income)} fill="none" stroke={INCOME_BLUE} strokeWidth="1.35" strokeLinecap="round" />
-        <path d={path(trend.expense)} fill="none" stroke={EXPENSE_ORANGE} strokeWidth="1.35" strokeLinecap="round" />
-        {dots(trend.income, INCOME_BLUE)}
-        {dots(trend.expense, EXPENSE_ORANGE)}
-        {trend.labels.map((label, index) => {
-          const x = left + stepX * index;
-          return <text key={label} x={x} y={height - 2.1} textAnchor="middle" fontSize="4.3" fill="#6f7c9b">{label}</text>;
-        })}
-      </svg>
-    </div>
-  );
+function TrendChart({ trend }: { trend: HomeTrend }) {
+  const option = useMemo(() => buildTrendOption(trend), [trend]);
+  return <EChartView option={option} className="trend-chart" />;
 }
 
 function OverviewCard({ summary }: { summary: HomeSummary }) {
   const monthLabel = `${new Date().getFullYear()}年${new Date().getMonth() + 1}月`;
+
   return (
     <SurfaceCard className="overview-card">
       <div className="overview-hero">
         <div className="overview-title-row">
           <div className="overview-title">
             本月收支汇总
-            <EyeIcon size={25} strokeWidth={2.1} />
+            <EyeIcon size={20} strokeWidth={2} />
           </div>
           <button type="button" className="month-picker">
             {monthLabel}
-            <ChevronDownIcon size={18} />
+            <ChevronDownIcon size={15} />
           </button>
         </div>
         <div className="overview-stats">
@@ -313,34 +342,13 @@ function OverviewCard({ summary }: { summary: HomeSummary }) {
 
 function RatioCard({ ratios }: { ratios: HomeRatio[] }) {
   const displayRatios = ratios.length ? ratios : [];
-  const totalPercent = displayRatios.reduce((sum, item) => sum + item.percent, 0) || 1;
-  let cumulative = -90;
-
-  function polar(cx: number, cy: number, radius: number, angle: number) {
-    const rad = (angle * Math.PI) / 180;
-    return { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
-  }
-
-  function arcPath(startAngle: number, sweep: number) {
-    const start = polar(50, 50, 31, startAngle);
-    const end = polar(50, 50, 31, startAngle + sweep);
-    return `M ${start.x} ${start.y} A 31 31 0 ${sweep > 180 ? 1 : 0} 1 ${end.x} ${end.y}`;
-  }
+  const option = useMemo(() => buildRatioOption(displayRatios), [displayRatios]);
 
   return (
     <SurfaceCard className="ratio-card">
-      <h2>收支各类型占比</h2>
+      <h2>收支类型占比</h2>
       <div className="ratio-content">
-        <svg viewBox="0 0 100 100" className="ratio-donut" role="img" aria-label="收支各类型占比环图">
-          <circle cx="50" cy="50" r="31" fill="none" stroke="#edf3fb" strokeWidth="15" />
-          {displayRatios.map((item) => {
-            const sweep = (item.percent / totalPercent) * 360;
-            const startAngle = cumulative;
-            cumulative += sweep;
-            return <path key={item.name} d={arcPath(startAngle, sweep)} fill="none" stroke={item.color} strokeWidth="15" strokeLinecap="butt" />;
-          })}
-          <circle cx="50" cy="50" r="21" fill="#ffffff" />
-        </svg>
+        <EChartView option={option} className="ratio-donut" />
         <div className="ratio-list">
           {displayRatios.map((item) => (
             <div key={item.name} className="ratio-row">
@@ -376,17 +384,16 @@ function ProgressRow({ title, current, total, percent, color, icon }: { title: s
 function ProgressCard({ summary }: { summary: HomeSummary }) {
   return (
     <SurfaceCard className="progress-card">
-      <ProgressRow title="储蓄计划进度" current={summary.savingProgress.current} total={summary.savingProgress.total} percent={summary.savingProgress.percent} color={INCOME_BLUE} icon={<PiggyIcon size={25} strokeWidth={2.2} />} />
+      <ProgressRow title="储蓄计划进度" current={summary.savingProgress.current} total={summary.savingProgress.total} percent={summary.savingProgress.percent} color={INCOME_BLUE} icon={<PiggyIcon size={18} strokeWidth={2.1} />} />
       <div className="progress-separator" />
-      <ProgressRow title="贷款还款进度" current={summary.loanProgress.current} total={summary.loanProgress.total} percent={summary.loanProgress.percent} color={GREEN} icon={<BankIcon size={25} strokeWidth={2.1} />} />
+      <ProgressRow title="贷款还款进度" current={summary.loanProgress.current} total={summary.loanProgress.total} percent={summary.loanProgress.percent} color={GREEN} icon={<BankIcon size={18} strokeWidth={2} />} />
     </SurfaceCard>
   );
 }
 
-function SummaryCard({ title, value, delta, tone, icon }: { title: string; value: number; delta: number; tone: "blue" | "orange"; icon: ReactNode }) {
+function SummaryCard({ title, value, delta }: { title: string; value: number; delta: number }) {
   return (
     <SurfaceCard className="summary-card">
-      <span className={`summary-icon ${tone}`}>{icon}</span>
       <div>
         <h2>{title}</h2>
         <strong>¥ {formatMoney(value)}</strong>
@@ -399,29 +406,26 @@ function SummaryCard({ title, value, delta, tone, icon }: { title: string; value
 function LoanSummaryCard({ value, delta }: { value: number; delta: number }) {
   return (
     <SurfaceCard className="loan-summary-card">
-      <div className="loan-summary-left">
-        <span className="summary-icon green"><BankIcon size={34} strokeWidth={2.1} /></span>
-        <div>
-          <h2>贷款已还款汇总</h2>
-          <strong>¥ {formatMoney(value)}</strong>
-          <DeltaLine value={delta} muted />
-        </div>
+      <div className="loan-summary-copy">
+        <h2>贷款已还款汇总</h2>
+        <strong>¥ {formatMoney(value)}</strong>
+        <DeltaLine value={delta} muted />
       </div>
       <button type="button" className="detail-button">
         查看详情
-        <ChevronRightIcon size={18} />
+        <ChevronRightIcon size={14} />
       </button>
     </SurfaceCard>
   );
 }
 
 function iconForRecent(item: HomeRecentItem) {
-  if (item.positive) return <BriefcaseIcon size={23} strokeWidth={2.1} />;
-  if (item.subtitle.includes("餐") || item.title.includes("咖啡")) return <FoodIcon size={23} strokeWidth={2.1} />;
-  if (item.subtitle.includes("交") || item.title.includes("地铁")) return <BusIcon size={23} strokeWidth={2.1} />;
-  if (item.subtitle.includes("购") || item.title.includes("超市")) return <BagIcon size={23} strokeWidth={2.1} />;
-  if (item.subtitle.includes("娱") || item.title.includes("电影")) return <FilmIcon size={23} strokeWidth={2.1} />;
-  return <WalletIcon size={23} strokeWidth={2.1} />;
+  if (item.positive) return <BriefcaseIcon size={18} strokeWidth={2} />;
+  if (item.subtitle.includes("餐") || item.title.includes("咖啡")) return <FoodIcon size={18} strokeWidth={2} />;
+  if (item.subtitle.includes("交") || item.title.includes("地铁")) return <BusIcon size={18} strokeWidth={2} />;
+  if (item.subtitle.includes("购") || item.title.includes("超市")) return <BagIcon size={18} strokeWidth={2} />;
+  if (item.subtitle.includes("娱") || item.title.includes("电影")) return <FilmIcon size={18} strokeWidth={2} />;
+  return <WalletIcon size={18} strokeWidth={2} />;
 }
 
 function recentTone(item: HomeRecentItem) {
@@ -450,7 +454,7 @@ function RecentTransactionsCard({ items }: { items: HomeRecentItem[] }) {
     <SurfaceCard className="recent-card">
       <div className="recent-head">
         <h2>最近交易</h2>
-        <button type="button">全部 <ChevronRightIcon size={18} /></button>
+        <button type="button">全部 <ChevronRightIcon size={14} /></button>
       </div>
       <div className="recent-list">
         {items.map((item) => <RecentRow key={item.id} item={item} />)}
@@ -494,7 +498,7 @@ export default function HomePage() {
         <span />
         <h1>首页</h1>
         <div className="home-actions">
-          <HeaderAction label="搜索"><SearchIcon size={32} strokeWidth={1.8} /></HeaderAction>
+          <HeaderAction label="搜索"><SearchIcon size={24} strokeWidth={1.8} /></HeaderAction>
           <BellAction />
         </div>
       </header>
@@ -507,8 +511,8 @@ export default function HomePage() {
       </div>
 
       <div className="summary-grid">
-        <SummaryCard title="资产汇总" value={summary.assetTotal} delta={8.6} tone="blue" icon={<WalletIcon size={35} strokeWidth={2.1} />} />
-        <SummaryCard title="储蓄汇总" value={summary.totalSavings} delta={5.4} tone="orange" icon={<PiggyIcon size={35} strokeWidth={2.1} />} />
+        <SummaryCard title="资产汇总" value={summary.assetTotal} delta={8.6} />
+        <SummaryCard title="储蓄汇总" value={summary.totalSavings} delta={5.4} />
       </div>
 
       <LoanSummaryCard value={summary.loanProgress.current} delta={10.2} />
