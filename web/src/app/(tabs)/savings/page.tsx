@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { PageTopBar } from "@/components/stark/PageTopBar";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import type { SavingsGoal } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
-
-function Card(props: React.PropsWithChildren<{ title?: string }>) {
-  return <section style={{ background: "#fff", borderRadius: 22, padding: 16, border: "1px solid #edf1f5" }}>{props.title ? <div style={{ marginBottom: 12, fontWeight: 700 }}>{props.title}</div> : null}{props.children}</section>;
-}
 
 export default function SavingsPage() {
   const [list, setList] = useState<SavingsGoal[]>([]);
@@ -17,6 +14,12 @@ export default function SavingsPage() {
   const [targetAmount, setTargetAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
   const [deadline, setDeadline] = useState("");
+
+  const summary = useMemo(() => ({
+    total: list.reduce((sum, item) => sum + item.currentAmount, 0),
+    target: list.reduce((sum, item) => sum + item.targetAmount, 0),
+    active: list.length,
+  }), [list]);
 
   const reload = () => void repo.getSavingsGoals("default").then(setList);
 
@@ -49,42 +52,53 @@ export default function SavingsPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ textAlign: "center", paddingTop: 4, fontSize: 22, fontWeight: 700 }}>储蓄</div>
-      <Card>
-        <div style={{ background: "linear-gradient(135deg,#2f7cff,#7aa8ff)", color: "#fff", borderRadius: 22, padding: 18 }}>
-          <div style={{ fontSize: 14, opacity: 0.92 }}>总储蓄</div>
-          <div style={{ marginTop: 8, fontSize: 30, fontWeight: 700 }}>¥ {formatMoney(list.reduce((sum, item) => sum + item.currentAmount, 0))}</div>
+    <div className="page-stack">
+      <PageTopBar title="储蓄" />
+
+      <section className="home-card page-hero">
+        <div className="page-hero-label">总储蓄</div>
+        <div className="page-hero-value">¥ {formatMoney(summary.total)}</div>
+        <div className="page-hero-sub">目标 ¥ {formatMoney(summary.target)} · 共 {summary.active} 个计划</div>
+      </section>
+
+      <section className="home-card page-card">
+        <h2 className="page-card-title">新建计划</h2>
+        <div className="app-field-grid">
+          <input className="app-input" value={name} onChange={(event) => setName(event.target.value)} placeholder="计划名称" />
+          <input className="app-input" value={targetAmount} onChange={(event) => setTargetAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="目标金额" />
+          <input className="app-input" value={currentAmount} onChange={(event) => setCurrentAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="当前金额" />
+          <input className="app-input" value={deadline} onChange={(event) => setDeadline(event.target.value)} placeholder="截止日期 2026-12-31" />
+          <button type="button" className="primary-button" onClick={() => void saveGoal()}>保存计划</button>
         </div>
-      </Card>
-      <Card title="新建计划">
-        <div style={{ display: "grid", gap: 10 }}>
-          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="计划名称" style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
-          <input value={targetAmount} onChange={(event) => setTargetAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="目标金额" style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
-          <input value={currentAmount} onChange={(event) => setCurrentAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="当前金额" style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
-          <input value={deadline} onChange={(event) => setDeadline(event.target.value)} placeholder="截止日期 2026-12-31" style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
-          <button onClick={() => void saveGoal()} style={{ border: 0, borderRadius: 18, background: "#2f7cff", color: "#fff", padding: "14px 0", fontWeight: 700 }}>保存计划</button>
-        </div>
-      </Card>
-      <Card title="储蓄计划">
-        <div style={{ display: "grid", gap: 10 }}>
+      </section>
+
+      <section className="home-card page-card">
+        <h2 className="page-card-title">储蓄计划</h2>
+        <div className="app-list">
           {list.map((item) => {
             const percent = item.targetAmount > 0 ? Math.min(100, (item.currentAmount / item.targetAmount) * 100) : 0;
             return (
-              <div key={item.id} style={{ borderRadius: 18, background: "#f8fafc", padding: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-                  <strong>{item.name}</strong>
-                  <span style={{ color: "#2f7cff", fontWeight: 700 }}>{percent.toFixed(0)}%</span>
+              <div key={item.id} className="app-list-row" style={{ display: "block" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <div className="app-list-main">
+                    <div className="app-list-title">{item.name}</div>
+                    <div className="app-list-subtitle">
+                      已存 ¥ {formatMoney(item.currentAmount)} / 目标 ¥ {formatMoney(item.targetAmount)}
+                    </div>
+                  </div>
+                  <div className="app-list-value">{Math.round(percent)}%</div>
                 </div>
-                <div style={{ color: "#6b7280", fontSize: 13, marginBottom: 8 }}>已存 ¥ {formatMoney(item.currentAmount)} / 目标 ¥ {formatMoney(item.targetAmount)}</div>
-                <div style={{ height: 8, borderRadius: 999, background: "#e5edfb", overflow: "hidden" }}>
-                  <div style={{ width: `${percent}%`, height: "100%", background: "linear-gradient(90deg,#2f7cff,#7aa8ff)" }} />
+                <div className="mini-progress">
+                  <span style={{ width: `${Math.max(4, Math.min(percent, 100))}%`, background: "linear-gradient(90deg,#2f7cff,#7aa8ff)" }} />
+                </div>
+                <div className="app-list-subtitle" style={{ marginTop: 7 }}>
+                  截止 {item.deadline || "未设置"}
                 </div>
               </div>
             );
           })}
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

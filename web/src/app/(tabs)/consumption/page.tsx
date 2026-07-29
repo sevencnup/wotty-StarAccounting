@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { PageTopBar } from "@/components/stark/PageTopBar";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { nowText, formatMoney } from "@/lib/stark/utils/format";
 import type { Transaction, TransactionType } from "@/lib/stark/models";
@@ -12,13 +13,8 @@ const incomeCategories = ["工资", "奖金", "理财", "其他"];
 const transferCategories = ["转账"];
 const platforms = ["支付宝", "微信", "银行卡", "现金", "其他"];
 
-function Section(props: React.PropsWithChildren<{ title?: string }>) {
-  return (
-    <section style={{ background: "#fff", borderRadius: 22, padding: 16, border: "1px solid #edf1f5" }}>
-      {props.title ? <div style={{ marginBottom: 12, fontWeight: 700 }}>{props.title}</div> : null}
-      {props.children}
-    </section>
-  );
+function monthKey(value: string) {
+  return value.slice(0, 7);
 }
 
 export default function ConsumptionPage() {
@@ -36,6 +32,16 @@ export default function ConsumptionPage() {
     if (type === "TRANSFER") return transferCategories;
     return expenseCategories;
   }, [type]);
+
+  const monthSummary = useMemo(() => {
+    const currentMonth = monthKey(nowText());
+    const list = transactions.filter((item) => monthKey(item.date) === currentMonth);
+    return {
+      expense: list.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
+      income: list.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
+      count: list.length,
+    };
+  }, [transactions]);
 
   const reload = () => {
     void repo.getTransactions("default", 1, 200).then(setTransactions);
@@ -83,124 +89,94 @@ export default function ConsumptionPage() {
   }
 
   return (
-    <div style={{ display: "grid", gap: 12 }}>
-      <div style={{ textAlign: "center", paddingTop: 4, fontSize: 22, fontWeight: 700 }}>消费</div>
+    <div className="page-stack">
+      <PageTopBar title="消费" />
 
-      <Section>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
+      <section className="home-card page-hero">
+        <div className="page-hero-label">本月流水</div>
+        <div className="page-hero-value">¥ {formatMoney(monthSummary.expense)}</div>
+        <div className="page-hero-sub">收入 ¥ {formatMoney(monthSummary.income)} · 共 {monthSummary.count} 笔</div>
+      </section>
+
+      <section className="home-card page-card">
+        <div className="segment-group">
           {[
             ["EXPENSE", "支出"],
             ["INCOME", "收入"],
             ["TRANSFER", "转账"],
-          ].map(([value, label]) => {
-            const active = type === value;
-            return (
-              <button
-                key={value}
-                onClick={() => setType(value as TransactionType)}
-                style={{
-                  border: 0,
-                  borderRadius: 999,
-                  padding: "10px 0",
-                  background: active ? "#2f7cff" : "#eef2f7",
-                  color: active ? "#fff" : "#6b7280",
-                  fontWeight: active ? 700 : 500,
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
+          ].map(([value, label]) => (
+            <button key={value} type="button" onClick={() => setType(value as TransactionType)} className={type === value ? "segment-button active" : "segment-button"}>
+              {label}
+            </button>
+          ))}
         </div>
-      </Section>
+      </section>
 
-      <Section title="金额">
-        <div style={{ fontSize: 28, fontWeight: 700, marginBottom: 12 }}>¥ {amount || "0.00"}</div>
-        <input
-          value={amount}
-          onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))}
-          placeholder="输入金额"
-          style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }}
-        />
-      </Section>
+      <section className="home-card page-card">
+        <h2 className="page-card-title">金额</h2>
+        <div className="amount-display">¥ {amount || "0.00"}</div>
+        <input className="app-input" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="输入金额" />
+      </section>
 
-      <Section title="分类">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 8 }}>
-          {categories.map((item) => {
-            const active = category === item;
-            return (
-              <button
-                key={item}
-                onClick={() => setCategory(item)}
-                style={{
-                  borderRadius: 16,
-                  border: active ? "1px solid #2f7cff" : "1px solid #e5e7eb",
-                  background: active ? "#eef4ff" : "#fff",
-                  padding: "10px 6px",
-                  color: active ? "#2f7cff" : "#374151",
-                }}
-              >
-                {item}
-              </button>
-            );
-          })}
+      <section className="home-card page-card">
+        <h2 className="page-card-title">分类</h2>
+        <div className="category-grid">
+          {categories.map((item) => (
+            <button key={item} type="button" onClick={() => setCategory(item)} className={category === item ? "category-button active" : "category-button"}>
+              {item}
+            </button>
+          ))}
         </div>
-      </Section>
+      </section>
 
-      <Section title="账户">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-          {platforms.map((item) => {
-            const active = platform === item;
-            return (
-              <button
-                key={item}
-                onClick={() => setPlatform(item)}
-                style={{
-                  borderRadius: 999,
-                  border: active ? "1px solid #2f7cff" : "1px solid #e5e7eb",
-                  background: active ? "#eef4ff" : "#fff",
-                  padding: "8px 12px",
-                  color: active ? "#2f7cff" : "#6b7280",
-                }}
-              >
-                {item}
-              </button>
-            );
-          })}
+      <section className="home-card page-card">
+        <h2 className="page-card-title">账户</h2>
+        <div className="pill-group">
+          {platforms.map((item) => (
+            <button key={item} type="button" onClick={() => setPlatform(item)} className={platform === item ? "pill-button active" : "pill-button"}>
+              {item}
+            </button>
+          ))}
         </div>
-      </Section>
+      </section>
 
-      <Section title="时间与备注">
-        <div style={{ display: "grid", gap: 10 }}>
-          <input value={date} onChange={(event) => setDate(event.target.value)} style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
-          <input value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="商户" style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
-          <input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="备注" style={{ width: "100%", borderRadius: 16, border: "1px solid #e5e7eb", padding: 14, background: "#f8fafc" }} />
+      <section className="home-card page-card">
+        <h2 className="page-card-title">时间与备注</h2>
+        <div className="app-field-grid">
+          <input className="app-input" value={date} onChange={(event) => setDate(event.target.value)} />
+          <input className="app-input" value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="商户" />
+          <input className="app-input" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="备注" />
         </div>
-      </Section>
+      </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <button onClick={() => { setAmount(""); setMerchant(""); setDescription(""); }} style={{ border: 0, borderRadius: 18, background: "#fff", padding: "14px 0", fontWeight: 700 }}>再记一笔</button>
-        <button onClick={() => void saveTransaction()} style={{ border: 0, borderRadius: 18, background: "#2f7cff", color: "#fff", padding: "14px 0", fontWeight: 700 }}>保存</button>
+      <div className="action-grid">
+        <button type="button" className="secondary-button" onClick={() => { setAmount(""); setMerchant(""); setDescription(""); }}>
+          再记一笔
+        </button>
+        <button type="button" className="primary-button" onClick={() => void saveTransaction()}>
+          保存
+        </button>
       </div>
 
-      <Section title="最近流水">
-        <div style={{ display: "grid", gap: 10 }}>
+      <section className="home-card page-card">
+        <h2 className="page-card-title">最近流水</h2>
+        <div className="app-list">
           {transactions.map((item) => (
-            <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontWeight: 600 }}>{item.category}</div>
-                <div style={{ color: "#6b7280", fontSize: 12 }}>{item.merchant || item.description || item.platform}</div>
+            <div key={item.id} className="app-list-row">
+              <div className="app-list-main">
+                <div className="app-list-title">{item.category}</div>
+                <div className="app-list-subtitle">{item.merchant || item.description || item.platform}</div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ color: item.type === "INCOME" ? "#20b26b" : item.type === "EXPENSE" ? "#ff5d5d" : "#2f7cff", fontWeight: 700 }}>
+                <div className={item.type === "INCOME" ? "app-list-value positive" : item.type === "EXPENSE" ? "app-list-value negative" : "app-list-value"}>
                   {item.type === "INCOME" ? "+" : item.type === "EXPENSE" ? "-" : "±"}¥ {formatMoney(item.amount)}
                 </div>
-                <div style={{ color: "#6b7280", fontSize: 12 }}>{item.date}</div>
+                <div className="app-list-subtitle">{item.date}</div>
               </div>
             </div>
           ))}
         </div>
-      </Section>
+      </section>
     </div>
   );
 }
