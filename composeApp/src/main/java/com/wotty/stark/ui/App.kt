@@ -34,10 +34,10 @@ private data class NavItem(val label: String, val iconResId: Int?, val isPrimary
 
 private val NAV_ITEMS = listOf(
     NavItem("首页", R.drawable.shouye),
-    NavItem("账单", R.drawable.xiaofei),
-    NavItem("记账", null, isPrimary = true),
-    NavItem("资产", R.drawable.zichan),
-    NavItem("我的", R.drawable.zhanghu)
+    NavItem("消费", R.drawable.xiaofei),
+    NavItem("储蓄", R.drawable.chuxv),
+    NavItem("贷款", R.drawable.daikuan),
+    NavItem("账户", R.drawable.zhanghu)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,14 +47,18 @@ fun App(dataModeManager: DataModeManager) {
     val coroutineScope = rememberCoroutineScope()
     var selectedTab by remember { mutableIntStateOf(0) }
 
-    val dashboardListState = rememberLazyListState()
+    val dashboardScrollState = rememberScrollState()
     val transactionScrollState = rememberScrollState()
+    val savingsListState = rememberLazyListState()
+    val loanListState = rememberLazyListState()
 
     val scrollToTop: () -> Unit = {
         coroutineScope.launch {
             when (selectedTab) {
-                0 -> dashboardListState.animateScrollToItem(0)
+                0 -> dashboardScrollState.animateScrollTo(0)
                 1 -> transactionScrollState.animateScrollTo(0)
+                2 -> savingsListState.animateScrollToItem(0)
+                3 -> loanListState.animateScrollToItem(0)
             }
         }
     }
@@ -62,32 +66,8 @@ fun App(dataModeManager: DataModeManager) {
     StarTheme {
         Scaffold(
             containerColor = Color(0xFFF2F2F2),
-            topBar = {
-                if (selectedTab != 0) {
-                    Surface(color = Color.White, shadowElevation = 2.dp) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .statusBarsPadding()
-                                .padding(vertical = 10.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = scrollToTop
-                                ),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            Text(
-                                text = "星会计",
-                                color = Color(0xFF1A1A1A),
-                                fontWeight = FontWeight.Medium,
-                                fontSize = 18.sp,
-                                modifier = Modifier.padding(start = 16.dp)
-                            )
-                        }
-                    }
-                }
-            },
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            topBar = {},
             bottomBar = {
                 Surface(
                     color = Color.White,
@@ -129,11 +109,15 @@ fun App(dataModeManager: DataModeManager) {
                     label = "screen_transition"
                 ) { tab ->
                     when (tab) {
-                        0 -> DashboardScreen(viewModel, dashboardListState)
-                        1 -> TransactionScreen(viewModel, transactionScrollState)
-                        2 -> TransactionScreen(viewModel, transactionScrollState)
-                        3 -> PlaceholderScreen("资产")
-                        4 -> SettingsScreen(viewModel)
+                        0 -> DashboardScreen(viewModel, dashboardScrollState)
+                        1 -> BillScreen(
+                            viewModel = viewModel,
+                            scrollState = transactionScrollState,
+                            onAddClick = { }
+                        )
+                        2 -> SavingsScreen(viewModel, savingsListState)
+                        3 -> LoanScreen(viewModel, loanListState)
+                        4 -> AccountOverviewScreen(viewModel)
                     }
                 }
             }

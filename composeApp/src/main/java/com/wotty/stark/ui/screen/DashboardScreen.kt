@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -163,7 +163,7 @@ private data class RecentRow(
 )
 
 @Composable
-fun DashboardScreen(viewModel: MainViewModel, listState: LazyListState) {
+fun DashboardScreen(viewModel: MainViewModel, scrollState: ScrollState) {
     val state by viewModel.state.collectAsState()
     val summary = remember(
         state.transactions,
@@ -181,17 +181,20 @@ fun DashboardScreen(viewModel: MainViewModel, listState: LazyListState) {
         )
     }
 
-    LazyColumn(
-        state = listState,
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeBg),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 84.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+            .background(HomeBg)
+            .statusBarsPadding()
     ) {
-        item { HomeTopBar() }
-        item { HeroStack(summary) }
-        item {
+        Column(
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .padding(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 84.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            HomeTopBar()
+            HeroStack(summary)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -199,8 +202,6 @@ fun DashboardScreen(viewModel: MainViewModel, listState: LazyListState) {
                 RatioCard(summary, Modifier.weight(1f))
                 ProgressCard(summary, Modifier.weight(1f))
             }
-        }
-        item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -208,9 +209,9 @@ fun DashboardScreen(viewModel: MainViewModel, listState: LazyListState) {
                 SummaryCard("资产汇总", summary.assetTotal, 8.6, Modifier.weight(1f))
                 SummaryCard("储蓄汇总", summary.totalSavings, 5.4, Modifier.weight(1f))
             }
+            LoanSummaryCard(summary)
+            RecentTransactionsCard(summary.recent)
         }
-        item { LoanSummaryCard(summary) }
-        item { RecentTransactionsCard(summary.recent) }
     }
 }
 
