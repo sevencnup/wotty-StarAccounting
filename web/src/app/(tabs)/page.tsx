@@ -268,14 +268,29 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
 }
 
 function buildRatioOption(ratios: HomeRatio[]): EChartsCoreOption {
+  type TooltipSize = { contentSize: number[]; viewSize: number[] };
+
   return {
     animationDuration: 450,
     tooltip: {
       trigger: "item",
+      confine: true,
       backgroundColor: "rgba(19, 27, 48, 0.92)",
       borderWidth: 0,
       padding: [8, 10],
       textStyle: { color: "#ffffff", fontSize: 12 },
+      position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
+        const [x, y] = point as [number, number];
+        const viewWidth = size.viewSize[0];
+        const viewHeight = size.viewSize[1];
+        const boxWidth = size.contentSize[0];
+        const boxHeight = size.contentSize[1];
+        const nextX = Math.min(Math.max(8, x - boxWidth / 2), viewWidth - boxWidth - 8);
+        const nextY = y < viewHeight / 2
+          ? Math.min(viewHeight - boxHeight - 8, y + 12)
+          : Math.max(8, y - boxHeight - 12);
+        return [nextX, nextY];
+      },
       formatter: (params: { name?: string; value?: number; percent?: number }) => `${params.name ?? ""}<br/>¥ ${formatMoney(Number(params.value ?? 0))} (${params.percent ?? 0}%)`,
     },
     series: [
