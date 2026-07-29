@@ -2,403 +2,308 @@ package com.wotty.stark.ui.screen
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.AccountBalance
 import androidx.compose.material.icons.outlined.AccountBalanceWallet
-import androidx.compose.material.icons.outlined.Apartment
-import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.Fastfood
+import androidx.compose.material.icons.outlined.LocalAtm
+import androidx.compose.material.icons.outlined.Savings
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.ShoppingBag
+import androidx.compose.material.icons.outlined.SportsEsports
+import androidx.compose.material.icons.outlined.Storefront
+import androidx.compose.material.icons.outlined.Train
 import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.Workspaces
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.wotty.stark.data.model.Asset
+import com.wotty.stark.data.model.Budget
+import com.wotty.stark.data.model.Loan
+import com.wotty.stark.data.model.SavingsGoal
 import com.wotty.stark.data.model.Transaction
 import com.wotty.stark.data.model.TransactionType
+import com.wotty.stark.ui.components.EChartView
 import com.wotty.stark.ui.viewmodel.MainViewModel
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import kotlin.math.absoluteValue
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-private val HomeBlue = Color(0xFF2F7BFF)
-private val HomeBlueDark = Color(0xFF1D63E8)
-private val HomeBlueLight = Color(0xFF5EA5FF)
-private val HomeYellow = Color(0xFFF6D66D)
-private val HomeTextDark = Color(0xFF1F2430)
-private val HomeTextMuted = Color(0xFF9CA3AF)
-private val HomeSurface = Color(0xFFFFFFFF)
-private val HomeBg = Color(0xFFF4F7FB)
-private val IncomeBlue = Color(0xFF4A86FF)
-private val ExpenseRed = Color(0xFFEE7B74)
-private val TrendLineBlue = Color(0xFF3A82FF)
-private val TrendFillBlue = Color(0x263A82FF)
-private val CategoryOrange = Color(0xFFFF9A3D)
-private val CategoryGreen = Color(0xFF57C785)
+private val HomeBg = Color(0xFFF4F5F7)
+private val HomeCardBg = Color.White
+private val HomeText = Color(0xFF11182D)
+private val HomeSubtle = Color(0xFF65718A)
+private val HomeBlue = Color(0xFF3D86FF)
+private val HomeOrange = Color(0xFFFF7A32)
+private val HomeDeltaUp = Color(0xFFFF6848)
+private val HomeDeltaDown = Color(0xFF67CAA9)
+private val HomeGreen = Color(0xFF63C7A8)
+private val HomeProgressTrack = Color(0xFFEAF0F7)
+private val HomeLoanTrack = Color(0xFFE8EFF8)
+private val HomeLoanRowBg = Color(0xFFF7FAFF)
+private val HomeLoanRowBorder = Color(0xFFE8EEF7)
+private val HomeRecentPositive = Color(0xFFFF4D2F)
+private val HomeDetailBorder = Color(0xFF9FC4FF)
+private val HomeDetailText = Color(0xFF3485FF)
 
-private data class MonthlySummary(
+private val HeroGradient = listOf(Color(0xFF3F86FF), Color(0xFF5DA0FF), Color(0xFF4D8CF7))
+private val HeroStackGradient = listOf(Color(0xFF4E8FF8), Color(0xFF67A3FF), Color(0xFF7DB0FF))
+private val LoanTrackGradient = listOf(Color(0xFF73D2B3), Color(0xFF58BF9F))
+
+private val RatioPalette = listOf(
+    Color(0xFF2A78D6),
+    Color(0xFFEB6834),
+    Color(0xFF1BAF7A),
+    Color(0xFFEDA100),
+    Color(0xFFE87BA4)
+)
+
+private data class HomeSummary(
     val expense: Double,
     val income: Double,
-    val budget: Double,
-    val budgetRemaining: Double,
-    val percentUsed: Float
+    val expenseChange: Int,
+    val incomeChange: Int,
+    val trend: TrendBundle,
+    val ratios: List<ExpenseRatio>,
+    val savingProgress: ProgressSummary,
+    val loanProgress: ProgressSummary,
+    val netWorth: Double,
+    val assetTotal: Double,
+    val liabilityTotal: Double,
+    val totalSavings: Double,
+    val savingsDelta: Double,
+    val loanTotal: Double,
+    val loanDelta: Double,
+    val recent: List<RecentRow>
 )
 
-private data class CategoryRank(
+private data class TrendBundle(
+    val labels: List<String>,
+    val expense: List<Double>,
+    val income: List<Double>
+)
+
+private data class ExpenseRatio(
     val name: String,
     val amount: Double,
-    val share: Float,
+    val percent: Int,
     val color: Color,
-    val iconBg: Color,
-    val icon: @Composable () -> Unit
+    val bubbleColor: Color,
+    val icon: ImageVector
 )
 
-private data class TrendPoint(
-    val label: String,
-    val amount: Double
+private data class ProgressSummary(
+    val title: String,
+    val current: Double,
+    val total: Double,
+    val percent: Int,
+    val color: Color
+)
+
+private data class RecentRow(
+    val title: String,
+    val subtitle: String,
+    val amount: Double,
+    val time: String,
+    val positive: Boolean,
+    val icon: ImageVector,
+    val bubbleColor: Color,
+    val iconColor: Color
 )
 
 @Composable
 fun DashboardScreen(viewModel: MainViewModel, listState: LazyListState) {
     val state by viewModel.state.collectAsState()
-    val allTransactions = state.transactions
-    val monthTransactions = remember(allTransactions) { allTransactions.filter { it.isInCurrentMonth() } }
-    val summary = remember(monthTransactions) { buildMonthlySummary(monthTransactions) }
-    val trendPoints = remember(monthTransactions) { buildTrendPoints(monthTransactions) }
-    val categoryRanks = remember(monthTransactions) { buildCategoryRanks(monthTransactions) }
+    val summary = remember(
+        state.transactions,
+        state.assets,
+        state.loans,
+        state.savingsGoals,
+        state.budgets
+    ) {
+        buildHomeSummary(
+            transactions = state.transactions,
+            assets = state.assets,
+            loans = state.loans,
+            goals = state.savingsGoals,
+            budgets = state.budgets
+        )
+    }
 
     LazyColumn(
         state = listState,
         modifier = Modifier
             .fillMaxSize()
-            .background(HomeBg)
-            .statusBarsPadding(),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(HomeBg),
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 84.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
+        item { HomeTopBar() }
+        item { HeroStack(summary) }
         item {
-            HomeHeader()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                RatioCard(summary, Modifier.weight(1f))
+                ProgressCard(summary, Modifier.weight(1f))
+            }
         }
-
         item {
-            MonthlyExpenseHero(summary)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SummaryCard("资产汇总", summary.assetTotal, 8.6, Modifier.weight(1f))
+                SummaryCard("储蓄汇总", summary.totalSavings, 5.4, Modifier.weight(1f))
+            }
         }
-
-        item {
-            IncomeExpenseStats(summary)
-        }
-
-        item {
-            TrendSection(trendPoints)
-        }
-
-        item {
-            CategoryRankingSection(categoryRanks)
-        }
-
-        item {
-            Spacer(Modifier.height(8.dp))
-        }
+        item { LoanSummaryCard(summary) }
+        item { RecentTransactionsCard(summary.recent) }
     }
 }
 
 @Composable
-private fun HomeHeader() {
+private fun HomeTopBar() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = "首页",
-            color = HomeTextDark,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(Modifier.width(8.dp))
-        Icon(
-            imageVector = Icons.Outlined.Visibility,
-            contentDescription = null,
-            tint = Color(0xFF656D78),
-            modifier = Modifier.size(20.dp)
-        )
         Spacer(Modifier.weight(1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Icon(
-                imageVector = Icons.Outlined.Visibility,
-                contentDescription = null,
-                tint = Color(0xFF656D78),
-                modifier = Modifier.size(20.dp)
-            )
-            TopActionIcon(showDot = true)
-            TopActionIcon(showDot = true)
-        }
-    }
-}
-
-@Composable
-private fun TopActionIcon(showDot: Boolean = false) {
-    Box(contentAlignment = Alignment.TopEnd) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .background(Color(0xFFF1F4F8), RoundedCornerShape(6.dp)),
-            contentAlignment = Alignment.Center
+        Text("首页", color = HomeText, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.weight(1f))
+        Row(
+            modifier = Modifier,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .background(Color(0xFF656D78), RoundedCornerShape(2.dp))
-            )
-        }
-        if (showDot) {
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .background(Color(0xFFFF6B57), CircleShape)
-            )
-        }
-    }
-}
-
-@Composable
-private fun MonthlyExpenseHero(summary: MonthlySummary) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = 16.dp,
-                shape = RoundedCornerShape(22.dp),
-                clip = false
-            ),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(162.dp)
-                .background(
-                    brush = Brush.linearGradient(listOf(HomeBlueLight, HomeBlueDark)),
-                    shape = RoundedCornerShape(22.dp)
-                )
-                .padding(horizontal = 18.dp, vertical = 18.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier.size(26.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "本月支出(元)",
-                            color = Color.White.copy(alpha = 0.92f),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Icon(
-                            imageVector = Icons.Outlined.Visibility,
-                            contentDescription = null,
-                            tint = Color.White.copy(alpha = 0.7f),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    }
-                    Text(
-                        text = formatAmount(summary.expense),
-                        color = Color.White,
-                        fontSize = 34.sp,
-                        lineHeight = 40.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "预算剩余：${formatAmount(summary.budgetRemaining)}",
-                        color = Color.White.copy(alpha = 0.82f),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color.White.copy(alpha = 0.16f), RoundedCornerShape(999.dp))
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Text(
-                            text = "预算",
-                            color = Color.White.copy(alpha = 0.92f),
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                    BudgetRing(summary.percentUsed)
-                }
+                Icon(Icons.Outlined.Search, null, tint = HomeText, modifier = Modifier.size(19.dp))
             }
         }
     }
 }
 
 @Composable
-private fun BudgetRing(percentUsed: Float) {
+private fun HeroStack(summary: HomeSummary) {
     Box(
-        modifier = Modifier.size(104.dp),
-        contentAlignment = Alignment.Center
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                brush = Brush.verticalGradient(HeroStackGradient),
+                shape = RoundedCornerShape(14.dp)
+            )
+            .padding(10.dp)
     ) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val stroke = Stroke(width = 13.dp.toPx(), cap = StrokeCap.Round)
-            val arcSize = Size(size.width - 12.dp.toPx(), size.height - 12.dp.toPx())
-            val topLeft = Offset(6.dp.toPx(), 6.dp.toPx())
-
-            drawArc(
-                color = Color.White.copy(alpha = 0.14f),
-                startAngle = -90f,
-                sweepAngle = 360f,
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = stroke
-            )
-            drawArc(
-                color = Color(0xFF79B8FF).copy(alpha = 0.38f),
-                startAngle = -90f,
-                sweepAngle = 360f * (1f - percentUsed.coerceIn(0f, 1f)),
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = stroke
-            )
-            drawArc(
-                color = HomeYellow,
-                startAngle = 110f,
-                sweepAngle = 250f * percentUsed.coerceIn(0f, 1f),
-                useCenter = false,
-                topLeft = topLeft,
-                size = arcSize,
-                style = stroke
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            MonthlySummaryCard(summary)
+            TrendCard(summary.trend)
         }
-        Text(
-            text = "${(percentUsed * 100).roundToInt()}%",
-            color = Color.White,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
-        )
     }
 }
 
 @Composable
-private fun IncomeExpenseStats(summary: MonthlySummary) {
-    Card(
+private fun MonthlySummaryCard(summary: HomeSummary) {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault())
+    val monthLabel = "${now.year}年${now.monthNumber}月"
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(20.dp), clip = false),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .background(
+                brush = Brush.linearGradient(HeroGradient),
+                shape = RoundedCornerShape(13.dp)
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "本月收支统计",
-                    color = HomeTextDark,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = Icons.Rounded.ChevronRight,
-                    contentDescription = null,
-                    tint = Color(0xFFD2D7DE),
-                    modifier = Modifier.size(20.dp)
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("本月收支汇总", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    Icon(Icons.Outlined.Visibility, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.weight(1f))
+                Text(monthLabel, color = Color.White, fontSize = 13.sp)
             }
-            Spacer(Modifier.height(18.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "收入(元)",
-                        color = IncomeBlue,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = formatAmount(summary.income),
-                        color = HomeTextDark,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Column(Modifier.weight(1f)) {
+                    Text("总收入", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(formatMoney(summary.income), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                    DeltaLine(summary.incomeChange, onDark = true)
                 }
                 Box(
                     modifier = Modifier
                         .width(1.dp)
                         .height(48.dp)
-                        .background(Color(0xFFF0F3F8))
+                        .background(Color.White.copy(alpha = 0.32f))
                 )
-                Spacer(Modifier.width(24.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "支出(元)",
-                        color = ExpenseRed,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = formatAmount(summary.expense),
-                        color = HomeTextDark,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                    Text("总支出", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
+                    Spacer(Modifier.height(6.dp))
+                    Text(formatMoney(summary.expense), color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
+                    DeltaLine(summary.expenseChange * -1, onDark = true)
                 }
             }
         }
@@ -406,419 +311,756 @@ private fun IncomeExpenseStats(summary: MonthlySummary) {
 }
 
 @Composable
-private fun TrendSection(points: List<TrendPoint>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(20.dp), clip = false),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "收支趋势",
-                    color = HomeTextDark,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Box(
-                    modifier = Modifier
-                        .background(Color(0xFFF5F7FA), RoundedCornerShape(12.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = "本月",
-                            color = Color(0xFF626C78),
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.width(2.dp))
-                        Icon(
-                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = Color(0xFF626C78),
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(18.dp))
-            TrendChart(points)
-        }
-    }
-}
-
-@Composable
-private fun TrendChart(points: List<TrendPoint>) {
-    if (points.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(156.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "本月暂无支出数据",
-                color = HomeTextMuted,
-                fontSize = 14.sp
-            )
-        }
-        return
-    }
-
-    val maxAmount = max(points.maxOf { it.amount }, 1.0)
-
-    Column {
-        Canvas(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(132.dp)
-        ) {
-            val leftPad = 10.dp.toPx()
-            val rightPad = 10.dp.toPx()
-            val topPad = 10.dp.toPx()
-            val bottomPad = 18.dp.toPx()
-            val chartW = size.width - leftPad - rightPad
-            val chartH = size.height - topPad - bottomPad
-            val stepX = if (points.size > 1) chartW / (points.size - 1) else 0f
-
-            fun pointAt(index: Int): Offset {
-                val value = points[index].amount
-                val x = leftPad + index * stepX
-                val y = topPad + chartH - ((value / maxAmount).toFloat() * chartH * 0.88f)
-                return Offset(x, y)
-            }
-
-            for (i in 0..3) {
-                val y = topPad + chartH * i / 3f
-                drawLine(
-                    color = Color(0xFFF0F2F6),
-                    start = Offset(leftPad, y),
-                    end = Offset(size.width - rightPad, y),
-                    strokeWidth = 1.dp.toPx()
-                )
-            }
-
-            val linePath = Path()
-            val fillPath = Path()
-            val first = pointAt(0)
-            linePath.moveTo(first.x, first.y)
-            fillPath.moveTo(first.x, topPad + chartH)
-            fillPath.lineTo(first.x, first.y)
-
-            for (i in 1 until points.size) {
-                val previous = pointAt(i - 1)
-                val current = pointAt(i)
-                val midX = (previous.x + current.x) / 2f
-                linePath.cubicTo(midX, previous.y, midX, current.y, current.x, current.y)
-                fillPath.cubicTo(midX, previous.y, midX, current.y, current.x, current.y)
-            }
-
-            val last = pointAt(points.lastIndex)
-            fillPath.lineTo(last.x, topPad + chartH)
-            fillPath.close()
-
-            drawPath(
-                path = fillPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(TrendFillBlue, Color.Transparent),
-                    startY = topPad,
-                    endY = topPad + chartH
-                ),
-                style = Fill
-            )
-
-            drawPath(
-                path = linePath,
-                color = TrendLineBlue,
-                style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round)
-            )
-
-            points.forEachIndexed { index, _ ->
-                val point = pointAt(index)
-                drawCircle(
-                    color = TrendLineBlue.copy(alpha = 0.18f),
-                    radius = 7.dp.toPx(),
-                    center = point
-                )
-                drawCircle(
-                    color = TrendLineBlue,
-                    radius = 3.5.dp.toPx(),
-                    center = point
-                )
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            points.forEach {
-                Text(
-                    text = it.label,
-                    color = Color(0xFFC0C6D1),
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryRankingSection(ranks: List<CategoryRank>) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(20.dp), clip = false),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "支出分类排行",
-                    color = HomeTextDark,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "查看更多",
-                    color = HomeTextMuted,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            Spacer(Modifier.height(10.dp))
-
-            if (ranks.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "本月暂无支出记录",
-                        color = HomeTextMuted,
-                        fontSize = 14.sp
-                    )
-                }
-            } else {
-                ranks.forEachIndexed { index, item ->
-                    if (index > 0) {
-                        HorizontalDivider(color = Color(0xFFF5F6F8), thickness = 1.dp)
-                    }
-                    CategoryRankRow(item)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryRankRow(item: CategoryRank) {
+private fun DeltaLine(value: Int, onDark: Boolean = false) {
+    val positive = value >= 0
+    val valueColor = if (positive) HomeDeltaUp else HomeDeltaDown
+    val baseColor = if (onDark) Color.White.copy(alpha = 0.92f) else HomeSubtle
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.padding(top = 7.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .background(item.iconBg, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            item.icon()
-        }
-        Spacer(Modifier.width(12.dp))
+        Text("较上月", color = baseColor, fontSize = 11.sp)
+        Text(
+            "${if (positive) "+" else ""}${value}%",
+            color = valueColor,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium
+        )
+        Text(if (positive) "↗" else "↓", color = valueColor, fontSize = 12.sp)
+    }
+}
 
-        Column(modifier = Modifier.weight(1f)) {
+@Composable
+private fun TrendCard(trend: TrendBundle) {
+    WhiteCard {
+        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text(
-                    text = item.name,
-                    color = HomeTextDark,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = percentText(item.share),
-                    color = HomeTextMuted,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text = formatAmount(item.amount),
-                    color = Color(0xFF2F3640),
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Text("本月收支趋势", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.weight(1f))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TrendLegendItem(HomeBlue, "收入")
+                    TrendLegendItem(HomeOrange, "支出")
+                }
             }
-            Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.72f)
-                    .height(8.dp)
-                    .background(Color(0xFFF2F4F8), RoundedCornerShape(999.dp))
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(item.share.coerceIn(0.08f, 1f))
-                        .height(8.dp)
-                        .background(item.color, RoundedCornerShape(999.dp))
-                )
-            }
+            TrendChart(trend)
         }
     }
 }
 
-private fun buildMonthlySummary(transactions: List<Transaction>): MonthlySummary {
-    val income = transactions.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
-    val expense = transactions.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
-    val budget = if (income > 0.0) income else max(expense * 1.5, 3000.0)
-    val remaining = (budget - expense).coerceAtLeast(0.0)
-    val percent = if (budget > 0) (expense / budget).toFloat().coerceIn(0f, 1f) else 0f
-    return MonthlySummary(
-        expense = expense,
-        income = income,
-        budget = budget,
-        budgetRemaining = remaining,
-        percentUsed = percent
+@Composable
+private fun TrendLegendItem(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Box(modifier = Modifier.size(width = 15.dp, height = 4.dp).background(color, RoundedCornerShape(999.dp)))
+        Text(label, color = HomeText, fontSize = 11.sp)
+    }
+}
+
+@Composable
+private fun TrendChart(trend: TrendBundle) {
+    val optionJson = remember(trend) { buildTrendOptionJson(trend) }
+    EChartView(
+        optionJson = optionJson,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(128.dp)
     )
 }
 
-private fun buildTrendPoints(transactions: List<Transaction>): List<TrendPoint> {
-    val expenses = transactions.filter { it.type == TransactionType.EXPENSE }
-    if (expenses.isEmpty()) return emptyList()
+@Composable
+private fun RatioCard(summary: HomeSummary, modifier: Modifier = Modifier) {
+    WhiteCard(modifier) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text("收支类型占比", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                DonutChart(summary.ratios, Modifier.size(116.dp))
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                summary.ratios.forEach { ratio ->
+                    RatioRow(ratio)
+                }
+            }
+        }
+    }
+}
 
-    val grouped = expenses.groupBy { it.date.take(10) }
-    val orderedDates = grouped.keys.sorted()
-    val sampleDates = if (orderedDates.size <= 5) orderedDates else listOf(
-        orderedDates.first(),
-        orderedDates[(orderedDates.lastIndex * 0.25f).roundToInt()],
-        orderedDates[(orderedDates.lastIndex * 0.5f).roundToInt()],
-        orderedDates[(orderedDates.lastIndex * 0.75f).roundToInt()],
-        orderedDates.last()
-    ).distinct()
+@Composable
+private fun DonutChart(ratios: List<ExpenseRatio>, modifier: Modifier = Modifier) {
+    val optionJson = remember(ratios) { buildRatioOptionJson(ratios) }
+    EChartView(optionJson = optionJson, modifier = modifier)
+}
 
-    return sampleDates.map { date ->
-        TrendPoint(
-            label = date.substring(5).replace("-", "/"),
-            amount = grouped[date].orEmpty().sumOf { it.amount }
+@Composable
+private fun RatioRow(ratio: ExpenseRatio) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .background(ratio.bubbleColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(ratio.icon, null, tint = ratio.color, modifier = Modifier.size(12.dp))
+        }
+        Spacer(Modifier.size(8.dp))
+        Text(
+            ratio.name,
+            color = HomeText,
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+        )
+        Text("${ratio.percent}%", color = HomeSubtle, fontSize = 12.sp)
+        Spacer(Modifier.size(6.dp))
+        Text(formatMoney(ratio.amount), color = Color(0xFF5C6880), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun ProgressCard(summary: HomeSummary, modifier: Modifier = Modifier) {
+    WhiteCard(modifier) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp)
+        ) {
+            ProgressRow(summary.savingProgress, HomeBlue, Icons.Outlined.Savings)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.dp)
+                    .background(Color(0xFF6F84A6).copy(alpha = 0.18f))
+            )
+            ProgressRow(summary.loanProgress, HomeGreen, Icons.Outlined.AccountBalance)
+        }
+    }
+}
+
+@Composable
+private fun ProgressRow(progress: ProgressSummary, color: Color, icon: ImageVector) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(progress.title, color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(color.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(17.dp))
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                "¥ ${formatMoney(progress.current)}",
+                color = HomeText,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                "¥ ${formatMoney(progress.total)}",
+                color = Color(0xFF6F7C9B),
+                fontSize = 12.sp
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(8.dp)
+                    .background(HomeProgressTrack, RoundedCornerShape(999.dp))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth((progress.percent / 100f).coerceIn(0.04f, 1f))
+                        .height(8.dp)
+                        .background(color, RoundedCornerShape(999.dp))
+                )
+            }
+            Text("${progress.percent}%", color = color, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun SummaryCard(title: String, value: Double, delta: Double, modifier: Modifier = Modifier) {
+    WhiteCard(modifier) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(title, color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Spacer(Modifier.height(6.dp))
+            Text("¥ ${formatMoney(value)}", color = HomeText, fontSize = 19.sp, fontWeight = FontWeight.Medium)
+            DeltaLine(delta.roundToInt(), onDark = false)
+        }
+    }
+}
+
+@Composable
+private fun LoanSummaryCard(summary: HomeSummary) {
+    WhiteCard {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("贷款已还款汇总", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(6.dp))
+                    Text("¥ ${formatMoney(summary.loanProgress.current)}", color = HomeText, fontSize = 19.sp, fontWeight = FontWeight.Medium)
+                    DeltaLine(summary.loanDelta.roundToInt(), onDark = false)
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = Color.White,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, HomeDetailBorder),
+                    modifier = Modifier.height(29.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text("查看详情", color = HomeDetailText, fontSize = 12.sp)
+                        Icon(Icons.Rounded.ChevronRight, null, tint = HomeDetailText, modifier = Modifier.size(14.dp))
+                    }
+                }
+            }
+            LoanMiniList(summary)
+        }
+    }
+}
+
+@Composable
+private fun LoanMiniList(summary: HomeSummary) {
+    val loans = remember(summary) { demoLoans() }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (loans.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(10.dp)
+                    .background(HomeLoanRowBg, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("暂无贷款数据", color = HomeSubtle, fontSize = 11.sp, modifier = Modifier.padding(vertical = 10.dp))
+            }
+        } else {
+            loans.forEach { loan -> LoanMiniRow(loan) }
+        }
+    }
+}
+
+@Composable
+private fun LoanMiniRow(loan: LoanMini) {
+    val percent = if (loan.total > 0) ((loan.total - loan.remaining) / loan.total * 100).coerceIn(0.0, 100.0) else 0.0
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(HomeLoanRowBg, RoundedCornerShape(10.dp))
+            .border(1.dp, HomeLoanRowBorder, RoundedCornerShape(10.dp))
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(loan.platform, color = HomeText, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+            Text("${percent.roundToInt()}%", color = Color(0xFF59B995), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("剩余 ¥ ${formatMoney(loan.remaining)}", color = HomeSubtle, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Text("总额 ¥ ${formatMoney(loan.total)}", color = HomeSubtle, fontSize = 11.sp)
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(7.dp)
+                .background(HomeLoanTrack, RoundedCornerShape(999.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth((percent / 100.0).toFloat().coerceIn(0.04f, 1f))
+                    .height(7.dp)
+                    .background(
+                        brush = Brush.linearGradient(LoanTrackGradient),
+                        shape = RoundedCornerShape(999.dp)
+                    )
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("已还 ${loan.paidPeriods}/${loan.periods} 期", color = HomeSubtle, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Text("下期 ${loan.dueLabel} 还 ¥ ${formatMoney(loan.monthly)}", color = HomeSubtle, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun RecentTransactionsCard(recent: List<RecentRow>) {
+    WhiteCard {
+        Column(modifier = Modifier.padding(horizontal = 14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("最近交易", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                Text("全部", color = Color(0xFF65718A), fontSize = 11.sp)
+                Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFF65718A), modifier = Modifier.size(14.dp))
+            }
+            recent.forEachIndexed { index, row ->
+                if (index > 0) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(Color(0xFF6F84A6).copy(alpha = 0.16f))
+                    )
+                }
+                RecentTransactionRow(row)
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+@Composable
+private fun RecentTransactionRow(row: RecentRow) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .background(row.bubbleColor, RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(row.icon, null, tint = row.iconColor, modifier = Modifier.size(18.dp))
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                row.title,
+                color = HomeText,
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(row.subtitle, color = Color(0xFF65718A), fontSize = 11.sp)
+        }
+        Text(row.time, color = Color(0xFF65718A), fontSize = 11.sp)
+        Text(
+            text = if (row.positive) "+¥ ${formatMoney(row.amount)}" else "-¥ ${formatMoney(row.amount)}",
+            color = if (row.positive) HomeRecentPositive else HomeText,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium
         )
     }
 }
 
-private fun buildCategoryRanks(transactions: List<Transaction>): List<CategoryRank> {
-    val categorySums = transactions
+@Composable
+private fun WhiteCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = HomeCardBg)
+    ) {
+        content()
+    }
+}
+
+private data class LoanMini(
+    val platform: String,
+    val total: Double,
+    val remaining: Double,
+    val periods: Int,
+    val paidPeriods: Int,
+    val monthly: Double,
+    val dueLabel: String
+)
+
+private fun demoLoans(): List<LoanMini> = listOf(
+    LoanMini("房贷", 100000.0, 71500.0, 360, 75, 5600.0, "06-20"),
+    LoanMini("车贷", 80000.0, 27000.0, 36, 18, 2200.0, "15-20")
+)
+
+private fun buildHomeSummary(
+    transactions: List<Transaction>,
+    assets: List<Asset>,
+    loans: List<Loan>,
+    goals: List<SavingsGoal>,
+    budgets: List<Budget>
+): HomeSummary {
+    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val currentMonth = transactions.filter { it.isInMonth(today.year, today.monthNumber) }
+    val previousMonthDate = previousMonth(today)
+    val previousMonthRows = transactions.filter { it.isInMonth(previousMonthDate.year, previousMonthDate.monthNumber) }
+
+    val hasTransactionData = currentMonth.isNotEmpty()
+    val hasAssetData = assets.isNotEmpty() || loans.isNotEmpty() || goals.isNotEmpty()
+
+    if (!hasTransactionData && !hasAssetData) {
+        return demoSummary()
+    }
+
+    val expense = currentMonth.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+    val income = currentMonth.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+    val previousExpense = previousMonthRows.filter { it.type == TransactionType.EXPENSE }.sumOf { it.amount }
+    val previousIncome = previousMonthRows.filter { it.type == TransactionType.INCOME }.sumOf { it.amount }
+
+    val positiveAssets = assets.filter { it.balance > 0 }.sumOf { it.balance }
+    val liabilityAssets = assets.filter { it.balance < 0 }.sumOf { -it.balance }
+    val totalSavings = goals.sumOf { it.currentAmount }
+    val totalSavingsTarget = goals.maxOfOrNull { it.targetAmount } ?: budgets.firstOrNull { it.category == "ALL" }?.amount ?: 30000.0
+    val loanTotal = loans.sumOf { it.totalAmount }.takeIf { it > 0 } ?: 100000.0
+    val loanRemaining = loans.sumOf { it.remainingAmount }
+    val repaidLoan = (loanTotal - loanRemaining).coerceAtLeast(0.0)
+    val totalLiability = liabilityAssets + loanRemaining
+    val assetTotal = positiveAssets + totalSavings
+    val netWorth = assetTotal - totalLiability
+    val monthNet = income - expense
+    val loanDelta = loans.sumOf { it.monthlyPayment }.takeIf { it > 0 } ?: -2000.0
+
+    return HomeSummary(
+        expense = expense,
+        income = income,
+        expenseChange = comparePercent(expense, previousExpense),
+        incomeChange = comparePercent(income, previousIncome),
+        trend = if (hasTransactionData) buildTrendBundle(currentMonth) else demoTrend(),
+        ratios = if (hasTransactionData) buildExpenseRatios(currentMonth) else demoRatios(),
+        savingProgress = ProgressSummary(
+            title = "储蓄计划",
+            current = totalSavings,
+            total = totalSavingsTarget.coerceAtLeast(totalSavings),
+            percent = percentOf(totalSavings, totalSavingsTarget.coerceAtLeast(totalSavings)),
+            color = HomeBlue
+        ),
+        loanProgress = ProgressSummary(
+            title = "贷款还款进度",
+            current = repaidLoan,
+            total = loanTotal,
+            percent = percentOf(repaidLoan, loanTotal),
+            color = HomeBlue
+        ),
+        netWorth = netWorth,
+        assetTotal = assetTotal,
+        liabilityTotal = totalLiability,
+        totalSavings = totalSavings,
+        savingsDelta = monthNet,
+        loanTotal = loanTotal,
+        loanDelta = loanDelta,
+        recent = if (transactions.isNotEmpty()) buildRecentRows(transactions) else demoRecentRows()
+    )
+}
+
+private fun buildTrendBundle(transactions: List<Transaction>): TrendBundle {
+    val labels = listOf("1", "5", "10", "15", "20", "25", "30")
+    val ranges = listOf(1..4, 5..9, 10..14, 15..19, 20..24, 25..29, 30..31)
+
+    return TrendBundle(
+        labels = labels,
+        expense = ranges.map { range ->
+            transactions.filter { it.type == TransactionType.EXPENSE && it.dayOfMonthOrNull() in range }.sumOf { it.amount }.absoluteValue
+        },
+        income = ranges.map { range ->
+            transactions.filter { it.type == TransactionType.INCOME && it.dayOfMonthOrNull() in range }.sumOf { it.amount }
+        }
+    )
+}
+
+private fun buildExpenseRatios(transactions: List<Transaction>): List<ExpenseRatio> {
+    val icons = listOf(
+        Icons.Outlined.ShoppingBag,
+        Icons.Outlined.Train,
+        Icons.Outlined.Fastfood,
+        Icons.AutoMirrored.Outlined.ReceiptLong,
+        Icons.Outlined.AccountBalanceWallet
+    )
+    val bubbles = listOf(
+        Color(0xFFE7EFFC),
+        Color(0xFFF9EADF),
+        Color(0xFFE4F4EC),
+        Color(0xFFFBF0D7),
+        Color(0xFFF8E3EB)
+    )
+    val rows = transactions
         .filter { it.type == TransactionType.EXPENSE }
-        .groupBy { it.category }
-        .mapValues { (_, list) -> list.sumOf { it.amount } }
+        .groupBy { normalizeCategory(it.category) }
+        .mapValues { (_, values) -> values.sumOf { it.amount } }
         .toList()
         .sortedByDescending { it.second }
-        .take(3)
+        .take(5)
 
-    val total = categorySums.sumOf { it.second }
-    if (total <= 0.0) return emptyList()
+    val total = rows.sumOf { it.second }.coerceAtLeast(1.0)
+    return rows.mapIndexed { index, (name, amount) ->
+        val i = index.coerceAtMost(RatioPalette.lastIndex)
+        ExpenseRatio(
+            name = name,
+            amount = amount,
+            percent = ((amount / total) * 100).roundToInt(),
+            color = RatioPalette[i],
+            bubbleColor = bubbles[i],
+            icon = icons[i]
+        )
+    }.ifEmpty { demoRatios() }
+}
 
-    return categorySums.mapIndexed { index, (name, amount) ->
-        val share = (amount / total).toFloat()
-        when (index) {
-            0 -> CategoryRank(
-                name = name,
-                amount = amount,
-                share = share,
-                color = HomeBlue,
-                iconBg = Color(0xFFE8F1FF),
-                icon = {
-                    Icon(
-                        imageVector = categoryIcon(name, index),
-                        contentDescription = null,
-                        tint = HomeBlue,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            )
-            1 -> CategoryRank(
-                name = name,
-                amount = amount,
-                share = share,
-                color = CategoryOrange,
-                iconBg = Color(0xFFFFF1E2),
-                icon = {
-                    Icon(
-                        imageVector = categoryIcon(name, index),
-                        contentDescription = null,
-                        tint = CategoryOrange,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            )
-            else -> CategoryRank(
-                name = name,
-                amount = amount,
-                share = share,
-                color = CategoryGreen,
-                iconBg = Color(0xFFE8F7EE),
-                icon = {
-                    Icon(
-                        imageVector = categoryIcon(name, index),
-                        contentDescription = null,
-                        tint = CategoryGreen,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            )
+private fun buildRecentRows(transactions: List<Transaction>): List<RecentRow> {
+    return transactions.sortedByDescending { it.date }.take(4).map { transaction ->
+        val positive = transaction.type == TransactionType.INCOME
+        val icon = when {
+            positive -> Icons.Outlined.LocalAtm
+            transaction.category.contains("餐") || transaction.category.contains("饮") -> Icons.Outlined.Fastfood
+            transaction.category.contains("交") || transaction.category.contains("车") -> Icons.Outlined.Train
+            transaction.category.contains("购") -> Icons.Outlined.Storefront
+            transaction.category.contains("娱") -> Icons.Outlined.SportsEsports
+            else -> Icons.AutoMirrored.Outlined.ReceiptLong
         }
+        val bubbleColor = when {
+            positive -> Color(0xFFE4F4EC)
+            transaction.category.contains("餐") || transaction.category.contains("饮") -> Color(0xFFFCE5E7)
+            transaction.category.contains("交") || transaction.category.contains("车") -> Color(0xFFF9EADF)
+            transaction.category.contains("购") -> Color(0xFFE7EFFC)
+            else -> Color(0xFFEDE7F9)
+        }
+        val iconColor = when {
+            positive -> Color(0xFF0CA30C)
+            transaction.category.contains("餐") || transaction.category.contains("饮") -> Color(0xFFE34948)
+            transaction.category.contains("交") || transaction.category.contains("车") -> Color(0xFFEB6834)
+            transaction.category.contains("购") -> Color(0xFF2A78D6)
+            else -> Color(0xFF4A3AA7)
+        }
+        RecentRow(
+            title = transaction.merchant?.ifBlank { transaction.category } ?: transaction.category,
+            subtitle = normalizeCategory(transaction.category),
+            amount = transaction.amount,
+            time = readableDateLabel(transaction.date),
+            positive = positive,
+            icon = icon,
+            bubbleColor = bubbleColor,
+            iconColor = iconColor
+        )
     }
 }
 
-private fun categoryIcon(name: String, index: Int) = when {
-    name.contains("住") || name.contains("房") -> Icons.Outlined.Apartment
-    name.contains("餐") || name.contains("饮") -> Icons.Outlined.Fastfood
-    name.contains("交") || name.contains("车") -> Icons.Outlined.DirectionsBus
-    else -> if (index == 0) Icons.Outlined.AccountBalanceWallet else Icons.Outlined.Fastfood
+private fun demoSummary(): HomeSummary {
+    return HomeSummary(
+        expense = 8888.0,
+        income = 8888.0,
+        expenseChange = 18,
+        incomeChange = -5,
+        trend = demoTrend(),
+        ratios = demoRatios(),
+        savingProgress = ProgressSummary("储蓄计划", 20000.0, 30000.0, 67, HomeBlue),
+        loanProgress = ProgressSummary("贷款还款进度", 28500.0, 100000.0, 29, HomeBlue),
+        netWorth = 86127.89,
+        assetTotal = 126127.89,
+        liabilityTotal = 40000.0,
+        totalSavings = 28600.0,
+        savingsDelta = 2300.0,
+        loanTotal = 356000.0,
+        loanDelta = -2000.0,
+        recent = demoRecentRows()
+    )
 }
 
-private fun Transaction.isInCurrentMonth(): Boolean {
-    val today = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    val transactionDate = parseDate(date) ?: return false
-    return transactionDate.year == today.year && transactionDate.monthNumber == today.monthNumber
+private fun demoTrend(): TrendBundle {
+    return TrendBundle(
+        labels = listOf("1", "5", "10", "15", "20", "25", "30"),
+        expense = listOf(1100.0, 1650.0, 1820.0, 1320.0, 1710.0, 1440.0, 1960.0),
+        income = listOf(1780.0, 1240.0, 1160.0, 1880.0, 1720.0, 2360.0, 2140.0)
+    )
 }
 
-private fun parseDate(raw: String): LocalDate? {
-    val normalized = raw.take(10)
-    return runCatching { LocalDate.parse(normalized) }.getOrNull()
+private fun demoRatios(): List<ExpenseRatio> {
+    return listOf(
+        ExpenseRatio("生活消费", 1122.0, 30, RatioPalette[0], Color(0xFFE7EFFC), Icons.Outlined.ShoppingBag),
+        ExpenseRatio("交通出行", 748.0, 20, RatioPalette[1], Color(0xFFF9EADF), Icons.Outlined.Train),
+        ExpenseRatio("餐饮美食", 673.0, 18, RatioPalette[2], Color(0xFFE4F4EC), Icons.Outlined.Fastfood),
+        ExpenseRatio("休闲娱乐", 561.0, 15, RatioPalette[3], Color(0xFFFBF0D7), Icons.AutoMirrored.Outlined.ReceiptLong),
+        ExpenseRatio("其他", 636.0, 17, RatioPalette[4], Color(0xFFF8E3EB), Icons.Outlined.AccountBalanceWallet)
+    )
 }
 
-private fun percentText(value: Float): String {
-    val percent = value * 100f
-    return if (percent % 1f == 0f) "${percent.roundToInt()}%" else String.format("%.1f%%", percent)
+private fun demoRecentRows(): List<RecentRow> {
+    return listOf(
+        RecentRow("星巴克咖啡", "餐饮", 36.0, "今天 08:30", false, Icons.Outlined.Fastfood, Color(0xFFFCE5E7), Color(0xFFE34948)),
+        RecentRow("地铁出行", "交通", 4.0, "今天 07:45", false, Icons.Outlined.Train, Color(0xFFF9EADF), Color(0xFFEB6834)),
+        RecentRow("工资收入", "工资", 8790.0, "昨天 18:00", true, Icons.Outlined.LocalAtm, Color(0xFFE4F4EC), Color(0xFF0CA30C)),
+        RecentRow("超市购物", "购物", 128.5, "昨天 18:00", false, Icons.Outlined.Storefront, Color(0xFFE7EFFC), Color(0xFF2A78D6))
+    )
 }
 
-private fun formatAmount(amount: Double): String {
-    return if (amount == amount.toLong().toDouble()) {
-        String.format("%,.0f", amount)
-    } else {
-        String.format("%,.2f", amount)
-    }
+private fun normalizeCategory(category: String): String = when {
+    category.contains("生活") -> "生活消费"
+    category.contains("交") || category.contains("车") -> "交通出行"
+    category.contains("餐") || category.contains("饮") -> "餐饮美食"
+    category.contains("娱") -> "休闲娱乐"
+    category.contains("购") -> "购物消费"
+    else -> category
 }
+
+private fun comparePercent(current: Double, previous: Double): Int {
+    if (previous == 0.0) return if (current > 0) 100 else 0
+    return (((current - previous) / previous) * 100).roundToInt()
+}
+
+private fun percentOf(current: Double, total: Double): Int {
+    if (total <= 0.0) return 0
+    return ((current / total) * 100).roundToInt().coerceIn(0, 100)
+}
+
+private fun previousMonth(date: LocalDate): LocalDate {
+    return if (date.monthNumber == 1) LocalDate(date.year - 1, 12, 1) else LocalDate(date.year, date.monthNumber - 1, 1)
+}
+
+private fun Transaction.isInMonth(year: Int, month: Int): Boolean {
+    val parsed = parseDate(this.date) ?: return false
+    return parsed.year == year && parsed.monthNumber == month
+}
+
+private fun Transaction.dayOfMonthOrNull(): Int? = parseDate(this.date)?.dayOfMonth
+
+private fun parseDate(raw: String): LocalDate? = runCatching { LocalDate.parse(raw.take(10)) }.getOrNull()
+
+private fun readableDateLabel(raw: String): String {
+    val date = raw.take(10)
+    val time = raw.drop(11).take(5).ifBlank { "08:30" }
+    return if (date == todayString()) "今天 $time" else "昨天 $time"
+}
+
+private fun todayString(): String = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
+
+private fun formatMoney(value: Double): String = String.format("%,.2f", value)
+
+private fun hexColor(color: Color): String {
+    val r = (color.red * 255).roundToInt()
+    val g = (color.green * 255).roundToInt()
+    val b = (color.blue * 255).roundToInt()
+    return String.format("#%02x%02x%02x", r, g, b)
+}
+
+private fun buildTrendOptionJson(trend: TrendBundle): String = buildJsonObject {
+    put("animationDuration", 450)
+    put("grid", buildJsonObject {
+        put("left", 26)
+        put("right", 10)
+        put("top", 16)
+        put("bottom", 24)
+    })
+    put("tooltip", buildJsonObject {
+        put("trigger", "axis")
+        put("formatter", "{b}<br/>{a}: ¥{c}")
+        put("backgroundColor", "rgba(19,27,48,0.92)")
+        put("borderWidth", 0)
+        put("textStyle", buildJsonObject {
+            put("color", "#ffffff")
+            put("fontSize", 12)
+        })
+        put("axisPointer", buildJsonObject {
+            put("type", "line")
+            put("lineStyle", buildJsonObject { put("color", "rgba(61,134,255,0.28)") })
+        })
+    })
+    put("xAxis", buildJsonObject {
+        put("type", "category")
+        put("boundaryGap", false)
+        put("data", buildJsonArray { trend.labels.forEach { add(it) } })
+        put("axisLine", buildJsonObject { put("lineStyle", buildJsonObject { put("color", "#e1e8f2") }) })
+        put("axisTick", buildJsonObject { put("show", false) })
+        put("axisLabel", buildJsonObject { put("color", "#74819a"); put("fontSize", 10); put("margin", 8) })
+    })
+    put("yAxis", buildJsonObject {
+        put("type", "value")
+        put("splitLine", buildJsonObject { put("show", false) })
+        put("axisLine", buildJsonObject { put("show", false) })
+        put("axisTick", buildJsonObject { put("show", false) })
+        put("axisLabel", buildJsonObject { put("color", "#74819a"); put("fontSize", 10) })
+    })
+    put("series", buildJsonArray {
+        add(buildJsonObject {
+            put("name", "收入")
+            put("type", "line")
+            put("smooth", true)
+            put("symbol", "circle")
+            put("symbolSize", 6)
+            put("data", buildJsonArray { trend.income.forEach { add(it) } })
+            put("lineStyle", buildJsonObject { put("width", 2); put("color", hexColor(HomeBlue)) })
+            put("itemStyle", buildJsonObject {
+                put("color", hexColor(HomeBlue))
+                put("borderColor", "#ffffff")
+                put("borderWidth", 1.2)
+            })
+        })
+        add(buildJsonObject {
+            put("name", "支出")
+            put("type", "line")
+            put("smooth", true)
+            put("symbol", "circle")
+            put("symbolSize", 6)
+            put("data", buildJsonArray { trend.expense.forEach { add(it) } })
+            put("lineStyle", buildJsonObject { put("width", 2); put("color", hexColor(HomeOrange)) })
+            put("itemStyle", buildJsonObject {
+                put("color", hexColor(HomeOrange))
+                put("borderColor", "#ffffff")
+                put("borderWidth", 1.2)
+            })
+        })
+    })
+}.toString()
+
+private fun buildRatioOptionJson(ratios: List<ExpenseRatio>): String = buildJsonObject {
+    put("animationDuration", 450)
+    put("tooltip", buildJsonObject {
+        put("trigger", "item")
+        put("confine", true)
+        put("formatter", "{b}<br/>¥{c} ({d}%)")
+        put("backgroundColor", "rgba(19,27,48,0.92)")
+        put("borderWidth", 0)
+        put("textStyle", buildJsonObject { put("color", "#ffffff"); put("fontSize", 12) })
+    })
+    put("series", buildJsonArray {
+        add(buildJsonObject {
+            put("type", "pie")
+            put("radius", buildJsonArray { add("56%"); add("78%") })
+            put("center", buildJsonArray { add("50%"); add("52%") })
+            put("avoidLabelOverlap", true)
+            put("label", buildJsonObject { put("show", false) })
+            put("labelLine", buildJsonObject { put("show", false) })
+            put("emphasis", buildJsonObject { put("scale", false) })
+            put("itemStyle", buildJsonObject { put("borderColor", "#ffffff"); put("borderWidth", 2) })
+            put("data", buildJsonArray {
+                ratios.forEach { r ->
+                    add(buildJsonObject {
+                        put("name", r.name)
+                        put("value", r.amount)
+                        put("itemStyle", buildJsonObject { put("color", hexColor(r.color)) })
+                    })
+                }
+            })
+        })
+    })
+}.toString()

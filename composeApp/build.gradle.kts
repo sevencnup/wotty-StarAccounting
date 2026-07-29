@@ -13,8 +13,8 @@ android {
         applicationId = "com.wotty.stark"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "0.0.25"
+        versionCode = 32
+        versionName = "0.0.32"
     }
 
     buildTypes {
@@ -34,6 +34,14 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    applicationVariants.all {
+        outputs.all {
+            if (this is com.android.build.gradle.internal.api.ApkVariantOutputImpl) {
+                outputFileName = "wotty-stark-${name}-v${versionName}.apk"
+            }
+        }
     }
 }
 
