@@ -1,0 +1,35 @@
+const CONFIG_PREFIX = "wotty-stark:";
+
+function readValue(key: string) {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(`${CONFIG_PREFIX}${key}`);
+}
+
+function writeValue(key: string, value: string) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(`${CONFIG_PREFIX}${key}`, value);
+}
+
+export function getCurrentAccountId() {
+  return readValue("current-account-id") ?? "default";
+}
+
+export function setCurrentAccountId(accountId: string) {
+  writeValue("current-account-id", accountId);
+}
+
+export function getCurrentDataMode() {
+  return readValue("data-mode") ?? "LOCAL";
+}
+
+export function setCurrentDataMode(mode: "LOCAL" | "CLOUD") {
+  writeValue("data-mode", mode);
+}
+
+export function getSeededFlag() {
+  return readValue("seeded") === "1";
+}
+
+export function setSeededFlag() {
+  writeValue("seeded", "1");
+}
