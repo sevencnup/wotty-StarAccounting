@@ -299,7 +299,7 @@ function TrendChart({ trend }: { trend: HomeTrend }) {
   return <EChartView option={option} className="trend-chart" />;
 }
 
-function OverviewCard({ summary }: { summary: HomeSummary }) {
+function MonthlySummaryCard({ summary }: { summary: HomeSummary }) {
   const monthLabel = `${new Date().getFullYear()}年${new Date().getMonth() + 1}月`;
 
   return (
@@ -329,12 +329,19 @@ function OverviewCard({ summary }: { summary: HomeSummary }) {
           </div>
         </div>
       </div>
+    </SurfaceCard>
+  );
+}
+
+function TrendCard({ trend }: { trend: HomeTrend }) {
+  return (
+    <SurfaceCard className="trend-card">
       <div className="trend-panel">
         <div className="section-head">
           <h2>本月收支趋势</h2>
           <TrendLegend />
         </div>
-        <TrendChart trend={summary.trend} />
+        <TrendChart trend={trend} />
       </div>
     </SurfaceCard>
   );
@@ -403,18 +410,59 @@ function SummaryCard({ title, value, delta }: { title: string; value: number; de
   );
 }
 
-function LoanSummaryCard({ value, delta }: { value: number; delta: number }) {
+function nextDueDateLabel(dueDay: number) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const targetMonth = dueDay >= today ? month : month + 1;
+  const targetDate = new Date(year, targetMonth, dueDay);
+  const mm = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const dd = String(targetDate.getDate()).padStart(2, "0");
+  return `${mm}-${dd}`;
+}
+
+function LoanMiniRow({ loan }: { loan: Loan }) {
+  const repaid = Math.max(loan.totalAmount - loan.remainingAmount, 0);
+  const percent = loan.totalAmount > 0 ? Math.min(100, (repaid / loan.totalAmount) * 100) : 0;
+
+  return (
+    <div className="loan-mini-row">
+      <div className="loan-mini-head">
+        <strong>{loan.platform || "贷款"}</strong>
+        <span>{Math.round(percent)}%</span>
+      </div>
+      <div className="loan-mini-money">
+        剩余 ¥ {formatMoney(loan.remainingAmount)} / 总额 ¥ {formatMoney(loan.totalAmount)}
+      </div>
+      <div className="loan-mini-track">
+        <span style={{ width: `${Math.max(4, Math.min(percent, 100))}%` }} />
+      </div>
+      <div className="loan-mini-meta">
+        <span>已还 {loan.paidPeriods}/{loan.periods} 期</span>
+        <span>下期 {nextDueDateLabel(loan.dueDate)} 还 ¥ {formatMoney(loan.monthlyPayment)}</span>
+      </div>
+    </div>
+  );
+}
+
+function LoanSummaryCard({ value, delta, loans }: { value: number; delta: number; loans: Loan[] }) {
   return (
     <SurfaceCard className="loan-summary-card">
-      <div className="loan-summary-copy">
-        <h2>贷款已还款汇总</h2>
-        <strong>¥ {formatMoney(value)}</strong>
-        <DeltaLine value={delta} muted />
+      <div className="loan-summary-top">
+        <div className="loan-summary-copy">
+          <h2>贷款已还款汇总</h2>
+          <strong>¥ {formatMoney(value)}</strong>
+          <DeltaLine value={delta} muted />
+        </div>
+        <button type="button" className="detail-button">
+          查看详情
+          <ChevronRightIcon size={14} />
+        </button>
       </div>
-      <button type="button" className="detail-button">
-        查看详情
-        <ChevronRightIcon size={14} />
-      </button>
+      <div className="loan-mini-list">
+        {loans.length ? loans.map((loan) => <LoanMiniRow key={loan.id} loan={loan} />) : <div className="loan-empty">暂无贷款数据</div>}
+      </div>
     </SurfaceCard>
   );
 }
@@ -503,7 +551,13 @@ export default function HomePage() {
         </div>
       </header>
 
-      <OverviewCard summary={summary} />
+      <div className="hero-stack">
+        <div className="hero-stack-bg" />
+        <div className="hero-stack-content">
+          <MonthlySummaryCard summary={summary} />
+          <TrendCard trend={summary.trend} />
+        </div>
+      </div>
 
       <div className="home-main-grid">
         <RatioCard ratios={summary.ratios} />
@@ -515,7 +569,7 @@ export default function HomePage() {
         <SummaryCard title="储蓄汇总" value={summary.totalSavings} delta={5.4} />
       </div>
 
-      <LoanSummaryCard value={summary.loanProgress.current} delta={10.2} />
+      <LoanSummaryCard value={summary.loanProgress.current} delta={10.2} loans={loans} />
 
       <RecentTransactionsCard items={summary.recent} />
     </div>
