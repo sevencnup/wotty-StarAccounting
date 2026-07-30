@@ -192,20 +192,20 @@ fun DashboardScreen(viewModel: MainViewModel, scrollState: ScrollState) {
                 .verticalScroll(scrollState)
                 .statusBarsPadding()
                 .padding(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 84.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             HomeTopBar()
             HeroStack(summary)
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 RatioCard(summary, Modifier.weight(1f))
                 ProgressCard(summary, Modifier.weight(1f))
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 SummaryCard("资产汇总", summary.assetTotal, 8.6, Modifier.weight(1f))
                 SummaryCard("储蓄汇总", summary.totalSavings, 5.4, Modifier.weight(1f))
@@ -248,16 +248,16 @@ private fun HeroStack(summary: HomeSummary) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(190.dp)
-                .padding(bottom = 26.dp)
+                .height(212.dp)
+                .padding(bottom = 14.dp)
                 .background(
                     brush = Brush.verticalGradient(HeroStackGradient),
                     shape = RoundedCornerShape(14.dp)
                 )
         )
         Column(
-            modifier = Modifier.padding(bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             MonthlySummaryCard(summary)
             TrendCard(summary.trend)
@@ -279,7 +279,7 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
             )
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -301,7 +301,7 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("总收入", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(5.dp))
                     Text("¥ ${formatMoney(summary.income)}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
                     DeltaLine(summary.incomeChange, onDark = true)
                 }
@@ -313,7 +313,7 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
                 )
                 Column(Modifier.weight(1f)) {
                     Text("总支出", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(5.dp))
                     Text("¥ ${formatMoney(summary.expense)}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
                     DeltaLine(summary.expenseChange * -1, onDark = true)
                 }
@@ -330,7 +330,7 @@ private fun DeltaLine(value: Int, onDark: Boolean = false) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.padding(top = 7.dp)
+        modifier = Modifier.padding(top = 5.dp)
     ) {
         Text("较上月", color = baseColor, fontSize = 11.sp)
         Text(
@@ -346,7 +346,7 @@ private fun DeltaLine(value: Int, onDark: Boolean = false) {
 @Composable
 private fun TrendCard(trend: TrendBundle) {
     WhiteCard(shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 12.dp, bottomEnd = 12.dp)) {
-        Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -379,7 +379,7 @@ private fun TrendChart(trend: TrendBundle) {
         optionJson = optionJson,
         modifier = Modifier
             .fillMaxWidth()
-            .height(128.dp)
+            .height(120.dp)
     )
 }
 
@@ -387,14 +387,14 @@ private fun TrendChart(trend: TrendBundle) {
 private fun RatioCard(summary: HomeSummary, modifier: Modifier = Modifier) {
     WhiteCard(modifier) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text("收支类型占比", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                DonutChart(summary.ratios, Modifier.size(116.dp))
+                DonutChart(summary.ratios, Modifier.size(108.dp))
             }
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 summary.ratios.forEach { ratio ->
                     RatioRow(ratio)
                 }
@@ -437,8 +437,8 @@ private fun RatioRow(ratio: ExpenseRatio) {
 private fun ProgressCard(summary: HomeSummary, modifier: Modifier = Modifier) {
     WhiteCard(modifier) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(13.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             ProgressRow(summary.savingProgress, HomeBlue, Icons.Outlined.Savings)
             Box(
@@ -454,7 +454,7 @@ private fun ProgressCard(summary: HomeSummary, modifier: Modifier = Modifier) {
 
 @Composable
 private fun ProgressRow(progress: ProgressSummary, color: Color, icon: ImageVector) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(progress.title, color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
             Box(
@@ -507,7 +507,7 @@ private fun SummaryCard(title: String, value: Double, delta: Double, modifier: M
     WhiteCard(modifier) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(title, color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(4.dp))
             Text("¥ ${formatMoney(value)}", color = HomeText, fontSize = 19.sp, fontWeight = FontWeight.Medium)
             DeltaLine(delta.roundToInt(), onDark = false)
         }
@@ -518,8 +518,8 @@ private fun SummaryCard(title: String, value: Double, delta: Double, modifier: M
 private fun LoanSummaryCard(summary: HomeSummary) {
     WhiteCard {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -527,7 +527,7 @@ private fun LoanSummaryCard(summary: HomeSummary) {
             ) {
                 Column(Modifier.weight(1f)) {
                     Text("贷款已还款汇总", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(6.dp))
+                    Spacer(Modifier.height(4.dp))
                     Text("¥ ${formatMoney(summary.loanProgress.current)}", color = HomeText, fontSize = 19.sp, fontWeight = FontWeight.Medium)
                     DeltaLine(summary.loanDelta.roundToInt(), onDark = false)
                 }
@@ -554,7 +554,7 @@ private fun LoanSummaryCard(summary: HomeSummary) {
 
 @Composable
 private fun LoanMiniList(loans: List<LoanMini>) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (loans.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -580,8 +580,8 @@ private fun LoanMiniRow(loan: LoanMini) {
             .fillMaxWidth()
             .background(HomeLoanRowBg, RoundedCornerShape(10.dp))
             .border(1.dp, HomeLoanRowBorder, RoundedCornerShape(10.dp))
-            .padding(10.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -628,7 +628,7 @@ private fun RecentTransactionsCard(recent: List<RecentRow>) {
     WhiteCard {
         Column(modifier = Modifier.padding(horizontal = 14.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 14.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("最近交易", color = HomeText, fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
@@ -646,7 +646,7 @@ private fun RecentTransactionsCard(recent: List<RecentRow>) {
                 }
                 RecentTransactionRow(row)
             }
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -656,7 +656,7 @@ private fun RecentTransactionRow(row: RecentRow) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {

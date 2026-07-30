@@ -12,6 +12,21 @@
 (function () {
   var chart = null;
   var pending = null;
+  function decodeBase64Utf8(b64) {
+    var binary = atob(b64);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    if (typeof TextDecoder !== 'undefined') {
+      return new TextDecoder('utf-8').decode(bytes);
+    }
+    var escaped = '';
+    for (var j = 0; j < bytes.length; j += 1) {
+      escaped += '%' + ('00' + bytes[j].toString(16)).slice(-2);
+    }
+    return decodeURIComponent(escaped);
+  }
   function money(v) {
     return '¥ ' + Number(v || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
@@ -58,7 +73,7 @@
   }
   window.setOptionB64 = function (b64) {
     try {
-      var opt = JSON.parse(atob(b64));
+      var opt = JSON.parse(decodeBase64Utf8(b64));
       applyFormatters(opt);
       if (chart) { chart.setOption(opt, true); chart.resize(); }
       else { pending = opt; }
