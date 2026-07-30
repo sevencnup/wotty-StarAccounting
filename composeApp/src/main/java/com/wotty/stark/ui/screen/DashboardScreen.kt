@@ -1,18 +1,16 @@
 package com.wotty.stark.ui.screen
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -49,13 +47,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -78,10 +71,9 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.math.absoluteValue
-import kotlin.math.max
 import kotlin.math.roundToInt
 
-private val HomeBg = Color(0xFFEFF8FF)
+private val HomeBg = Color(0xFFEEF5FF)
 private val HomeCardBg = Color.White
 private val HomeText = Color(0xFF11182D)
 private val HomeSubtle = Color(0xFF65718A)
@@ -126,6 +118,7 @@ private data class HomeSummary(
     val savingsDelta: Double,
     val loanTotal: Double,
     val loanDelta: Double,
+    val loanItems: List<LoanMini>,
     val recent: List<RecentRow>
 )
 
@@ -139,17 +132,14 @@ private data class ExpenseRatio(
     val name: String,
     val amount: Double,
     val percent: Int,
-    val color: Color,
-    val bubbleColor: Color,
-    val icon: ImageVector
+    val color: Color
 )
 
 private data class ProgressSummary(
     val title: String,
     val current: Double,
     val total: Double,
-    val percent: Int,
-    val color: Color
+    val percent: Int
 )
 
 private data class RecentRow(
@@ -161,6 +151,16 @@ private data class RecentRow(
     val icon: ImageVector,
     val bubbleColor: Color,
     val iconColor: Color
+)
+
+private data class LoanMini(
+    val platform: String,
+    val total: Double,
+    val remaining: Double,
+    val periods: Int,
+    val paidPeriods: Int,
+    val monthly: Double,
+    val dueLabel: String
 )
 
 @Composable
@@ -243,15 +243,22 @@ private fun HomeTopBar() {
 @Composable
 private fun HeroStack(summary: HomeSummary) {
     Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(HeroStackGradient),
-                shape = RoundedCornerShape(14.dp)
-            )
-            .padding(10.dp)
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(190.dp)
+                .padding(bottom = 26.dp)
+                .background(
+                    brush = Brush.verticalGradient(HeroStackGradient),
+                    shape = RoundedCornerShape(14.dp)
+                )
+        )
+        Column(
+            modifier = Modifier.padding(bottom = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
             MonthlySummaryCard(summary)
             TrendCard(summary.trend)
         }
@@ -304,7 +311,7 @@ private fun MonthlySummaryCard(summary: HomeSummary) {
                         .height(48.dp)
                         .background(Color.White.copy(alpha = 0.32f))
                 )
-                Column(Modifier.weight(1f), horizontalAlignment = Alignment.End) {
+                Column(Modifier.weight(1f)) {
                     Text("总支出", color = Color.White.copy(alpha = 0.92f), fontSize = 12.sp)
                     Spacer(Modifier.height(6.dp))
                     Text("¥ ${formatMoney(summary.expense)}", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Medium)
@@ -338,8 +345,8 @@ private fun DeltaLine(value: Int, onDark: Boolean = false) {
 
 @Composable
 private fun TrendCard(trend: TrendBundle) {
-    WhiteCard {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    WhiteCard(shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 12.dp, bottomEnd = 12.dp)) {
+        Column(modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -404,27 +411,25 @@ private fun DonutChart(ratios: List<ExpenseRatio>, modifier: Modifier = Modifier
 
 @Composable
 private fun RatioRow(ratio: ExpenseRatio) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp)
+    ) {
         Box(
             modifier = Modifier
-                .size(22.dp)
-                .background(ratio.bubbleColor, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(ratio.icon, null, tint = ratio.color, modifier = Modifier.size(12.dp))
-        }
-        Spacer(Modifier.size(8.dp))
+                .size(10.dp)
+                .background(ratio.color, CircleShape)
+        )
         Text(
             ratio.name,
-            color = HomeText,
+            color = Color(0xFF5C6880),
             fontSize = 12.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        Text("${ratio.percent}%", color = HomeSubtle, fontSize = 12.sp)
-        Spacer(Modifier.size(6.dp))
-        Text(formatMoney(ratio.amount), color = Color(0xFF5C6880), fontSize = 12.sp)
+        Text("${ratio.percent}%", color = HomeText, fontSize = 12.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -542,21 +547,21 @@ private fun LoanSummaryCard(summary: HomeSummary) {
                     }
                 }
             }
-            LoanMiniList(summary)
+            LoanMiniList(summary.loanItems)
         }
     }
 }
 
 @Composable
-private fun LoanMiniList(summary: HomeSummary) {
-    val loans = remember(summary) { demoLoans() }
+private fun LoanMiniList(loans: List<LoanMini>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (loans.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp)
-                    .background(HomeLoanRowBg, RoundedCornerShape(10.dp)),
+                    .background(HomeLoanRowBg, RoundedCornerShape(10.dp))
+                    .border(1.dp, HomeLoanRowBorder, RoundedCornerShape(10.dp))
+                    .padding(10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text("暂无贷款数据", color = HomeSubtle, fontSize = 11.sp, modifier = Modifier.padding(vertical = 10.dp))
@@ -676,40 +681,43 @@ private fun RecentTransactionRow(row: RecentRow) {
             )
             Text(row.subtitle, color = Color(0xFF65718A), fontSize = 11.sp)
         }
-        Text(row.time, color = Color(0xFF65718A), fontSize = 11.sp)
+        Text(
+            row.time,
+            color = Color(0xFF65718A),
+            fontSize = 11.sp,
+            modifier = Modifier.width(68.dp)
+        )
         Text(
             text = if (row.positive) "+¥ ${formatMoney(row.amount)}" else "-¥ ${formatMoney(row.amount)}",
             color = if (row.positive) HomeRecentPositive else HomeText,
             fontSize = 12.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Normal,
+            modifier = Modifier.width(84.dp)
         )
     }
 }
 
 @Composable
-private fun WhiteCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+private fun WhiteCard(
+    modifier: Modifier = Modifier,
+    shape: RoundedCornerShape = RoundedCornerShape(12.dp),
+    content: @Composable () -> Unit
+) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = HomeCardBg)
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(14.dp, shape, clip = false),
+        shape = shape,
+        colors = CardDefaults.cardColors(containerColor = HomeCardBg),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x247B94B8))
     ) {
         content()
     }
 }
 
-private data class LoanMini(
-    val platform: String,
-    val total: Double,
-    val remaining: Double,
-    val periods: Int,
-    val paidPeriods: Int,
-    val monthly: Double,
-    val dueLabel: String
-)
-
 private fun demoLoans(): List<LoanMini> = listOf(
     LoanMini("房贷", 100000.0, 71500.0, 360, 75, 5600.0, "06-20"),
-    LoanMini("车贷", 80000.0, 27000.0, 36, 18, 2200.0, "15-20")
+    LoanMini("车贷", 80000.0, 27000.0, 36, 18, 2200.0, "05-20")
 )
 
 private fun buildHomeSummary(
@@ -760,15 +768,13 @@ private fun buildHomeSummary(
             title = "储蓄计划",
             current = totalSavings,
             total = totalSavingsTarget.coerceAtLeast(totalSavings),
-            percent = percentOf(totalSavings, totalSavingsTarget.coerceAtLeast(totalSavings)),
-            color = HomeBlue
+            percent = percentOf(totalSavings, totalSavingsTarget.coerceAtLeast(totalSavings))
         ),
         loanProgress = ProgressSummary(
             title = "贷款还款进度",
             current = repaidLoan,
             total = loanTotal,
-            percent = percentOf(repaidLoan, loanTotal),
-            color = HomeBlue
+            percent = percentOf(repaidLoan, loanTotal)
         ),
         netWorth = netWorth,
         assetTotal = assetTotal,
@@ -777,6 +783,7 @@ private fun buildHomeSummary(
         savingsDelta = monthNet,
         loanTotal = loanTotal,
         loanDelta = loanDelta,
+        loanItems = if (loans.isNotEmpty()) loans.map { it.toLoanMini() } else emptyList(),
         recent = if (transactions.isNotEmpty()) buildRecentRows(transactions) else demoRecentRows()
     )
 }
@@ -797,20 +804,6 @@ private fun buildTrendBundle(transactions: List<Transaction>): TrendBundle {
 }
 
 private fun buildExpenseRatios(transactions: List<Transaction>): List<ExpenseRatio> {
-    val icons = listOf(
-        Icons.Outlined.ShoppingBag,
-        Icons.Outlined.Train,
-        Icons.Outlined.Fastfood,
-        Icons.AutoMirrored.Outlined.ReceiptLong,
-        Icons.Outlined.AccountBalanceWallet
-    )
-    val bubbles = listOf(
-        Color(0xFFE7EFFC),
-        Color(0xFFF9EADF),
-        Color(0xFFE4F4EC),
-        Color(0xFFFBF0D7),
-        Color(0xFFF8E3EB)
-    )
     val rows = transactions
         .filter { it.type == TransactionType.EXPENSE }
         .groupBy { normalizeCategory(it.category) }
@@ -826,9 +819,7 @@ private fun buildExpenseRatios(transactions: List<Transaction>): List<ExpenseRat
             name = name,
             amount = amount,
             percent = ((amount / total) * 100).roundToInt(),
-            color = RatioPalette[i],
-            bubbleColor = bubbles[i],
-            icon = icons[i]
+            color = RatioPalette[i]
         )
     }.ifEmpty { demoRatios() }
 }
@@ -879,8 +870,8 @@ private fun demoSummary(): HomeSummary {
         incomeChange = -5,
         trend = demoTrend(),
         ratios = demoRatios(),
-        savingProgress = ProgressSummary("储蓄计划", 20000.0, 30000.0, 67, HomeBlue),
-        loanProgress = ProgressSummary("贷款还款进度", 28500.0, 100000.0, 29, HomeBlue),
+        savingProgress = ProgressSummary("储蓄计划", 20000.0, 30000.0, 67),
+        loanProgress = ProgressSummary("贷款还款进度", 28500.0, 100000.0, 29),
         netWorth = 86127.89,
         assetTotal = 126127.89,
         liabilityTotal = 40000.0,
@@ -888,6 +879,7 @@ private fun demoSummary(): HomeSummary {
         savingsDelta = 2300.0,
         loanTotal = 356000.0,
         loanDelta = -2000.0,
+        loanItems = demoLoans(),
         recent = demoRecentRows()
     )
 }
@@ -902,11 +894,11 @@ private fun demoTrend(): TrendBundle {
 
 private fun demoRatios(): List<ExpenseRatio> {
     return listOf(
-        ExpenseRatio("生活消费", 1122.0, 30, RatioPalette[0], Color(0xFFE7EFFC), Icons.Outlined.ShoppingBag),
-        ExpenseRatio("交通出行", 748.0, 20, RatioPalette[1], Color(0xFFF9EADF), Icons.Outlined.Train),
-        ExpenseRatio("餐饮美食", 673.0, 18, RatioPalette[2], Color(0xFFE4F4EC), Icons.Outlined.Fastfood),
-        ExpenseRatio("休闲娱乐", 561.0, 15, RatioPalette[3], Color(0xFFFBF0D7), Icons.AutoMirrored.Outlined.ReceiptLong),
-        ExpenseRatio("其他", 636.0, 17, RatioPalette[4], Color(0xFFF8E3EB), Icons.Outlined.AccountBalanceWallet)
+        ExpenseRatio("生活消费", 1122.0, 30, RatioPalette[0]),
+        ExpenseRatio("交通出行", 748.0, 20, RatioPalette[1]),
+        ExpenseRatio("餐饮美食", 673.0, 18, RatioPalette[2]),
+        ExpenseRatio("休闲娱乐", 561.0, 15, RatioPalette[3]),
+        ExpenseRatio("其他", 636.0, 17, RatioPalette[4])
     )
 }
 
@@ -960,6 +952,31 @@ private fun readableDateLabel(raw: String): String {
 private fun todayString(): String = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
 
 private fun formatMoney(value: Double): String = String.format("%,.2f", value)
+
+private fun Loan.toLoanMini(): LoanMini {
+    val dueDay = dueDate.coerceIn(1, 31)
+    return LoanMini(
+        platform = platform.ifBlank { "贷款" },
+        total = totalAmount,
+        remaining = remainingAmount,
+        periods = periods,
+        paidPeriods = paidPeriods,
+        monthly = monthlyPayment,
+        dueLabel = nextDueDateLabel(dueDay)
+    )
+}
+
+private fun nextDueDateLabel(dueDay: Int): String {
+    val now = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
+    val nextMonth = if (dueDay >= now.dayOfMonth) {
+        now.monthNumber
+    } else if (now.monthNumber == 12) {
+        1
+    } else {
+        now.monthNumber + 1
+    }
+    return String.format("%02d-%02d", nextMonth, dueDay)
+}
 
 private fun hexColor(color: Color): String {
     val r = (color.red * 255).roundToInt()
