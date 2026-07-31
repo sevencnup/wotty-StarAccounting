@@ -1072,13 +1072,22 @@ button {
 }
 
 .recent-amount {
+  color: #65718a;
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.recent-amount.positive {
-  color: #ff4d2f;
+.recent-amount.expense {
+  color: #df3f4f;
+}
+
+.recent-amount.income {
+  color: #15966b;
+}
+
+.recent-amount.transfer {
+  color: #65718a;
 }
 
 .budget-alert-card,

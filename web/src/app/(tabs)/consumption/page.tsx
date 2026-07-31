@@ -128,7 +128,7 @@ export default function ConsumptionPage() {
               <strong className="recent-title">{item.category}</strong>
               <span className="recent-category">{item.merchant || item.description || item.platform}</span>
               <span className="recent-time">{recentTimeLabel(item.date)}</span>
-              <strong className={item.type === "INCOME" ? "recent-amount positive" : "recent-amount"}>
+              <strong className={`recent-amount ${item.type === "INCOME" ? "income" : item.type === "EXPENSE" ? "expense" : "transfer"}`}>
                 {item.type === "INCOME" ? "+¥ " : item.type === "EXPENSE" ? "-¥ " : "±¥ "}
                 {formatMoney(item.amount)}
               </strong>
