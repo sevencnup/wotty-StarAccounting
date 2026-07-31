@@ -1585,8 +1585,10 @@ button {
   align-items: flex-end;
   justify-content: center;
   pointer-events: none;
-  background: rgba(12, 18, 31, 0);
-  transition: background 220ms ease;
+  background: rgba(255, 255, 255, 0);
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
+  transition: background 220ms ease, backdrop-filter 220ms ease, -webkit-backdrop-filter 220ms ease;
 }
 
 .journal-overlay.page {
@@ -1597,7 +1599,9 @@ button {
 
 .journal-overlay.visible {
   pointer-events: auto;
-  background: rgba(12, 18, 31, 0.34);
+  background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 
 .journal-panel {
@@ -1715,6 +1719,86 @@ button {
   height: 290px;
   margin-top: 2px;
   overflow: hidden;
+}
+
+.calendar-grid-card {
+  margin-top: 8px;
+}
+
+.calendar-week-row,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.calendar-week-row {
+  margin-bottom: 5px;
+}
+
+.calendar-week-row span {
+  color: #65718a;
+  font-size: 10px;
+  line-height: 1;
+  text-align: center;
+}
+
+.calendar-day {
+  aspect-ratio: 1 / 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  border: 1px solid rgba(123, 148, 184, 0.1);
+  border-radius: 5px;
+  background: #f0f5ff;
+  color: #11182d;
+  overflow: hidden;
+}
+
+.calendar-day.empty {
+  border-color: transparent;
+  background: transparent;
+}
+
+.calendar-day em,
+.calendar-day strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.calendar-day em {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.calendar-day strong {
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.calendar-day.level-1 {
+  background: #dce9ff;
+}
+
+.calendar-day.level-2 {
+  background: #b3d0ff;
+}
+
+.calendar-day.level-3 {
+  background: #4d8cf7;
+  color: #ffffff;
+}
+
+.calendar-day.level-4 {
+  background: #1a5dc9;
+  color: #ffffff;
 }
 
 .bar-chart {

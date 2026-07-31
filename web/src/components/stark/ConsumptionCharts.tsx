@@ -394,7 +394,6 @@ export function ConsumptionCharts({
   const trendOption = useMemo(() => buildTrendOption(trend), [trend]);
   const ratioOption = useMemo(() => buildRatioOption(ratios), [ratios]);
   const displayRatios = ratios.length ? ratios : [];
-  const calendarOption = useMemo(() => buildCalendarOption(transactions), [transactions]);
   const barOption = useMemo(() => buildBarOption(transactions), [transactions]);
   const barPlatforms = useMemo(() => {
     const now = new Date();
@@ -428,7 +427,7 @@ export function ConsumptionCharts({
           <div className="section-head">
             <h2>每日支出日历</h2>
           </div>
-          <EChartView option={calendarOption} className="calendar-chart" />
+          <CalendarHeatmap transactions={transactions} />
         </div>
       </section>
 
