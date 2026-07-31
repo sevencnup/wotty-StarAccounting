@@ -198,7 +198,7 @@ export function SavingsPlanner({
       planConfig: JSON.stringify({ frequency, columns }),
       updatedAt: now,
     };
-    await repo.saveSavingsGoal(nextGoal);
+    await saveGoalWithFallback(nextGoal);
 
     await Promise.all(months.map((month) => {
       const row = rowFor(month);
