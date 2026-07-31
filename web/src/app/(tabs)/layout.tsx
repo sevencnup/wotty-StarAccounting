@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { TabsTransitionSkeleton } from "@/components/stark/Skeleton";
@@ -12,6 +12,11 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const isSavingsRoute = pathname.startsWith("/savings");
   const hideJournalTrigger = isJournalRoute;
   const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const lastTabContentRef = useRef<React.ReactNode | null>(null);
+
+  if (!isJournalRoute) {
+    lastTabContentRef.current = children;
+  }
 
   useEffect(() => {
     setPendingPath(null);
@@ -41,7 +46,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const mainContent = pendingPath
     ? <TabsTransitionSkeleton />
     : isJournalRoute
-      ? null
+      ? lastTabContentRef.current
       : children;
 
   return (
@@ -49,7 +54,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       style={{
         minHeight: "100dvh",
         paddingTop: "env(safe-area-inset-top)",
-        background: "#ffffff",
+        background: isJournalRoute ? "transparent" : "#ffffff",
       }}
     >
       <main className="tabs-shell">{mainContent}</main>

@@ -1955,7 +1955,7 @@ button {
 
 .journal-overlay.visible {
   pointer-events: auto;
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(17, 24, 39, 0.16);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
@@ -2334,8 +2334,7 @@ button {
 .savings-plan-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 12px;
 }
 
@@ -2363,11 +2362,6 @@ button {
   color: #174f9d;
   background: #ffffff;
   box-shadow: 0 1px 3px rgba(34, 76, 130, 0.12);
-}
-
-.savings-mode-copy {
-  color: #7a879d;
-  font-size: 11px;
 }
 
 .savings-column-adder {
@@ -2426,9 +2420,9 @@ button {
 
 .savings-plan-table th,
 .savings-plan-table td {
-  min-width: 78px;
-  height: 44px;
-  padding: 5px 5px;
+  min-width: 70px;
+  height: 42px;
+  padding: 4px 4px;
   border-right: 1px solid var(--planner-line);
   border-bottom: 1px solid var(--planner-line);
   background: #ffffff;
@@ -2481,8 +2475,8 @@ button {
   position: sticky;
   left: 48px;
   z-index: 2;
-  min-width: 88px;
-  width: 88px;
+  min-width: 78px;
+  width: 78px;
   border-right: 1px solid #dce6f3;
 }
 
@@ -2492,9 +2486,9 @@ button {
 }
 
 .savings-plan-table input {
-  width: 66px;
-  height: 29px;
-  padding: 0 6px;
+  width: 56px;
+  height: 27px;
+  padding: 0 5px;
   border: 1px solid #e1e8f1;
   border-radius: 7px;
   outline: none;
@@ -2511,12 +2505,12 @@ button {
 }
 
 .savings-plan-table .expected-column {
-  min-width: 88px;
+  min-width: 78px;
   background: #f7fbff;
 }
 
 .savings-plan-table .remaining-column {
-  min-width: 88px;
+  min-width: 78px;
 }
 
 .savings-remaining {
@@ -2555,6 +2549,7 @@ button {
   color: #718098;
   font-size: 10px;
   line-height: 1.45;
+  min-height: 14px;
 }
 
 .savings-plan-footer .primary-button {
@@ -2577,8 +2572,6 @@ button {
   }
 
   .savings-plan-toolbar {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
+    margin-bottom: 10px;
   }
 }
