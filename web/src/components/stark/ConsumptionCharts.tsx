@@ -46,7 +46,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
   return {
     animationDuration: 450,
     animationEasing: "cubicOut",
-    grid: { left: 26, right: 10, top: 16, bottom: 24 },
+    grid: { left: 18, right: 8, top: 12, bottom: 20 },
     tooltip: {
       trigger: "axis",
       confine: true,
@@ -280,7 +280,7 @@ function buildBarOption(transactions: Transaction[]): EChartsCoreOption {
       },
       valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
     },
-    grid: { left: 34, right: 8, top: 12, bottom: 20 },
+    grid: { left: 26, right: 8, top: 12, bottom: 20 },
     xAxis: {
       type: "category",
       data: days,
