@@ -10,31 +10,8 @@ import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
-const localRepo = new DataModeManager().getLocalRepository();
 const PLAN_BLUE = "#3d86ff";
 const DONE_GREEN = "#18b66f";
-
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => reject(new Error("Savings dashboard load timeout")), ms);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (error: unknown) => {
-        window.clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
-}
-
-async function loadSavingsData(source: typeof repo, timeoutMs: number) {
-  const data = await withTimeout(source.getSavingsGoals("default"), timeoutMs);
-  const planGroups = await withTimeout(Promise.all(data.map((goal) => source.getSavingsPlans(goal.id))), timeoutMs);
-  return { goals: data, plans: planGroups.flat() };
-}
 
 function monthKey(value: string) {
   return value.slice(0, 7);
@@ -179,21 +156,15 @@ export default function SavingsPage() {
     let active = true;
     async function loadSavingsDashboard() {
       try {
-        const data = await loadSavingsData(repo, 1500);
+        const data = await repo.getSavingsGoals("default");
+        const planGroups = await Promise.all(data.map((goal) => repo.getSavingsPlans(goal.id)));
         if (!active) return;
-        setGoals(data.goals);
-        setPlans(data.plans);
+        setGoals(data);
+        setPlans(planGroups.flat());
       } catch {
-        try {
-          const data = await loadSavingsData(localRepo, 1000);
-          if (!active) return;
-          setGoals(data.goals);
-          setPlans(data.plans);
-        } catch {
-          if (!active) return;
-          setGoals([]);
-          setPlans([]);
-        }
+        if (!active) return;
+        setGoals([]);
+        setPlans([]);
       } finally {
         if (active) setLoading(false);
       }
