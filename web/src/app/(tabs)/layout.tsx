@@ -8,8 +8,8 @@ import { TabsTransitionSkeleton } from "@/components/stark/Skeleton";
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const isJournalRoute = pathname === "/journal";
-  const isSavingsRoute = pathname === "/savings";
+  const isJournalRoute = pathname.startsWith("/journal");
+  const isSavingsRoute = pathname.startsWith("/savings");
   const hideJournalTrigger = isJournalRoute;
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [cachedContent, setCachedContent] = useState<React.ReactNode | null>(isJournalRoute ? null : children);
@@ -31,9 +31,11 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
 
   function openJournal() {
     if (isSavingsRoute) {
-      window.dispatchEvent(new Event("stark:add-savings"));
+      window.sessionStorage.setItem("stark:journal-variant", "savings");
+      router.push("/journal/savings");
       return;
     }
+    window.sessionStorage.removeItem("stark:journal-variant");
     router.push("/journal");
   }
 

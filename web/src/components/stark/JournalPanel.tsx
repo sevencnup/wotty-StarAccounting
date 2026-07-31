@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
 import type { Transaction, TransactionType } from "@/lib/stark/models";
 
@@ -28,12 +29,15 @@ export function JournalPanel({
   onClose,
   onSaved,
   mode = "sheet",
+  variant = "journal",
 }: {
   onClose: () => void;
   onSaved?: () => void;
   mode?: "sheet" | "page";
+  variant?: "journal" | "savings";
 }) {
   const isPage = mode === "page";
+  const isSavings = variant === "savings";
   const [visible, setVisible] = useState(false);
   const [type, setType] = useState<TransactionType>("EXPENSE");
   const [amount, setAmount] = useState("");
@@ -69,6 +73,7 @@ export function JournalPanel({
 
   function handleClose() {
     if (closingRef.current) return;
+    if (isSavings) window.sessionStorage.removeItem("stark:journal-variant");
     closingRef.current = true;
     setVisible(false);
     closeTimerRef.current = setTimeout(onClose, 220);
@@ -127,14 +132,14 @@ export function JournalPanel({
 
   return (
     <div className={`journal-overlay ${isPage ? "page" : ""} ${visible ? "visible" : ""}`} onClick={handleClose}>
-      <div className={`journal-panel ${isPage ? "page" : ""} ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      <div className={`journal-panel ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         <div className="journal-header">
           <button type="button" className="journal-back" onClick={handleClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="journal-title">记账</span>
+          <span className="journal-title">{isSavings ? "添加储蓄" : "记账"}</span>
           <button type="button" className="journal-close" onClick={handleClose}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -142,64 +147,70 @@ export function JournalPanel({
           </button>
         </div>
 
-        <div className="segment-group">
-          {[
-            ["EXPENSE", "支出"],
-            ["INCOME", "收入"],
-            ["TRANSFER", "转账"],
-          ].map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setType(value as TransactionType)} className={type === value ? "segment-button active" : "segment-button"}>
-              {label}
-            </button>
-          ))}
-        </div>
+        {isSavings ? (
+          <SavingsPlanner embedded onSaved={handleClose} />
+        ) : (
+          <>
+            <div className="segment-group">
+              {[
+                ["EXPENSE", "支出"],
+                ["INCOME", "收入"],
+                ["TRANSFER", "转账"],
+              ].map(([value, label]) => (
+                <button key={value} type="button" onClick={() => setType(value as TransactionType)} className={type === value ? "segment-button active" : "segment-button"}>
+                  {label}
+                </button>
+              ))}
+            </div>
 
-        <div className="journal-section">
-          <h2 className="page-card-title">金额</h2>
-          <div className="amount-display">¥ {amount || "0.00"}</div>
-          <input className="app-input" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="输入金额" />
-        </div>
+            <div className="journal-section">
+              <h2 className="page-card-title">金额</h2>
+              <div className="amount-display">¥ {amount || "0.00"}</div>
+              <input className="app-input" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="输入金额" />
+            </div>
 
-        <div className="journal-section">
-          <h2 className="page-card-title">分类</h2>
-          <div className="category-grid category-grid-with-icons">
-            {categories.map((item) => (
-              <button key={item} type="button" onClick={() => setCategory(item)} className={category === item ? "category-button active" : "category-button"}>
-                <img src={`/category-icons/${categoryIcons[item] || "qita"}.png`} alt="" className="category-icon" />
-                <span>{item}</span>
+            <div className="journal-section">
+              <h2 className="page-card-title">分类</h2>
+              <div className="category-grid category-grid-with-icons">
+                {categories.map((item) => (
+                  <button key={item} type="button" onClick={() => setCategory(item)} className={category === item ? "category-button active" : "category-button"}>
+                    <img src={`/category-icons/${categoryIcons[item] || "qita"}.png`} alt="" className="category-icon" />
+                    <span>{item}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="journal-section">
+              <h2 className="page-card-title">账户</h2>
+              <div className="pill-group">
+                {platforms.map((item) => (
+                  <button key={item} type="button" onClick={() => setPlatform(item)} className={platform === item ? "pill-button active" : "pill-button"}>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="journal-section">
+              <h2 className="page-card-title">时间与备注</h2>
+              <div className="app-field-grid">
+                <input className="app-input" value={date} onChange={(event) => setDate(event.target.value)} />
+                <input className="app-input" value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="商户" />
+                <input className="app-input" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="备注" />
+              </div>
+            </div>
+
+            <div className="action-grid">
+              <button type="button" className="secondary-button" onClick={() => { setAmount(""); setMerchant(""); setDescription(""); }}>
+                再记一笔
               </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="journal-section">
-          <h2 className="page-card-title">账户</h2>
-          <div className="pill-group">
-            {platforms.map((item) => (
-              <button key={item} type="button" onClick={() => setPlatform(item)} className={platform === item ? "pill-button active" : "pill-button"}>
-                {item}
+              <button type="button" className="primary-button" onClick={() => void saveTransaction()}>
+                保存
               </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="journal-section">
-          <h2 className="page-card-title">时间与备注</h2>
-          <div className="app-field-grid">
-            <input className="app-input" value={date} onChange={(event) => setDate(event.target.value)} />
-            <input className="app-input" value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="商户" />
-            <input className="app-input" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="备注" />
-          </div>
-        </div>
-
-        <div className="action-grid">
-          <button type="button" className="secondary-button" onClick={() => { setAmount(""); setMerchant(""); setDescription(""); }}>
-            再记一笔
-          </button>
-          <button type="button" className="primary-button" onClick={() => void saveTransaction()}>
-            保存
-          </button>
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
