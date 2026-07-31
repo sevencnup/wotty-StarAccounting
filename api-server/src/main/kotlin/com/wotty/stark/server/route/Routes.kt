@@ -78,6 +78,20 @@ data class SyncRecordRequest(
     val updatedAt: String,
 )
 
+private data class DemoSeedRecord(
+    val id: String,
+    val entityType: String,
+    val accountId: String?,
+    val userId: String?,
+    val payload: String,
+)
+
+@Serializable
+private data class DemoSeedResponse(
+    val status: String,
+    val seeded: Int,
+)
+
 fun Routing.syncRoutes() {
     get("/api/sync") {
         val accountId = call.request.queryParameters["accountId"] ?: "default"
@@ -114,91 +128,91 @@ fun Routing.syncRoutes() {
         val now = Clock.System.now().toString().replace("T", " ").replace("Z", "")
         val month = now.substring(0, 7)
         val demoRecords = listOf(
-            mapOf(
-                "id" to "local-user",
-                "entityType" to "users",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"local-user","email":"cloud@wotty.stark","password":"","name":"云端演示用户","defaultAccountId":"default","role":"USER","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "local-user",
+                entityType = "users",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"local-user","email":"cloud@wotty.stark","password":"","name":"云端演示用户","defaultAccountId":"default","role":"USER","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "default",
-                "entityType" to "accounts",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"default","name":"云端默认账本","ownerId":"local-user","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "default",
+                entityType = "accounts",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"default","name":"云端默认账本","ownerId":"local-user","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "txn-salary",
-                "entityType" to "transactions",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"txn-salary","userId":"local-user","accountId":"default","amount":12800,"type":"INCOME","category":"工资","platform":"银行卡","merchant":"公司发薪","date":"${month}-15 09:00:00","description":"月中发薪","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "txn-salary",
+                entityType = "transactions",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"txn-salary","userId":"local-user","accountId":"default","amount":12800,"type":"INCOME","category":"工资","platform":"银行卡","merchant":"公司发薪","date":"${month}-15 09:00:00","description":"月中发薪","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "txn-food",
-                "entityType" to "transactions",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"txn-food","userId":"local-user","accountId":"default","amount":86,"type":"EXPENSE","category":"餐饮","platform":"支付宝","merchant":"午餐","date":"${month}-16 12:15:00","description":"工作餐","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "txn-food",
+                entityType = "transactions",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"txn-food","userId":"local-user","accountId":"default","amount":86,"type":"EXPENSE","category":"餐饮","platform":"支付宝","merchant":"午餐","date":"${month}-16 12:15:00","description":"工作餐","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "txn-shop",
-                "entityType" to "transactions",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"txn-shop","userId":"local-user","accountId":"default","amount":268,"type":"EXPENSE","category":"购物","platform":"微信","merchant":"日用品","date":"${month}-18 20:10:00","description":"家庭采购","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "txn-shop",
+                entityType = "transactions",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"txn-shop","userId":"local-user","accountId":"default","amount":268,"type":"EXPENSE","category":"购物","platform":"微信","merchant":"日用品","date":"${month}-18 20:10:00","description":"家庭采购","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "asset-bank",
-                "entityType" to "assets",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"asset-bank","userId":"local-user","accountId":"default","name":"工资卡","type":"BANK_CARD","balance":48216.4,"currency":"CNY","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "asset-bank",
+                entityType = "assets",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"asset-bank","userId":"local-user","accountId":"default","name":"工资卡","type":"BANK_CARD","balance":48216.4,"currency":"CNY","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "asset-wechat",
-                "entityType" to "assets",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"asset-wechat","userId":"local-user","accountId":"default","name":"微信钱包","type":"WECHAT","balance":1260.5,"currency":"CNY","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "asset-wechat",
+                entityType = "assets",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"asset-wechat","userId":"local-user","accountId":"default","name":"微信钱包","type":"WECHAT","balance":1260.5,"currency":"CNY","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "budget-global",
-                "entityType" to "budgets",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"budget-global","userId":"local-user","accountId":"default","amount":6000,"category":"ALL","period":"MONTHLY","alertPercent":80,"platform":null,"scopeType":"GLOBAL","createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "budget-global",
+                entityType = "budgets",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"budget-global","userId":"local-user","accountId":"default","amount":6000,"category":"ALL","period":"MONTHLY","alertPercent":80,"platform":null,"scopeType":"GLOBAL","createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "loan-home",
-                "entityType" to "loans",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"loan-home","userId":"local-user","accountId":"default","platform":"房贷","totalAmount":480000,"remainingAmount":352000,"periods":240,"paidPeriods":64,"monthlyPayment":3200,"dueDate":20,"status":"ACTIVE","matchKeywords":null,"createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "loan-home",
+                entityType = "loans",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"loan-home","userId":"local-user","accountId":"default","platform":"房贷","totalAmount":480000,"remainingAmount":352000,"periods":240,"paidPeriods":64,"monthlyPayment":3200,"dueDate":20,"status":"ACTIVE","matchKeywords":null,"createdAt":"$now","updatedAt":"$now"}""",
             ),
-            mapOf(
-                "id" to "goal-travel",
-                "entityType" to "savingsGoals",
-                "accountId" to "default",
-                "userId" to "local-user",
-                "payload" to """{"id":"goal-travel","userId":"local-user","accountId":"default","name":"旅行基金","targetAmount":30000,"currentAmount":9200,"deadline":"2026-12-31","type":"LONG_TERM","status":"ACTIVE","depositType":"CASH","planConfig":null,"createdAt":"$now","updatedAt":"$now"}""",
+            DemoSeedRecord(
+                id = "goal-travel",
+                entityType = "savingsGoals",
+                accountId = "default",
+                userId = "local-user",
+                payload = """{"id":"goal-travel","userId":"local-user","accountId":"default","name":"旅行基金","targetAmount":30000,"currentAmount":9200,"deadline":"2026-12-31","type":"LONG_TERM","status":"ACTIVE","depositType":"CASH","planConfig":null,"createdAt":"$now","updatedAt":"$now"}""",
             ),
         )
 
         demoRecords.forEach { item ->
             DatabaseFactory.upsertRecord(
                 SyncRecordRow(
-                    id = item.getValue("id") as String,
-                    entityType = item.getValue("entityType") as String,
-                    accountId = item["accountId"] as String?,
-                    userId = item["userId"] as String?,
-                    payload = item.getValue("payload") as String,
+                    id = item.id,
+                    entityType = item.entityType,
+                    accountId = item.accountId,
+                    userId = item.userId,
+                    payload = item.payload,
                     updatedAt = now,
                 ),
             )
         }
-        call.respond(mapOf("status" to "ok", "seeded" to demoRecords.size))
+        call.respond(DemoSeedResponse(status = "ok", seeded = demoRecords.size))
     }
 }
 
