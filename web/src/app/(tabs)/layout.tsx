@@ -12,7 +12,6 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const isSavingsRoute = pathname.startsWith("/savings");
   const hideJournalTrigger = isJournalRoute;
   const [pendingPath, setPendingPath] = useState<string | null>(null);
-  const [cachedContent, setCachedContent] = useState<React.ReactNode | null>(isJournalRoute ? null : children);
 
   useEffect(() => {
     setPendingPath(null);
@@ -23,12 +22,6 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     const timer = window.setTimeout(() => setPendingPath(null), 1200);
     return () => window.clearTimeout(timer);
   }, [pendingPath]);
-
-  useEffect(() => {
-    if (!isJournalRoute) {
-      setCachedContent(children);
-    }
-  }, [children, isJournalRoute]);
 
   function beginNavigation(target: string) {
     if (target === pathname || target === "/journal") return;
@@ -48,7 +41,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const mainContent = pendingPath
     ? <TabsTransitionSkeleton />
     : isJournalRoute
-      ? cachedContent
+      ? null
       : children;
 
   return (
@@ -60,7 +53,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       }}
     >
       <main className="tabs-shell">{mainContent}</main>
-      <MobileBottomNav onNavigateStart={beginNavigation} />
+      {!isJournalRoute ? <MobileBottomNav onNavigateStart={beginNavigation} /> : null}
       {!hideJournalTrigger ? (
         <button type="button" className="global-journal-trigger" onClick={openJournal}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -18,5 +18,13 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" }) {
 
   if (!resolvedVariant) return null;
 
-  return <JournalPanel mode="page" variant={resolvedVariant} onClose={() => router.back()} onSaved={() => router.back()} />;
+  function closePanel() {
+    if (resolvedVariant === "savings") {
+      router.replace("/savings");
+      return;
+    }
+    router.back();
+  }
+
+  return <JournalPanel mode="page" variant={resolvedVariant} onClose={closePanel} onSaved={closePanel} />;
 }

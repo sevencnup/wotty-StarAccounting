@@ -2371,9 +2371,9 @@ button {
 
 .savings-plan-table th,
 .savings-plan-table td {
-  min-width: 94px;
-  height: 46px;
-  padding: 5px 7px;
+  min-width: 78px;
+  height: 44px;
+  padding: 5px 5px;
   border-right: 1px solid var(--planner-line);
   border-bottom: 1px solid var(--planner-line);
   background: #ffffff;
@@ -2417,18 +2417,18 @@ button {
   position: sticky;
   left: 0;
   z-index: 3;
-  min-width: 54px;
-  width: 54px;
+  min-width: 48px;
+  width: 48px;
   background: #f8fbff;
 }
 
 .savings-plan-table .salary-column {
   position: sticky;
-  left: 54px;
+  left: 48px;
   z-index: 2;
-  min-width: 98px;
-  width: 98px;
-  box-shadow: 5px 0 8px -8px rgba(31, 59, 95, 0.6);
+  min-width: 88px;
+  width: 88px;
+  border-right: 1px solid #dce6f3;
 }
 
 .savings-plan-table thead .salary-column {
@@ -2437,9 +2437,9 @@ button {
 }
 
 .savings-plan-table input {
-  width: 78px;
-  height: 30px;
-  padding: 0 7px;
+  width: 66px;
+  height: 29px;
+  padding: 0 6px;
   border: 1px solid #e1e8f1;
   border-radius: 7px;
   outline: none;
@@ -2456,12 +2456,12 @@ button {
 }
 
 .savings-plan-table .expected-column {
-  min-width: 104px;
+  min-width: 88px;
   background: #f7fbff;
 }
 
 .savings-plan-table .remaining-column {
-  min-width: 108px;
+  min-width: 88px;
 }
 
 .savings-remaining {

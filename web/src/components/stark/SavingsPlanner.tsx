@@ -7,6 +7,7 @@ import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
+const localRepo = new DataModeManager().getLocalRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
 
 type PlannerRow = {
@@ -68,6 +69,22 @@ export function SavingsPlanner({
     void loadPlanner();
   }, []);
 
+  async function saveGoalWithFallback(nextGoal: SavingsGoal) {
+    try {
+      await repo.saveSavingsGoal(nextGoal);
+    } catch {
+      await localRepo.saveSavingsGoal(nextGoal);
+    }
+  }
+
+  async function savePlanWithFallback(plan: SavingsPlan) {
+    try {
+      await repo.saveSavingsPlan(plan);
+    } catch {
+      await localRepo.saveSavingsPlan(plan);
+    }
+  }
+
   async function loadPlanner() {
     let goals = await repo.getSavingsGoals("default");
     if (!goals.length) {
@@ -87,7 +104,7 @@ export function SavingsPlanner({
         createdAt: now,
         updatedAt: now,
       };
-      await repo.saveSavingsGoal(defaultGoal);
+      await saveGoalWithFallback(defaultGoal);
       goals = [defaultGoal];
     }
 
@@ -122,6 +139,36 @@ export function SavingsPlanner({
 
   function updateRow(month: string, updater: (row: PlannerRow) => PlannerRow) {
     setRows((current) => ({ ...current, [month]: updater(current[month] ?? { salary: "", expected: "", expenses: {} }) }));
+    setNotice("");
+  }
+
+  function updateField(month: string, field: "salary" | "expected", value: string) {
+    setRows((current) => {
+      if (month !== months[0]) {
+        const row = current[month] ?? { salary: "", expected: "", expenses: {} };
+        return { ...current, [month]: { ...row, [field]: value } };
+      }
+      return months.reduce((next, item) => {
+        const row = current[item] ?? { salary: "", expected: "", expenses: {} };
+        next[item] = { ...row, [field]: value };
+        return next;
+      }, { ...current } as Record<string, PlannerRow>);
+    });
+    setNotice("");
+  }
+
+  function updateExpense(month: string, column: string, value: string) {
+    setRows((current) => {
+      if (month !== months[0]) {
+        const row = current[month] ?? { salary: "", expected: "", expenses: {} };
+        return { ...current, [month]: { ...row, expenses: { ...row.expenses, [column]: value } } };
+      }
+      return months.reduce((next, item) => {
+        const row = current[item] ?? { salary: "", expected: "", expenses: {} };
+        next[item] = { ...row, expenses: { ...row.expenses, [column]: value } };
+        return next;
+      }, { ...current } as Record<string, PlannerRow>);
+    });
     setNotice("");
   }
 
@@ -168,7 +215,7 @@ export function SavingsPlanner({
         createdAt: row.createdAt ?? now,
         updatedAt: now,
       };
-      return repo.saveSavingsPlan(plan);
+      return savePlanWithFallback(plan);
     }));
 
     setGoal(nextGoal);
@@ -255,11 +302,11 @@ export function SavingsPlanner({
                 return (
                   <tr key={month}>
                     <th className="month-column">{monthLabel(month)}</th>
-                    <td className="salary-column"><input inputMode="decimal" value={row.salary} onChange={(event) => updateRow(month, (current) => ({ ...current, salary: event.target.value.replace(/[^\d.]/g, "") }))} aria-label={`${monthLabel(month)}薪资`} placeholder="0" /></td>
+                    <td className="salary-column"><input inputMode="decimal" value={row.salary} onChange={(event) => updateField(month, "salary", event.target.value.replace(/[^\d.]/g, ""))} aria-label={`${monthLabel(month)}薪资`} placeholder="0" /></td>
                     {columns.map((column) => (
-                      <td key={column}><input inputMode="decimal" value={row.expenses[column] ?? ""} onChange={(event) => updateRow(month, (current) => ({ ...current, expenses: { ...current.expenses, [column]: event.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${monthLabel(month)}${column}`} placeholder="0" /></td>
+                      <td key={column}><input inputMode="decimal" value={row.expenses[column] ?? ""} onChange={(event) => updateExpense(month, column, event.target.value.replace(/[^\d.]/g, ""))} aria-label={`${monthLabel(month)}${column}`} placeholder="0" /></td>
                     ))}
-                    <td className="expected-column"><input inputMode="decimal" value={row.expected} onChange={(event) => updateRow(month, (current) => ({ ...current, expected: event.target.value.replace(/[^\d.]/g, "") }))} aria-label={`${monthLabel(month)}预计存`} placeholder="可不填" /></td>
+                    <td className="expected-column"><input inputMode="decimal" value={row.expected} onChange={(event) => updateField(month, "expected", event.target.value.replace(/[^\d.]/g, ""))} aria-label={`${monthLabel(month)}预计存`} placeholder="可不填" /></td>
                     <td className={`remaining-column savings-remaining ${calculated.remaining < 0 ? "negative" : ""}`}>¥{formatMoney(calculated.remaining)}</td>
                   </tr>
                 );
