@@ -102,15 +102,6 @@ const RATIO_PALETTE = [
   { color: "#e87ba4", badgeColor: "#f8e3eb" },
 ] as const;
 
-const RATIO_PREVIEW_FILLERS = [
-  { name: "交通出行", amount: 748 },
-  { name: "休闲娱乐", amount: 561 },
-  { name: "医疗健康", amount: 326 },
-  { name: "住房家居", amount: 294 },
-  { name: "通讯网络", amount: 188 },
-  { name: "学习成长", amount: 156 },
-] as const;
-
 function parseDate(raw: string) {
   const normalized = raw.includes("T") ? raw : raw.replace(" ", "T");
   const date = new Date(normalized);
@@ -233,18 +224,10 @@ function buildRatios(transactions: Transaction[]) {
     }, new Map<string, number>());
 
   const list = [...rows.entries()].sort((a, b) => b[1] - a[1]);
-  if (!list.length) return demoRatios();
+  if (!list.length) return [];
 
-  const filledList = [...list];
-  for (const filler of RATIO_PREVIEW_FILLERS) {
-    if (filledList.length >= 8) break;
-    if (filledList.some(([name]) => name === filler.name)) continue;
-    filledList.push([filler.name, filler.amount]);
-  }
-  filledList.sort((a, b) => b[1] - a[1]);
-
-  const total = filledList.reduce((sum, [, amount]) => sum + amount, 0) || 1;
-  return filledList.map(([name, amount], index) => {
+  const total = list.reduce((sum, [, amount]) => sum + amount, 0) || 1;
+  return list.map(([name, amount], index) => {
     const palette = RATIO_PALETTE[index] ?? RATIO_PALETTE[RATIO_PALETTE.length - 1];
     return {
       name,
@@ -258,7 +241,7 @@ function buildRatios(transactions: Transaction[]) {
 }
 
 function buildRecent(transactions: Transaction[]) {
-  if (!transactions.length) return demoRecent();
+  if (!transactions.length) return [];
   return [...transactions]
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 4)
@@ -331,13 +314,7 @@ function buildRecent(transactions: Transaction[]) {
 }
 
 function buildBudgetAlerts(transactions: Transaction[], budgets: Budget[], totalExpense: number): HomeBudgetAlert[] {
-  if (!budgets.length) {
-    return [
-      { id: "budget-1", title: "本月总预算", spent: totalExpense || 6350, budget: 8000, percent: 79, tone: "warn" },
-      { id: "budget-2", title: "餐饮预算", spent: 1280, budget: 1500, percent: 85, tone: "warn" },
-      { id: "budget-3", title: "购物预算", spent: 920, budget: 900, percent: 102, tone: "danger" },
-    ];
-  }
+  if (!budgets.length) return [];
 
   const expenseTransactions = transactions.filter((item) => item.type === "EXPENSE");
   return budgets
@@ -403,12 +380,7 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
     return rank[a.tone] - rank[b.tone];
   });
 
-  if (tasks.length) return tasks.slice(0, 4);
-  return [
-    { id: "task-1", title: "招商贷款还款", subtitle: "08-02 前还款 ¥ 3,200", badge: "3天后", tone: "warn" },
-    { id: "task-2", title: "旅行基金储蓄", subtitle: "08-05 前补足 ¥ 1,800", badge: "6天后", tone: "neutral" },
-    { id: "task-3", title: "信用消费整理", subtitle: "核对本周新增 4 笔支出", badge: "今天", tone: "danger" },
-  ];
+  return tasks.slice(0, 4);
 }
 
 function buildForecast(_transactions: Transaction[], income: number, expense: number, salaryDay: number): HomeForecast {
@@ -492,44 +464,7 @@ function buildInsights(currentTransactions: Transaction[], previousTransactions:
     });
   }
 
-  if (insights.length) return insights.slice(0, 3);
-  return [
-    { id: "insight-1", title: "餐饮支出偏高", detail: "过去 7 天餐饮消费较上周增加 28%", tone: "warn" },
-    { id: "insight-2", title: "月底仍有结余空间", detail: "按当前节奏预计本月可结余 ¥ 4,180", tone: "info" },
-  ];
-}
-
-function demoTrend(): HomeTrend {
-  return {
-    labels: ["1", "5", "10", "15", "20", "25", "30"],
-    expense: [1100, 1650, 1820, 1320, 1710, 1440, 1960],
-    income: [1780, 1240, 1160, 1880, 1720, 2360, 2140],
-  };
-}
-
-function demoRatios(): HomeRatio[] {
-  return [
-    { name: "生活消费", amount: 1122, percent: 30, color: "#2a78d6", badgeColor: "#e7effc", badgeLabel: "生" },
-    { name: "交通出行", amount: 748, percent: 20, color: "#eb6834", badgeColor: "#f9eadf", badgeLabel: "交" },
-    { name: "餐饮美食", amount: 673, percent: 18, color: "#1baf7a", badgeColor: "#e4f4ec", badgeLabel: "餐" },
-    { name: "休闲娱乐", amount: 561, percent: 15, color: "#eda100", badgeColor: "#fbf0d7", badgeLabel: "娱" },
-    { name: "购物消费", amount: 438, percent: 12, color: "#8b74ff", badgeColor: "#ece8ff", badgeLabel: "购" },
-    { name: "医疗健康", amount: 326, percent: 9, color: "#ff6b81", badgeColor: "#ffe6eb", badgeLabel: "医" },
-    { name: "住房家居", amount: 294, percent: 8, color: "#5a9cf8", badgeColor: "#e8f1ff", badgeLabel: "住" },
-    { name: "通讯网络", amount: 188, percent: 5, color: "#5d9f95", badgeColor: "#e5f3f0", badgeLabel: "通" },
-    { name: "学习成长", amount: 156, percent: 4, color: "#f08a24", badgeColor: "#fdefdf", badgeLabel: "学" },
-    { name: "旅行度假", amount: 122, percent: 3, color: "#30b7c9", badgeColor: "#e2f7fa", badgeLabel: "旅" },
-    { name: "其他", amount: 636, percent: 17, color: "#e87ba4", badgeColor: "#f8e3eb", badgeLabel: "其" },
-  ];
-}
-
-function demoRecent(): HomeRecentItem[] {
-  return [
-    { id: "demo-1", title: "星巴克咖啡", subtitle: "餐饮", amount: 36, positive: false, time: "今天 08:30", badgeLabel: "餐", badgeColor: "#e34948", badgeBg: "#fce5e7" },
-    { id: "demo-2", title: "地铁出行", subtitle: "交通", amount: 4, positive: false, time: "今天 07:45", badgeLabel: "交", badgeColor: "#eb6834", badgeBg: "#f9eadf" },
-    { id: "demo-3", title: "工资收入", subtitle: "工资", amount: 8790, positive: true, time: "昨天 18:00", badgeLabel: "薪", badgeColor: "#0ca30c", badgeBg: "#e4f4ec" },
-    { id: "demo-4", title: "超市购物", subtitle: "购物", amount: 128.5, positive: false, time: "昨天 18:00", badgeLabel: "购", badgeColor: "#2a78d6", badgeBg: "#e7effc" },
-  ];
+  return insights.slice(0, 3);
 }
 
 export function buildHomeSummary(input: {
@@ -561,67 +496,26 @@ export function buildHomeSummary(input: {
   const liabilityTotal = loanTotal;
   const budgetAmount = input.budgets.reduce((sum, item) => sum + item.amount, 0);
 
-  const hasTransactionData = currentMonthTransactions.length >= 4;
-  const hasAssetData = input.assets.length > 0 || input.loans.length > 0 || input.savingsGoals.length > 0;
-
-  if (!hasTransactionData && !hasAssetData) {
-    return {
-      expense: 8888,
-      income: 8888,
-      expenseChange: 18,
-      incomeChange: -5,
-      trend: demoTrend(),
-      ratios: demoRatios(),
-      savingProgress: { title: "储蓄计划", current: 20000, total: 30000, percent: 67 },
-      loanProgress: { title: "贷款还款进度", current: 28500, total: 100000, percent: 29 },
-      netWorth: 86127.89,
-      assetTotal: 126127.89,
-      liabilityTotal: 40000,
-      totalSavings: 28600,
-      savingsDelta: 2300,
-      loanTotal: 356000,
-      loanDelta: -2000,
-      budgetAlerts: buildBudgetAlerts([], [], 6350),
-      tasks: buildTasks([], []),
-      forecast: {
-        projectedIncome: 8888,
-        projectedExpense: 8888,
-        projectedBalance: 0,
-        monthBalance: 0,
-        salaryCycleBalance: 2680,
-        salaryCycleStartLabel: "07-15",
-        salaryDay,
-        daysLeft: 0,
-        statusLabel: "本月当前结余",
-      },
-      insights: [
-        { id: "demo-insight-1", title: "购物预算已超线", detail: "当前使用率 102%，建议暂停大额非必要消费", tone: "danger" },
-        { id: "demo-insight-2", title: "月底预计仍有结余", detail: "按当前节奏预计可结余 ¥ 4,180", tone: "info" },
-      ],
-      recent: demoRecent(),
-    } satisfies HomeSummary;
-  }
-
   const budgetAlerts = buildBudgetAlerts(currentMonthTransactions, input.budgets, expense);
 
   return {
     expense,
     income,
-    expenseChange: previousExpense > 0 ? comparePercent(expense, previousExpense) : 18,
-    incomeChange: previousIncome > 0 ? comparePercent(income, previousIncome) : -5,
-    trend: currentMonthTransactions.length >= 4 ? buildTrend(currentMonthTransactions) : demoTrend(),
+    expenseChange: previousExpense > 0 ? comparePercent(expense, previousExpense) : 0,
+    incomeChange: previousIncome > 0 ? comparePercent(income, previousIncome) : 0,
+    trend: buildTrend(currentMonthTransactions),
     ratios: buildRatios(currentMonthTransactions),
     savingProgress: {
       title: "储蓄计划",
       current: totalSavings,
-      total: Math.max(totalSavingsTarget, totalSavings || 30000),
-      percent: clampPercent(totalSavingsTarget > 0 ? (totalSavings / totalSavingsTarget) * 100 : 67),
+      total: Math.max(totalSavingsTarget, totalSavings, 0),
+      percent: clampPercent(totalSavingsTarget > 0 ? (totalSavings / totalSavingsTarget) * 100 : 0),
     },
     loanProgress: {
       title: "贷款还款进度",
       current: loanRepaid,
-      total: Math.max(loanAll, loanRepaid || 100000),
-      percent: clampPercent(loanAll > 0 ? (loanRepaid / loanAll) * 100 : 29),
+      total: Math.max(loanAll, loanRepaid, 0),
+      percent: clampPercent(loanAll > 0 ? (loanRepaid / loanAll) * 100 : 0),
     },
     netWorth: assetTotal - liabilityTotal,
     assetTotal,
@@ -629,7 +523,7 @@ export function buildHomeSummary(input: {
     totalSavings,
     savingsDelta: income - expense,
     loanTotal,
-    loanDelta: input.loans.reduce((sum, item) => sum + item.monthlyPayment, 0) || -2000,
+    loanDelta: input.loans.reduce((sum, item) => sum + item.monthlyPayment, 0),
     budgetAlerts,
     tasks: buildTasks(input.loans, input.savingsGoals),
     forecast: buildForecast(currentMonthTransactions, income, expense, salaryDay),

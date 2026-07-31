@@ -7,11 +7,12 @@ import { RemoteRepository } from "@/lib/stark/repository/RemoteRepository";
 export class DataModeManager {
   private readonly localRepo = new LocalRepository();
   private readonly remoteRepo = new RemoteRepository();
-  private currentMode: DataMode = "LOCAL";
+  private currentMode: DataMode = "CLOUD";
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.currentMode = getCurrentDataMode() as DataMode;
+      this.currentMode = "CLOUD";
+      setCurrentDataMode("CLOUD");
     }
   }
 

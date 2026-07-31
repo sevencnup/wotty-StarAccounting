@@ -15,7 +15,7 @@ import type {
 } from "@/lib/stark/models/types";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { deleteRecord, getAllRecords, getRecord, putManyRecords, putRecord } from "@/lib/stark/storage/indexeddb";
-import { getCurrentAccountId, getSeededFlag, setCurrentAccountId, setSeededFlag } from "@/lib/stark/storage/local-config";
+import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 
 function uuid() {
@@ -58,165 +58,6 @@ function defaultAccount(): Account {
   };
 }
 
-function seedTransactions(now: string): Transaction[] {
-  const month = now.slice(0, 7);
-  return [
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      amount: 8888,
-      type: "INCOME",
-      category: "工资",
-      platform: "银行卡",
-      merchant: "公司发薪",
-      date: `${month}-01 09:30:00`,
-      description: "本月工资",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      amount: 68,
-      type: "EXPENSE",
-      category: "餐饮",
-      platform: "支付宝",
-      merchant: "午餐",
-      date: `${month}-05 12:20:00`,
-      description: "工作日午餐",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      amount: 199,
-      type: "EXPENSE",
-      category: "购物",
-      platform: "微信",
-      merchant: "日用品",
-      date: `${month}-12 20:15:00`,
-      description: "居家补货",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      amount: 3200,
-      type: "TRANSFER",
-      category: "转账",
-      platform: "银行卡",
-      merchant: "转入储蓄",
-      date: `${month}-15 21:00:00`,
-      description: "给储蓄计划转入",
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-function seedAssets(now: string): Asset[] {
-  return [
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      name: "支付宝",
-      type: "ALIPAY",
-      balance: 2356.5,
-      currency: "CNY",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      name: "微信钱包",
-      type: "WECHAT",
-      balance: 860.2,
-      currency: "CNY",
-      createdAt: now,
-      updatedAt: now,
-    },
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      name: "工资卡",
-      type: "BANK_CARD",
-      balance: 82911.19,
-      currency: "CNY",
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-function seedBudgets(now: string): Budget[] {
-  return [
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      amount: 5000,
-      category: "ALL",
-      period: "MONTHLY",
-      alertPercent: 80,
-      platform: null,
-      scopeType: "GLOBAL",
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-function seedLoans(now: string): Loan[] {
-  return [
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      platform: "房贷",
-      totalAmount: 480000,
-      remainingAmount: 356000,
-      periods: 240,
-      paidPeriods: 62,
-      monthlyPayment: 3200,
-      dueDate: 20,
-      status: "ACTIVE",
-      matchKeywords: null,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
-function seedSavingsGoals(now: string): SavingsGoal[] {
-  return [
-    {
-      id: uuid(),
-      userId: "local-user",
-      accountId: "default",
-      name: "旅游基金",
-      targetAmount: 30000,
-      currentAmount: 18600,
-      deadline: `${new Date().getFullYear()}-12-31`,
-      type: "LONG_TERM",
-      status: "ACTIVE",
-      depositType: "CASH",
-      planConfig: null,
-      createdAt: now,
-      updatedAt: now,
-    },
-  ];
-}
-
 export class LocalRepository implements DataRepository {
   private seeded: Promise<void> | null = null;
 
@@ -228,18 +69,9 @@ export class LocalRepository implements DataRepository {
   }
 
   private async seed() {
-    if (getSeededFlag()) return;
-
     const now = nowText();
     await putRecord("users", defaultUser());
     await putRecord("accounts", defaultAccount());
-    await putManyRecords("transactions", seedTransactions(now));
-    await putManyRecords("assets", seedAssets(now));
-    await putManyRecords("budgets", seedBudgets(now));
-    await putManyRecords("loans", seedLoans(now));
-    await putManyRecords("savingsGoals", seedSavingsGoals(now));
-    setCurrentAccountId("default");
-    setSeededFlag();
   }
 
   async getCurrentUser() {

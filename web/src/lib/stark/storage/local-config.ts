@@ -19,7 +19,7 @@ export function setCurrentAccountId(accountId: string) {
 }
 
 export function getCurrentDataMode() {
-  return readValue("data-mode") ?? "LOCAL";
+  return readValue("data-mode") ?? "CLOUD";
 }
 
 export function setCurrentDataMode(mode: "LOCAL" | "CLOUD") {
