@@ -4,253 +4,193 @@ import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, type SavingsFrequency } from "@/lib/stark/savings/planner";
-import { formatMoney, nowText } from "@/lib/stark/utils/format";
+import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
-const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
 
-type PlannerRow = {
-  id?: string;
-  createdAt?: string;
-  salary: string;
-  expected: string;
-  expenses: Record<string, string>;
-};
-
-type PlanConfig = {
-  frequency?: SavingsFrequency;
-  columns?: string[];
-};
-
-function parseConfig(raw?: string | null): PlanConfig {
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw) as PlanConfig;
-  } catch {
-    return {};
-  }
+function monthKey(value: string) {
+  return value.slice(0, 7);
 }
 
-function parseExpenses(raw?: string | null) {
-  if (!raw) return {};
-  try {
-    const values = JSON.parse(raw) as Record<string, unknown>;
-    return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(Number(value) || "")]));
-  } catch {
-    return {};
-  }
+function dayLabel(value: string) {
+  const day = Number(value.slice(8, 10));
+  return Number.isFinite(day) ? `${day}日` : value;
 }
 
-function monthLabel(month: string) {
-  return `${Number(month.slice(5, 7))}月`;
+function shortAmount(amount: number) {
+  if (amount >= 10000) return `${(amount / 10000).toFixed(1)}w`;
+  if (amount >= 1000) return `${Math.round(amount / 100) / 10}k`;
+  return String(Math.round(amount));
+}
+
+function buildCalendar(plans: SavingsPlan[]) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const monthStr = String(month + 1).padStart(2, "0");
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const leading = firstDay === 0 ? 6 : firstDay - 1;
+  const daily: Record<string, number> = {};
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    daily[`${year}-${monthStr}-${String(day).padStart(2, "0")}`] = 0;
+  }
+
+  plans
+    .filter((plan) => plan.month === `${year}-${monthStr}`)
+    .forEach((plan) => {
+      const day = plan.updatedAt?.slice(0, 10) || `${year}-${monthStr}-01`;
+      if (daily[day] !== undefined) daily[day] += plan.amount;
+    });
+
+  const days = Object.entries(daily).map(([date, amount]) => ({
+    date,
+    day: Number(date.slice(8, 10)),
+    amount,
+  }));
+  const maxAmount = Math.max(...days.map((item) => item.amount), 1);
+  return { leading, days, maxAmount };
 }
 
 export default function SavingsPage() {
-  const year = new Date().getFullYear();
-  const [goal, setGoal] = useState<SavingsGoal | null>(null);
-  const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
-  const [columns, setColumns] = useState(DEFAULT_COLUMNS);
-  const [rows, setRows] = useState<Record<string, PlannerRow>>({});
-  const [newColumn, setNewColumn] = useState("");
+  const [goals, setGoals] = useState<SavingsGoal[]>([]);
+  const [plans, setPlans] = useState<SavingsPlan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  const months = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
 
   useEffect(() => {
-    void loadPlanner();
+    void repo.getSavingsGoals("default").then(async (data) => {
+      const planGroups = await Promise.all(data.map((goal) => repo.getSavingsPlans(goal.id)));
+      setGoals(data);
+      setPlans(planGroups.flat());
+      setLoading(false);
+    });
   }, []);
 
-  async function loadPlanner() {
-    let goals = await repo.getSavingsGoals("default");
-    if (!goals.length) {
-      const now = nowText();
-      const defaultGoal: SavingsGoal = {
-        id: crypto.randomUUID(),
-        userId: "local-user",
-        accountId: "default",
-        name: `${year} 年度储蓄`,
-        targetAmount: 0,
-        currentAmount: 0,
-        deadline: `${year}-12-31`,
-        type: "LONG_TERM",
-        status: "ACTIVE",
-        depositType: "CASH",
-        planConfig: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await repo.saveSavingsGoal(defaultGoal);
-      goals = [defaultGoal];
-    }
+  const summary = useMemo(() => {
+    const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
+    const monthPlans = plans.filter((plan) => plan.month === currentMonth);
+    const monthSaved = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
+    const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0) + plans.reduce((sum, plan) => sum + plan.amount, 0);
+    const target = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+    const completed = plans.filter((plan) => plan.status === "COMPLETED").length;
+    const pending = plans.filter((plan) => plan.status !== "COMPLETED").length;
+    return { monthSaved, totalSaved, target, completed, pending, count: monthPlans.length };
+  }, [goals, plans]);
 
-    const activeGoal = goals[0];
-    const config = parseConfig(activeGoal.planConfig);
-    const plans = await repo.getSavingsPlans(activeGoal.id);
-    const hydratedRows: Record<string, PlannerRow> = {};
-    const expenseColumns = new Set(config.columns?.length ? config.columns : DEFAULT_COLUMNS);
+  const featuredGoals = useMemo(() => (
+    [...goals]
+      .sort((a, b) => (b.currentAmount / Math.max(b.targetAmount, 1)) - (a.currentAmount / Math.max(a.targetAmount, 1)))
+      .slice(0, 4)
+  ), [goals]);
 
-    plans.forEach((plan) => {
-      const expenses = parseExpenses(plan.expenses);
-      Object.keys(expenses).forEach((column) => expenseColumns.add(column));
-      hydratedRows[plan.month] = {
-        id: plan.id,
-        createdAt: plan.createdAt,
-        salary: plan.salary ? String(plan.salary) : "",
-        expected: plan.amount ? String(plan.amount) : "",
-        expenses,
-      };
-    });
+  const recentPlans = useMemo(() => (
+    [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
+  ), [plans]);
 
-    setGoal(activeGoal);
-    setFrequency(config.frequency ?? "MONTHLY");
-    setColumns([...expenseColumns]);
-    setRows(hydratedRows);
-    setLoading(false);
-  }
-
-  function rowFor(month: string): PlannerRow {
-    return rows[month] ?? { salary: "", expected: "", expenses: {} };
-  }
-
-  function updateRow(month: string, updater: (row: PlannerRow) => PlannerRow) {
-    setRows((current) => ({ ...current, [month]: updater(current[month] ?? { salary: "", expected: "", expenses: {} }) }));
-    setNotice("");
-  }
-
-  function addExpenseColumn() {
-    const name = newColumn.trim();
-    if (!name || columns.includes(name)) return;
-    setColumns((current) => [...current, name]);
-    setNewColumn("");
-    setNotice(`已新增“${name}”列`);
-  }
-
-  function removeExpenseColumn(name: string) {
-    setColumns((current) => current.filter((column) => column !== name));
-    setRows((current) => Object.fromEntries(Object.entries(current).map(([month, row]) => {
-      const expenses = { ...row.expenses };
-      delete expenses[name];
-      return [month, { ...row, expenses }];
-    })));
-  }
-
-  async function savePlans() {
-    if (!goal || saving) return;
-    setSaving(true);
-    const now = nowText();
-    const nextGoal = {
-      ...goal,
-      planConfig: JSON.stringify({ frequency, columns }),
-      updatedAt: now,
-    };
-    await repo.saveSavingsGoal(nextGoal);
-
-    await Promise.all(months.map((month) => {
-      const row = rowFor(month);
-      const plan: SavingsPlan = {
-        id: row.id ?? `plan-${goal.id}-${month}`,
-        goalId: goal.id,
-        amount: Number(row.expected) || 0,
-        status: "PENDING",
-        month,
-        salary: Number(row.salary) || 0,
-        expenses: JSON.stringify(Object.fromEntries(columns.map((column) => [column, Number(row.expenses[column]) || 0]))),
-        remark: frequency === "MONTHLY" ? "单月存模式" : "隔月存模式",
-        proofImage: null,
-        createdAt: row.createdAt ?? now,
-        updatedAt: now,
-      };
-      return repo.saveSavingsPlan(plan);
-    }));
-
-    setGoal(nextGoal);
-    setSaving(false);
-    setNotice(`已保存 ${months.length} 个月的储蓄计划`);
-  }
-
-  const totals = useMemo(() => months.reduce((result, month) => {
-    const row = rowFor(month);
-    const calculated = calculateSavingsRow({ salary: row.salary, expenses: row.expenses, expected: row.expected });
-    result.salary += Number(row.salary) || 0;
-    result.expected += Number(row.expected) || 0;
-    result.remaining += calculated.remaining;
-    return result;
-  }, { salary: 0, expected: 0, remaining: 0 }), [months, rows]);
+  const calendar = useMemo(() => buildCalendar(plans), [plans]);
+  const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
 
   if (loading) return <PageSkeleton title="储蓄" cards={3} />;
 
   return (
-    <div className="page-stack savings-planner-page">
-      <PageTopBar title="储蓄计划" />
+    <div className="page-stack savings-dashboard-page">
+      <PageTopBar title="储蓄" />
 
-      <section className="home-card savings-plan-hero">
-        <div>
-          <div className="page-hero-label">{year} 年预计存</div>
-          <div className="page-hero-value">¥ {formatMoney(totals.expected)}</div>
-        </div>
-        <div className="savings-hero-meta">
-          <span>计划薪资 <strong>¥ {formatMoney(totals.salary)}</strong></span>
-          <span>预计剩余 <strong className={totals.remaining < 0 ? "negative" : ""}>¥ {formatMoney(totals.remaining)}</strong></span>
+      <section className="home-card savings-summary-card">
+        <div className="savings-summary-body">
+          <div className="savings-summary-main">
+            <div className="page-hero-label">本月已存</div>
+            <div className="page-hero-value">¥ {formatMoney(summary.monthSaved)}</div>
+            <div className="page-hero-sub">目标 ¥ {formatMoney(summary.target)} · 共 {summary.count} 笔</div>
+          </div>
+          <div className="savings-summary-side">
+            <div className="savings-summary-row">
+              <div className="savings-row-label">累计储蓄</div>
+              <div className="savings-row-value">¥ {formatMoney(summary.totalSaved)}</div>
+              <div className="savings-row-sub">已完成 {summary.completed} 笔</div>
+            </div>
+            <div className="savings-summary-row">
+              <div className="savings-row-label">待存计划</div>
+              <div className="savings-row-value">{summary.pending} 笔</div>
+              <div className="savings-row-sub">继续按计划执行</div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="home-card savings-plan-card">
-        <div className="savings-plan-toolbar">
-          <div className="savings-mode-switch" role="tablist" aria-label="储蓄频率">
-            <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
-            <button type="button" className={frequency === "ALTERNATE" ? "active" : ""} onClick={() => setFrequency("ALTERNATE")}>隔月存</button>
+      <section className="home-card page-card">
+        <div className="section-head">
+          <h2>储蓄计划进度</h2>
+          <span className="mini-section-note">共 {goals.length} 个计划</span>
+        </div>
+        <div className="savings-goal-list">
+          {featuredGoals.length ? featuredGoals.map((goal) => {
+            const percent = goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0;
+            return (
+              <div key={goal.id} className="savings-goal-row">
+                <div className="savings-goal-copy">
+                  <strong>{goal.name}</strong>
+                  <span>已存 ¥ {formatMoney(goal.currentAmount)} / 目标 ¥ {formatMoney(goal.targetAmount)}</span>
+                </div>
+                <em>{Math.round(percent)}%</em>
+                <div className="mini-progress">
+                  <span style={{ width: `${Math.max(4, percent)}%`, background: "linear-gradient(90deg,#2f7cff,#6da2ff)" }} />
+                </div>
+              </div>
+            );
+          }) : (
+            <div className="loan-empty">暂无储蓄计划，点击底部“添加储蓄”创建</div>
+          )}
+        </div>
+      </section>
+
+      <section className="home-card page-card">
+        <div className="section-head">
+          <h2>每日存入日历</h2>
+          <span className="mini-section-note">本月</span>
+        </div>
+        <div className="calendar-grid-card savings-calendar-card">
+          <div className="calendar-week-row">
+            {weekDays.map((day) => <span key={day}>{day}</span>)}
           </div>
-          <span className="savings-mode-copy">{frequency === "MONTHLY" ? "每个月存，共 12 行" : "隔一个月存，共 6 行"}</span>
+          <div className="calendar-grid">
+            {Array.from({ length: calendar.leading }, (_, index) => (
+              <span key={`empty-${index}`} className="calendar-day empty" />
+            ))}
+            {calendar.days.map((item) => {
+              const level = item.amount <= 0 ? 0 : Math.max(1, Math.ceil((item.amount / calendar.maxAmount) * 4));
+              return (
+                <span key={item.date} className={`calendar-day level-${level}`} title={`${item.date} ¥ ${formatMoney(item.amount)}`}>
+                  <em>{item.day}</em>
+                  {item.amount > 0 && <strong>¥{shortAmount(item.amount)}</strong>}
+                </span>
+              );
+            })}
+          </div>
         </div>
+      </section>
 
-        <div className="savings-column-adder">
-          <input value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn()} placeholder="新增支出列，如交通" />
-          <button type="button" onClick={addExpenseColumn}>新增列</button>
+      <section className="recent-card">
+        <div className="recent-head">
+          <h2>最近储蓄</h2>
         </div>
-
-        <div className="savings-table-scroll">
-          <table className="savings-plan-table">
-            <thead>
-              <tr>
-                <th className="month-column">月份</th>
-                <th className="salary-column">薪资</th>
-                {columns.map((column) => (
-                  <th key={column}>
-                    <span>{column}</span>
-                    <button type="button" onClick={() => removeExpenseColumn(column)} aria-label={`删除${column}列`}>x</button>
-                  </th>
-                ))}
-                <th className="expected-column">预计存</th>
-                <th className="remaining-column">剩余</th>
-              </tr>
-            </thead>
-            <tbody>
-              {months.map((month) => {
-                const row = rowFor(month);
-                const calculated = calculateSavingsRow({ salary: row.salary, expenses: row.expenses, expected: row.expected });
-                return (
-                  <tr key={month}>
-                    <th className="month-column">{monthLabel(month)}</th>
-                    <td className="salary-column"><input inputMode="decimal" value={row.salary} onChange={(event) => updateRow(month, (current) => ({ ...current, salary: event.target.value.replace(/[^\d.]/g, "") }))} aria-label={`${monthLabel(month)}薪资`} placeholder="0" /></td>
-                    {columns.map((column) => (
-                      <td key={column}><input inputMode="decimal" value={row.expenses[column] ?? ""} onChange={(event) => updateRow(month, (current) => ({ ...current, expenses: { ...current.expenses, [column]: event.target.value.replace(/[^\d.]/g, "") } }))} aria-label={`${monthLabel(month)}${column}`} placeholder="0" /></td>
-                    ))}
-                    <td className="expected-column"><input inputMode="decimal" value={row.expected} onChange={(event) => updateRow(month, (current) => ({ ...current, expected: event.target.value.replace(/[^\d.]/g, "") }))} aria-label={`${monthLabel(month)}预计存`} placeholder="可不填" /></td>
-                    <td className={`remaining-column savings-remaining ${calculated.remaining < 0 ? "negative" : ""}`}>¥{formatMoney(calculated.remaining)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="savings-plan-footer">
-          <span>{notice || "预计存不填时，扣除支出后的金额全部计入剩余"}</span>
-          <button type="button" className="primary-button" disabled={saving} onClick={() => void savePlans()}>{saving ? "保存中" : "保存计划"}</button>
+        <div className="recent-list">
+          {recentPlans.length ? recentPlans.map((plan) => {
+            const goal = goals.find((item) => item.id === plan.goalId);
+            return (
+              <div key={plan.id} className="savings-recent-row">
+                <div className="savings-recent-icon">存</div>
+                <strong>{goal?.name || "储蓄计划"}</strong>
+                <span>{plan.month} · {plan.status === "COMPLETED" ? "已完成" : "待存"}</span>
+                <time>{dayLabel(plan.updatedAt.slice(0, 10))}</time>
+                <em>+¥ {formatMoney(plan.amount)}</em>
+              </div>
+            );
+          }) : (
+            <div className="loan-empty">暂无储蓄记录</div>
+          )}
         </div>
       </section>
     </div>
