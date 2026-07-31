@@ -74,7 +74,7 @@ export interface Loan {
 export type SavingsGoalType = "MONTHLY" | "YEARLY" | "LONG_TERM" | "BI_MONTHLY_ODD" | "BI_MONTHLY_EVEN";
 export type SavingsGoalStatus = "ACTIVE" | "COMPLETED" | "ARCHIVED";
 export type SavingsPlanStatus = "PENDING" | "COMPLETED" | "SKIPPED";
-export type SavingsGoalDepositType = "CASH" | "FIXED_TERM" | "HELP_DEPOSIT";
+export type SavingsGoalDepositType = "PRIVATE" | "CASH" | "HELP_DEPOSIT" | "FIXED_TERM";
 
 export interface SavingsGoal {
   id: string;

@@ -5,6 +5,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
+import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
@@ -189,6 +190,7 @@ export default function SavingsPage() {
   const recentPlans = useMemo(() => (
     [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
   ), [plans]);
+  const primaryGoal = goals[0] ?? null;
 
   const calendar = useMemo(() => buildCalendar(plans), [plans]);
   const trendOption = useMemo(() => buildSavingsTrendOption(plans), [plans]);
@@ -206,6 +208,12 @@ export default function SavingsPage() {
             <div className="page-hero-label">本月已存</div>
             <div className="page-hero-value">¥ {formatMoney(summary.monthSaved)}</div>
             <div className="page-hero-sub">目标 ¥ {formatMoney(summary.target)} · 共 {summary.count} 笔</div>
+            {primaryGoal ? (
+              <div className="savings-goal-meta">
+                <span>{primaryGoal.name}</span>
+                <span>{depositTypeLabel(primaryGoal.depositType)}</span>
+              </div>
+            ) : null}
           </div>
           <div className="savings-summary-side">
             <div className="savings-summary-row">

@@ -4,10 +4,15 @@ import { useEffect, useMemo, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildSavingsMonths, calculateSavingsRow, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
-import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
+import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
+const DEPOSIT_TYPE_OPTIONS: Array<{ value: SavingsGoalDepositType; label: string }> = [
+  { value: "PRIVATE", label: "私企" },
+  { value: "CASH", label: "现金" },
+  { value: "HELP_DEPOSIT", label: "他人帮存" },
+];
 
 type PlannerRow = {
   id?: string;
@@ -45,6 +50,16 @@ function monthLabel(month: string) {
   return `${Number(month.slice(5, 7))}月`;
 }
 
+function normalizeDepositType(value?: SavingsGoalDepositType | null): SavingsGoalDepositType {
+  if (value === "FIXED_TERM") return "PRIVATE";
+  if (value === "HELP_DEPOSIT" || value === "PRIVATE" || value === "CASH") return value;
+  return "CASH";
+}
+
+function depositTypeLabel(value?: SavingsGoalDepositType | null) {
+  return DEPOSIT_TYPE_OPTIONS.find((item) => item.value === normalizeDepositType(value))?.label ?? "现金";
+}
+
 function createDefaultGoal(year: number): SavingsGoal {
   const now = nowText();
   return {
@@ -73,6 +88,8 @@ export function SavingsPlanner({
 }) {
   const year = new Date().getFullYear();
   const [goal, setGoal] = useState<SavingsGoal | null>(null);
+  const [goalName, setGoalName] = useState("");
+  const [depositType, setDepositType] = useState<SavingsGoalDepositType>("CASH");
   const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [rows, setRows] = useState<Record<string, PlannerRow>>({});
@@ -127,11 +144,16 @@ export function SavingsPlanner({
       });
 
       setGoal(activeGoal);
+      setGoalName(activeGoal.name || "");
+      setDepositType(normalizeDepositType(activeGoal.depositType));
       setFrequency(config.frequency ?? "MONTHLY");
       setColumns([...expenseColumns]);
       setRows(hydratedRows);
     } catch {
-      setGoal(createDefaultGoal(year));
+      const fallbackGoal = createDefaultGoal(year);
+      setGoal(fallbackGoal);
+      setGoalName(fallbackGoal.name);
+      setDepositType(fallbackGoal.depositType);
       setFrequency("MONTHLY");
       setColumns(DEFAULT_COLUMNS);
       setRows({});
@@ -204,6 +226,8 @@ export function SavingsPlanner({
       const now = nowText();
       const nextGoal = {
         ...goal,
+        name: goalName.trim() || `${year} 年度储蓄`,
+        depositType: normalizeDepositType(depositType),
         planConfig: JSON.stringify({ frequency, columns }),
         updatedAt: now,
       };
@@ -279,6 +303,33 @@ export function SavingsPlanner({
           </div>
         ) : null}
 
+        <div className="savings-goal-editor">
+          <label className="savings-goal-field">
+            <span>储蓄名称</span>
+            <input
+              value={goalName}
+              onChange={(event) => setGoalName(event.target.value)}
+              placeholder="存钱要买什么，如新手机"
+              maxLength={24}
+            />
+          </label>
+          <div className="savings-goal-field">
+            <span>存储类型</span>
+            <div className="savings-deposit-switch" role="tablist" aria-label="存储类型">
+              {DEPOSIT_TYPE_OPTIONS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={depositType === item.value ? "active" : ""}
+                  onClick={() => setDepositType(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="savings-plan-toolbar">
           <div className="savings-mode-switch" role="tablist" aria-label="储蓄频率">
             <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
@@ -336,3 +387,5 @@ export function SavingsPlanner({
     </div>
   );
 }
+
+export { depositTypeLabel };
