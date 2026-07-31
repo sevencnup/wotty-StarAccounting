@@ -7,7 +7,6 @@ import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
-const localRepo = new DataModeManager().getLocalRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
 
 type PlannerRow = {
@@ -46,6 +45,25 @@ function monthLabel(month: string) {
   return `${Number(month.slice(5, 7))}月`;
 }
 
+function createDefaultGoal(year: number): SavingsGoal {
+  const now = nowText();
+  return {
+    id: crypto.randomUUID(),
+    userId: "local-user",
+    accountId: "default",
+    name: `${year} 年度储蓄`,
+    targetAmount: 0,
+    currentAmount: 0,
+    deadline: `${year}-12-31`,
+    type: "LONG_TERM",
+    status: "ACTIVE",
+    depositType: "CASH",
+    planConfig: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
 export function SavingsPlanner({
   onSaved,
   embedded = false,
@@ -73,7 +91,7 @@ export function SavingsPlanner({
     try {
       await repo.saveSavingsGoal(nextGoal);
     } catch {
-      await localRepo.saveSavingsGoal(nextGoal);
+      // The planner should stay usable even when both cloud and IndexedDB writes fail.
     }
   }
 
@@ -81,56 +99,46 @@ export function SavingsPlanner({
     try {
       await repo.saveSavingsPlan(plan);
     } catch {
-      await localRepo.saveSavingsPlan(plan);
+      // Saving the rest of the batch should continue if one target is unavailable.
     }
   }
 
   async function loadPlanner() {
-    let goals = await repo.getSavingsGoals("default");
-    if (!goals.length) {
-      const now = nowText();
-      const defaultGoal: SavingsGoal = {
-        id: crypto.randomUUID(),
-        userId: "local-user",
-        accountId: "default",
-        name: `${year} 年度储蓄`,
-        targetAmount: 0,
-        currentAmount: 0,
-        deadline: `${year}-12-31`,
-        type: "LONG_TERM",
-        status: "ACTIVE",
-        depositType: "CASH",
-        planConfig: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await saveGoalWithFallback(defaultGoal);
-      goals = [defaultGoal];
+    try {
+      const goals = await repo.getSavingsGoals("default");
+      const activeGoal = goals[0] ?? createDefaultGoal(year);
+      if (!goals.length) void saveGoalWithFallback(activeGoal);
+
+      const config = parseConfig(activeGoal.planConfig);
+      const plans = await repo.getSavingsPlans(activeGoal.id);
+      const hydratedRows: Record<string, PlannerRow> = {};
+      const expenseColumns = new Set(config.columns?.length ? config.columns : DEFAULT_COLUMNS);
+
+      plans.forEach((plan) => {
+        const expenses = parseExpenses(plan.expenses);
+        Object.keys(expenses).forEach((column) => expenseColumns.add(column));
+        hydratedRows[plan.month] = {
+          id: plan.id,
+          createdAt: plan.createdAt,
+          salary: plan.salary ? String(plan.salary) : "",
+          expected: plan.amount ? String(plan.amount) : "",
+          expenses,
+        };
+      });
+
+      setGoal(activeGoal);
+      setFrequency(config.frequency ?? "MONTHLY");
+      setColumns([...expenseColumns]);
+      setRows(hydratedRows);
+    } catch {
+      setGoal(createDefaultGoal(year));
+      setFrequency("MONTHLY");
+      setColumns(DEFAULT_COLUMNS);
+      setRows({});
+      setNotice("储蓄计划已进入本地编辑模式");
+    } finally {
+      setLoading(false);
     }
-
-    const activeGoal = goals[0];
-    const config = parseConfig(activeGoal.planConfig);
-    const plans = await repo.getSavingsPlans(activeGoal.id);
-    const hydratedRows: Record<string, PlannerRow> = {};
-    const expenseColumns = new Set(config.columns?.length ? config.columns : DEFAULT_COLUMNS);
-
-    plans.forEach((plan) => {
-      const expenses = parseExpenses(plan.expenses);
-      Object.keys(expenses).forEach((column) => expenseColumns.add(column));
-      hydratedRows[plan.month] = {
-        id: plan.id,
-        createdAt: plan.createdAt,
-        salary: plan.salary ? String(plan.salary) : "",
-        expected: plan.amount ? String(plan.amount) : "",
-        expenses,
-      };
-    });
-
-    setGoal(activeGoal);
-    setFrequency(config.frequency ?? "MONTHLY");
-    setColumns([...expenseColumns]);
-    setRows(hydratedRows);
-    setLoading(false);
   }
 
   function rowFor(month: string): PlannerRow {
@@ -192,36 +200,41 @@ export function SavingsPlanner({
   async function savePlans() {
     if (!goal || saving) return;
     setSaving(true);
-    const now = nowText();
-    const nextGoal = {
-      ...goal,
-      planConfig: JSON.stringify({ frequency, columns }),
-      updatedAt: now,
-    };
-    await saveGoalWithFallback(nextGoal);
-
-    await Promise.all(months.map((month) => {
-      const row = rowFor(month);
-      const plan: SavingsPlan = {
-        id: row.id ?? `plan-${goal.id}-${month}`,
-        goalId: goal.id,
-        amount: Number(row.expected) || 0,
-        status: "PENDING",
-        month,
-        salary: Number(row.salary) || 0,
-        expenses: JSON.stringify(Object.fromEntries(columns.map((column) => [column, Number(row.expenses[column]) || 0]))),
-        remark: frequency === "MONTHLY" ? "单月存模式" : "隔月存模式",
-        proofImage: null,
-        createdAt: row.createdAt ?? now,
+    try {
+      const now = nowText();
+      const nextGoal = {
+        ...goal,
+        planConfig: JSON.stringify({ frequency, columns }),
         updatedAt: now,
       };
-      return savePlanWithFallback(plan);
-    }));
+      await saveGoalWithFallback(nextGoal);
 
-    setGoal(nextGoal);
-    setSaving(false);
-    setNotice(`已保存 ${months.length} 个月的储蓄计划`);
-    onSaved?.();
+      await Promise.all(months.map((month) => {
+        const row = rowFor(month);
+        const plan: SavingsPlan = {
+          id: row.id ?? `plan-${goal.id}-${month}`,
+          goalId: goal.id,
+          amount: Number(row.expected) || 0,
+          status: "PENDING",
+          month,
+          salary: Number(row.salary) || 0,
+          expenses: JSON.stringify(Object.fromEntries(columns.map((column) => [column, Number(row.expenses[column]) || 0]))),
+          remark: frequency === "MONTHLY" ? "单月存模式" : "隔月存模式",
+          proofImage: null,
+          createdAt: row.createdAt ?? now,
+          updatedAt: now,
+        };
+        return savePlanWithFallback(plan);
+      }));
+
+      setGoal(nextGoal);
+      setNotice(`已保存 ${months.length} 个月的储蓄计划`);
+      onSaved?.();
+    } catch {
+      setNotice("保存失败，请稍后重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const totals = useMemo(() => months.reduce((result, month) => {
