@@ -98,8 +98,7 @@ export class DataModeManager {
 
   constructor() {
     if (typeof window !== "undefined") {
-      this.currentMode = "CLOUD";
-      setCurrentDataMode("CLOUD");
+      this.currentMode = getCurrentDataMode() as DataMode;
     }
   }
 
@@ -117,11 +116,6 @@ export class DataModeManager {
 
   async switchMode(mode: DataMode) {
     this.currentMode = mode;
-    if (mode === "LOCAL") {
-      setCurrentDataMode(mode);
-      return;
-    }
     setCurrentDataMode(mode);
-    this.currentMode = mode;
   }
 }

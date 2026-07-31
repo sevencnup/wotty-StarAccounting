@@ -1,244 +1,195 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import packageInfo from "../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { PageSkeleton } from "@/components/stark/Skeleton";
+import { detectBillPlatform, parseBillCsv } from "@/lib/stark/import/bill-csv";
+import type { BillPlatform } from "@/lib/stark/import/bill-csv";
+import type { DataMode, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { formatMoney, nowText } from "@/lib/stark/utils/format";
-import type { Asset, AssetType, Transaction } from "@/lib/stark/models";
+import { getCloudApiUrl, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
+import { nowText } from "@/lib/stark/utils/format";
 
-const repo = new DataModeManager().getRepository();
-const ACCOUNT_SETTINGS_KEY = "wotty-stark:account-page-settings";
-const assetTypes: AssetType[] = ["CASH", "BANK_CARD", "ALIPAY", "WECHAT", "INVESTMENT", "OTHER"];
-const typeMeta: Record<AssetType, { label: string; short: string; className: string; platforms: string[] }> = {
-  CASH: { label: "现金", short: "现", className: "cash", platforms: ["现金"] },
-  BANK_CARD: { label: "银行卡", short: "卡", className: "bank", platforms: ["银行卡", "银行"] },
-  ALIPAY: { label: "支付宝", short: "支", className: "alipay", platforms: ["支付宝"] },
-  WECHAT: { label: "微信", short: "微", className: "wechat", platforms: ["微信"] },
-  INVESTMENT: { label: "投资", short: "投", className: "investment", platforms: ["投资", "理财"] },
-  OTHER: { label: "其他", short: "其", className: "other", platforms: ["其他"] },
+const manager = new DataModeManager();
+const UI_SETTINGS_KEY = "wotty-stark:ui-settings";
+
+type ThemeChoice = "BLUE" | "GREEN" | "AMBER";
+type LanguageChoice = "SYSTEM" | "ZH_CN";
+type FontChoice = "SMALL" | "STANDARD" | "LARGE";
+type PanelKey = "MODE" | "IMPORT" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
+
+type UiSettings = {
+  theme: ThemeChoice;
+  language: LanguageChoice;
+  font: FontChoice;
 };
 
-type AccountSort = "BALANCE" | "UPDATED" | "NAME";
-type AccountSettings = {
-  defaultAccountId: string;
-  sort: AccountSort;
-  showBalance: boolean;
-  autoMatch: boolean;
-};
+const defaultUiSettings: UiSettings = { theme: "BLUE", language: "SYSTEM", font: "STANDARD" };
+const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
+const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文" };
+const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
 
-const defaultSettings: AccountSettings = {
-  defaultAccountId: "",
-  sort: "BALANCE",
-  showBalance: true,
-  autoMatch: true,
-};
+function applyUiSettings(settings: UiSettings) {
+  document.documentElement.dataset.appTheme = settings.theme.toLowerCase();
+  document.documentElement.dataset.fontSize = settings.font.toLowerCase();
+  document.documentElement.lang = settings.language === "SYSTEM" ? navigator.language : "zh-CN";
+}
 
-function readAccountSettings(): AccountSettings {
+function readUiSettings() {
   try {
-    const stored = window.localStorage.getItem(ACCOUNT_SETTINGS_KEY);
-    return stored ? { ...defaultSettings, ...JSON.parse(stored) as Partial<AccountSettings> } : defaultSettings;
+    const stored = window.localStorage.getItem(UI_SETTINGS_KEY);
+    return stored ? { ...defaultUiSettings, ...JSON.parse(stored) as Partial<UiSettings> } : defaultUiSettings;
   } catch {
-    return defaultSettings;
+    return defaultUiSettings;
   }
 }
 
-function updatedLabel(value: string) {
-  const date = new Date(value.replace(" ", "T"));
-  if (Number.isNaN(date.getTime())) return "暂无更新时间";
-  const now = new Date();
-  const days = Math.floor((now.getTime() - date.getTime()) / 86_400_000);
-  if (days <= 0) return "今天更新";
-  if (days === 1) return "昨天更新";
-  if (days < 30) return `${days} 天前更新`;
-  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} 更新`;
+function SettingIcon({ type }: { type: PanelKey }) {
+  const paths: Record<PanelKey, React.ReactNode> = {
+    MODE: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
+    IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
+    THEME: <><path d="M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12Z" /><circle cx="7.5" cy="10" r=".7" /><circle cx="9" cy="6.5" r=".7" /><circle cx="14" cy="6" r=".7" /></>,
+    LANGUAGE: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" /></>,
+    FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
+    HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
+    ABOUT: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[type]}</svg>;
 }
 
-function accountActivity(asset: Asset, transactions: Transaction[]) {
-  const keys = [...typeMeta[asset.type].platforms, asset.name].filter(Boolean);
-  const records = transactions.filter((item) => keys.some((key) => item.platform.includes(key) || item.merchant?.includes(key)));
-  const latest = [...records].sort((a, b) => b.date.localeCompare(a.date))[0];
-  return { count: records.length, latest: latest?.date ?? asset.updatedAt };
+function ChevronIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>;
+}
+
+function SettingsRow({ type, title, value, onClick }: { type: PanelKey; title: string; value?: string; onClick: () => void }) {
+  return (
+    <button type="button" className="settings-center-row" onClick={onClick}>
+      <span className={`settings-center-icon ${type.toLowerCase()}`}><SettingIcon type={type} /></span>
+      <strong>{title}</strong>
+      {value ? <span className="settings-center-value">{value}</span> : null}
+      <span className="settings-center-chevron"><ChevronIcon /></span>
+    </button>
+  );
 }
 
 export default function AccountsPage() {
-  const [list, setList] = useState<Asset[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"ALL" | AssetType>("ALL");
-  const [name, setName] = useState("");
-  const [balance, setBalance] = useState("");
-  const [type, setType] = useState<AssetType>("ALIPAY");
-  const [settings, setSettings] = useState<AccountSettings>(defaultSettings);
-
-  const reload = () => void repo.getAssets("default").then(setList);
+  const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
+  const [mode, setMode] = useState<DataMode>("CLOUD");
+  const [cloudUrl, setCloudUrl] = useState("http://localhost:8080");
+  const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
+  const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
+  const [importMessage, setImportMessage] = useState("支持微信、支付宝导出的 CSV 账单");
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setSettings(readAccountSettings());
+    const saved = readUiSettings();
+    setUiSettings(saved);
+    applyUiSettings(saved);
+    setMode(getCurrentDataMode() as DataMode);
+    setCloudUrl(getCloudApiUrl());
   }, []);
 
-  useEffect(() => {
-    let active = true;
-    void Promise.all([repo.getAssets("default"), repo.getTransactions("default", 1, 200)])
-      .then(([assets, records]) => {
-        if (!active) return;
-        setList(assets);
-        setTransactions(records);
-      }).finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
-
-  const summary = useMemo(() => {
-    const positive = list.filter((item) => item.balance >= 0);
-    const total = positive.reduce((sum, item) => sum + item.balance, 0);
-    const average = positive.length ? total / positive.length : 0;
-    const sorted = [...positive].sort((a, b) => b.balance - a.balance);
-    const primary = positive.find((item) => item.id === settings.defaultAccountId) ?? sorted[0] ?? null;
-    const topThree = sorted.slice(0, 3);
-    const topThreeTotal = topThree.reduce((sum, item) => sum + item.balance, 0);
-    const concentration = total > 0 ? (topThreeTotal / total) * 100 : 0;
-    return { positive, total, average, primary, topThree, concentration };
-  }, [list, settings.defaultAccountId]);
-
-  const visibleAccounts = useMemo(() => (
-    summary.positive
-      .filter((item) => filter === "ALL" || item.type === filter)
-      .sort((a, b) => {
-        if (settings.sort === "UPDATED") return b.updatedAt.localeCompare(a.updatedAt);
-        if (settings.sort === "NAME") return a.name.localeCompare(b.name, "zh-CN");
-        return b.balance - a.balance;
-      })
-  ), [summary.positive, filter, settings.sort]);
-
-  function updateSetting<K extends keyof AccountSettings>(key: K, value: AccountSettings[K]) {
-    setSettings((current) => {
+  function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
+    setUiSettings((current) => {
       const next = { ...current, [key]: value };
-      window.localStorage.setItem(ACCOUNT_SETTINGS_KEY, JSON.stringify(next));
+      window.localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(next));
+      applyUiSettings(next);
       return next;
     });
   }
 
-  function money(value: number) {
-    return settings.showBalance ? `¥ ${formatMoney(value)}` : "¥ ••••";
+  async function switchMode(nextMode: DataMode) {
+    if (nextMode === "CLOUD") setCloudApiUrl(cloudUrl.trim() || "http://localhost:8080");
+    await manager.switchMode(nextMode);
+    setMode(nextMode);
+    setActivePanel(null);
+    window.location.reload();
   }
 
-  async function saveAsset() {
-    const now = nowText();
-    await repo.saveAsset({
-      id: crypto.randomUUID(), userId: "local-user", accountId: "default",
-      name: name.trim() || "新账户", type, balance: Number(balance) || 0, currency: "CNY",
-      createdAt: now, updatedAt: now,
-    });
-    setName("");
-    setBalance("");
-    setType("ALIPAY");
-    reload();
-  }
+  async function importBill(file: File) {
+    setImporting(true);
+    setImportMessage("正在读取账单...");
+    try {
+      const bytes = await file.arrayBuffer();
+      let content = new TextDecoder("utf-8").decode(bytes);
+      if (content.includes("�")) content = new TextDecoder("gb18030").decode(bytes);
+      const platform = detectBillPlatform(content, file.name);
+      const rows = parseBillCsv(content, platform);
+      setImportPlatform(platform);
+      if (!rows.length) {
+        setImportMessage("没有识别到有效流水，请确认文件是微信或支付宝 CSV 账单");
+        return;
+      }
 
-  if (loading) return <PageSkeleton title="账户" cards={4} />;
+      const now = nowText();
+      const transactions: Transaction[] = rows.map((row) => ({
+        id: crypto.randomUUID(), userId: "local-user", accountId: "default",
+        amount: row.amount, type: row.type, category: row.category, platform: row.platform,
+        merchant: row.merchant, date: row.date, description: row.description,
+        orderId: null, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
+        createdAt: now, updatedAt: now,
+      }));
+      const result = await manager.getRepository().importTransactions(transactions);
+      setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔`);
+    } catch {
+      setImportMessage("账单导入失败，请检查文件编码和数据格式");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   return (
-    <div className="page-stack finance-page accounts-page">
+    <div className="page-stack settings-center-page">
       <PageTopBar title="账户" />
 
-      <section className="account-wallet-hero">
-        <div className="account-wallet-copy">
-          <span>可用账户余额</span>
-          <strong>{money(summary.total)}</strong>
-          <p>{summary.positive.length} 个资金账户已纳入汇总</p>
-        </div>
-        <div className="account-wallet-orbit" aria-hidden="true">
-          <i /><i /><i />
-          <span>{summary.primary ? typeMeta[summary.primary.type].short : "账"}</span>
-        </div>
-        <div className="account-wallet-stats">
-          <div><span>平均余额</span><strong>{money(summary.average)}</strong></div>
-          <div><span>主账户</span><strong>{summary.primary?.name ?? "暂无"}</strong></div>
-        </div>
+      <section className="settings-center-group">
+        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={() => setActivePanel("MODE")} />
+        <SettingsRow type="IMPORT" title="导入账单" value="微信 / 支付宝" onClick={() => setActivePanel("IMPORT")} />
       </section>
 
-      <section className="account-browser-section">
-        <div className="finance-section-head"><h2>我的账户</h2><span>{visibleAccounts.length} 个</span></div>
-        <div className="account-filter-strip" role="tablist" aria-label="账户类型筛选">
-          <button type="button" className={filter === "ALL" ? "active" : ""} onClick={() => setFilter("ALL")}>全部</button>
-          {assetTypes.map((item) => <button type="button" key={item} className={filter === item ? "active" : ""} onClick={() => setFilter(item)}>{typeMeta[item].label}</button>)}
-        </div>
-        <div className="account-card-grid">
-          {visibleAccounts.length ? visibleAccounts.map((asset) => {
-            const meta = typeMeta[asset.type];
-            const activity = settings.autoMatch ? accountActivity(asset, transactions) : { count: 0, latest: asset.updatedAt };
-            const share = summary.total > 0 ? (asset.balance / summary.total) * 100 : 0;
-            return (
-              <article className={`account-wallet-card ${meta.className}`} key={asset.id}>
-                <div className="account-wallet-head"><i>{meta.short}</i><span>{meta.label}</span><em>{share.toFixed(1)}%</em></div>
-                <strong>{asset.name}</strong>
-                <div className="account-wallet-balance">{money(asset.balance)}</div>
-                <div className="account-wallet-foot"><span>{settings.autoMatch ? `${activity.count} 笔匹配流水` : "流水匹配已关闭"}</span><time>{updatedLabel(activity.latest)}</time></div>
-              </article>
-            );
-          }) : <div className="finance-empty bordered">当前分类下暂无账户</div>}
-        </div>
+      <section className="settings-center-group">
+        <SettingsRow type="THEME" title="主题" value={themeLabels[uiSettings.theme]} onClick={() => setActivePanel("THEME")} />
+        <SettingsRow type="LANGUAGE" title="语言" value={languageLabels[uiSettings.language]} onClick={() => setActivePanel("LANGUAGE")} />
+        <SettingsRow type="FONT" title="字体大小" value={fontLabels[uiSettings.font]} onClick={() => setActivePanel("FONT")} />
       </section>
 
-      <section className="home-card finance-section account-focus-section">
-        <div className="finance-section-head"><h2>资金集中度</h2><span>前 3 个账户</span></div>
-        <div className="account-focus-summary">
-          <strong>{Math.round(summary.concentration)}%</strong>
-          <span>{summary.concentration <= 70 ? "资金分布较均衡" : "资金集中在少数账户"}</span>
-        </div>
-        <div className="account-focus-track">
-          {summary.topThree.map((asset) => <span key={asset.id} className={typeMeta[asset.type].className} style={{ width: `${summary.total > 0 ? (asset.balance / summary.total) * 100 : 0}%` }} />)}
-        </div>
-        <div className="account-focus-list">
-          {summary.topThree.map((asset, index) => (
-            <div key={asset.id}><span><i>{index + 1}</i>{asset.name}</span><strong>{money(asset.balance)}</strong></div>
-          ))}
-          {!summary.topThree.length ? <div className="finance-empty">暂无账户余额</div> : null}
-        </div>
+      <section className="settings-center-group">
+        <SettingsRow type="HELP" title="帮助与反馈" onClick={() => setActivePanel("HELP")} />
+        <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
 
-      <section className="home-card finance-section account-settings-section">
-        <div className="finance-section-head"><h2>账户设置</h2><span>自动保存在本机</span></div>
-        <div className="account-settings-list">
-          <label className="account-setting-row">
-            <span><strong>默认账户</strong><small>用于首页和账户页优先展示</small></span>
-            <select value={settings.defaultAccountId} onChange={(event) => updateSetting("defaultAccountId", event.target.value)}>
-              <option value="">余额最高账户</option>
-              {summary.positive.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
-            </select>
-          </label>
-          <label className="account-setting-row">
-            <span><strong>账户排序</strong><small>调整钱包卡片排列方式</small></span>
-            <select value={settings.sort} onChange={(event) => updateSetting("sort", event.target.value as AccountSort)}>
-              <option value="BALANCE">余额从高到低</option>
-              <option value="UPDATED">最近更新优先</option>
-              <option value="NAME">按名称排序</option>
-            </select>
-          </label>
-          <div className="account-setting-row">
-            <span><strong>显示账户余额</strong><small>关闭后金额以圆点隐藏</small></span>
-            <button type="button" role="switch" aria-checked={settings.showBalance} className={`account-setting-switch ${settings.showBalance ? "active" : ""}`} onClick={() => updateSetting("showBalance", !settings.showBalance)}><i /></button>
-          </div>
-          <div className="account-setting-row">
-            <span><strong>自动匹配流水</strong><small>按账户类型和名称关联记录</small></span>
-            <button type="button" role="switch" aria-checked={settings.autoMatch} className={`account-setting-switch ${settings.autoMatch ? "active" : ""}`} onClick={() => updateSetting("autoMatch", !settings.autoMatch)}><i /></button>
-          </div>
-        </div>
-      </section>
+      {activePanel ? (
+        <div className="settings-sheet-overlay visible" onClick={() => setActivePanel(null)}>
+          <section className="settings-sheet" onClick={(event) => event.stopPropagation()}>
+            <div className="settings-sheet-handle" />
+            <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
 
-      <section className="home-card finance-section finance-create-section account-create-section">
-        <div className="finance-section-head"><h2>添加账户</h2><span>建立新的资金容器</span></div>
-        <div className="account-type-picker" role="radiogroup" aria-label="账户类型">
-          {assetTypes.map((item) => <button type="button" key={item} className={type === item ? "active" : ""} onClick={() => setType(item)}><i className={typeMeta[item].className}>{typeMeta[item].short}</i><span>{typeMeta[item].label}</span></button>)}
+            {activePanel === "MODE" ? <div className="settings-sheet-body">
+              <p className="settings-sheet-note">本地模式可离线使用；云端模式连接后端数据库，并在失败时自动读取本地数据。</p>
+              <div className="settings-choice-grid">
+                <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => void switchMode("LOCAL")}><strong>本地模式</strong><span>数据保存在当前设备</span></button>
+                <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={() => void switchMode("CLOUD")}><strong>云端模式</strong><span>连接 MySQL 后端服务</span></button>
+              </div>
+              <label className="settings-url-field"><span>云端服务地址</span><input value={cloudUrl} onChange={(event) => setCloudUrl(event.target.value)} placeholder="http://localhost:8080" /></label>
+            </div> : null}
+
+            {activePanel === "IMPORT" ? <div className="settings-sheet-body">
+              <div className="bill-import-platform"><span className={importPlatform === "微信" ? "wechat" : "alipay"}>{importPlatform.slice(0, 1)}</span><div><strong>{importPlatform}账单</strong><p>{importMessage}</p></div></div>
+              <input ref={fileInputRef} type="file" hidden accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBill(file); }} />
+              <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : "选择 CSV 账单"}</button>
+              <p className="settings-sheet-tip">请在微信支付或支付宝账单页面导出 CSV 文件，无需手动修改表头。</p>
+            </div> : null}
+
+            {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
+            {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : "固定使用简体中文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
+            {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
+            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>先在切换模式中确认当前数据源，云端模式还需要后端服务可访问。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV 文件。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">前往 GitHub 提交反馈 <ChevronIcon /></a></div> : null}
+            {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星记账</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div></div> : null}
+          </section>
         </div>
-        <div className="finance-form-grid account-form-grid">
-          <label><span>账户名称</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="如日常消费卡" /></label>
-          <label><span>当前余额</span><input inputMode="decimal" value={balance} onChange={(event) => setBalance(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" /></label>
-        </div>
-        <button type="button" className="finance-primary-action" onClick={() => void saveAsset()}>添加账户</button>
-      </section>
+      ) : null}
     </div>
   );
 }

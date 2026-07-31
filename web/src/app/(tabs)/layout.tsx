@@ -10,6 +10,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const isJournalRoute = pathname.startsWith("/journal");
   const isSavingsRoute = pathname.startsWith("/savings");
+  const isSettingsRoute = pathname.startsWith("/accounts");
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | null>(null);
   const journalHistoryRef = useRef(false);
@@ -66,7 +67,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     >
       <main className="tabs-shell">{mainContent}</main>
       {!isJournalRoute ? <MobileBottomNav onNavigateStart={beginNavigation} /> : null}
-      {!isJournalRoute && !journalVariant ? (
+      {!isJournalRoute && !isSettingsRoute && !journalVariant ? (
         <button type="button" className="global-journal-trigger" onClick={openJournal}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19" />
