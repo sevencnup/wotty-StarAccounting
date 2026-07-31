@@ -58,16 +58,22 @@ export function detectBillPlatform(content: string, filename = ""): BillPlatform
   return source.includes("支付宝") ? "支付宝" : "微信";
 }
 
-export function parseBillCsv(content: string, platform = detectBillPlatform(content)): BillImportRow[] {
+function parsePlatformBill(content: string, platform: BillPlatform): BillImportRow[] {
   const lines = content.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
+  const detected = detectBillPlatform(content);
+  const hasPlatformMarker = content.slice(0, 600).includes("微信") || content.slice(0, 600).includes("支付宝");
+  if (hasPlatformMarker && detected !== platform) return [];
+
+  const dateHeaders = platform === "微信" ? ["交易时间"] : ["交易创建时间", "交易时间"];
   const headerLineIndex = lines.findIndex((line) => {
     const cells = parseCsvLine(line);
-    return cells.some((cell) => cell.includes("交易时间")) && cells.some((cell) => cell.includes("金额"));
+    return cells.some((cell) => dateHeaders.some((name) => cell.includes(name)))
+      && cells.some((cell) => cell.includes("金额"));
   });
   if (headerLineIndex < 0) return [];
 
   const headers = parseCsvLine(lines[headerLineIndex]).map((item) => item.replace(/\s/g, ""));
-  const dateIndex = headerIndex(headers, ["交易时间", "交易创建时间"]);
+  const dateIndex = headerIndex(headers, dateHeaders);
   const amountIndex = headerIndex(headers, ["金额(元)", "金额（元）", "交易金额", "金额"]);
   const directionIndex = headerIndex(headers, ["收/支", "收支", "资金状态"]);
   const merchantIndex = headerIndex(headers, ["交易对方", "对方名称", "商户名称"]);
@@ -105,4 +111,16 @@ export function parseBillCsv(content: string, platform = detectBillPlatform(cont
       status: valueAt(cells, statusIndex) || null,
     }];
   });
+}
+
+export function parseWechatBillCsv(content: string) {
+  return parsePlatformBill(content, "微信");
+}
+
+export function parseAlipayBillCsv(content: string) {
+  return parsePlatformBill(content, "支付宝");
+}
+
+export function parseBillCsv(content: string, platform = detectBillPlatform(content)): BillImportRow[] {
+  return platform === "支付宝" ? parseAlipayBillCsv(content) : parseWechatBillCsv(content);
 }

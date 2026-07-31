@@ -17,6 +17,7 @@ type ThemeChoice = "BLUE" | "GREEN" | "AMBER";
 type LanguageChoice = "SYSTEM" | "ZH_CN";
 type FontChoice = "SMALL" | "STANDARD" | "LARGE";
 type PanelKey = "MODE" | "IMPORT" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
+type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
 
 type UiSettings = {
   theme: ThemeChoice;
@@ -75,7 +76,11 @@ function SettingsRow({ type, title, value, onClick }: { type: PanelKey; title: s
 export default function AccountsPage() {
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [mode, setMode] = useState<DataMode>("CLOUD");
+  const [pendingMode, setPendingMode] = useState<DataMode>("CLOUD");
   const [cloudUrl, setCloudUrl] = useState("http://localhost:8080");
+  const [connectionState, setConnectionState] = useState<ConnectionState>("IDLE");
+  const [connectionMessage, setConnectionMessage] = useState("请先测试云端服务是否可连接");
+  const [testedUrl, setTestedUrl] = useState("");
   const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
   const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
   const [importMessage, setImportMessage] = useState("支持微信、支付宝导出的 CSV 账单");
@@ -86,7 +91,9 @@ export default function AccountsPage() {
     const saved = readUiSettings();
     setUiSettings(saved);
     applyUiSettings(saved);
-    setMode(getCurrentDataMode() as DataMode);
+    const savedMode = getCurrentDataMode() as DataMode;
+    setMode(savedMode);
+    setPendingMode(savedMode);
     setCloudUrl(getCloudApiUrl());
   }, []);
 
@@ -99,10 +106,51 @@ export default function AccountsPage() {
     });
   }
 
-  async function switchMode(nextMode: DataMode) {
-    if (nextMode === "CLOUD") setCloudApiUrl(cloudUrl.trim() || "http://localhost:8080");
-    await manager.switchMode(nextMode);
-    setMode(nextMode);
+  function openModePanel() {
+    setPendingMode(mode);
+    setConnectionState("IDLE");
+    setConnectionMessage("请先测试云端服务是否可连接");
+    setTestedUrl("");
+    setActivePanel("MODE");
+  }
+
+  function selectImportPlatform(platform: BillPlatform) {
+    setImportPlatform(platform);
+    setImportMessage(`请选择${platform}官方导出的 CSV 账单`);
+  }
+
+  async function testCloudConnection() {
+    const url = (cloudUrl.trim() || "http://localhost:8080").replace(/\/$/, "");
+    setConnectionState("TESTING");
+    setConnectionMessage("正在测试连接...");
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), 5000);
+    try {
+      const response = await fetch(`${url}/api/health`, { signal: controller.signal });
+      const payload = await response.json() as { status?: string };
+      if (!response.ok || payload.status !== "ok") throw new Error("Invalid health response");
+      setConnectionState("SUCCESS");
+      setConnectionMessage("连接成功，可以切换到云端模式");
+      setTestedUrl(url);
+    } catch {
+      setConnectionState("ERROR");
+      setConnectionMessage("连接失败，请检查地址、后端服务和网络权限");
+      setTestedUrl("");
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
+  async function confirmMode() {
+    const url = (cloudUrl.trim() || "http://localhost:8080").replace(/\/$/, "");
+    if (pendingMode === "CLOUD" && (connectionState !== "SUCCESS" || testedUrl !== url)) {
+      setConnectionState("ERROR");
+      setConnectionMessage("请先测试当前云端地址，连接成功后才能确定");
+      return;
+    }
+    if (pendingMode === "CLOUD") setCloudApiUrl(url);
+    await manager.switchMode(pendingMode);
+    setMode(pendingMode);
     setActivePanel(null);
     window.location.reload();
   }
@@ -114,11 +162,12 @@ export default function AccountsPage() {
       const bytes = await file.arrayBuffer();
       let content = new TextDecoder("utf-8").decode(bytes);
       if (content.includes("�")) content = new TextDecoder("gb18030").decode(bytes);
-      const platform = detectBillPlatform(content, file.name);
-      const rows = parseBillCsv(content, platform);
-      setImportPlatform(platform);
+      const detectedPlatform = detectBillPlatform(content, file.name);
+      const rows = parseBillCsv(content, importPlatform);
       if (!rows.length) {
-        setImportMessage("没有识别到有效流水，请确认文件是微信或支付宝 CSV 账单");
+        setImportMessage(detectedPlatform !== importPlatform
+          ? `当前选择的是${importPlatform}，但文件看起来是${detectedPlatform}账单`
+          : `没有识别到有效${importPlatform}流水，请检查 CSV 文件格式`);
         return;
       }
 
@@ -145,7 +194,7 @@ export default function AccountsPage() {
       <PageTopBar title="账户" />
 
       <section className="settings-center-group">
-        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={() => setActivePanel("MODE")} />
+        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={openModePanel} />
         <SettingsRow type="IMPORT" title="导入账单" value="微信 / 支付宝" onClick={() => setActivePanel("IMPORT")} />
       </section>
 
@@ -169,17 +218,28 @@ export default function AccountsPage() {
             {activePanel === "MODE" ? <div className="settings-sheet-body">
               <p className="settings-sheet-note">本地模式可离线使用；云端模式连接后端数据库，并在失败时自动读取本地数据。</p>
               <div className="settings-choice-grid">
-                <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => void switchMode("LOCAL")}><strong>本地模式</strong><span>数据保存在当前设备</span></button>
-                <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={() => void switchMode("CLOUD")}><strong>云端模式</strong><span>连接 MySQL 后端服务</span></button>
+                <button type="button" className={pendingMode === "LOCAL" ? "active" : ""} onClick={() => setPendingMode("LOCAL")}><strong>本地模式</strong><span>数据保存在当前设备</span></button>
+                <button type="button" className={pendingMode === "CLOUD" ? "active" : ""} onClick={() => setPendingMode("CLOUD")}><strong>云端模式</strong><span>连接 MySQL 后端服务</span></button>
               </div>
-              <label className="settings-url-field"><span>云端服务地址</span><input value={cloudUrl} onChange={(event) => setCloudUrl(event.target.value)} placeholder="http://localhost:8080" /></label>
+              {pendingMode === "CLOUD" ? <>
+                <label className="settings-url-field"><span>云端服务地址</span><input value={cloudUrl} onChange={(event) => { setCloudUrl(event.target.value); setConnectionState("IDLE"); setTestedUrl(""); }} placeholder="http://localhost:8080" /></label>
+                <div className={`cloud-test-status ${connectionState.toLowerCase()}`}>{connectionMessage}</div>
+              </> : null}
+              <div className="settings-mode-actions">
+                {pendingMode === "CLOUD" ? <button type="button" className="settings-test-button" disabled={connectionState === "TESTING"} onClick={() => void testCloudConnection()}>{connectionState === "TESTING" ? "测试中..." : "测试连接"}</button> : null}
+                <button type="button" className="settings-confirm-button" onClick={() => void confirmMode()}>确定</button>
+              </div>
             </div> : null}
 
             {activePanel === "IMPORT" ? <div className="settings-sheet-body">
-              <div className="bill-import-platform"><span className={importPlatform === "微信" ? "wechat" : "alipay"}>{importPlatform.slice(0, 1)}</span><div><strong>{importPlatform}账单</strong><p>{importMessage}</p></div></div>
+              <div className="bill-platform-picker">
+                <button type="button" className={importPlatform === "微信" ? "active wechat" : "wechat"} onClick={() => selectImportPlatform("微信")}><span>微</span><div><strong>微信账单</strong><small>微信支付 CSV 格式</small></div></button>
+                <button type="button" className={importPlatform === "支付宝" ? "active alipay" : "alipay"} onClick={() => selectImportPlatform("支付宝")}><span>支</span><div><strong>支付宝账单</strong><small>支付宝交易记录 CSV</small></div></button>
+              </div>
+              <div className={`bill-import-message ${importMessage.startsWith("已导入") ? "success" : ""}`}>{importMessage}</div>
               <input ref={fileInputRef} type="file" hidden accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBill(file); }} />
-              <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : "选择 CSV 账单"}</button>
-              <p className="settings-sheet-tip">请在微信支付或支付宝账单页面导出 CSV 文件，无需手动修改表头。</p>
+              <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : `选择${importPlatform} CSV 账单`}</button>
+              <p className="settings-sheet-tip">两个平台字段不同，请先选择正确平台，再上传对应官方 CSV 文件。</p>
             </div> : null}
 
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}

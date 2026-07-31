@@ -29,6 +29,18 @@ html[data-app-theme="amber"] {
 html[data-font-size="small"] { --user-font-scale: 0.92; }
 html[data-font-size="large"] { --user-font-scale: 1.1; }
 
+html[data-app-theme] .segment-button.active,
+html[data-app-theme] .primary-button,
+html[data-app-theme] .finance-primary-action {
+  background: var(--primary);
+}
+
+html[data-app-theme] .mobile-bottom-nav-item.active,
+html[data-app-theme] .global-journal-trigger,
+html[data-app-theme] .app-list-value {
+  color: var(--primary);
+}
+
 html {
   font-size: 15px;
   -webkit-tap-highlight-color: transparent;
@@ -3694,6 +3706,48 @@ nextjs-portal {
 .settings-url-field input { width: 100%; height: 37px; padding: 0 11px; border: 1px solid #dce5f0; border-radius: 9px; outline: none; color: #26344c; background: #f8fafd; font-size: 11px; }
 .settings-url-field input:focus { border-color: var(--primary); background: #ffffff; }
 
+.cloud-test-status {
+  min-height: 31px;
+  padding: 8px 10px;
+  border: 1px solid #e0e7f0;
+  border-radius: 9px;
+  color: #778298;
+  background: #f8fafd;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.cloud-test-status.testing { color: #936618; border-color: #f0d49e; background: #fff8e9; }
+.cloud-test-status.success { color: #26785c; border-color: #b9dfd0; background: #edf8f4; }
+.cloud-test-status.error { color: #a84e46; border-color: #efc8c4; background: #fff2f0; }
+
+.settings-mode-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.settings-mode-actions:has(.settings-confirm-button:only-child) {
+  grid-template-columns: 1fr;
+}
+
+.settings-test-button,
+.settings-confirm-button {
+  height: 39px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.settings-test-button {
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  background: #ffffff;
+}
+
+.settings-test-button:disabled { opacity: 0.55; }
+.settings-confirm-button { border: 0; color: #ffffff; background: var(--primary); }
+
 .bill-import-platform {
   display: flex;
   align-items: center;
@@ -3721,6 +3775,61 @@ nextjs-portal {
 .bill-import-platform div { display: grid; gap: 5px; min-width: 0; }
 .bill-import-platform strong { color: #182238; font-size: 12px; }
 .bill-import-platform p { margin: 0; color: #748097; font-size: 9px; line-height: 1.4; }
+
+.bill-platform-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bill-platform-picker button {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  min-height: 68px;
+  padding: 10px;
+  border: 1px solid #dfe6ef;
+  border-radius: 12px;
+  color: #334159;
+  background: #f9fbfe;
+  text-align: left;
+}
+
+.bill-platform-picker button.active {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.bill-platform-picker button > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: #ffffff;
+  background: #23aa73;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.bill-platform-picker button.alipay > span { background: #2e91e9; }
+.bill-platform-picker button > div { display: grid; gap: 5px; min-width: 0; }
+.bill-platform-picker strong { font-size: 11px; font-weight: 600; }
+.bill-platform-picker small { overflow: hidden; color: #7d899c; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+
+.bill-import-message {
+  min-height: 34px;
+  padding: 9px 10px;
+  border: 1px solid #e1e8f1;
+  border-radius: 9px;
+  color: #748097;
+  background: #f9fbfe;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.bill-import-message.success { color: #26785c; border-color: #b9dfd0; background: #edf8f4; }
 
 .settings-sheet-primary {
   width: 100%;
