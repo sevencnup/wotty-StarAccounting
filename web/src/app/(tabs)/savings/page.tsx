@@ -10,6 +10,7 @@ import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
+const localRepo = new DataModeManager().getLocalRepository();
 const PLAN_BLUE = "#3d86ff";
 const DONE_GREEN = "#18b66f";
 
@@ -153,12 +154,34 @@ export default function SavingsPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    void repo.getSavingsGoals("default").then(async (data) => {
-      const planGroups = await Promise.all(data.map((goal) => repo.getSavingsPlans(goal.id)));
-      setGoals(data);
-      setPlans(planGroups.flat());
-      setLoading(false);
-    });
+    let active = true;
+    async function loadSavingsDashboard() {
+      try {
+        const data = await repo.getSavingsGoals("default");
+        const planGroups = await Promise.all(data.map((goal) => repo.getSavingsPlans(goal.id)));
+        if (!active) return;
+        setGoals(data);
+        setPlans(planGroups.flat());
+      } catch {
+        try {
+          const data = await localRepo.getSavingsGoals("default");
+          const planGroups = await Promise.all(data.map((goal) => localRepo.getSavingsPlans(goal.id)));
+          if (!active) return;
+          setGoals(data);
+          setPlans(planGroups.flat());
+        } catch {
+          if (!active) return;
+          setGoals([]);
+          setPlans([]);
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
+    }
+    void loadSavingsDashboard();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const summary = useMemo(() => {
