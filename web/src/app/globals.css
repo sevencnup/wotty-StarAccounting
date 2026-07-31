@@ -1645,6 +1645,11 @@ button {
   box-shadow: 0 -10px 28px rgba(17, 24, 45, 0.16);
 }
 
+.journal-panel.savings {
+  gap: 8px;
+  background: #ffffff;
+}
+
 .journal-panel.visible {
   transform: translateY(0);
 }
@@ -1877,6 +1882,59 @@ button {
 .savings-plan-card {
   padding: 14px;
   overflow: hidden;
+}
+
+.savings-plan-card.embedded {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.savings-planner-shell.embedded {
+  display: grid;
+  gap: 8px;
+}
+
+.savings-panel-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.savings-panel-summary div {
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.savings-panel-summary span {
+  display: block;
+  color: #70809a;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.savings-panel-summary strong {
+  display: block;
+  margin-top: 6px;
+  color: #11182d;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-panel-summary strong.negative {
+  color: #df3f4f;
+}
+
+.savings-planner-loading {
+  padding: 20px 4px;
+  color: #70809a;
+  font-size: 12px;
+  text-align: center;
 }
 
 .savings-plan-toolbar {
