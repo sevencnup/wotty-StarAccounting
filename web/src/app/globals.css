@@ -1955,9 +1955,9 @@ button {
 
 .journal-overlay.visible {
   pointer-events: auto;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(17, 24, 39, 0.06);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .journal-panel {
@@ -1981,7 +1981,7 @@ button {
   padding: 12px 14px calc(20px + env(safe-area-inset-bottom));
   background: #ffffff;
   transform: translateY(100%);
-  box-shadow: 0 -10px 28px rgba(17, 24, 45, 0.16);
+  box-shadow: none;
 }
 
 .journal-panel.savings {

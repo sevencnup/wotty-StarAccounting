@@ -1,22 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { TabsTransitionSkeleton } from "@/components/stark/Skeleton";
+import { JournalPanel } from "@/components/stark/JournalPanel";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
   const pathname = usePathname();
   const isJournalRoute = pathname.startsWith("/journal");
   const isSavingsRoute = pathname.startsWith("/savings");
-  const hideJournalTrigger = isJournalRoute;
   const [pendingPath, setPendingPath] = useState<string | null>(null);
-  const lastTabContentRef = useRef<React.ReactNode | null>(null);
-
-  if (!isJournalRoute) {
-    lastTabContentRef.current = children;
-  }
+  const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | null>(null);
+  const journalHistoryRef = useRef(false);
 
   useEffect(() => {
     setPendingPath(null);
@@ -28,38 +24,49 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     return () => window.clearTimeout(timer);
   }, [pendingPath]);
 
+  useEffect(() => {
+    function handlePopState() {
+      if (!journalHistoryRef.current) return;
+      journalHistoryRef.current = false;
+      setJournalVariant(null);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   function beginNavigation(target: string) {
     if (target === pathname || target === "/journal") return;
     setPendingPath(target);
   }
 
   function openJournal() {
-    if (isSavingsRoute) {
-      window.sessionStorage.setItem("stark:journal-variant", "savings");
-      router.push("/journal/savings");
-      return;
-    }
-    window.sessionStorage.removeItem("stark:journal-variant");
-    router.push("/journal");
+    const variant = isSavingsRoute ? "savings" : "journal";
+    window.history.pushState({ starkJournal: true }, "", window.location.href);
+    journalHistoryRef.current = true;
+    setJournalVariant(variant);
   }
 
-  const mainContent = pendingPath
-    ? <TabsTransitionSkeleton />
-    : isJournalRoute
-      ? lastTabContentRef.current
-      : children;
+  function closeJournal() {
+    setJournalVariant(null);
+    if (!journalHistoryRef.current) return;
+    journalHistoryRef.current = false;
+    window.history.back();
+  }
+
+  const mainContent = pendingPath ? <TabsTransitionSkeleton /> : children;
 
   return (
     <div
       style={{
         minHeight: "100dvh",
         paddingTop: "env(safe-area-inset-top)",
-        background: isJournalRoute ? "transparent" : "#ffffff",
+        background: "#ffffff",
       }}
     >
       <main className="tabs-shell">{mainContent}</main>
       {!isJournalRoute ? <MobileBottomNav onNavigateStart={beginNavigation} /> : null}
-      {!hideJournalTrigger ? (
+      {!isJournalRoute && !journalVariant ? (
         <button type="button" className="global-journal-trigger" onClick={openJournal}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -68,7 +75,14 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
           <span>{isSavingsRoute ? "添加储蓄" : "记账"}</span>
         </button>
       ) : null}
-      {isJournalRoute ? children : null}
+      {journalVariant ? (
+        <JournalPanel
+          mode="page"
+          variant={journalVariant}
+          onClose={closeJournal}
+          onSaved={closeJournal}
+        />
+      ) : null}
     </div>
   );
 }
