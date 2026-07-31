@@ -1022,8 +1022,8 @@ button {
 
 .recent-row {
   display: grid;
-  grid-template-columns: 34px minmax(82px, 1fr) minmax(46px, 0.45fr) minmax(72px, 0.62fr) minmax(82px, auto);
-  gap: 8px;
+  grid-template-columns: 34px minmax(86px, 0.8fr) minmax(64px, 0.75fr) 76px minmax(82px, auto);
+  gap: 4px;
   align-items: center;
   min-height: 44px;
   border-top: 1px solid var(--border-faint);
@@ -1065,6 +1065,7 @@ button {
 
 .recent-category,
 .recent-time {
+  min-width: 0;
   color: #65718a;
   font-size: 11px;
   font-weight: 400;
@@ -1076,6 +1077,11 @@ button {
   text-align: right;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+
+.recent-category {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .recent-amount.expense {
@@ -1833,4 +1839,275 @@ button {
   min-width: 720px;
   height: 260px;
   overflow: hidden;
+}
+
+.savings-planner-page {
+  --planner-line: #e7edf5;
+  --planner-blue: #2f76e8;
+}
+
+.savings-plan-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+  background: linear-gradient(135deg, #f7fbff 0%, #ffffff 58%, #edf5ff 100%);
+}
+
+.savings-hero-meta {
+  display: grid;
+  gap: 5px;
+  color: #65718a;
+  font-size: 11px;
+  text-align: right;
+}
+
+.savings-hero-meta strong {
+  color: #172038;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-hero-meta strong.negative,
+.savings-remaining.negative {
+  color: #df3f4f;
+}
+
+.savings-plan-card {
+  padding: 14px;
+  overflow: hidden;
+}
+
+.savings-plan-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.savings-mode-switch {
+  display: inline-grid;
+  grid-template-columns: repeat(2, 1fr);
+  padding: 3px;
+  border: 1px solid #dce6f3;
+  border-radius: 10px;
+  background: #f2f6fb;
+}
+
+.savings-mode-switch button {
+  min-width: 74px;
+  height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  color: #65718a;
+  background: transparent;
+  font-size: 12px;
+}
+
+.savings-mode-switch button.active {
+  color: #174f9d;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(34, 76, 130, 0.12);
+}
+
+.savings-mode-copy {
+  color: #7a879d;
+  font-size: 11px;
+}
+
+.savings-column-adder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.savings-column-adder input {
+  min-width: 0;
+  flex: 1;
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid #dce4ef;
+  border-radius: 9px;
+  outline: none;
+  color: #172038;
+  background: #ffffff;
+  font-size: 12px;
+}
+
+.savings-column-adder input:focus {
+  border-color: #7aa8ef;
+}
+
+.savings-column-adder button {
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid #cdddf2;
+  border-radius: 9px;
+  color: #245fae;
+  background: #edf5ff;
+  font-size: 12px;
+}
+
+.savings-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--planner-line);
+  border-radius: 11px;
+  scrollbar-width: thin;
+  scrollbar-color: #bfd0e7 transparent;
+}
+
+.savings-plan-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  color: #172038;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-plan-table th,
+.savings-plan-table td {
+  min-width: 94px;
+  height: 46px;
+  padding: 5px 7px;
+  border-right: 1px solid var(--planner-line);
+  border-bottom: 1px solid var(--planner-line);
+  background: #ffffff;
+  text-align: center;
+}
+
+.savings-plan-table thead th {
+  height: 38px;
+  color: #59677f;
+  background: #f6f9fd;
+  font-weight: 600;
+}
+
+.savings-plan-table thead th span {
+  vertical-align: middle;
+}
+
+.savings-plan-table thead th button {
+  width: 20px;
+  height: 20px;
+  margin-left: 3px;
+  padding: 0;
+  border: 0;
+  color: #a1adbd;
+  background: transparent;
+  font-size: 15px;
+  vertical-align: middle;
+}
+
+.savings-plan-table tr:last-child th,
+.savings-plan-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.savings-plan-table th:last-child,
+.savings-plan-table td:last-child {
+  border-right: 0;
+}
+
+.savings-plan-table .month-column {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  min-width: 54px;
+  width: 54px;
+  background: #f8fbff;
+}
+
+.savings-plan-table .salary-column {
+  position: sticky;
+  left: 54px;
+  z-index: 2;
+  min-width: 98px;
+  width: 98px;
+  box-shadow: 5px 0 8px -8px rgba(31, 59, 95, 0.6);
+}
+
+.savings-plan-table thead .salary-column {
+  z-index: 4;
+  background: #f6f9fd;
+}
+
+.savings-plan-table input {
+  width: 78px;
+  height: 30px;
+  padding: 0 7px;
+  border: 1px solid #e1e8f1;
+  border-radius: 7px;
+  outline: none;
+  color: #172038;
+  background: #fbfdff;
+  font-size: 11px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-plan-table input:focus {
+  border-color: #76a5eb;
+  background: #ffffff;
+}
+
+.savings-plan-table .expected-column {
+  min-width: 104px;
+  background: #f7fbff;
+}
+
+.savings-plan-table .remaining-column {
+  min-width: 108px;
+}
+
+.savings-remaining {
+  color: #16845f;
+  font-weight: 600;
+}
+
+.savings-plan-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 11px;
+}
+
+.savings-plan-footer span {
+  color: #718098;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.savings-plan-footer .primary-button {
+  width: auto;
+  min-width: 90px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 520px) {
+  .savings-plan-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .savings-hero-meta {
+    width: 100%;
+    grid-template-columns: repeat(2, 1fr);
+    text-align: left;
+  }
+
+  .savings-plan-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
 }

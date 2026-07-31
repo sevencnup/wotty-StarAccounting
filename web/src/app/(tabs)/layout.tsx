@@ -9,6 +9,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const isJournalRoute = pathname === "/journal";
+  const isSavingsRoute = pathname === "/savings";
   const hideJournalTrigger = isJournalRoute;
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [cachedContent, setCachedContent] = useState<React.ReactNode | null>(isJournalRoute ? null : children);
@@ -29,6 +30,10 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   }
 
   function openJournal() {
+    if (isSavingsRoute) {
+      window.dispatchEvent(new Event("stark:add-savings"));
+      return;
+    }
     router.push("/journal");
   }
 
@@ -54,7 +59,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          <span>记账</span>
+          <span>{isSavingsRoute ? "添加储蓄" : "记账"}</span>
         </button>
       ) : null}
       {isJournalRoute ? children : null}
