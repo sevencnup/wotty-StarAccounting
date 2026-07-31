@@ -5,6 +5,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
+import { buildDailyPlatformData } from "@/lib/stark/dashboard/consumption-platforms";
 import type { Transaction } from "@/lib/stark/models";
 
 const INCOME_BLUE = "#3d86ff";
@@ -228,32 +229,7 @@ function CalendarHeatmap({ transactions }: { transactions: Transaction[] }) {
 /* ────────── 日柱状图 ────────── */
 
 function buildBarOption(transactions: Transaction[]): EChartsCoreOption {
-  const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const prefix = `${now.getFullYear()}-${month}`;
-  const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-
-  const days = Array.from({ length: daysInMonth }, (_, i) => String(i + 1));
-  const preferredPlatforms = ["微信", "支付宝", "银行卡", "现金", "其他"];
-  const platformSet = new Set(
-    transactions
-      .filter((t) => t.date.startsWith(prefix) && t.type === "EXPENSE")
-      .map((t) => t.platform || "其他"),
-  );
-  const platforms = preferredPlatforms.filter((platform) => platformSet.has(platform));
-  const activePlatforms = platforms.length ? platforms : ["其他"];
-  const platformDaily: Record<string, number[]> = Object.fromEntries(
-    activePlatforms.map((platform) => [platform, new Array(daysInMonth).fill(0)]),
-  );
-
-  transactions
-    .filter((t) => t.date.startsWith(prefix) && t.type === "EXPENSE")
-    .forEach((t) => {
-      const day = parseInt(t.date.slice(8, 10), 10) - 1;
-      if (day < 0 || day >= daysInMonth) return;
-      const platform = activePlatforms.includes(t.platform || "其他") ? t.platform || "其他" : "其他";
-      platformDaily[platform][day] += t.amount;
-    });
+  const { activePlatforms, days, platformDaily } = buildDailyPlatformData(transactions);
 
   type TooltipSize = { contentSize: number[]; viewSize: number[] };
 
@@ -395,17 +371,7 @@ export function ConsumptionCharts({
   const ratioOption = useMemo(() => buildRatioOption(ratios), [ratios]);
   const displayRatios = ratios.length ? ratios : [];
   const barOption = useMemo(() => buildBarOption(transactions), [transactions]);
-  const barPlatforms = useMemo(() => {
-    const now = new Date();
-    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const platforms = new Set(
-      transactions
-        .filter((t) => t.date.startsWith(prefix) && t.type === "EXPENSE")
-        .map((t) => t.platform || "其他"),
-    );
-    const ordered = ["微信", "支付宝", "银行卡", "现金", "其他"].filter((platform) => platforms.has(platform));
-    return ordered.length ? ordered : ["其他"];
-  }, [transactions]);
+  const barPlatforms = useMemo(() => buildDailyPlatformData(transactions).activePlatforms, [transactions]);
   const sankeyOption = useMemo(() => buildSankeyOption(transactions), [transactions]);
 
   return (
