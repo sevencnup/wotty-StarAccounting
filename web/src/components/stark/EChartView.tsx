@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { GridComponent, TooltipComponent } from "echarts/components";
-import { LineChart, PieChart } from "echarts/charts";
+import { GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent } from "echarts/components";
+import { LineChart, PieChart, BarChart, SankeyChart, HeatmapChart } from "echarts/charts";
 import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 
-echarts.use([GridComponent, TooltipComponent, LineChart, PieChart, CanvasRenderer]);
+echarts.use([GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, LineChart, PieChart, BarChart, SankeyChart, HeatmapChart, CanvasRenderer]);
 
 export function EChartView({ option, className }: { option: EChartsCoreOption; className?: string }) {
   const rootRef = useRef<HTMLDivElement | null>(null);

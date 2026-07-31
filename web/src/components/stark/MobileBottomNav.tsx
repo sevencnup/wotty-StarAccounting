@@ -13,7 +13,7 @@ export const NAV_ITEMS = [
   { href: "/accounts", label: "账户", icon: "/nav-icons/zhanghu.png" },
 ] as const;
 
-export function MobileBottomNav() {
+export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target: string) => void }) {
   const pathname = usePathname();
 
   return (
@@ -22,7 +22,12 @@ export function MobileBottomNav() {
         {NAV_ITEMS.map((item) => {
           const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
           return (
-            <Link key={item.href} href={item.href} className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}
+              onClick={() => onNavigateStart?.(item.href)}
+            >
               <Image src={item.icon} alt="" width={24} height={24} className={active ? "mobile-bottom-nav-icon active" : "mobile-bottom-nav-icon"} />
               <span>{item.label}</span>
             </Link>

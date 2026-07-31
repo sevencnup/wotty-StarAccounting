@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
+import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import type { Asset, AssetType } from "@/lib/stark/models";
@@ -11,6 +12,7 @@ const assetTypes: AssetType[] = ["CASH", "BANK_CARD", "ALIPAY", "WECHAT", "INVES
 
 export default function AccountsPage() {
   const [list, setList] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [balance, setBalance] = useState("");
   const [type, setType] = useState<AssetType>("ALIPAY");
@@ -20,7 +22,10 @@ export default function AccountsPage() {
   const reload = () => void repo.getAssets("default").then(setList);
 
   useEffect(() => {
-    reload();
+    void repo.getAssets("default").then((data) => {
+      setList(data);
+      setLoading(false);
+    });
   }, []);
 
   async function saveAsset() {
@@ -40,6 +45,10 @@ export default function AccountsPage() {
     setBalance("");
     setType("ALIPAY");
     reload();
+  }
+
+  if (loading) {
+    return <PageSkeleton title="账户" cards={3} />;
   }
 
   return (

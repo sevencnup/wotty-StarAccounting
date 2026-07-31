@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
+import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import type { SavingsGoal } from "@/lib/stark/models";
@@ -10,6 +11,7 @@ const repo = new DataModeManager().getRepository();
 
 export default function SavingsPage() {
   const [list, setList] = useState<SavingsGoal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [currentAmount, setCurrentAmount] = useState("");
@@ -24,7 +26,10 @@ export default function SavingsPage() {
   const reload = () => void repo.getSavingsGoals("default").then(setList);
 
   useEffect(() => {
-    reload();
+    void repo.getSavingsGoals("default").then((data) => {
+      setList(data);
+      setLoading(false);
+    });
   }, []);
 
   async function saveGoal() {
@@ -49,6 +54,10 @@ export default function SavingsPage() {
     setCurrentAmount("");
     setDeadline("");
     reload();
+  }
+
+  if (loading) {
+    return <PageSkeleton title="储蓄" cards={3} />;
   }
 
   return (

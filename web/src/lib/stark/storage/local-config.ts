@@ -33,3 +33,15 @@ export function getSeededFlag() {
 export function setSeededFlag() {
   writeValue("seeded", "1");
 }
+
+export function getSalaryDay() {
+  const value = readValue("salary-day");
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 15;
+  return Math.max(1, Math.min(28, Math.round(parsed)));
+}
+
+export function setSalaryDay(day: number) {
+  const safeDay = Math.max(1, Math.min(28, Math.round(day)));
+  writeValue("salary-day", String(safeDay));
+}

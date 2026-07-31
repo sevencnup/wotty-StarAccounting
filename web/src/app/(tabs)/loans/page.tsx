@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
+import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import type { Loan } from "@/lib/stark/models";
@@ -21,6 +22,7 @@ function nextDueDateLabel(dueDay: number) {
 
 export default function LoansPage() {
   const [list, setList] = useState<Loan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [platform, setPlatform] = useState("");
   const [totalAmount, setTotalAmount] = useState("");
   const [remainingAmount, setRemainingAmount] = useState("");
@@ -35,7 +37,10 @@ export default function LoansPage() {
   const reload = () => void repo.getLoans("default").then(setList);
 
   useEffect(() => {
-    reload();
+    void repo.getLoans("default").then((data) => {
+      setList(data);
+      setLoading(false);
+    });
   }, []);
 
   async function saveLoan() {
@@ -61,6 +66,10 @@ export default function LoansPage() {
     setRemainingAmount("");
     setMonthlyPayment("");
     reload();
+  }
+
+  if (loading) {
+    return <PageSkeleton title="贷款" cards={3} />;
   }
 
   return (

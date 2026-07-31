@@ -162,16 +162,21 @@ function buildRatioOption(ratios: HomeRatio[]): EChartsCoreOption {
 
 /* ────────── 日历热力图（周历布局）────────── */
 
-function buildCalendarOption(transactions: Transaction[]): EChartsCoreOption {
+function shortAmount(amount: number) {
+  if (amount >= 10000) return `${(amount / 10000).toFixed(1)}w`;
+  if (amount >= 1000) return `${Math.round(amount / 100) / 10}k`;
+  return String(Math.round(amount));
+}
+
+function buildCalendarDays(transactions: Transaction[]) {
   const now = new Date();
   const year = now.getFullYear();
   const month = now.getMonth();
   const monthStr = String(month + 1).padStart(2, "0");
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const start = `${year}-${monthStr}-01`;
-  const end = `${year}-${monthStr}-${String(daysInMonth).padStart(2, "0")}`;
+  const firstDay = new Date(year, month, 1).getDay();
+  const leading = firstDay === 0 ? 6 : firstDay - 1;
 
-  // daily expense total
   const dailyMap: Record<string, number> = {};
   for (let d = 1; d <= daysInMonth; d++) {
     const key = `${year}-${monthStr}-${String(d).padStart(2, "0")}`;
@@ -184,102 +189,40 @@ function buildCalendarOption(transactions: Transaction[]): EChartsCoreOption {
       if (dailyMap[day] !== undefined) dailyMap[day] += t.amount;
     });
 
-  const data = Object.entries(dailyMap).map(([k, v]) => [k, Math.round(v)]);
+  const days = Object.entries(dailyMap).map(([date, amount]) => ({
+    date,
+    day: parseInt(date.slice(8, 10), 10),
+    amount: Math.round(amount),
+  }));
+  const maxAmount = Math.max(...days.map((day) => day.amount), 1);
+  return { leading, days, maxAmount };
+}
 
-  const maxVal = Math.max(...data.map(([, v]) => v as number), 1);
-  const threshold = maxVal * 0.45;
+function CalendarHeatmap({ transactions }: { transactions: Transaction[] }) {
+  const { leading, days, maxAmount } = useMemo(() => buildCalendarDays(transactions), [transactions]);
+  const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
 
-  return {
-    tooltip: {
-      show: false,
-    },
-    visualMap: {
-      min: 0,
-      max: Math.max(maxVal, 1),
-      calculable: false,
-      show: false,
-      inRange: { color: ["#f0f5ff", "#b3d0ff", "#4d8cf7", "#1a5dc9"] },
-    },
-    calendar: {
-      range: [start, end],
-      orient: "vertical",
-      left: 8,
-      right: 8,
-      top: 8,
-      bottom: 8,
-      cellSize: [30, 30],
-      dayLabel: {
-        color: "#65718a",
-        fontSize: 10,
-        firstDay: 1,
-        nameMap: "ZH",
-      },
-      monthLabel: { show: false },
-      splitLine: { lineStyle: { color: "#ffffff", width: 2 } },
-      itemStyle: {
-        borderColor: "#ffffff",
-        borderWidth: 3,
-      },
-    },
-    series: [
-      {
-        type: "heatmap",
-        coordinateSystem: "calendar",
-        data,
-        itemStyle: {
-          borderRadius: 5,
-        },
-        label: {
-          show: true,
-          fontSize: 10,
-          fontWeight: 500,
-          position: "inside",
-          lineHeight: 14,
-          formatter: (params: { value: [string, number] }) => {
-            const day = parseInt(params.value[0].slice(8, 10), 10);
-            const amount = params.value[1];
-            const dark = amount > threshold;
-            const ds = dark ? "dw" : "d";
-            if (amount <= 0) return `{${ds}|${day}}`;
-            const slot = dark ? "w" : "a";
-            const short = amount >= 10000
-              ? `${(amount / 10000).toFixed(1)}w`
-              : amount >= 1000
-                ? `${Math.round(amount / 100) / 10}k`
-                : String(amount);
-            return `{${ds}|${day}}\n{${slot}|¥${short}}`;
-          },
-          rich: {
-            d: {
-              color: "#11182d",
-              fontSize: 10,
-              fontWeight: 500,
-              lineHeight: 14,
-            },
-            dw: {
-              color: "#ffffff",
-              fontSize: 10,
-              fontWeight: 500,
-              lineHeight: 14,
-            },
-            a: {
-              color: "#11182d",
-              fontSize: 9,
-              fontWeight: 400,
-              lineHeight: 12,
-            },
-            w: {
-              color: "#ffffff",
-              fontSize: 9,
-              fontWeight: 400,
-              lineHeight: 12,
-            },
-          },
-        },
-        emphasis: { itemStyle: { borderColor: "#11182d", borderWidth: 1.5 } },
-      },
-    ],
-  };
+  return (
+    <div className="calendar-grid-card">
+      <div className="calendar-week-row">
+        {weekDays.map((day) => <span key={day}>{day}</span>)}
+      </div>
+      <div className="calendar-grid">
+        {Array.from({ length: leading }, (_, index) => (
+          <span key={`empty-${index}`} className="calendar-day empty" />
+        ))}
+        {days.map((item) => {
+          const level = item.amount <= 0 ? 0 : Math.max(1, Math.ceil((item.amount / maxAmount) * 4));
+          return (
+            <span key={item.date} className={`calendar-day level-${level}`} title={`${item.date} ¥ ${formatMoney(item.amount)}`}>
+              <em>{item.day}</em>
+              {item.amount > 0 && <strong>¥{shortAmount(item.amount)}</strong>}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 /* ────────── 日柱状图 ────────── */

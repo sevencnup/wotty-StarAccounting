@@ -16,3 +16,24 @@ export function PageSkeleton({ title, cards = 3 }: { title: string; cards?: numb
     </div>
   );
 }
+
+export function TabsTransitionSkeleton() {
+  return (
+    <div className="page-stack tabs-transition-skeleton" aria-busy="true">
+      <Skeleton className="skeleton-page-hero" />
+      <div className="progress-grid">
+        <Skeleton className="skeleton-card" />
+        <Skeleton className="skeleton-card" />
+      </div>
+      <div className="summary-grid">
+        <Skeleton className="skeleton-card" />
+        <Skeleton className="skeleton-card" />
+      </div>
+      <Skeleton className="skeleton-card" />
+      <div className="home-main-grid">
+        <Skeleton className="skeleton-card" />
+        <Skeleton className="skeleton-card" />
+      </div>
+    </div>
+  );
+}

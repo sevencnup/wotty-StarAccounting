@@ -6,7 +6,16 @@ import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
-import { buildHomeSummary, type HomeRatio, type HomeRecentItem, type HomeSummary, type HomeTrend } from "@/lib/stark/dashboard/summary";
+import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
+import {
+  buildHomeSummary,
+  type HomeBudgetAlert,
+  type HomeInsight,
+  type HomeRatio,
+  type HomeSummary,
+  type HomeTaskItem,
+  type HomeTrend,
+} from "@/lib/stark/dashboard/summary";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 
@@ -121,6 +130,7 @@ function TrendLegend() {
 function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
   const maxRaw = Math.max(...trend.expense, ...trend.income, 8000);
   const maxValue = Math.ceil(maxRaw / 2000) * 2000;
+  type TooltipSize = { contentSize: number[]; viewSize: number[] };
 
   return {
     animationDuration: 450,
@@ -128,11 +138,24 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
     grid: { left: 26, right: 10, top: 16, bottom: 24 },
     tooltip: {
       trigger: "axis",
+      confine: true,
       backgroundColor: "rgba(19, 27, 48, 0.92)",
       borderWidth: 0,
       padding: [8, 10],
       textStyle: { color: "#ffffff", fontSize: 12 },
       axisPointer: { type: "line", lineStyle: { color: "rgba(61,134,255,0.28)" } },
+      position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
+        const [x, y] = point as [number, number];
+        const viewWidth = size.viewSize[0];
+        const viewHeight = size.viewSize[1];
+        const boxWidth = size.contentSize[0];
+        const boxHeight = size.contentSize[1];
+        const nextX = Math.min(Math.max(8, x - boxWidth / 2), viewWidth - boxWidth - 8);
+        const nextY = y < viewHeight / 2
+          ? Math.min(viewHeight - boxHeight - 8, y + 12)
+          : Math.max(8, y - boxHeight - 12);
+        return [nextX, nextY];
+      },
       valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
     },
     xAxis: {
@@ -227,8 +250,36 @@ function TrendChart({ trend }: { trend: HomeTrend }) {
   return <EChartView option={option} className="trend-chart" />;
 }
 
-function MonthlySummaryCard({ summary }: { summary: HomeSummary }) {
+function MonthlySummaryCard({
+  summary,
+  salaryDay,
+  onSalaryDayChange,
+}: {
+  summary: HomeSummary;
+  salaryDay: number;
+  onSalaryDayChange: (day: number) => void;
+}) {
   const monthLabel = `${new Date().getFullYear()}年${new Date().getMonth() + 1}月`;
+  const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
+  const [editingSalaryDay, setEditingSalaryDay] = useState(false);
+  const [salaryDayInput, setSalaryDayInput] = useState(String(salaryDay));
+  const balance = balanceMode === "month" ? summary.forecast.monthBalance : summary.forecast.salaryCycleBalance;
+  const positive = balance >= 0;
+  const balanceLabel = balanceMode === "month" ? "本月结余" : "薪资周期结余";
+  const balanceNote = balanceMode === "month"
+    ? "按自然月统计"
+    : `自 ${summary.forecast.salaryCycleStartLabel} 起统计`;
+
+  useEffect(() => {
+    setSalaryDayInput(String(salaryDay));
+  }, [salaryDay]);
+
+  function saveSalaryDay() {
+    const parsed = Number(salaryDayInput);
+    if (!Number.isFinite(parsed)) return;
+    onSalaryDayChange(Math.max(1, Math.min(28, Math.round(parsed))));
+    setEditingSalaryDay(false);
+  }
 
   return (
     <SurfaceCard className="overview-card">
@@ -255,6 +306,50 @@ function MonthlySummaryCard({ summary }: { summary: HomeSummary }) {
             <strong>¥ {formatMoney(summary.expense)}</strong>
             <DeltaLine value={summary.expenseChange * -1} />
           </div>
+        </div>
+        <div className="overview-forecast">
+          <div className="overview-forecast-top">
+            <span>{balanceLabel}</span>
+            <div className="balance-toggle" role="tablist" aria-label="结余口径切换">
+              <button
+                type="button"
+                className={balanceMode === "month" ? "active" : ""}
+                onClick={() => setBalanceMode("month")}
+              >
+                自然月
+              </button>
+              <button
+                type="button"
+                className={balanceMode === "salary" ? "active" : ""}
+                onClick={() => setBalanceMode("salary")}
+              >
+                薪资周期
+              </button>
+            </div>
+          </div>
+          <strong className={positive ? "positive" : "negative"}>
+            {positive ? "" : "-"}¥ {formatMoney(Math.abs(balance))}
+          </strong>
+          <em>{balanceNote}</em>
+          {balanceMode === "salary" ? (
+            <div className="salary-setting-row">
+              <button type="button" className="salary-setting-button" onClick={() => setEditingSalaryDay((value) => !value)}>
+                发薪日 {salaryDay} 号
+              </button>
+              {editingSalaryDay ? (
+                <div className="salary-setting-panel">
+                  <input
+                    type="number"
+                    min={1}
+                    max={28}
+                    value={salaryDayInput}
+                    onChange={(event) => setSalaryDayInput(event.target.value)}
+                  />
+                  <button type="button" onClick={saveSalaryDay}>保存</button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </SurfaceCard>
@@ -300,14 +395,14 @@ function RatioCard({ ratios }: { ratios: HomeRatio[] }) {
 
 function ProgressRow({ title, current, total, percent, color, icon }: { title: string; current: number; total: number; percent: number; color: string; icon: ReactNode }) {
   return (
-    <div className="progress-row">
+    <SurfaceCard className="progress-row">
       <div className="progress-top">
         <h3>{title}</h3>
         <span className="progress-icon" style={{ color, background: `${color}20` }}>{icon}</span>
       </div>
       <div className="progress-money">
         <span className="progress-money-current">¥ {formatMoney(current)}</span>
-        <span className="progress-money-total">¥ {formatMoney(total)}</span>
+        <span className="progress-money-total">目标 ¥ {formatMoney(total)}</span>
       </div>
       <div className="progress-track-row">
         <div className="progress-track">
@@ -315,17 +410,16 @@ function ProgressRow({ title, current, total, percent, color, icon }: { title: s
         </div>
         <strong style={{ color }}>{Math.round(percent)}%</strong>
       </div>
-    </div>
+    </SurfaceCard>
   );
 }
 
 function ProgressCard({ summary }: { summary: HomeSummary }) {
   return (
-    <SurfaceCard className="progress-card">
+    <div className="progress-grid">
       <ProgressRow title="储蓄计划进度" current={summary.savingProgress.current} total={summary.savingProgress.total} percent={summary.savingProgress.percent} color={INCOME_BLUE} icon={<PiggyIcon size={18} strokeWidth={2.1} />} />
-      <div className="progress-separator" />
       <ProgressRow title="贷款还款进度" current={summary.loanProgress.current} total={summary.loanProgress.total} percent={summary.loanProgress.percent} color={GREEN} icon={<BankIcon size={18} strokeWidth={2} />} />
-    </SurfaceCard>
+    </div>
   );
 }
 
@@ -336,6 +430,78 @@ function SummaryCard({ title, value, delta }: { title: string; value: number; de
         <h2>{title}</h2>
         <strong>¥ {formatMoney(value)}</strong>
         <DeltaLine value={delta} muted />
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function BudgetAndInsightsCard({ items, insights }: { items: HomeBudgetAlert[]; insights: HomeInsight[] }) {
+  return (
+    <SurfaceCard className="budget-alert-card">
+      <div className="section-head">
+        <h2>预算与支出</h2>
+      </div>
+      <div className="budget-alert-list">
+        {items.map((item) => (
+          <div key={item.id} className={`budget-alert-row ${item.tone}`}>
+            <div className="budget-alert-copy">
+              <strong>{item.title}</strong>
+              <span>¥ {formatMoney(item.spent)} / ¥ {formatMoney(item.budget)}</span>
+            </div>
+            <div className="budget-alert-side">
+              <em className={`budget-alert-badge ${item.tone}`}>{Math.round(item.percent)}%</em>
+              <div className="budget-alert-track">
+                <span className={item.tone} style={{ width: `${Math.max(8, Math.min(item.percent, 100))}%` }} />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="budget-insights-head">
+        <h3>大额支出</h3>
+      </div>
+      <div className="insight-list budget-insight-list">
+        {insights.map((item) => (
+          <div key={item.id} className={`insight-row ${item.tone}`}>
+            <strong>{item.title}</strong>
+            <span>{item.detail}</span>
+          </div>
+        ))}
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function splitTaskSubtitle(subtitle: string) {
+  const amountMatch = subtitle.match(/¥\s*[\d,]+(?:\.\d+)?/);
+  const amount = amountMatch?.[0] ?? "";
+  const detail = amount ? subtitle.replace(amount, "").replace(/\s{2,}/g, " ").trim() : subtitle;
+  return { detail, amount };
+}
+
+function TasksCard({ items }: { items: HomeTaskItem[] }) {
+  return (
+    <SurfaceCard className="tasks-card">
+      <div className="section-head">
+        <h2>本周待处理</h2>
+      </div>
+      <div className="tasks-list">
+        {items.map((item) => {
+          const { detail, amount } = splitTaskSubtitle(item.subtitle);
+          return (
+            <div key={item.id} className={`task-row ${item.tone}`}>
+              <span className={`task-dot ${item.tone}`} />
+              <div className="task-copy">
+                <strong>{item.title}</strong>
+                <span>{detail}</span>
+              </div>
+              <div className="task-side">
+                {amount ? <span className={`task-amount ${item.tone}`}>{amount}</span> : null}
+                <em className={`task-badge ${item.tone}`}>{item.badge}</em>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </SurfaceCard>
   );
@@ -380,66 +546,19 @@ function LoanMiniRow({ loan }: { loan: Loan }) {
 function LoanSummaryCard({ value, delta, loans }: { value: number; delta: number; loans: Loan[] }) {
   return (
     <SurfaceCard className="loan-summary-card">
-      <div className="loan-summary-top">
-        <div className="loan-summary-copy">
-          <h2>贷款已还款汇总</h2>
-          <strong>¥ {formatMoney(value)}</strong>
-          <DeltaLine value={delta} muted />
-        </div>
+      <div className="loan-summary-head">
+        <h2>贷款已还款汇总</h2>
         <button type="button" className="detail-button">
           查看详情
           <ChevronRightIcon size={14} />
         </button>
       </div>
+      <div className="loan-summary-copy">
+        <strong>¥ {formatMoney(value)}</strong>
+        <DeltaLine value={delta} muted />
+      </div>
       <div className="loan-mini-list">
         {loans.length ? loans.map((loan) => <LoanMiniRow key={loan.id} loan={loan} />) : <div className="loan-empty">暂无贷款数据</div>}
-      </div>
-    </SurfaceCard>
-  );
-}
-
-function categoryIconSrc(item: HomeRecentItem) {
-  const text = `${item.subtitle}${item.title}`;
-  if (item.positive) return "/category-icons/jiaoyi.png";
-  if (text.includes("餐") || text.includes("咖啡")) return "/category-icons/canyin.png";
-  if (text.includes("交") || text.includes("地铁")) return "/category-icons/jiaotong.png";
-  if (text.includes("购") || text.includes("超市")) return "/category-icons/gouwu.png";
-  if (text.includes("娱") || text.includes("电影")) return "/category-icons/yule.png";
-  if (text.includes("生活") || text.includes("日用")) return "/category-icons/riyong.png";
-  if (text.includes("医")) return "/category-icons/yiliao.png";
-  if (text.includes("住")) return "/category-icons/zhufang.png";
-  if (text.includes("旅")) return "/category-icons/lvxing.png";
-  if (text.includes("美")) return "/category-icons/meirong.png";
-  if (text.includes("宠")) return "/category-icons/chongwu.png";
-  if (text.includes("服")) return "/category-icons/fuzhuang.png";
-  if (text.includes("通")) return "/category-icons/tongxun.png";
-  if (text.includes("运")) return "/category-icons/yundong.png";
-  return "/category-icons/qita.png";
-}
-
-function RecentRow({ item }: { item: HomeRecentItem }) {
-  return (
-    <div className="recent-row">
-      <span className="recent-icon">
-        <img src={categoryIconSrc(item)} alt={item.subtitle} />
-      </span>
-      <strong className="recent-title">{item.title}</strong>
-      <span className="recent-category">{item.subtitle}</span>
-      <span className="recent-time">{item.time}</span>
-      <strong className={item.positive ? "recent-amount positive" : "recent-amount"}>{item.positive ? "+¥ " : "-¥ "}{formatMoney(item.amount)}</strong>
-    </div>
-  );
-}
-
-function RecentTransactionsCard({ items }: { items: HomeRecentItem[] }) {
-  return (
-    <SurfaceCard className="recent-card">
-      <div className="recent-head">
-        <h2>最近交易</h2>
-        <button type="button">全部 <ChevronRightIcon size={14} /></button>
-      </div>
-      <div className="recent-list">
-        {items.map((item) => <RecentRow key={item.id} item={item} />)}
       </div>
     </SurfaceCard>
   );
@@ -451,7 +570,12 @@ export default function HomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setSalaryDay(getSalaryDay());
+  }, []);
 
   useEffect(() => {
     const repo = manager.getRepository();
@@ -472,9 +596,14 @@ export default function HomePage() {
   }, []);
 
   const summary = useMemo(
-    () => buildHomeSummary({ transactions, assets, budgets, loans, savingsGoals }),
-    [transactions, assets, budgets, loans, savingsGoals],
+    () => buildHomeSummary({ transactions, assets, budgets, loans, savingsGoals, salaryDay }),
+    [transactions, assets, budgets, loans, savingsGoals, salaryDay],
   );
+
+  function handleSalaryDayChange(day: number) {
+    persistSalaryDay(day);
+    setSalaryDay(day);
+  }
 
   if (loading) {
     return (
@@ -487,15 +616,15 @@ export default function HomePage() {
           </div>
         </header>
         <Skeleton className="skeleton-hero" />
-        <div className="home-main-grid">
-          <Skeleton className="skeleton-card" />
-          <Skeleton className="skeleton-card" />
-        </div>
         <div className="summary-grid">
           <Skeleton className="skeleton-card" />
           <Skeleton className="skeleton-card" />
         </div>
         <Skeleton className="skeleton-card" />
+        <div className="home-main-grid">
+          <Skeleton className="skeleton-card" />
+          <Skeleton className="skeleton-card" />
+        </div>
       </div>
     );
   }
@@ -513,15 +642,11 @@ export default function HomePage() {
       <div className="hero-stack">
         <div className="hero-stack-bg" />
         <div className="hero-stack-content">
-          <MonthlySummaryCard summary={summary} />
-          <TrendCard trend={summary.trend} />
+          <MonthlySummaryCard summary={summary} salaryDay={salaryDay} onSalaryDayChange={handleSalaryDayChange} />
         </div>
       </div>
 
-      <div className="home-main-grid">
-        <RatioCard ratios={summary.ratios} />
-        <ProgressCard summary={summary} />
-      </div>
+      <ProgressCard summary={summary} />
 
       <div className="summary-grid">
         <SummaryCard title="资产汇总" value={summary.assetTotal} delta={8.6} />
@@ -530,7 +655,10 @@ export default function HomePage() {
 
       <LoanSummaryCard value={summary.loanProgress.current} delta={10.2} loans={loans} />
 
-      <RecentTransactionsCard items={summary.recent} />
+      <div className="home-main-grid">
+        <BudgetAndInsightsCard items={summary.budgetAlerts} insights={summary.insights} />
+        <TasksCard items={summary.tasks} />
+      </div>
     </div>
   );
 }
