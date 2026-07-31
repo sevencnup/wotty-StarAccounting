@@ -2,9 +2,11 @@ import type { DataMode } from "@/lib/stark/models/types";
 import { getCurrentDataMode, setCurrentDataMode } from "@/lib/stark/storage/local-config";
 import { LocalRepository } from "@/lib/stark/repository/LocalRepository";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
+import { RemoteRepository } from "@/lib/stark/repository/RemoteRepository";
 
 export class DataModeManager {
   private readonly localRepo = new LocalRepository();
+  private readonly remoteRepo = new RemoteRepository();
   private currentMode: DataMode = "LOCAL";
 
   constructor() {
@@ -14,7 +16,7 @@ export class DataModeManager {
   }
 
   getRepository(): DataRepository {
-    return this.localRepo;
+    return this.currentMode === "CLOUD" ? this.remoteRepo : this.localRepo;
   }
 
   getLocalRepository(): DataRepository {
@@ -31,7 +33,7 @@ export class DataModeManager {
       setCurrentDataMode(mode);
       return;
     }
-    setCurrentDataMode("LOCAL");
-    this.currentMode = "LOCAL";
+    setCurrentDataMode(mode);
+    this.currentMode = mode;
   }
 }

@@ -26,6 +26,14 @@ export function setCurrentDataMode(mode: "LOCAL" | "CLOUD") {
   writeValue("data-mode", mode);
 }
 
+export function getCloudApiUrl() {
+  return readValue("cloud-api-url") ?? "http://localhost:8080";
+}
+
+export function setCloudApiUrl(url: string) {
+  writeValue("cloud-api-url", url.replace(/\/$/, ""));
+}
+
 export function getSeededFlag() {
   return readValue("seeded") === "1";
 }
