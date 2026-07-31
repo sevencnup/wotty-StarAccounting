@@ -108,9 +108,6 @@ export default function AssetsPage() {
           <div><span>总资产</span><strong>¥ {formatMoney(summary.assetTotal)}</strong><i className="positive" /></div>
           <div><span>总负债</span><strong>¥ {formatMoney(summary.liabilityTotal)}</strong><i className="negative" /></div>
         </div>
-        <div className="asset-balance-track" aria-label="资产负债比例">
-          <span style={{ width: `${summary.assetTotal + summary.liabilityTotal > 0 ? (summary.assetTotal / (summary.assetTotal + summary.liabilityTotal)) * 100 : 100}%` }} />
-        </div>
       </section>
 
       <section className="home-card finance-section asset-allocation-section">
