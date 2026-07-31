@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { EChartsCoreOption } from "echarts/core";
+import { EChartView } from "@/components/stark/EChartView";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -8,6 +10,8 @@ import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
+const PLAN_BLUE = "#3d86ff";
+const DONE_GREEN = "#18b66f";
 
 function monthKey(value: string) {
   return value.slice(0, 7);
@@ -54,6 +58,95 @@ function buildCalendar(plans: SavingsPlan[]) {
   return { leading, days, maxAmount };
 }
 
+function buildSavingsTrendOption(plans: SavingsPlan[]): EChartsCoreOption {
+  const labels = Array.from({ length: 12 }, (_, index) => `${index + 1}`);
+  const planned = Array.from({ length: 12 }, () => 0);
+  const completed = Array.from({ length: 12 }, () => 0);
+
+  plans.forEach((plan) => {
+    const month = Number(plan.month.slice(5, 7));
+    if (!month || month < 1 || month > 12) return;
+    planned[month - 1] += plan.amount;
+    if (plan.status === "COMPLETED") completed[month - 1] += plan.amount;
+  });
+
+  const maxRaw = Math.max(...planned, ...completed, 8000);
+  const maxValue = Math.ceil(maxRaw / 2000) * 2000;
+  type TooltipSize = { contentSize: number[]; viewSize: number[] };
+
+  return {
+    animationDuration: 450,
+    animationEasing: "cubicOut",
+    grid: { left: 18, right: 8, top: 12, bottom: 20 },
+    tooltip: {
+      trigger: "axis",
+      confine: true,
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      axisPointer: { type: "line", lineStyle: { color: "rgba(61,134,255,0.28)" } },
+      position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
+        const [x, y] = point as [number, number];
+        const viewWidth = size.viewSize[0];
+        const viewHeight = size.viewSize[1];
+        const boxWidth = size.contentSize[0];
+        const boxHeight = size.contentSize[1];
+        const nextX = Math.min(Math.max(8, x - boxWidth / 2), viewWidth - boxWidth - 8);
+        const nextY = y < viewHeight / 2
+          ? Math.min(viewHeight - boxHeight - 8, y + 12)
+          : Math.max(8, y - boxHeight - 12);
+        return [nextX, nextY];
+      },
+      valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
+    },
+    xAxis: {
+      type: "category",
+      boundaryGap: false,
+      data: labels,
+      axisLine: { lineStyle: { color: "#e1e8f2" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#74819a", fontSize: 10, margin: 8 },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: maxValue,
+      splitNumber: 4,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: "#74819a",
+        fontSize: 10,
+        formatter: (value: number) => (value === 0 ? "0" : `${Math.round(value / 1000)}K`),
+      },
+      splitLine: { show: false },
+    },
+    series: [
+      {
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        data: planned,
+        lineStyle: { width: 2, color: PLAN_BLUE },
+        itemStyle: { color: PLAN_BLUE, borderColor: "#ffffff", borderWidth: 1.2 },
+        name: "计划",
+      },
+      {
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        data: completed,
+        lineStyle: { width: 2, color: DONE_GREEN },
+        itemStyle: { color: DONE_GREEN, borderColor: "#ffffff", borderWidth: 1.2 },
+        name: "已存",
+      },
+    ],
+  };
+}
+
 export default function SavingsPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [plans, setPlans] = useState<SavingsPlan[]>([]);
@@ -79,17 +172,12 @@ export default function SavingsPage() {
     return { monthSaved, totalSaved, target, completed, pending, count: monthPlans.length };
   }, [goals, plans]);
 
-  const featuredGoals = useMemo(() => (
-    [...goals]
-      .sort((a, b) => (b.currentAmount / Math.max(b.targetAmount, 1)) - (a.currentAmount / Math.max(a.targetAmount, 1)))
-      .slice(0, 4)
-  ), [goals]);
-
   const recentPlans = useMemo(() => (
     [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
   ), [plans]);
 
   const calendar = useMemo(() => buildCalendar(plans), [plans]);
+  const trendOption = useMemo(() => buildSavingsTrendOption(plans), [plans]);
   const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
 
   if (loading) return <PageSkeleton title="储蓄" cards={3} />;
@@ -120,29 +208,16 @@ export default function SavingsPage() {
         </div>
       </section>
 
-      <section className="home-card page-card">
-        <div className="section-head">
-          <h2>储蓄计划进度</h2>
-          <span className="mini-section-note">共 {goals.length} 个计划</span>
-        </div>
-        <div className="savings-goal-list">
-          {featuredGoals.length ? featuredGoals.map((goal) => {
-            const percent = goal.targetAmount > 0 ? Math.min(100, (goal.currentAmount / goal.targetAmount) * 100) : 0;
-            return (
-              <div key={goal.id} className="savings-goal-row">
-                <div className="savings-goal-copy">
-                  <strong>{goal.name}</strong>
-                  <span>已存 ¥ {formatMoney(goal.currentAmount)} / 目标 ¥ {formatMoney(goal.targetAmount)}</span>
-                </div>
-                <em>{Math.round(percent)}%</em>
-                <div className="mini-progress">
-                  <span style={{ width: `${Math.max(4, percent)}%`, background: "linear-gradient(90deg,#2f7cff,#6da2ff)" }} />
-                </div>
-              </div>
-            );
-          }) : (
-            <div className="loan-empty">暂无储蓄计划，点击底部“添加储蓄”创建</div>
-          )}
+      <section className="home-card trend-card">
+        <div className="trend-panel">
+          <div className="section-head">
+            <h2>本年储蓄趋势</h2>
+            <div className="trend-legend">
+              <span><i style={{ background: PLAN_BLUE }} />计划</span>
+              <span><i style={{ background: DONE_GREEN }} />已存</span>
+            </div>
+          </div>
+          <EChartView option={trendOption} className="trend-chart consumption-trend-chart" />
         </div>
       </section>
 

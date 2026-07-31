@@ -1795,6 +1795,143 @@ button {
   color: #1677ff;
 }
 
+.savings-dashboard-page {
+  gap: 8px;
+}
+
+.savings-summary-card {
+  padding: 0;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.savings-summary-body {
+  display: grid;
+  grid-template-columns: 1.8fr 1.2fr;
+  min-height: 110px;
+}
+
+.savings-summary-main {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 14px 16px 15px;
+  border-radius: 10px;
+  margin: 6px 0 6px 6px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3f86ff 0%, #5da0ff 50%, #4d8cf7 100%);
+}
+
+.savings-summary-main .page-hero-label,
+.savings-summary-main .page-hero-sub {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.savings-summary-main .page-hero-value {
+  color: #ffffff;
+}
+
+.savings-summary-side {
+  display: grid;
+  padding: 8px 10px 8px 4px;
+}
+
+.savings-summary-row {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px 14px;
+}
+
+.savings-summary-row:first-child {
+  border-bottom: 1px solid rgba(123, 148, 184, 0.14);
+}
+
+.savings-row-label {
+  color: #07c160;
+  font-size: 11px;
+}
+
+.savings-summary-row:nth-child(2) .savings-row-label {
+  color: #1677ff;
+}
+
+.savings-row-value {
+  margin-top: 4px;
+  color: #11182d;
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-row-sub {
+  margin-top: 2px;
+  color: #65718a;
+  font-size: 11px;
+}
+
+.savings-calendar-card {
+  margin-top: 10px;
+}
+
+.savings-recent-row {
+  display: grid;
+  grid-template-columns: 34px minmax(82px, 1fr) minmax(78px, 0.9fr) 48px minmax(78px, auto);
+  gap: 4px;
+  align-items: center;
+  min-height: 44px;
+  border-top: 1px solid var(--border-faint);
+}
+
+.savings-recent-row:first-child {
+  border-top: 0;
+}
+
+.savings-recent-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: #2f7cff;
+  background: #edf5ff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.savings-recent-row strong,
+.savings-recent-row span,
+.savings-recent-row time {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-recent-row strong {
+  color: #11182d;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.savings-recent-row span,
+.savings-recent-row time {
+  color: #65718a;
+  font-size: 11px;
+}
+
+.savings-recent-row em {
+  color: #15966b;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* floating journal panel */
 .journal-overlay {
   position: fixed;
