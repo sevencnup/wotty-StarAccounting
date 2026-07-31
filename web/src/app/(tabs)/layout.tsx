@@ -19,6 +19,12 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   }, [pathname]);
 
   useEffect(() => {
+    if (!pendingPath) return;
+    const timer = window.setTimeout(() => setPendingPath(null), 1200);
+    return () => window.clearTimeout(timer);
+  }, [pendingPath]);
+
+  useEffect(() => {
     if (!isJournalRoute) {
       setCachedContent(children);
     }
