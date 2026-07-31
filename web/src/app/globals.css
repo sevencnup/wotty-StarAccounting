@@ -1955,9 +1955,9 @@ button {
 
 .journal-overlay.visible {
   pointer-events: auto;
-  background: rgba(17, 24, 39, 0.16);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 
 .journal-panel {
