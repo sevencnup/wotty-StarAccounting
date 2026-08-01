@@ -1962,6 +1962,322 @@ nextjs-portal {
   font-variant-numeric: tabular-nums;
 }
 
+.savings-command-card {
+  position: relative;
+  display: grid;
+  gap: 13px;
+  overflow: hidden;
+  padding: 15px;
+  border: 1px solid #2f7de2;
+  border-radius: 14px;
+  color: #ffffff;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 20px),
+    linear-gradient(138deg, #266fc7 0%, #3f8bed 54%, #2c9a8a 100%);
+}
+
+.savings-command-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px;
+  align-items: start;
+  gap: 12px;
+}
+
+.savings-command-copy {
+  min-width: 0;
+}
+
+.savings-command-copy > span,
+.savings-command-amount > span,
+.savings-metric-grid span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 10px;
+}
+
+.savings-command-copy > strong {
+  display: block;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.16;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-command-copy p {
+  margin: 7px 0 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-progress-ring {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+}
+
+.savings-progress-ring > div {
+  display: grid;
+  place-items: center;
+  width: 59px;
+  height: 59px;
+  border-radius: inherit;
+  background: rgba(20, 65, 112, 0.9);
+}
+
+.savings-progress-ring strong {
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-progress-ring span {
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 8px;
+}
+
+.savings-command-amount {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.savings-command-amount strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-command-amount em {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.savings-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.savings-metric-grid div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 9px 10px;
+  background: rgba(16, 73, 126, 0.18);
+}
+
+.savings-metric-grid strong {
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-metric-grid small {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-module-card {
+  border-color: #dce7f2;
+  border-radius: 14px;
+}
+
+.savings-rhythm-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.savings-rhythm-cell {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  min-height: 74px;
+  padding: 8px;
+  border: 1px solid #e1e9f2;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.savings-rhythm-cell.current {
+  border-color: #93beef;
+  background: #eef6ff;
+}
+
+.savings-rhythm-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  min-width: 0;
+}
+
+.savings-rhythm-top span {
+  color: #51627a;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.savings-rhythm-top strong {
+  overflow: hidden;
+  color: #172033;
+  font-size: 9px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-rhythm-track {
+  position: relative;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6edf6;
+}
+
+.savings-rhythm-track i,
+.savings-rhythm-track b {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+
+.savings-rhythm-track i {
+  background: #b8d3f2;
+}
+
+.savings-rhythm-track b {
+  background: linear-gradient(90deg, #22b87d, #64c8a3);
+}
+
+.savings-rhythm-cell small {
+  color: #73829a;
+  font-size: 8px;
+  white-space: nowrap;
+}
+
+.savings-goal-board {
+  display: grid;
+  gap: 0;
+  margin-top: 9px;
+}
+
+.savings-goal-board-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 7px 10px;
+  padding: 11px 0;
+  border-top: 1px solid #edf1f5;
+}
+
+.savings-goal-board-row:first-child {
+  border-top: 0;
+}
+
+.savings-goal-board-row > div {
+  min-width: 0;
+}
+
+.savings-goal-board-row strong {
+  display: block;
+  overflow: hidden;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-goal-board-row span,
+.savings-goal-board-row small {
+  overflow: hidden;
+  color: #718097;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-goal-board-row span {
+  display: block;
+  margin-top: 4px;
+}
+
+.savings-goal-board-row em {
+  align-self: start;
+  justify-self: end;
+  color: #21796a;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.savings-goal-track {
+  grid-column: 1 / -1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef5;
+}
+
+.savings-goal-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f7de2, #2fac91);
+}
+
+.savings-goal-board-row small {
+  grid-column: 1 / -1;
+}
+
+.savings-heat-card .calendar-grid-card {
+  margin-top: 10px;
+}
+
+.savings-recent-card {
+  padding: 0 14px 9px;
+  border: 1px solid #dce7f2;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.savings-recent-card .recent-head {
+  padding-top: 13px;
+}
+
 /* floating journal panel */
 .journal-overlay {
   position: fixed;

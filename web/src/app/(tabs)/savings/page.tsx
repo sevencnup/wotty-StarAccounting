@@ -29,6 +29,23 @@ function shortAmount(amount: number) {
   return String(Math.round(amount));
 }
 
+function clampPercent(value: number) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function monthLabel(month: string) {
+  const value = Number(month.slice(5, 7));
+  return Number.isFinite(value) ? `${value}月` : month;
+}
+
+function deadlineLabel(value?: string | null) {
+  if (!value) return "未设截止";
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  return month && day ? `${month}/${day}` : value;
+}
+
 function buildCalendar(plans: SavingsPlan[]) {
   const now = new Date();
   const year = now.getFullYear();
@@ -57,6 +74,36 @@ function buildCalendar(plans: SavingsPlan[]) {
   }));
   const maxAmount = Math.max(...days.map((item) => item.amount), 1);
   return { leading, days, maxAmount };
+}
+
+function buildMonthRhythm(plans: SavingsPlan[]) {
+  const year = new Date().getFullYear();
+  const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
+  const months = Array.from({ length: 12 }, (_, index) => {
+    const month = `${year}-${String(index + 1).padStart(2, "0")}`;
+    return {
+      month,
+      planned: 0,
+      completed: 0,
+      pending: 0,
+      isCurrent: month === currentMonth,
+    };
+  });
+
+  plans.forEach((plan) => {
+    const index = Number(plan.month.slice(5, 7)) - 1;
+    if (index < 0 || index > 11) return;
+    months[index].planned += plan.amount;
+    if (plan.status === "COMPLETED") months[index].completed += plan.amount;
+    if (plan.status === "PENDING") months[index].pending += plan.amount;
+  });
+
+  const maxPlanned = Math.max(...months.map((item) => item.planned), 1);
+  return months.map((item) => ({
+    ...item,
+    planPercent: clampPercent((item.planned / maxPlanned) * 100),
+    donePercent: item.planned > 0 ? clampPercent((item.completed / item.planned) * 100) : 0,
+  }));
 }
 
 function buildSavingsTrendOption(plans: SavingsPlan[]): EChartsCoreOption {
@@ -179,20 +226,50 @@ export default function SavingsPage() {
   const summary = useMemo(() => {
     const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
     const monthPlans = plans.filter((plan) => plan.month === currentMonth);
-    const monthSaved = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
-    const totalSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0) + plans.reduce((sum, plan) => sum + plan.amount, 0);
-    const target = goals.reduce((sum, goal) => sum + goal.targetAmount, 0);
+    const monthPlanned = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
+    const monthCompleted = monthPlans.filter((plan) => plan.status === "COMPLETED").reduce((sum, plan) => sum + plan.amount, 0);
+    const plannedTotal = plans.reduce((sum, plan) => sum + plan.amount, 0);
+    const completedAmount = plans.filter((plan) => plan.status === "COMPLETED").reduce((sum, plan) => sum + plan.amount, 0);
+    const recordedSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
+    const savedAmount = Math.max(recordedSaved, completedAmount);
+    const target = goals.reduce((sum, goal) => sum + goal.targetAmount, 0) || plannedTotal;
     const completed = plans.filter((plan) => plan.status === "COMPLETED").length;
     const pending = plans.filter((plan) => plan.status !== "COMPLETED").length;
-    return { monthSaved, totalSaved, target, completed, pending, count: monthPlans.length };
+    const progress = target > 0 ? clampPercent((savedAmount / target) * 100) : 0;
+    const pendingAmount = Math.max(plannedTotal - savedAmount, 0);
+    const averageMonthly = plannedTotal > 0 ? plannedTotal / 12 : 0;
+    return {
+      averageMonthly,
+      completed,
+      monthCompleted,
+      monthPlanned,
+      pending,
+      pendingAmount,
+      plannedTotal,
+      progress,
+      savedAmount,
+      target,
+      count: monthPlans.length,
+    };
   }, [goals, plans]);
 
   const recentPlans = useMemo(() => (
     [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
   ), [plans]);
   const primaryGoal = goals[0] ?? null;
+  const activeGoals = useMemo(() => goals.filter((goal) => goal.status === "ACTIVE"), [goals]);
+  const goalCards = useMemo(() => goals.slice(0, 4).map((goal) => {
+    const goalPlans = plans.filter((plan) => plan.goalId === goal.id);
+    const planned = goalPlans.reduce((sum, plan) => sum + plan.amount, 0);
+    const completed = goalPlans.filter((plan) => plan.status === "COMPLETED").reduce((sum, plan) => sum + plan.amount, 0);
+    const saved = Math.max(goal.currentAmount, completed);
+    const target = goal.targetAmount || planned;
+    const progress = target > 0 ? clampPercent((saved / target) * 100) : 0;
+    return { goal, planned, saved, target, progress };
+  }), [goals, plans]);
 
   const calendar = useMemo(() => buildCalendar(plans), [plans]);
+  const rhythm = useMemo(() => buildMonthRhythm(plans), [plans]);
   const trendOption = useMemo(() => buildSavingsTrendOption(plans), [plans]);
   const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -202,38 +279,58 @@ export default function SavingsPage() {
     <div className="page-stack savings-dashboard-page">
       <PageTopBar title="储蓄" />
 
-      <section className="home-card savings-summary-card">
-        <div className="savings-summary-body">
-          <div className="savings-summary-main">
-            <div className="page-hero-label">本月已存</div>
-            <div className="page-hero-value">¥ {formatMoney(summary.monthSaved)}</div>
-            <div className="page-hero-sub">目标 ¥ {formatMoney(summary.target)} · 共 {summary.count} 笔</div>
-            {primaryGoal ? (
-              <div className="savings-goal-meta">
-                <span>{primaryGoal.name}</span>
-                <span>{depositTypeLabel(primaryGoal.depositType)}</span>
-              </div>
-            ) : null}
+      <section className="savings-command-card">
+        <div className="savings-command-head">
+          <div className="savings-command-copy">
+            <span>储蓄目标管理</span>
+            <strong>{primaryGoal?.name || "还没有储蓄目标"}</strong>
+            <p>{activeGoals.length ? `${activeGoals.length} 个目标执行中 · ${depositTypeLabel(primaryGoal?.depositType)}` : "添加储蓄后，这里会生成目标驾驶舱"}</p>
           </div>
-          <div className="savings-summary-side">
-            <div className="savings-summary-row">
-              <div className="savings-row-label">累计储蓄</div>
-              <div className="savings-row-value">¥ {formatMoney(summary.totalSaved)}</div>
-              <div className="savings-row-sub">已完成 {summary.completed} 笔</div>
+          <div
+            className="savings-progress-ring"
+            style={{ background: `conic-gradient(${DONE_GREEN} ${summary.progress * 3.6}deg, rgba(255,255,255,0.24) 0deg)` }}
+          >
+            <div>
+              <strong>{summary.progress}%</strong>
+              <span>目标进度</span>
             </div>
-            <div className="savings-summary-row">
-              <div className="savings-row-label">待存计划</div>
-              <div className="savings-row-value">{summary.pending} 笔</div>
-              <div className="savings-row-sub">继续按计划执行</div>
-            </div>
+          </div>
+        </div>
+
+        <div className="savings-command-amount">
+          <span>已落袋</span>
+          <strong>¥ {formatMoney(summary.savedAmount)}</strong>
+          <em>计划总额 ¥ {formatMoney(summary.plannedTotal)}</em>
+        </div>
+
+        <div className="savings-metric-grid">
+          <div>
+            <span>本月计划</span>
+            <strong>¥ {formatMoney(summary.monthPlanned)}</strong>
+            <small>已完成 ¥ {formatMoney(summary.monthCompleted)}</small>
+          </div>
+          <div>
+            <span>待执行</span>
+            <strong>¥ {formatMoney(summary.pendingAmount)}</strong>
+            <small>{summary.pending} 笔计划</small>
+          </div>
+          <div>
+            <span>目标池</span>
+            <strong>{activeGoals.length} 个</strong>
+            <small>总目标 ¥ {formatMoney(summary.target)}</small>
+          </div>
+          <div>
+            <span>月均计划</span>
+            <strong>¥ {formatMoney(summary.averageMonthly)}</strong>
+            <small>按全年摊平</small>
           </div>
         </div>
       </section>
 
-      <section className="home-card trend-card">
+      <section className="home-card trend-card savings-module-card">
         <div className="trend-panel">
           <div className="section-head">
-            <h2>本年储蓄趋势</h2>
+            <h2>年度储蓄曲线</h2>
             <div className="trend-legend">
               <span><i style={{ background: PLAN_BLUE }} />计划</span>
               <span><i style={{ background: DONE_GREEN }} />已存</span>
@@ -243,10 +340,56 @@ export default function SavingsPage() {
         </div>
       </section>
 
-      <section className="home-card page-card">
+      <section className="home-card page-card savings-module-card">
         <div className="section-head">
-          <h2>每日存入日历</h2>
-          <span className="mini-section-note">本月</span>
+          <h2>月度执行节奏</h2>
+          <span className="mini-section-note">{summary.completed} 笔完成</span>
+        </div>
+        <div className="savings-rhythm-grid">
+          {rhythm.map((item) => (
+            <div key={item.month} className={`savings-rhythm-cell ${item.isCurrent ? "current" : ""}`}>
+              <div className="savings-rhythm-top">
+                <span>{monthLabel(item.month)}</span>
+                <strong>¥{shortAmount(item.planned)}</strong>
+              </div>
+              <div className="savings-rhythm-track">
+                <i style={{ width: `${item.planPercent}%` }} />
+                <b style={{ width: `${item.donePercent}%` }} />
+              </div>
+              <small>{item.pending > 0 ? `待 ¥${shortAmount(item.pending)}` : "清"}</small>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-card page-card savings-module-card">
+        <div className="section-head">
+          <h2>目标分层</h2>
+          <span className="mini-section-note">{goals.length} 个目标</span>
+        </div>
+        <div className="savings-goal-board">
+          {goalCards.length ? goalCards.map(({ goal, planned, saved, target, progress }) => (
+            <div key={goal.id} className="savings-goal-board-row">
+              <div>
+                <strong>{goal.name}</strong>
+                <span>{depositTypeLabel(goal.depositType)} · 截止 {deadlineLabel(goal.deadline)}</span>
+              </div>
+              <em>{progress}%</em>
+              <div className="savings-goal-track">
+                <span style={{ width: `${progress}%` }} />
+              </div>
+              <small>已存 ¥ {formatMoney(saved)} / {target > 0 ? `目标 ¥ ${formatMoney(target)}` : `计划 ¥ ${formatMoney(planned)}`}</small>
+            </div>
+          )) : (
+            <div className="finance-empty bordered">暂无储蓄目标</div>
+          )}
+        </div>
+      </section>
+
+      <section className="home-card page-card savings-module-card savings-heat-card">
+        <div className="section-head">
+          <h2>本月计划热力</h2>
+          <span className="mini-section-note">{summary.count} 笔计划</span>
         </div>
         <div className="calendar-grid-card savings-calendar-card">
           <div className="calendar-week-row">
@@ -269,9 +412,10 @@ export default function SavingsPage() {
         </div>
       </section>
 
-      <section className="recent-card">
+      <section className="recent-card savings-recent-card">
         <div className="recent-head">
-          <h2>最近储蓄</h2>
+          <h2>最近储蓄计划</h2>
+          <span className="mini-section-note">按更新时间</span>
         </div>
         <div className="recent-list">
           {recentPlans.length ? recentPlans.map((plan) => {
