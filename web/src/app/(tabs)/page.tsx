@@ -653,6 +653,10 @@ export default function HomePage() {
         <SummaryCard title="储蓄汇总" value={summary.totalSavings} delta={5.4} />
       </div>
 
+      <TrendCard trend={summary.trend} />
+
+      <RatioCard ratios={summary.ratios} />
+
       <LoanSummaryCard value={summary.loanProgress.current} delta={10.2} loans={loans} />
 
       <div className="home-main-grid">

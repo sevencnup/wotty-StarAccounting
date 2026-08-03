@@ -1639,6 +1639,387 @@ nextjs-portal {
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.76);
 }
 
+.home-liquid-screen {
+  --home-ink: #111827;
+  --home-soft-ink: #4d5b70;
+  --home-muted: #7a8799;
+  --home-blue: #2f72d9;
+  --home-green: #15966b;
+  --home-red: #d64f45;
+  --home-amber: #c78519;
+  gap: 7px;
+  padding-bottom: 6px;
+}
+
+.tabs-liquid-shell .home-liquid-screen .home-card {
+  border: 0;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    inset 0 -1px 0 rgba(118, 143, 176, 0.04),
+    0 14px 34px rgba(34, 48, 71, 0.08);
+  backdrop-filter: blur(22px) saturate(1.24);
+  -webkit-backdrop-filter: blur(22px) saturate(1.24);
+}
+
+.home-liquid-screen .home-topbar {
+  padding: 4px 2px 6px;
+}
+
+.home-liquid-screen .home-topbar h1 {
+  color: var(--home-ink);
+  font-size: 17px;
+  font-weight: 650;
+}
+
+.home-liquid-screen .home-header-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: var(--home-ink);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 8px 20px rgba(34, 48, 71, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.home-liquid-screen .hero-stack-content {
+  gap: 0;
+}
+
+.home-liquid-screen .overview-card {
+  border-radius: 30px;
+  overflow: visible;
+}
+
+.home-liquid-screen .overview-hero {
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 30px;
+  color: var(--home-ink);
+  background: rgba(225, 241, 252, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.74),
+    inset 0 -1px 0 rgba(82, 116, 150, 0.04),
+    0 18px 38px rgba(47, 91, 128, 0.12);
+  backdrop-filter: blur(24px) saturate(1.28);
+  -webkit-backdrop-filter: blur(24px) saturate(1.28);
+}
+
+.home-liquid-screen .overview-title {
+  gap: 7px;
+  color: var(--home-ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.home-liquid-screen .overview-title svg {
+  color: var(--home-blue);
+}
+
+.home-liquid-screen .month-picker {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--home-soft-ink);
+  background: rgba(255, 255, 255, 0.54);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.home-liquid-screen .overview-stats {
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.home-liquid-screen .overview-stat span:first-child,
+.home-liquid-screen .overview-forecast span,
+.home-liquid-screen .overview-forecast em,
+.home-liquid-screen .home-delta {
+  color: var(--home-muted);
+}
+
+.home-liquid-screen .overview-stat strong,
+.home-liquid-screen .overview-forecast strong {
+  color: var(--home-ink);
+}
+
+.home-liquid-screen .overview-stat strong {
+  margin-top: 0;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.home-liquid-screen .overview-divider {
+  margin: 7px 0;
+  background: rgba(111, 132, 158, 0.12);
+}
+
+.home-liquid-screen .home-delta .up {
+  color: var(--home-red);
+}
+
+.home-liquid-screen .home-delta .down {
+  color: var(--home-green);
+}
+
+.home-liquid-screen .overview-forecast {
+  gap: 6px;
+  margin-top: 10px;
+  padding: 12px;
+  border: 0;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+}
+
+.home-liquid-screen .overview-forecast strong {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.home-liquid-screen .overview-forecast strong.positive {
+  color: var(--home-green);
+}
+
+.home-liquid-screen .overview-forecast strong.negative {
+  color: var(--home-red);
+}
+
+.home-liquid-screen .balance-toggle,
+.home-liquid-screen .salary-setting-button,
+.home-liquid-screen .salary-setting-panel button {
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.home-liquid-screen .balance-toggle button {
+  color: var(--home-muted);
+}
+
+.home-liquid-screen .balance-toggle button.active {
+  color: var(--home-ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 14px rgba(34, 48, 71, 0.08);
+}
+
+.home-liquid-screen .salary-setting-button,
+.home-liquid-screen .salary-setting-panel button {
+  color: var(--home-soft-ink);
+}
+
+.home-liquid-screen .trend-panel,
+.home-liquid-screen .ratio-card,
+.home-liquid-screen .progress-row,
+.home-liquid-screen .summary-card,
+.home-liquid-screen .loan-summary-card,
+.home-liquid-screen .budget-alert-card,
+.home-liquid-screen .tasks-card {
+  padding: 14px;
+  border-radius: 26px;
+}
+
+.home-liquid-screen .section-head h2,
+.home-liquid-screen .ratio-card h2,
+.home-liquid-screen .summary-card h2,
+.home-liquid-screen .loan-summary-card h2,
+.home-liquid-screen .progress-row h3 {
+  color: var(--home-ink);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.home-liquid-screen .progress-grid,
+.home-liquid-screen .summary-grid {
+  gap: 7px;
+}
+
+.home-liquid-screen .home-main-grid {
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.home-liquid-screen .progress-row {
+  gap: 9px;
+  min-height: 128px;
+}
+
+.home-liquid-screen .progress-icon {
+  background: rgba(244, 248, 252, 0.78) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 18px rgba(34, 48, 71, 0.08);
+}
+
+.home-liquid-screen .progress-money-current {
+  color: var(--home-ink);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.home-liquid-screen .progress-money-total,
+.home-liquid-screen .mini-section-note {
+  color: var(--home-muted);
+}
+
+.home-liquid-screen .progress-track,
+.home-liquid-screen .budget-alert-track,
+.home-liquid-screen .loan-mini-track,
+.home-liquid-screen .mini-progress {
+  background: rgba(222, 232, 244, 0.72);
+  box-shadow: inset 0 1px 2px rgba(82, 105, 132, 0.12);
+}
+
+.home-liquid-screen .summary-card {
+  min-height: 104px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.home-liquid-screen .summary-card strong,
+.home-liquid-screen .loan-summary-card strong {
+  color: var(--home-ink);
+  font-size: 21px;
+  font-weight: 700;
+}
+
+.home-liquid-screen .trend-chart {
+  height: 142px;
+  margin-top: 8px;
+}
+
+.home-liquid-screen .trend-legend {
+  color: var(--home-soft-ink);
+}
+
+.home-liquid-screen .ratio-content {
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.home-liquid-screen .ratio-donut {
+  width: 118px;
+  height: 118px;
+}
+
+.home-liquid-screen .ratio-row {
+  min-height: 24px;
+  color: var(--home-soft-ink);
+}
+
+.home-liquid-screen .ratio-row strong {
+  color: var(--home-ink);
+  font-weight: 650;
+}
+
+.home-liquid-screen .loan-summary-card {
+  gap: 10px;
+}
+
+.home-liquid-screen .detail-button {
+  min-width: 78px;
+  height: 28px;
+  color: var(--home-blue);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.home-liquid-screen .loan-mini-list,
+.home-liquid-screen .budget-alert-list,
+.home-liquid-screen .tasks-list,
+.home-liquid-screen .insight-list {
+  gap: 7px;
+}
+
+.home-liquid-screen .loan-mini-row,
+.home-liquid-screen .budget-alert-row,
+.home-liquid-screen .task-row,
+.home-liquid-screen .insight-row {
+  padding: 10px;
+  border: 0;
+  border-radius: 18px;
+  background: rgba(246, 249, 252, 0.76);
+}
+
+.home-liquid-screen .loan-mini-row:first-child {
+  padding-top: 10px;
+}
+
+.home-liquid-screen .loan-mini-track span {
+  background: var(--home-green);
+}
+
+.home-liquid-screen .budget-alert-copy strong,
+.home-liquid-screen .task-copy strong,
+.home-liquid-screen .insight-row strong {
+  color: var(--home-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.home-liquid-screen .budget-alert-copy span,
+.home-liquid-screen .task-copy span,
+.home-liquid-screen .insight-row span,
+.home-liquid-screen .loan-mini-money,
+.home-liquid-screen .loan-mini-meta {
+  color: var(--home-muted);
+  font-size: 12px;
+}
+
+.home-liquid-screen .task-row {
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+}
+
+.home-liquid-screen .task-row::before {
+  content: none;
+}
+
+.home-liquid-screen .task-dot {
+  width: 8px;
+  height: 28px;
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.home-liquid-screen .budget-alert-badge,
+.home-liquid-screen .task-badge {
+  min-width: 42px;
+  color: var(--home-soft-ink);
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.home-liquid-screen .budget-alert-badge.safe,
+.home-liquid-screen .task-badge.neutral {
+  color: var(--home-green);
+}
+
+.home-liquid-screen .budget-alert-badge.warn,
+.home-liquid-screen .task-badge.warn {
+  color: var(--home-amber);
+}
+
+.home-liquid-screen .budget-alert-badge.danger,
+.home-liquid-screen .task-badge.danger {
+  color: var(--home-red);
+}
+
+.home-liquid-screen .loan-empty {
+  border: 0;
+  border-radius: 18px;
+  background: rgba(246, 249, 252, 0.76);
+  color: var(--home-muted);
+}
+
+.home-liquid-screen .skeleton {
+  background: rgba(235, 241, 248, 0.92);
+  animation: none;
+}
+
 .tabs-liquid-shell .cs-card,
 .tabs-liquid-shell .loan-command-card,
 .tabs-liquid-shell .asset-net-block,
