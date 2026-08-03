@@ -106,6 +106,25 @@ nextjs-portal {
   gap: 8px;
 }
 
+.home-liquid-screen {
+  position: relative;
+  isolation: isolate;
+  gap: 10px;
+  padding: 6px 0 4px;
+}
+
+.home-liquid-screen::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(155deg, rgba(232, 246, 255, 0.96) 0%, rgba(247, 251, 255, 0.8) 42%, rgba(235, 250, 244, 0.9) 100%),
+    linear-gradient(25deg, rgba(47, 124, 255, 0.13), rgba(255, 255, 255, 0) 58%),
+    linear-gradient(205deg, rgba(32, 178, 107, 0.12), rgba(255, 255, 255, 0) 54%);
+}
+
 .skeleton {
   border-radius: 12px;
   background: linear-gradient(100deg, #e6eef9 25%, #f3f8ff 45%, #e6eef9 65%);
@@ -141,11 +160,19 @@ nextjs-portal {
   padding-bottom: 8px;
 }
 
+.home-liquid-screen .hero-stack {
+  padding-bottom: 0;
+}
+
 .hero-stack-bg {
   position: absolute;
   inset: 0 0 26px;
   border-radius: 14px;
   background: linear-gradient(180deg, #4e8ff8 0%, #67a3ff 58%, #7db0ff 100%);
+}
+
+.home-liquid-screen .hero-stack-bg {
+  display: none;
 }
 
 .hero-stack-content {
@@ -468,6 +495,24 @@ nextjs-portal {
   overflow: hidden;
 }
 
+.home-liquid-screen .home-card {
+  border-color: rgba(255, 255, 255, 0.64);
+  border-radius: 24px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.48)),
+    rgba(255, 255, 255, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    inset 0 -1px 0 rgba(104, 136, 176, 0.08),
+    0 16px 38px rgba(67, 91, 125, 0.13);
+  backdrop-filter: blur(24px) saturate(1.55);
+  -webkit-backdrop-filter: blur(24px) saturate(1.55);
+}
+
+.home-liquid-screen .home-card:active {
+  transform: scale(0.998);
+}
+
 .overview-card {
   border-radius: 13px;
   background: transparent;
@@ -480,6 +525,35 @@ nextjs-portal {
   padding: 14px 16px 15px;
   color: #ffffff;
   background: linear-gradient(135deg, #3f86ff 0%, #5da0ff 50%, #4d8cf7 100%);
+}
+
+.home-liquid-screen .overview-card {
+  border-radius: 28px;
+  border-color: rgba(255, 255, 255, 0.58);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.08)),
+    rgba(54, 126, 229, 0.52);
+}
+
+.home-liquid-screen .overview-hero {
+  overflow: hidden;
+  padding: 18px 18px 17px;
+  border-radius: 28px;
+  background:
+    linear-gradient(140deg, rgba(47, 124, 255, 0.82) 0%, rgba(80, 162, 239, 0.68) 52%, rgba(39, 179, 139, 0.58) 100%),
+    rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -24px 38px rgba(22, 74, 143, 0.16);
+}
+
+.home-liquid-screen .overview-hero::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 27px;
+  pointer-events: none;
 }
 
 .overview-title-row,
@@ -1431,6 +1505,78 @@ nextjs-portal {
 
 .budget-insight-list {
   margin-top: 8px;
+}
+
+.home-liquid-screen .balance-toggle,
+.home-liquid-screen .salary-setting-button,
+.home-liquid-screen .salary-setting-panel button {
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.home-liquid-screen .balance-toggle button.active {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(36, 86, 148, 0.14);
+}
+
+.home-liquid-screen .trend-panel,
+.home-liquid-screen .ratio-card,
+.home-liquid-screen .progress-row,
+.home-liquid-screen .summary-card,
+.home-liquid-screen .loan-summary-card,
+.home-liquid-screen .budget-alert-card,
+.home-liquid-screen .tasks-card {
+  padding: 15px;
+}
+
+.home-liquid-screen .trend-card,
+.home-liquid-screen .progress-row,
+.home-liquid-screen .summary-card,
+.home-liquid-screen .loan-summary-card,
+.home-liquid-screen .budget-alert-card,
+.home-liquid-screen .tasks-card {
+  border-radius: 24px;
+}
+
+.home-liquid-screen .progress-grid,
+.home-liquid-screen .summary-grid,
+.home-liquid-screen .home-main-grid {
+  gap: 10px;
+}
+
+.home-liquid-screen .progress-icon {
+  background: rgba(255, 255, 255, 0.55) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 8px 18px rgba(56, 84, 124, 0.1);
+}
+
+.home-liquid-screen .progress-track,
+.home-liquid-screen .budget-alert-track,
+.home-liquid-screen .mini-progress {
+  background: rgba(226, 236, 247, 0.7);
+  box-shadow: inset 0 1px 2px rgba(93, 119, 151, 0.12);
+}
+
+.home-liquid-screen .loan-mini-row,
+.home-liquid-screen .budget-alert-row,
+.home-liquid-screen .task-row,
+.home-liquid-screen .insight-row {
+  border-color: rgba(114, 140, 174, 0.13);
+}
+
+.home-liquid-screen .budget-alert-badge,
+.home-liquid-screen .task-badge,
+.home-liquid-screen .detail-button {
+  border-color: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.52);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.home-liquid-screen .task-dot {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.76);
 }
 
 .mobile-bottom-nav {

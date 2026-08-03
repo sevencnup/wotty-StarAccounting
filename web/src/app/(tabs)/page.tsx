@@ -607,7 +607,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="home-screen" aria-busy="true">
+      <div className="home-screen home-liquid-screen" aria-busy="true">
         <header className="home-topbar">
           <span />
           <h1>首页</h1>
@@ -630,7 +630,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="home-screen">
+    <div className="home-screen home-liquid-screen">
       <header className="home-topbar">
         <span />
         <h1>首页</h1>
