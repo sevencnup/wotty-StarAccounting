@@ -65,7 +65,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         background: "#ffffff",
       }}
     >
-      <main className="tabs-shell">{mainContent}</main>
+      <main className="tabs-shell tabs-liquid-shell">{mainContent}</main>
       {!isJournalRoute ? <MobileBottomNav onNavigateStart={beginNavigation} /> : null}
       {!isJournalRoute && !isSettingsRoute && !journalVariant ? (
         <button type="button" className="global-journal-trigger" onClick={openJournal}>
