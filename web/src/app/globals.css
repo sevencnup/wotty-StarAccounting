@@ -1655,10 +1655,7 @@ nextjs-portal {
   border: 0;
   border-radius: 26px;
   background: rgba(255, 255, 255, 0.72);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    inset 0 -1px 0 rgba(118, 143, 176, 0.04),
-    0 14px 34px rgba(34, 48, 71, 0.08);
+  box-shadow: 0 12px 30px rgba(34, 48, 71, 0.07);
   backdrop-filter: blur(22px) saturate(1.24);
   -webkit-backdrop-filter: blur(22px) saturate(1.24);
 }
@@ -1692,21 +1689,18 @@ nextjs-portal {
 
 .home-liquid-screen .overview-card {
   border-radius: 30px;
-  overflow: visible;
+  overflow: hidden;
+  background: rgba(225, 241, 252, 0.82) !important;
+  box-shadow: 0 16px 36px rgba(47, 91, 128, 0.11) !important;
 }
 
 .home-liquid-screen .overview-hero {
-  overflow: hidden;
   padding: 16px;
-  border-radius: 30px;
   color: var(--home-ink);
-  background: rgba(225, 241, 252, 0.82);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.74),
-    inset 0 -1px 0 rgba(82, 116, 150, 0.04),
-    0 18px 38px rgba(47, 91, 128, 0.12);
-  backdrop-filter: blur(24px) saturate(1.28);
-  -webkit-backdrop-filter: blur(24px) saturate(1.28);
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .home-liquid-screen .overview-title {
@@ -1722,20 +1716,19 @@ nextjs-portal {
 
 .home-liquid-screen .month-picker {
   height: 28px;
-  padding: 0 10px;
+  padding: 0 4px;
   border-radius: 999px;
   color: var(--home-soft-ink);
-  background: rgba(255, 255, 255, 0.54);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  background: transparent;
+  box-shadow: none;
 }
 
 .home-liquid-screen .overview-stats {
   gap: 10px;
   margin-top: 14px;
-  padding: 12px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  padding: 2px 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .home-liquid-screen .overview-stat span:first-child,
@@ -1771,12 +1764,11 @@ nextjs-portal {
 
 .home-liquid-screen .overview-forecast {
   gap: 6px;
-  margin-top: 10px;
-  padding: 12px;
+  margin-top: 16px;
+  padding: 0;
   border: 0;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  background: transparent;
+  box-shadow: none;
 }
 
 .home-liquid-screen .overview-forecast strong {
@@ -1796,7 +1788,7 @@ nextjs-portal {
 .home-liquid-screen .salary-setting-button,
 .home-liquid-screen .salary-setting-panel button {
   background: rgba(255, 255, 255, 0.48);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.84);
+  box-shadow: none;
 }
 
 .home-liquid-screen .balance-toggle button {
@@ -1806,7 +1798,7 @@ nextjs-portal {
 .home-liquid-screen .balance-toggle button.active {
   color: var(--home-ink);
   background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 6px 14px rgba(34, 48, 71, 0.08);
+  box-shadow: none;
 }
 
 .home-liquid-screen .salary-setting-button,
@@ -1852,9 +1844,7 @@ nextjs-portal {
 
 .home-liquid-screen .progress-icon {
   background: rgba(244, 248, 252, 0.78) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 8px 18px rgba(34, 48, 71, 0.08);
+  box-shadow: none;
 }
 
 .home-liquid-screen .progress-money-current {
@@ -1873,7 +1863,7 @@ nextjs-portal {
 .home-liquid-screen .loan-mini-track,
 .home-liquid-screen .mini-progress {
   background: rgba(222, 232, 244, 0.72);
-  box-shadow: inset 0 1px 2px rgba(82, 105, 132, 0.12);
+  box-shadow: none;
 }
 
 .home-liquid-screen .summary-card {
@@ -1932,21 +1922,22 @@ nextjs-portal {
 .home-liquid-screen .budget-alert-list,
 .home-liquid-screen .tasks-list,
 .home-liquid-screen .insight-list {
-  gap: 7px;
+  gap: 12px;
 }
 
 .home-liquid-screen .loan-mini-row,
 .home-liquid-screen .budget-alert-row,
 .home-liquid-screen .task-row,
 .home-liquid-screen .insight-row {
-  padding: 10px;
+  padding: 4px 0;
   border: 0;
-  border-radius: 18px;
-  background: rgba(246, 249, 252, 0.76);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .home-liquid-screen .loan-mini-row:first-child {
-  padding-top: 10px;
+  padding-top: 4px;
 }
 
 .home-liquid-screen .loan-mini-track span {
@@ -1989,8 +1980,7 @@ nextjs-portal {
 .home-liquid-screen .task-badge {
   min-width: 42px;
   color: var(--home-soft-ink);
-  background: rgba(255, 255, 255, 0.64);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  box-shadow: none;
 }
 
 .home-liquid-screen .budget-alert-badge.safe,
@@ -2010,8 +2000,8 @@ nextjs-portal {
 
 .home-liquid-screen .loan-empty {
   border: 0;
-  border-radius: 18px;
-  background: rgba(246, 249, 252, 0.76);
+  border-radius: 0;
+  background: transparent;
   color: var(--home-muted);
 }
 
