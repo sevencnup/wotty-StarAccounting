@@ -5195,3 +5195,453 @@ nextjs-portal {
     font-size: 25px;
   }
 }
+
+/* v0.0.52: structural identities, not color variants */
+.consumption-receipt-hero {
+  position: relative;
+  padding: 18px 18px 16px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 8px;
+  color: #2d292b;
+  background: rgba(255, 250, 247, 0.92);
+  box-shadow: 0 14px 32px rgba(104, 75, 68, 0.1);
+  backdrop-filter: blur(20px) saturate(1.12);
+  -webkit-backdrop-filter: blur(20px) saturate(1.12);
+}
+
+.consumption-receipt-hero::before,
+.consumption-receipt-hero::after {
+  content: "";
+  position: absolute;
+  top: 45%;
+  width: 12px;
+  height: 24px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.consumption-receipt-hero::before { left: -7px; }
+.consumption-receipt-hero::after { right: -7px; }
+
+.consumption-receipt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.consumption-receipt-head span {
+  color: #9e6255;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.consumption-receipt-head strong {
+  color: #887b7d;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.consumption-receipt-total {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 21px 0 19px;
+  text-align: center;
+}
+
+.consumption-receipt-total span {
+  color: #817579;
+  font-size: 12px;
+}
+
+.consumption-receipt-total strong {
+  color: #bd5140;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.consumption-receipt-caption {
+  position: relative;
+  height: 20px;
+  border-top: 1px dashed rgba(145, 112, 104, 0.28);
+}
+
+.consumption-receipt-caption span {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  padding: 0 9px;
+  color: #a29496;
+  background: #fffaf7;
+  font-size: 10px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.consumption-receipt-lines {
+  display: grid;
+  gap: 11px;
+}
+
+.consumption-receipt-lines > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.consumption-receipt-lines span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: #554e51;
+  font-size: 11px;
+}
+
+.consumption-receipt-lines i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.consumption-receipt-lines i.wechat { background: #22a873; }
+.consumption-receipt-lines i.alipay { background: #3189db; }
+.consumption-receipt-lines i.category { background: #d28148; }
+
+.consumption-receipt-lines small {
+  overflow: hidden;
+  color: #9b8f92;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consumption-receipt-lines strong {
+  color: #403a3d;
+  font-size: 12px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.consumption-receipt-settlement {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(145, 112, 104, 0.15);
+  color: #7f7477;
+  font-size: 11px;
+}
+
+.consumption-receipt-settlement strong {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.consumption-receipt-settlement strong.positive { color: #237d60; }
+.consumption-receipt-settlement strong.negative { color: #bd5140; }
+
+.tabs-liquid-shell .loan-operations-hero {
+  padding: 18px;
+  border-radius: 8px 26px 8px 26px;
+  color: #f7f9fb;
+  background: #202c3a;
+  box-shadow: 0 17px 36px rgba(25, 36, 49, 0.2);
+}
+
+.loan-operations-hero .finance-eyebrow {
+  color: #d9e0e7;
+}
+
+.loan-operations-hero .finance-state-chip {
+  border: 0;
+  color: #aee3c9;
+  background: rgba(106, 199, 155, 0.12);
+}
+
+.loan-operations-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 106px;
+  gap: 18px;
+  align-items: stretch;
+  margin-top: 17px;
+}
+
+.loan-operations-balance {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+}
+
+.loan-operations-balance > span,
+.loan-next-node > span {
+  color: #93a0ae;
+  font-size: 10px;
+}
+
+.loan-operations-balance > strong {
+  margin-top: 8px;
+  color: #ffffff;
+  font-size: 28px;
+  line-height: 1;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.loan-operations-balance > small {
+  margin-top: 9px;
+  color: #a8b3be;
+  font-size: 10px;
+}
+
+.loan-next-node {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-height: 108px;
+  padding: 10px 7px;
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+.loan-next-node > strong {
+  margin-top: 4px;
+  color: #7bd4ad;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.loan-next-node > em {
+  margin-top: 3px;
+  color: #e7edf2;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.loan-next-node > small {
+  max-width: 96px;
+  margin-top: 8px;
+  overflow: hidden;
+  color: #8f9ba8;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loan-milestone-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 17px;
+  color: #97a4b1;
+  font-size: 10px;
+}
+
+.loan-milestone-head strong {
+  color: #dce5eb;
+  font-size: 11px;
+}
+
+.loan-milestone-rail {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 4px;
+  margin-top: 7px;
+}
+
+.loan-milestone-rail i {
+  height: 7px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.loan-milestone-rail i.complete {
+  background: #72cda5;
+}
+
+.loan-operations-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 15px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.loan-operations-metrics div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 9px;
+}
+
+.loan-operations-metrics div:first-child { padding-left: 0; }
+.loan-operations-metrics div:last-child { padding-right: 0; }
+
+.loan-operations-metrics div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.loan-operations-metrics span {
+  color: #8794a2;
+  font-size: 9px;
+}
+
+.loan-operations-metrics strong {
+  overflow: hidden;
+  color: #eef3f6;
+  font-size: 11px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-statement-hero {
+  padding: 18px;
+  border-left: 5px solid #3a9a73;
+  border-radius: 8px;
+  color: #18382f;
+  background: rgba(238, 247, 242, 0.94);
+  box-shadow: 0 15px 34px rgba(48, 91, 72, 0.11);
+  backdrop-filter: blur(20px) saturate(1.1);
+  -webkit-backdrop-filter: blur(20px) saturate(1.1);
+}
+
+.asset-statement-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.asset-statement-head > div {
+  display: grid;
+  gap: 4px;
+}
+
+.asset-statement-head span {
+  color: #4f7569;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.asset-statement-head h2 {
+  margin: 0;
+  color: #18382f;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.asset-statement-head > strong {
+  padding: 5px 9px;
+  border-radius: 4px;
+  font-size: 10px;
+}
+
+.asset-statement-head > strong.positive {
+  color: #267357;
+  background: rgba(61, 157, 116, 0.12);
+}
+
+.asset-statement-head > strong.negative {
+  color: #a24f46;
+  background: rgba(213, 97, 84, 0.12);
+}
+
+.asset-statement-equation {
+  display: grid;
+  margin-top: 18px;
+}
+
+.asset-statement-row,
+.asset-statement-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.asset-statement-row {
+  min-height: 37px;
+  border-bottom: 1px solid rgba(54, 102, 81, 0.12);
+}
+
+.asset-statement-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #58786f;
+  font-size: 11px;
+}
+
+.asset-statement-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #3a9a73;
+}
+
+.asset-statement-row.negative i { background: #d36b5e; }
+
+.asset-statement-row strong {
+  color: #294a40;
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-statement-row.negative strong { color: #a75047; }
+
+.asset-statement-result {
+  padding-top: 13px;
+}
+
+.asset-statement-result span {
+  color: #345e51;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.asset-statement-result strong {
+  color: #173d32;
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.asset-statement-hero > p {
+  margin: 13px 0 0;
+  color: #70887f;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 370px) {
+  .consumption-receipt-total strong {
+    font-size: 29px;
+  }
+
+  .loan-operations-main {
+    grid-template-columns: minmax(0, 1fr) 88px;
+    gap: 10px;
+  }
+
+  .loan-operations-balance > strong,
+  .asset-statement-result strong {
+    font-size: 21px;
+  }
+
+  .loan-operations-metrics strong {
+    font-size: 10px;
+  }
+}

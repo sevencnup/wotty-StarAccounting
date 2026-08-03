@@ -98,19 +98,29 @@ export default function AssetsPage() {
     <div className="page-stack finance-page assets-page">
       <PageTopBar title="资产" />
 
-      <section className="asset-balance-sheet">
-        <div className="asset-net-block">
-          <div className="asset-identity-heading">
-            <div className="finance-eyebrow">资产净值</div>
-            <span className={summary.netWorth >= 0 ? "positive" : "negative"}>{summary.netWorth >= 0 ? "净值为正" : "需要降债"}</span>
+      <section className="asset-statement-hero">
+        <div className="asset-statement-head">
+          <div>
+            <span>资产负债表</span>
+            <h2>当前财务净值</h2>
           </div>
-          <strong>¥ {formatMoney(summary.netWorth)}</strong>
-          <span>{summary.netWorth >= 0 ? "资产覆盖负债，净值为正" : "负债高于资产，需要优先降债"}</span>
+          <strong className={summary.netWorth >= 0 ? "positive" : "negative"}>{summary.netWorth >= 0 ? "结构健康" : "负债优先"}</strong>
         </div>
-        <div className="asset-sheet-side">
-          <div><span><i className="positive" />总资产</span><strong>+ ¥ {formatMoney(summary.assetTotal)}</strong></div>
-          <div><span><i className="negative" />总负债</span><strong>- ¥ {formatMoney(summary.liabilityTotal)}</strong></div>
+        <div className="asset-statement-equation">
+          <div className="asset-statement-row positive">
+            <span><i />资产总额</span>
+            <strong>¥ {formatMoney(summary.assetTotal)}</strong>
+          </div>
+          <div className="asset-statement-row negative">
+            <span><i />减去负债</span>
+            <strong>- ¥ {formatMoney(summary.liabilityTotal)}</strong>
+          </div>
+          <div className="asset-statement-result">
+            <span>= 净资产</span>
+            <strong>¥ {formatMoney(summary.netWorth)}</strong>
+          </div>
         </div>
+        <p>{summary.netWorth >= 0 ? "资产能够覆盖当前全部负债" : "当前负债高于资产，建议优先降低债务余额"}</p>
       </section>
 
       <section className="home-card finance-section asset-allocation-section">

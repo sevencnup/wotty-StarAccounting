@@ -53,10 +53,20 @@ export default function ConsumptionPage() {
 
   const monthSummary = useMemo(() => {
     const list = transactions.filter((item) => monthKey(item.date) === REPORTING_MONTH_KEY);
+    const categoryTotals = list
+      .filter((item) => item.type === "EXPENSE")
+      .reduce<Record<string, number>>((totals, item) => {
+        totals[item.category] = (totals[item.category] ?? 0) + item.amount;
+        return totals;
+      }, {});
+    const [topCategory = "暂无支出", topCategoryAmount = 0] = Object.entries(categoryTotals)
+      .sort((a, b) => b[1] - a[1])[0] ?? [];
     return {
       expense: list.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
       income: list.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
       count: list.length,
+      topCategory,
+      topCategoryAmount,
     };
   }, [transactions]);
 
@@ -87,37 +97,35 @@ export default function ConsumptionPage() {
     <div className="page-stack consumption-page">
       <PageTopBar title="消费" />
 
-      <section className="consumption-identity-hero">
-        <div className="consumption-identity-head">
-          <div>
-            <span>{reportingMonthLabel()} · 消费脉搏</span>
-            <h2>本月消费</h2>
-          </div>
-          <strong>{monthSummary.count} 笔流水</strong>
+      <section className="consumption-receipt-hero">
+        <div className="consumption-receipt-head">
+          <span>{reportingMonthLabel()} · 月度账单</span>
+          <strong>{monthSummary.count} 笔</strong>
         </div>
-        <div className="consumption-identity-main">
-          <div className="consumption-total">
-            <span>总支出</span>
-            <strong>¥ {formatMoney(monthSummary.expense)}</strong>
-            <p>
-              本月收入 ¥ {formatMoney(monthSummary.income)}
-              <em className={monthBalance >= 0 ? "positive" : "negative"}>
-                结余 {monthBalance >= 0 ? "+" : "-"}¥ {formatMoney(Math.abs(monthBalance))}
-              </em>
-            </p>
+        <div className="consumption-receipt-total">
+          <span>本月支出</span>
+          <strong>¥ {formatMoney(monthSummary.expense)}</strong>
+        </div>
+        <div className="consumption-receipt-caption"><span>支出明细</span></div>
+        <div className="consumption-receipt-lines">
+          <div>
+            <span><i className="wechat" />微信支付 <small>{platformSummary.wechat.count} 笔</small></span>
+            <strong>¥ {formatMoney(platformSummary.wechat.expense)}</strong>
           </div>
-          <div className="consumption-channel-list">
-            <div className="consumption-channel wechat">
-              <span><i />微信支付</span>
-              <strong>¥ {formatMoney(platformSummary.wechat.expense)}</strong>
-              <small>{platformSummary.wechat.count} 笔</small>
-            </div>
-            <div className="consumption-channel alipay">
-              <span><i />支付宝</span>
-              <strong>¥ {formatMoney(platformSummary.alipay.expense)}</strong>
-              <small>{platformSummary.alipay.count} 笔</small>
-            </div>
+          <div>
+            <span><i className="alipay" />支付宝 <small>{platformSummary.alipay.count} 笔</small></span>
+            <strong>¥ {formatMoney(platformSummary.alipay.expense)}</strong>
           </div>
+          <div>
+            <span><i className="category" />最高分类 <small>{monthSummary.topCategory}</small></span>
+            <strong>¥ {formatMoney(monthSummary.topCategoryAmount)}</strong>
+          </div>
+        </div>
+        <div className="consumption-receipt-settlement">
+          <span>收入 ¥ {formatMoney(monthSummary.income)}</span>
+          <strong className={monthBalance >= 0 ? "positive" : "negative"}>
+            结余 {monthBalance >= 0 ? "+" : "-"}¥ {formatMoney(Math.abs(monthBalance))}
+          </strong>
         </div>
       </section>
 
