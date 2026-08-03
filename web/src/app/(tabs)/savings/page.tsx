@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
@@ -61,6 +62,10 @@ function buildMonthRhythm(plans: SavingsPlan[]) {
   }));
 }
 
+function goalPercent(goal: SavingsGoal) {
+  return goal.targetAmount > 0 ? clampPercent((goal.currentAmount / goal.targetAmount) * 100) : 0;
+}
+
 export default function SavingsPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [plans, setPlans] = useState<SavingsPlan[]>([]);
@@ -101,14 +106,19 @@ export default function SavingsPage() {
     const pending = plans.filter((plan) => plan.status !== "COMPLETED").length;
     const progress = target > 0 ? clampPercent((savedAmount / target) * 100) : 0;
     const pendingAmount = Math.max(plannedTotal - savedAmount, 0);
-    return { completed, monthPlanned, pending, pendingAmount, plannedTotal, progress, savedAmount };
+    const remainingTarget = Math.max(target - savedAmount, 0);
+    const completionRate = plans.length ? clampPercent((completed / plans.length) * 100) : 0;
+    return { completed, completionRate, monthPlanned, pending, pendingAmount, plannedTotal, progress, remainingTarget, savedAmount, target };
   }, [goals, plans]);
 
   const recentPlans = useMemo(() => (
     [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
   ), [plans]);
-  const primaryGoal = goals[0] ?? null;
   const activeGoals = useMemo(() => goals.filter((goal) => goal.status === "ACTIVE"), [goals]);
+  const focusGoal = activeGoals[0] ?? goals[0] ?? null;
+  const goalCards = useMemo(() => (
+    activeGoals.length ? activeGoals : goals
+  ).slice(0, 4), [activeGoals, goals]);
   const rhythm = useMemo(() => buildMonthRhythm(plans), [plans]);
   const visibleRhythm = useMemo(() => {
     const active = rhythm.filter((item) => item.planned > 0 || item.isCurrent);
@@ -121,62 +131,71 @@ export default function SavingsPage() {
     <div className="page-stack savings-dashboard-page">
       <PageTopBar title="储蓄" />
 
-      <section className="home-card savings-lite-hero">
-        <div className="savings-lite-head">
-          <div>
-            <span>储蓄计划</span>
-            <strong>{primaryGoal?.name || "还没有储蓄目标"}</strong>
-          </div>
-          <em>{activeGoals.length ? `${activeGoals.length} 个目标` : depositTypeLabel(primaryGoal?.depositType)}</em>
-        </div>
-
-        <div className="savings-lite-total">
-          <span>已存金额</span>
+      <section className="home-card savings-vault-hero">
+        <div className="savings-vault-copy">
+          <span>储蓄总览</span>
           <strong>¥ {formatMoney(summary.savedAmount)}</strong>
+          <p>{focusGoal ? `${focusGoal.name} · 还差 ¥ ${formatMoney(Math.max(focusGoal.targetAmount - focusGoal.currentAmount, 0))}` : "还没有储蓄目标"}</p>
         </div>
-
-        <div className="savings-lite-progress">
-          <span style={{ width: `${summary.progress}%` }} />
-        </div>
-
-        <div className="savings-lite-meta">
-          <span>进度 {summary.progress}%</span>
-          <span>计划 ¥ {formatMoney(summary.plannedTotal)}</span>
-        </div>
-
-        <div className="savings-lite-grid">
-          <div>
-            <span>本月计划</span>
-            <strong>¥ {formatMoney(summary.monthPlanned)}</strong>
-          </div>
-          <div>
-            <span>待执行</span>
-            <strong>¥ {formatMoney(summary.pendingAmount)}</strong>
-          </div>
-          <div>
-            <span>已完成</span>
-            <strong>{summary.completed} 笔</strong>
-          </div>
+        <div className="savings-vault-ring" style={{ "--progress": `${summary.progress}%` } as CSSProperties}>
+          <strong>{summary.progress}%</strong>
+          <span>总进度</span>
         </div>
       </section>
 
-      <section className="home-card page-card savings-lite-card">
-        <div className="section-head">
-          <h2>月度执行节奏</h2>
-          <span className="mini-section-note">{summary.pending} 笔待存</span>
+      <section className="savings-metric-grid" aria-label="储蓄关键指标">
+        <div>
+          <span>本月计划</span>
+          <strong>¥ {formatMoney(summary.monthPlanned)}</strong>
         </div>
-        <div className="savings-rhythm-list">
-          {visibleRhythm.map((item) => (
-            <div key={item.month} className={`savings-rhythm-row ${item.isCurrent ? "current" : ""}`}>
-              <span>{monthLabel(item.month)}</span>
-              <div>
-                <strong>¥ {formatMoney(item.planned)}</strong>
-                <small>{item.pending > 0 ? `待 ¥${shortAmount(item.pending)}` : "已清"}</small>
-                <div className="savings-rhythm-track">
-                  <i style={{ width: `${item.planPercent}%` }} />
-                  <b style={{ width: `${item.donePercent}%` }} />
+        <div>
+          <span>目标缺口</span>
+          <strong>¥ {formatMoney(summary.remainingTarget)}</strong>
+        </div>
+        <div>
+          <span>完成率</span>
+          <strong>{summary.completionRate}%</strong>
+        </div>
+      </section>
+
+      <section className="home-card savings-goal-section">
+        <div className="section-head">
+          <h2>目标组</h2>
+          <span className="mini-section-note">{activeGoals.length || goals.length} 个目标</span>
+        </div>
+        <div className="savings-goal-grid">
+          {goalCards.length ? goalCards.map((goal) => {
+            const percent = goalPercent(goal);
+            const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
+            return (
+              <article key={goal.id} className="savings-goal-card">
+                <div>
+                  <span>{depositTypeLabel(goal.depositType)}</span>
+                  <strong>{goal.name}</strong>
                 </div>
-              </div>
+                <em>{percent}%</em>
+                <div className="savings-goal-track"><i style={{ width: `${percent}%` }} /></div>
+                <p>已存 ¥ {formatMoney(goal.currentAmount)} / 还差 ¥ {formatMoney(remaining)}</p>
+              </article>
+            );
+          }) : (
+            <div className="loan-empty">暂无储蓄目标</div>
+          )}
+        </div>
+      </section>
+
+      <section className="home-card savings-rhythm-card">
+        <div className="section-head">
+          <h2>月度节奏</h2>
+          <span className="mini-section-note">{REPORTING_MONTH_KEY}</span>
+        </div>
+        <div className="savings-rhythm-board">
+          {visibleRhythm.map((item) => (
+            <div key={item.month} className={`savings-rhythm-tile ${item.isCurrent ? "current" : ""}`}>
+              <span>{monthLabel(item.month)}</span>
+              <strong>¥ {formatMoney(item.planned)}</strong>
+              <small>{item.pending > 0 ? `待 ${shortAmount(item.pending)}` : "已清"}</small>
+              <div><i style={{ width: `${item.planPercent}%` }} /><b style={{ width: `${item.donePercent}%` }} /></div>
             </div>
           ))}
         </div>
