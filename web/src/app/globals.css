@@ -109,8 +109,8 @@ nextjs-portal {
 .home-liquid-screen {
   position: relative;
   isolation: isolate;
-  gap: 10px;
-  padding: 6px 0 4px;
+  gap: 6px;
+  padding: 2px 0;
 }
 
 .home-liquid-screen::before {
@@ -119,10 +119,7 @@ nextjs-portal {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background:
-    linear-gradient(155deg, rgba(232, 246, 255, 0.96) 0%, rgba(247, 251, 255, 0.8) 42%, rgba(235, 250, 244, 0.9) 100%),
-    linear-gradient(25deg, rgba(47, 124, 255, 0.13), rgba(255, 255, 255, 0) 58%),
-    linear-gradient(205deg, rgba(32, 178, 107, 0.12), rgba(255, 255, 255, 0) 54%);
+  background: #ffffff;
 }
 
 .skeleton {
@@ -497,15 +494,15 @@ nextjs-portal {
 
 .home-liquid-screen .home-card {
   border-color: transparent;
-  border-radius: 24px;
+  border-radius: 22px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.46)),
-    rgba(255, 255, 255, 0.46);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(247, 250, 255, 0.66)),
+    rgba(255, 255, 255, 0.7);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.4),
-    0 18px 42px rgba(67, 91, 125, 0.12);
-  backdrop-filter: blur(24px) saturate(1.55);
-  -webkit-backdrop-filter: blur(24px) saturate(1.55);
+    inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    0 10px 26px rgba(67, 91, 125, 0.08);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
 }
 
 .home-liquid-screen .home-card:active {
@@ -538,18 +535,50 @@ nextjs-portal {
 
 .home-liquid-screen .overview-hero {
   overflow: hidden;
-  padding: 18px 18px 17px;
-  border-radius: 28px;
-  background:
-    linear-gradient(140deg, rgba(47, 124, 255, 0.82) 0%, rgba(80, 162, 239, 0.68) 52%, rgba(39, 179, 139, 0.58) 100%),
-    rgba(255, 255, 255, 0.12);
+  padding: 14px 15px;
+  border-radius: 22px;
+  color: #172033;
+  background: rgba(255, 255, 255, 0.78);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 18px 42px rgba(47, 105, 184, 0.16);
+    inset 0 1px 0 rgba(255, 255, 255, 0.64),
+    0 10px 26px rgba(67, 91, 125, 0.08);
+  backdrop-filter: blur(18px) saturate(1.35);
+  -webkit-backdrop-filter: blur(18px) saturate(1.35);
 }
 
 .home-liquid-screen .overview-hero::before {
   content: none;
+}
+
+.home-liquid-screen .overview-title,
+.home-liquid-screen .month-picker,
+.home-liquid-screen .overview-stat strong,
+.home-liquid-screen .overview-forecast strong {
+  color: #172033;
+}
+
+.home-liquid-screen .overview-stat span:first-child,
+.home-liquid-screen .overview-forecast span,
+.home-liquid-screen .overview-forecast em,
+.home-liquid-screen .home-delta {
+  color: #6d7b91;
+}
+
+.home-liquid-screen .overview-divider,
+.home-liquid-screen .overview-forecast {
+  border-color: rgba(112, 139, 174, 0.1);
+}
+
+.home-liquid-screen .overview-divider {
+  background: rgba(112, 139, 174, 0.12);
+}
+
+.home-liquid-screen .overview-forecast strong.negative {
+  color: #e05445;
+}
+
+.home-liquid-screen .balance-toggle button {
+  color: #6d7b91;
 }
 
 .overview-title-row,
@@ -1524,7 +1553,7 @@ nextjs-portal {
 .home-liquid-screen .loan-summary-card,
 .home-liquid-screen .budget-alert-card,
 .home-liquid-screen .tasks-card {
-  padding: 15px;
+  padding: 12px;
 }
 
 .home-liquid-screen .trend-card,
@@ -1533,13 +1562,13 @@ nextjs-portal {
 .home-liquid-screen .loan-summary-card,
 .home-liquid-screen .budget-alert-card,
 .home-liquid-screen .tasks-card {
-  border-radius: 24px;
+  border-radius: 22px;
 }
 
 .home-liquid-screen .progress-grid,
 .home-liquid-screen .summary-grid,
 .home-liquid-screen .home-main-grid {
-  gap: 10px;
+  gap: 6px;
 }
 
 .home-liquid-screen .progress-icon {
