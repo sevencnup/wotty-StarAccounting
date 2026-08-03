@@ -170,4 +170,42 @@ class LocalRepository(context: Context) : DataRepository {
         if (idx >= 0) list[idx] = config else list.add(config)
         writeListJson("themeconfig.json", list, ThemeConfig.serializer())
     }
+
+    override suspend fun seedDemoData() {
+        val now = java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+        val month = now.take(7)
+        val txns = listOf(
+            Transaction("txn-demo-salary", "local", "default", 12800.0, TransactionType.INCOME, "工资", "银行卡", "公司发薪", "${month}-15 09:00:00", "月中发薪", createdAt = now, updatedAt = now),
+            Transaction("txn-demo-food", "local", "default", 86.0, TransactionType.EXPENSE, "餐饮", "支付宝", "午餐", "${month}-16 12:15:00", "工作餐", createdAt = now, updatedAt = now),
+            Transaction("txn-demo-shop", "local", "default", 268.0, TransactionType.EXPENSE, "购物", "微信", "日用品", "${month}-18 20:10:00", "家庭采购", createdAt = now, updatedAt = now),
+            Transaction("txn-demo-traffic", "local", "default", 48.0, TransactionType.EXPENSE, "交通", "支付宝", "地铁公交", "${month}-19 08:30:00", "通勤", createdAt = now, updatedAt = now),
+            Transaction("txn-demo-entertain", "local", "default", 156.0, TransactionType.EXPENSE, "娱乐", "微信", "电影票", "${month}-20 20:40:00", "周末观影", createdAt = now, updatedAt = now)
+        )
+        val assets = listOf(
+            Asset("asset-demo-bank", "local", "default", "工资卡", AssetType.BANK_CARD, 48216.4, createdAt = now, updatedAt = now),
+            Asset("asset-demo-wechat", "local", "default", "微信钱包", AssetType.WECHAT, 1260.5, createdAt = now, updatedAt = now),
+            Asset("asset-demo-alipay", "local", "default", "支付宝余额", AssetType.ALIPAY, 3180.0, createdAt = now, updatedAt = now)
+        )
+        val budgets = listOf(
+            Budget("budget-demo-global", "local", "default", 6000.0, "ALL", alertPercent = 80, scopeType = BudgetScopeType.GLOBAL, createdAt = now, updatedAt = now),
+            Budget("budget-demo-food", "local", "default", 1500.0, "餐饮", alertPercent = 80, scopeType = BudgetScopeType.CATEGORY, createdAt = now, updatedAt = now)
+        )
+        val loans = listOf(
+            Loan("loan-demo-home", "local", "default", "房贷", 480000.0, 352000.0, 240, 64, 3200.0, 20, createdAt = now, updatedAt = now),
+            Loan("loan-demo-car", "local", "default", "车贷", 80000.0, 27000.0, 36, 18, 2200.0, 10, createdAt = now, updatedAt = now)
+        )
+        val goals = listOf(
+            SavingsGoal("goal-demo-travel", "local", "default", "旅行基金", 30000.0, 9200.0, "2026-12-31", SavingsGoalType.LONG_TERM, SavingsGoalStatus.ACTIVE, SavingsGoalDepositType.CASH, createdAt = now, updatedAt = now),
+            SavingsGoal("goal-demo-emergency", "local", "default", "应急储备", 20000.0, 6800.0, "2027-06-30", SavingsGoalType.LONG_TERM, SavingsGoalStatus.ACTIVE, SavingsGoalDepositType.CASH, createdAt = now, updatedAt = now)
+        )
+        val plans = listOf(
+            SavingsPlan("plan-demo-travel-1", "goal-demo-travel", 2000.0, SavingsPlanStatus.PENDING, month, createdAt = now, updatedAt = now)
+        )
+        txns.forEach { saveTransaction(it) }
+        assets.forEach { saveAsset(it) }
+        budgets.forEach { saveBudget(it) }
+        loans.forEach { saveLoan(it) }
+        goals.forEach { saveSavingsGoal(it) }
+        plans.forEach { saveSavingsPlan(it) }
+    }
 }

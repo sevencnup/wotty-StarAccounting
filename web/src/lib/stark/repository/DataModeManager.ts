@@ -28,7 +28,16 @@ class FallbackRepository implements DataRepository {
 
   private async read<T>(remoteCall: () => Promise<T>, localCall: () => Promise<T>, fallback: T) {
     try {
-      return await withTimeout(remoteCall());
+      const value = await withTimeout(remoteCall());
+      // 云端没有数据时回落到本地（本地仓库首次使用会自动种入演示数据）
+      if (Array.isArray(value) && value.length === 0) {
+        try {
+          return await withTimeout(localCall(), 1000);
+        } catch {
+          return value;
+        }
+      }
+      return value;
     } catch {
       try {
         return await withTimeout(localCall(), 1000);

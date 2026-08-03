@@ -1,3 +1,25 @@
+function currentMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export const REPORTING_MONTH_KEY = currentMonthKey();
+
+export function reportingMonthDate(day = 1) {
+  const [year, month] = REPORTING_MONTH_KEY.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+export function reportingMonthEndDate() {
+  const [year, month] = REPORTING_MONTH_KEY.split("-").map(Number);
+  return new Date(year, month, 0);
+}
+
+export function reportingMonthLabel() {
+  const [year, month] = REPORTING_MONTH_KEY.split("-");
+  return `${year}年${Number(month)}月`;
+}
+
 export function nowText() {
   const date = new Date();
   const month = String(date.getMonth() + 1).padStart(2, "0");

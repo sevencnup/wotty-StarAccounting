@@ -48,6 +48,9 @@ interface DataRepository {
 
     suspend fun getThemeConfig(userId: String): ThemeConfig?
     suspend fun saveThemeConfig(config: ThemeConfig)
+
+    /** 首次使用无数据时，种入一套当月演示数据 */
+    suspend fun seedDemoData()
 }
 
 data class ImportResult(

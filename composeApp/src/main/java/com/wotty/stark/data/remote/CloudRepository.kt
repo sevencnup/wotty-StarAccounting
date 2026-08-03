@@ -12,13 +12,19 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 
 class CloudRepository(
-    private val baseUrl: String = "http://10.0.2.2:8080/api"
+    private val baseUrl: String
 ) : DataRepository {
 
     private val client = HttpClient {
         install(ContentNegotiation) {
             json(Json { ignoreUnknownKeys = true; coerceInputValues = true })
         }
+    }
+
+    suspend fun checkHealth(): Boolean {
+        return runCatching {
+            client.get("$baseUrl/health").status.isSuccess()
+        }.getOrDefault(false)
     }
 
     override suspend fun getCurrentUser(): User? = client.get("$baseUrl/user/me").body()
@@ -78,5 +84,9 @@ class CloudRepository(
         client.get("$baseUrl/theme-config/$userId").body()
     override suspend fun saveThemeConfig(config: ThemeConfig) {
         client.put("$baseUrl/theme-config") { setBody(config) }
+    }
+
+    override suspend fun seedDemoData() {
+        client.post("$baseUrl/sync/demo")
     }
 }
