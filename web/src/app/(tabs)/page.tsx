@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
+import type { EChartsCoreOption } from "echarts/core";
+import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
@@ -9,8 +11,10 @@ import {
   buildHomeSummary,
   type HomeBudgetAlert,
   type HomeInsight,
+  type HomeRatio,
   type HomeSummary,
   type HomeTaskItem,
+  type HomeTrend,
 } from "@/lib/stark/dashboard/summary";
 import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
@@ -18,6 +22,9 @@ import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/
 const manager = new DataModeManager();
 
 const INCOME_BLUE = "#3d86ff";
+const EXPENSE_ORANGE = "#ff7a32";
+const POSITIVE = "#ff6848";
+const NEGATIVE = "#67caa9";
 const GREEN = "#63c7a8";
 
 type IconProps = { size?: number; color?: string; strokeWidth?: number };
@@ -109,6 +116,138 @@ function DeltaLine({ value, muted = false }: { value: number; muted?: boolean })
       <span className={positive ? "up arrow" : "down arrow"}>{positive ? "↗" : "↓"}</span>
     </div>
   );
+}
+
+function TrendLegend() {
+  return (
+    <div className="trend-legend">
+      <span><i style={{ background: INCOME_BLUE }} />收入</span>
+      <span><i style={{ background: EXPENSE_ORANGE }} />支出</span>
+    </div>
+  );
+}
+
+function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
+  const maxRaw = Math.max(...trend.expense, ...trend.income, 8000);
+  const maxValue = Math.ceil(maxRaw / 2000) * 2000;
+  type TooltipSize = { contentSize: number[]; viewSize: number[] };
+
+  return {
+    animationDuration: 450,
+    animationEasing: "cubicOut",
+    grid: { left: 26, right: 10, top: 16, bottom: 24 },
+    tooltip: {
+      trigger: "axis",
+      confine: true,
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      axisPointer: { type: "line", lineStyle: { color: "rgba(61,134,255,0.28)" } },
+      position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
+        const [x, y] = point as [number, number];
+        const viewWidth = size.viewSize[0];
+        const viewHeight = size.viewSize[1];
+        const boxWidth = size.contentSize[0];
+        const boxHeight = size.contentSize[1];
+        const nextX = Math.min(Math.max(8, x - boxWidth / 2), viewWidth - boxWidth - 8);
+        const nextY = y < viewHeight / 2
+          ? Math.min(viewHeight - boxHeight - 8, y + 12)
+          : Math.max(8, y - boxHeight - 12);
+        return [nextX, nextY];
+      },
+      valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
+    },
+    xAxis: {
+      type: "category",
+      boundaryGap: false,
+      data: trend.labels,
+      axisLine: { lineStyle: { color: "#e1e8f2" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#74819a", fontSize: 10, margin: 8 },
+    },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: maxValue,
+      splitNumber: 4,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        color: "#74819a",
+        fontSize: 10,
+        formatter: (value: number) => (value === 0 ? "0" : `${Math.round(value / 1000)}K`),
+      },
+      splitLine: { show: false },
+    },
+    series: [
+      {
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        data: trend.income,
+        lineStyle: { width: 2, color: INCOME_BLUE },
+        itemStyle: { color: INCOME_BLUE, borderColor: "#ffffff", borderWidth: 1.2 },
+      },
+      {
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        data: trend.expense,
+        lineStyle: { width: 2, color: EXPENSE_ORANGE },
+        itemStyle: { color: EXPENSE_ORANGE, borderColor: "#ffffff", borderWidth: 1.2 },
+      },
+    ],
+  };
+}
+
+function buildRatioOption(ratios: HomeRatio[]): EChartsCoreOption {
+  type TooltipSize = { contentSize: number[]; viewSize: number[] };
+
+  return {
+    animationDuration: 450,
+    tooltip: {
+      trigger: "item",
+      confine: true,
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
+        const [x, y] = point as [number, number];
+        const viewWidth = size.viewSize[0];
+        const viewHeight = size.viewSize[1];
+        const boxWidth = size.contentSize[0];
+        const boxHeight = size.contentSize[1];
+        const nextX = Math.min(Math.max(8, x - boxWidth / 2), viewWidth - boxWidth - 8);
+        const nextY = y < viewHeight / 2
+          ? Math.min(viewHeight - boxHeight - 8, y + 12)
+          : Math.max(8, y - boxHeight - 12);
+        return [nextX, nextY];
+      },
+      formatter: (params: { name?: string; value?: number; percent?: number }) => `${params.name ?? ""}<br/>¥ ${formatMoney(Number(params.value ?? 0))} (${params.percent ?? 0}%)`,
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["56%", "78%"],
+        center: ["50%", "52%"],
+        avoidLabelOverlap: true,
+        label: { show: false },
+        labelLine: { show: false },
+        emphasis: { scale: false },
+        itemStyle: { borderColor: "#ffffff", borderWidth: 2 },
+        data: ratios.map((item) => ({ name: item.name, value: item.amount, itemStyle: { color: item.color } })),
+      },
+    ],
+  };
+}
+
+function TrendChart({ trend }: { trend: HomeTrend }) {
+  const option = useMemo(() => buildTrendOption(trend), [trend]);
+  return <EChartView option={option} className="trend-chart" />;
 }
 
 function MonthlySummaryCard({
@@ -211,6 +350,43 @@ function MonthlySummaryCard({
               ) : null}
             </div>
           ) : null}
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function TrendCard({ trend }: { trend: HomeTrend }) {
+  return (
+    <SurfaceCard className="trend-card">
+      <div className="trend-panel">
+        <div className="section-head">
+          <h2>本月收支趋势</h2>
+          <TrendLegend />
+        </div>
+        <TrendChart trend={trend} />
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function RatioCard({ ratios }: { ratios: HomeRatio[] }) {
+  const displayRatios = ratios.length ? ratios : [];
+  const option = useMemo(() => buildRatioOption(displayRatios), [displayRatios]);
+
+  return (
+    <SurfaceCard className="ratio-card">
+      <h2>收支类型占比</h2>
+      <div className="ratio-content">
+        <EChartView option={option} className="ratio-donut" />
+        <div className="ratio-list">
+          {displayRatios.map((item) => (
+            <div key={item.name} className="ratio-row">
+              <span className="ratio-dot" style={{ background: item.color }} />
+              <span>{item.name}</span>
+              <strong>{item.percent}%</strong>
+            </div>
+          ))}
         </div>
       </div>
     </SurfaceCard>
@@ -476,6 +652,10 @@ export default function HomePage() {
         <SummaryCard title="资产汇总" value={summary.assetTotal} delta={8.6} />
         <SummaryCard title="储蓄汇总" value={summary.totalSavings} delta={5.4} />
       </div>
+
+      <TrendCard trend={summary.trend} />
+
+      <RatioCard ratios={summary.ratios} />
 
       <LoanSummaryCard value={summary.loanProgress.current} delta={10.2} loans={loans} />
 
