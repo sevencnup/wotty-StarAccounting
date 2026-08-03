@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { clampPercent, formatMoney, monthKey, nowText } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, clampPercent, formatMoney, monthKey, nowText } from "@/lib/stark/utils/format";
 import type { Loan, Transaction } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -82,9 +82,8 @@ export default function LoansPage() {
     const monthly = activeLoans.reduce((sum, item) => sum + item.monthlyPayment, 0);
     const remainingPeriods = activeLoans.reduce((sum, item) => sum + Math.max(0, item.periods - item.paidPeriods), 0);
     const progress = total > 0 ? clampPercent((repaid / total) * 100) : 0;
-    const currentMonth = monthKey(new Date().toISOString());
     const income = transactions
-      .filter((item) => item.type === "INCOME" && monthKey(item.date) === currentMonth)
+      .filter((item) => item.type === "INCOME" && monthKey(item.date) === REPORTING_MONTH_KEY)
       .reduce((sum, item) => sum + item.amount, 0);
     const pressure = income > 0 ? (monthly / income) * 100 : null;
     return { activeLoans, total, remaining, repaid, monthly, remainingPeriods, progress, income, pressure };

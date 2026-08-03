@@ -5,14 +5,10 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { formatMoney } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
-
-function monthKey(value: string) {
-  return value.slice(0, 7);
-}
 
 function dayLabel(value: string) {
   const day = Number(value.slice(8, 10));
@@ -36,8 +32,8 @@ function monthLabel(month: string) {
 }
 
 function buildMonthRhythm(plans: SavingsPlan[]) {
-  const year = new Date().getFullYear();
-  const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
+  const year = reportingMonthDate().getFullYear();
+  const currentMonth = REPORTING_MONTH_KEY;
   const months = Array.from({ length: 12 }, (_, index) => {
     const month = `${year}-${String(index + 1).padStart(2, "0")}`;
     return {
@@ -94,8 +90,7 @@ export default function SavingsPage() {
   }, []);
 
   const summary = useMemo(() => {
-    const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
-    const monthPlans = plans.filter((plan) => plan.month === currentMonth);
+    const monthPlans = plans.filter((plan) => plan.month === REPORTING_MONTH_KEY);
     const monthPlanned = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
     const plannedTotal = plans.reduce((sum, plan) => sum + plan.amount, 0);
     const completedAmount = plans.filter((plan) => plan.status === "COMPLETED").reduce((sum, plan) => sum + plan.amount, 0);

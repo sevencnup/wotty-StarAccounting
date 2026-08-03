@@ -99,6 +99,7 @@ nextjs-portal {
   width: min(100%, 430px);
   margin: 0 auto;
   padding: 2px 8px 96px;
+  overflow-x: hidden;
 }
 
 .tabs-liquid-shell {
@@ -159,6 +160,14 @@ nextjs-portal {
 .page-stack {
   display: grid;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.page-stack > *,
+.home-screen > * {
+  min-width: 0;
 }
 
 .hero-stack {
@@ -2401,6 +2410,42 @@ nextjs-portal {
   padding-top: 13px;
 }
 
+.savings-dashboard-page,
+.savings-dashboard-page .home-card,
+.savings-dashboard-page .recent-card {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.savings-dashboard-page .savings-recent-row {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 3px 8px;
+  min-height: 50px;
+  padding: 7px 0;
+}
+
+.savings-dashboard-page .savings-recent-row strong {
+  grid-column: 2;
+  font-size: 13px;
+}
+
+.savings-dashboard-page .savings-recent-row span {
+  grid-column: 2;
+  font-size: 12px;
+}
+
+.savings-dashboard-page .savings-recent-row time {
+  grid-column: 2;
+  grid-row: 3;
+  font-size: 12px;
+}
+
+.savings-dashboard-page .savings-recent-row em {
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  font-size: 13px;
+}
+
 /* floating journal panel */
 .journal-overlay {
   position: fixed;
@@ -3706,6 +3751,87 @@ nextjs-portal {
 .asset-ledger-list span strong { overflow: hidden; color: var(--finance-ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .asset-ledger-list span small { color: var(--finance-muted); font-size: 8px; }
 .asset-ledger-list em { grid-column: 2; margin-top: -10px; color: #36516f; font-size: 9px; font-style: normal; font-variant-numeric: tabular-nums; }
+
+.finance-page {
+  font-size: 13px;
+}
+
+.finance-page .finance-section-head h2 {
+  font-size: 15px;
+}
+
+.finance-page .finance-section-head > span,
+.finance-page .finance-eyebrow,
+.finance-page .finance-state-chip,
+.finance-page .finance-empty,
+.finance-page .finance-form-grid label > span {
+  font-size: 12px;
+}
+
+.finance-page .finance-form-grid input,
+.finance-page .finance-form-grid select,
+.finance-page .finance-primary-action {
+  font-size: 13px;
+}
+
+.finance-page .loan-command-value {
+  font-size: 29px;
+}
+
+.finance-page .loan-command-caption,
+.finance-page .loan-command-progress,
+.finance-page .loan-command-progress strong,
+.finance-page .loan-command-metrics strong,
+.finance-page .asset-health-ring strong {
+  font-size: 12px;
+}
+
+.finance-page .loan-command-metrics span,
+.finance-page .loan-date-tile span,
+.finance-page .loan-next-copy span,
+.finance-page .loan-pressure-card p,
+.finance-page .loan-schedule-main span,
+.finance-page .loan-schedule-amount span,
+.finance-page .loan-portfolio-meta,
+.finance-page .loan-portfolio-foot,
+.finance-page .asset-allocation-row em,
+.finance-page .asset-ledger-list em {
+  font-size: 11px;
+}
+
+.finance-page .loan-next-copy strong,
+.finance-page .loan-schedule-main strong,
+.finance-page .loan-schedule-amount strong,
+.finance-page .loan-portfolio-title > strong,
+.finance-page .loan-balance,
+.finance-page .asset-sheet-side strong {
+  font-size: 13px;
+}
+
+.finance-page .loan-status,
+.finance-page .asset-sheet-side span,
+.finance-page .asset-allocation-row span,
+.finance-page .asset-allocation-row strong,
+.finance-page .asset-health-grid article > span,
+.finance-page .asset-ledger-title span,
+.finance-page .asset-ledger-title strong,
+.finance-page .asset-ledger-list span strong {
+  font-size: 12px;
+}
+
+.finance-page .asset-net-block > strong {
+  font-size: 27px;
+}
+
+.finance-page .asset-net-block > span {
+  font-size: 12px;
+}
+
+.finance-page .asset-health-grid article p,
+.finance-page .asset-ledger-list i,
+.finance-page .asset-ledger-list span small {
+  font-size: 10px;
+}
 
 /* accounts: wallet center */
 .account-wallet-hero {

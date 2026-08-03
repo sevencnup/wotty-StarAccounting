@@ -1,4 +1,5 @@
 export const CONSUMPTION_PLATFORMS = ["微信", "支付宝", "银行卡", "现金", "其他"] as const;
+const DEFAULT_REPORTING_MONTH_DATE = new Date(2026, 0, 1);
 
 type PlatformTransaction = {
   amount: number;
@@ -14,7 +15,7 @@ function normalizePlatform(platform?: string | null) {
     : "其他";
 }
 
-export function buildDailyPlatformData(transactions: PlatformTransaction[], now = new Date()) {
+export function buildDailyPlatformData(transactions: PlatformTransaction[], now = DEFAULT_REPORTING_MONTH_DATE) {
   const month = String(now.getMonth() + 1).padStart(2, "0");
   const prefix = `${now.getFullYear()}-${month}`;
   const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();

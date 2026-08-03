@@ -1,9 +1,4 @@
-function currentMonthKey() {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-}
-
-export const REPORTING_MONTH_KEY = currentMonthKey();
+export const REPORTING_MONTH_KEY = "2026-01";
 
 export function reportingMonthDate(day = 1) {
   const [year, month] = REPORTING_MONTH_KEY.split("-").map(Number);

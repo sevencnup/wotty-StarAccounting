@@ -16,7 +16,7 @@ import {
   type HomeTaskItem,
   type HomeTrend,
 } from "@/lib/stark/dashboard/summary";
-import { formatMoney } from "@/lib/stark/utils/format";
+import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 
 const manager = new DataModeManager();
@@ -259,7 +259,7 @@ function MonthlySummaryCard({
   salaryDay: number;
   onSalaryDayChange: (day: number) => void;
 }) {
-  const monthLabel = `${new Date().getFullYear()}年${new Date().getMonth() + 1}月`;
+  const monthLabel = reportingMonthLabel();
   const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [editingSalaryDay, setEditingSalaryDay] = useState(false);
   const [salaryDayInput, setSalaryDayInput] = useState(String(salaryDay));

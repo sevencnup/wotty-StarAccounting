@@ -6,14 +6,10 @@ import { ConsumptionCharts } from "@/components/stark/ConsumptionCharts";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
-import { formatMoney } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, formatMoney, monthKey } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
-
-function monthKey(value: string) {
-  return value.slice(0, 7);
-}
 
 function categoryIconSrc(item: Transaction) {
   const text = `${item.merchant || ""}${item.description || ""}${item.category}`;
@@ -56,8 +52,7 @@ export default function ConsumptionPage() {
   }, []);
 
   const monthSummary = useMemo(() => {
-    const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
-    const list = transactions.filter((item) => monthKey(item.date) === currentMonth);
+    const list = transactions.filter((item) => monthKey(item.date) === REPORTING_MONTH_KEY);
     return {
       expense: list.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
       income: list.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
@@ -66,8 +61,7 @@ export default function ConsumptionPage() {
   }, [transactions]);
 
   const platformSummary = useMemo(() => {
-    const currentMonth = monthKey(new Date().toISOString().slice(0, 10));
-    const list = transactions.filter((item) => monthKey(item.date) === currentMonth);
+    const list = transactions.filter((item) => monthKey(item.date) === REPORTING_MONTH_KEY);
     const wechat = list.filter((item) => item.platform === "微信");
     const alipay = list.filter((item) => item.platform === "支付宝");
     const calc = (items: Transaction[]) => ({

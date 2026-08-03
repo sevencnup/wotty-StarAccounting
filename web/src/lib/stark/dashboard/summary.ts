@@ -1,5 +1,5 @@
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
-import { clampPercent, monthKey } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, clampPercent, monthKey, reportingMonthDate, reportingMonthEndDate } from "@/lib/stark/utils/format";
 
 export interface HomeTrend {
   labels: string[];
@@ -114,7 +114,7 @@ function comparePercent(current: number, previous: number) {
 }
 
 function previousMonthParts() {
-  const now = new Date();
+  const now = reportingMonthDate();
   const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   return { year: previous.getFullYear(), month: previous.getMonth() };
 }
@@ -172,7 +172,7 @@ function nextDueDate(dueDay: number) {
 }
 
 function currentSalaryCycleStart(salaryDay: number) {
-  const now = new Date();
+  const now = reportingMonthEndDate();
   if (now.getDate() >= salaryDay) {
     return new Date(now.getFullYear(), now.getMonth(), salaryDay);
   }
@@ -475,8 +475,7 @@ export function buildHomeSummary(input: {
   savingsGoals: SavingsGoal[];
   salaryDay?: number;
 }) {
-  const now = new Date();
-  const currentMonth = monthKey(now.toISOString().slice(0, 10));
+  const currentMonth = REPORTING_MONTH_KEY;
   const salaryDay = Math.max(1, Math.min(28, Math.round(input.salaryDay ?? 15)));
   const currentMonthTransactions = input.transactions.filter((item) => monthKey(item.date) === currentMonth);
   const previous = previousMonthParts();

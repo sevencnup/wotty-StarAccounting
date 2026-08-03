@@ -16,7 +16,7 @@ import type {
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { deleteRecord, getAllRecords, getRecord, putManyRecords, putRecord } from "@/lib/stark/storage/indexeddb";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
-import { nowText } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, nowText } from "@/lib/stark/utils/format";
 
 function uuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -86,7 +86,7 @@ export class LocalRepository implements DataRepository {
     ]);
     if (txns.length || assets.length || budgets.length || loans.length || goals.length) return;
 
-    const month = now.slice(0, 7);
+    const month = REPORTING_MONTH_KEY;
     await putManyRecords("transactions", [
       { id: "txn-demo-salary", userId: "local-user", accountId: "default", amount: 12800, type: "INCOME", category: "工资", platform: "银行卡", merchant: "公司发薪", date: `${month}-15 09:00:00`, description: "月中发薪", createdAt: now, updatedAt: now },
       { id: "txn-demo-food", userId: "local-user", accountId: "default", amount: 86, type: "EXPENSE", category: "餐饮", platform: "支付宝", merchant: "午餐", date: `${month}-16 12:15:00`, description: "工作餐", createdAt: now, updatedAt: now },

@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
-import { formatMoney } from "@/lib/stark/utils/format";
+import { formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData } from "@/lib/stark/dashboard/consumption-platforms";
 import type { Transaction } from "@/lib/stark/models";
@@ -170,7 +170,7 @@ function shortAmount(amount: number) {
 }
 
 function buildCalendarDays(transactions: Transaction[]) {
-  const now = new Date();
+  const now = reportingMonthDate();
   const year = now.getFullYear();
   const month = now.getMonth();
   const monthStr = String(month + 1).padStart(2, "0");
