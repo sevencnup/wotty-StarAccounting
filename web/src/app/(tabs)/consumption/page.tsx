@@ -6,7 +6,7 @@ import { ConsumptionCharts } from "@/components/stark/ConsumptionCharts";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
-import { REPORTING_MONTH_KEY, formatMoney, monthKey } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, formatMoney, monthKey, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -77,31 +77,45 @@ export default function ConsumptionPage() {
     [transactions],
   );
 
+  const monthBalance = monthSummary.income - monthSummary.expense;
+
   if (loading) {
     return <PageSkeleton title="消费" cards={3} />;
   }
 
   return (
-    <div className="page-stack">
+    <div className="page-stack consumption-page">
       <PageTopBar title="消费" />
 
-      <section className="home-card consumption-summary-card">
-        <div className="cs-body">
-          <div className="cs-card cs-left">
-            <div className="page-hero-label">本月流水</div>
-            <div className="page-hero-value">¥ {formatMoney(monthSummary.expense)}</div>
-            <div className="page-hero-sub">收入 ¥ {formatMoney(monthSummary.income)} · 共 {monthSummary.count} 笔</div>
+      <section className="consumption-identity-hero">
+        <div className="consumption-identity-head">
+          <div>
+            <span>{reportingMonthLabel()} · 消费脉搏</span>
+            <h2>本月消费</h2>
           </div>
-          <div className="cs-right">
-            <div className="cs-row cs-wechat">
-              <div className="cs-row-label">微信</div>
-              <div className="cs-row-value">¥ {formatMoney(platformSummary.wechat.expense)}</div>
-              <div className="cs-row-sub">{platformSummary.wechat.count} 笔</div>
+          <strong>{monthSummary.count} 笔流水</strong>
+        </div>
+        <div className="consumption-identity-main">
+          <div className="consumption-total">
+            <span>总支出</span>
+            <strong>¥ {formatMoney(monthSummary.expense)}</strong>
+            <p>
+              本月收入 ¥ {formatMoney(monthSummary.income)}
+              <em className={monthBalance >= 0 ? "positive" : "negative"}>
+                结余 {monthBalance >= 0 ? "+" : "-"}¥ {formatMoney(Math.abs(monthBalance))}
+              </em>
+            </p>
+          </div>
+          <div className="consumption-channel-list">
+            <div className="consumption-channel wechat">
+              <span><i />微信支付</span>
+              <strong>¥ {formatMoney(platformSummary.wechat.expense)}</strong>
+              <small>{platformSummary.wechat.count} 笔</small>
             </div>
-            <div className="cs-row cs-alipay">
-              <div className="cs-row-label">支付宝</div>
-              <div className="cs-row-value">¥ {formatMoney(platformSummary.alipay.expense)}</div>
-              <div className="cs-row-sub">{platformSummary.alipay.count} 笔</div>
+            <div className="consumption-channel alipay">
+              <span><i />支付宝</span>
+              <strong>¥ {formatMoney(platformSummary.alipay.expense)}</strong>
+              <small>{platformSummary.alipay.count} 笔</small>
             </div>
           </div>
         </div>

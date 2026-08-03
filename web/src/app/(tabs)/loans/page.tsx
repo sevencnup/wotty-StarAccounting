@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -130,23 +131,36 @@ export default function LoansPage() {
     <div className="page-stack finance-page loans-page">
       <PageTopBar title="贷款" />
 
-      <section className="loan-command-card">
+      <section className="loan-command-card loan-identity-hero">
         <div className="finance-eyebrow-row">
-          <span className="finance-eyebrow">债务仪表盘</span>
+          <span className="finance-eyebrow">还款指挥台</span>
           <span className="finance-state-chip">{summary.activeLoans.length} 笔进行中</span>
         </div>
-        <div className="loan-command-value">¥ {formatMoney(summary.remaining)}</div>
-        <div className="loan-command-caption">待还本金</div>
+        <div className="loan-identity-main">
+          <div className="loan-identity-balance">
+            <span>待还本金</span>
+            <div className="loan-command-value">¥ {formatMoney(summary.remaining)}</div>
+            <div className="loan-command-caption">已偿还 ¥ {formatMoney(summary.repaid)}</div>
+          </div>
+          <div
+            className="loan-identity-progress"
+            style={{ "--loan-progress": `${summary.progress}%` } as CSSProperties}
+            aria-label={`整体已还 ${Math.round(summary.progress)}%`}
+          >
+            <strong>{Math.round(summary.progress)}%</strong>
+            <span>已还</span>
+          </div>
+        </div>
         <div className="loan-progress-track" aria-label={`整体已还 ${Math.round(summary.progress)}%`}>
           <span style={{ width: `${summary.progress}%` }} />
         </div>
         <div className="loan-command-progress">
-          <span>已还 ¥ {formatMoney(summary.repaid)}</span>
-          <strong>{Math.round(summary.progress)}%</strong>
+          <span>偿还进度</span>
+          <strong>剩余 {summary.remainingPeriods} 期</strong>
         </div>
         <div className="loan-command-metrics">
           <div><span>本月月供</span><strong>¥ {formatMoney(summary.monthly)}</strong></div>
-          <div><span>待还期数</span><strong>{summary.remainingPeriods} 期</strong></div>
+          <div><span>还款压力</span><strong>{summary.pressure === null ? "--" : `${summary.pressure.toFixed(1)}%`}</strong></div>
           <div><span>贷款总额</span><strong>¥ {formatMoney(summary.total)}</strong></div>
         </div>
       </section>

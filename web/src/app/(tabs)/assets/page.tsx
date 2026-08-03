@@ -100,13 +100,16 @@ export default function AssetsPage() {
 
       <section className="asset-balance-sheet">
         <div className="asset-net-block">
-          <div className="finance-eyebrow">净资产</div>
+          <div className="asset-identity-heading">
+            <div className="finance-eyebrow">资产净值</div>
+            <span className={summary.netWorth >= 0 ? "positive" : "negative"}>{summary.netWorth >= 0 ? "净值为正" : "需要降债"}</span>
+          </div>
           <strong>¥ {formatMoney(summary.netWorth)}</strong>
           <span>{summary.netWorth >= 0 ? "资产覆盖负债，净值为正" : "负债高于资产，需要优先降债"}</span>
         </div>
         <div className="asset-sheet-side">
-          <div><span>总资产</span><strong>¥ {formatMoney(summary.assetTotal)}</strong><i className="positive" /></div>
-          <div><span>总负债</span><strong>¥ {formatMoney(summary.liabilityTotal)}</strong><i className="negative" /></div>
+          <div><span><i className="positive" />总资产</span><strong>+ ¥ {formatMoney(summary.assetTotal)}</strong></div>
+          <div><span><i className="negative" />总负债</span><strong>- ¥ {formatMoney(summary.liabilityTotal)}</strong></div>
         </div>
       </section>
 
