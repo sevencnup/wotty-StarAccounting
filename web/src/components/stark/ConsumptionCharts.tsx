@@ -341,7 +341,7 @@ function buildSankeyOption(transactions: Transaction[]): EChartsCoreOption {
         type: "sankey",
         layout: "none",
         layoutIterations: 0,
-        left: 8,
+        left: 22,
         right: 112,
         top: 8,
         bottom: 8,

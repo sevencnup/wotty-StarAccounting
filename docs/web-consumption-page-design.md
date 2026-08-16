@@ -24,8 +24,8 @@
 ## 涉及文件
 
 - `web/src/app/globals.css`：`.calendar-day` 系列、`.calendar-grid/.calendar-week-row` 间距、`.sankey-scroll::after`。
-- `web/src/components/stark/ConsumptionCharts.tsx`：`buildTrendOption` 的 yAxis `splitLine` 由 `{ show: false }` 改为淡虚线。
-- `web/package.json`：版本 0.0.63 → 0.0.64。
+- `web/src/components/stark/ConsumptionCharts.tsx`：`buildTrendOption` 的 yAxis `splitLine` 由 `{ show: false }` 改为淡虚线；`buildSankeyOption` 的 `left` 由 8px 增到 22px，缓解左侧微信节点贴边。
+- `web/package.json`：版本 0.0.63 → 0.0.65。
 - `docs/web-consumption-page-design.md`：本文档。
 
 ## 验证
