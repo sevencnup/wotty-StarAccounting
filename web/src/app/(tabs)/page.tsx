@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
-import type { EChartsCoreOption } from "echarts/core";
-import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
@@ -11,15 +9,11 @@ import {
   buildHomeSummary,
   type HomeRecentItem,
   type HomeSummary,
-  type HomeTrend,
 } from "@/lib/stark/dashboard/summary";
 import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 
 const manager = new DataModeManager();
-
-const INCOME_BLUE = "#0060c0";
-const EXPENSE_ORANGE = "#ff7a32";
 
 type IconProps = { size?: number; color?: string; strokeWidth?: number };
 
@@ -189,110 +183,6 @@ function MonthlySummaryCard({
   );
 }
 
-function TrendLegend() {
-  return (
-    <div className="trend-legend">
-      <span><i style={{ background: INCOME_BLUE }} />收入</span>
-      <span><i style={{ background: EXPENSE_ORANGE }} />支出</span>
-    </div>
-  );
-}
-
-function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
-  const maxRaw = Math.max(...trend.expense, ...trend.income, 8000);
-  const maxValue = Math.ceil(maxRaw / 2000) * 2000;
-  type TooltipSize = { contentSize: number[]; viewSize: number[] };
-
-  return {
-    animationDuration: 450,
-    animationEasing: "cubicOut",
-    grid: { left: 26, right: 10, top: 16, bottom: 24 },
-    tooltip: {
-      trigger: "axis",
-      confine: true,
-      backgroundColor: "rgba(19, 27, 48, 0.92)",
-      borderWidth: 0,
-      padding: [8, 10],
-      textStyle: { color: "#ffffff", fontSize: 12 },
-      axisPointer: { type: "line", lineStyle: { color: "rgba(0,96,192,0.28)" } },
-      position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
-        const [x, y] = point as [number, number];
-        const viewWidth = size.viewSize[0];
-        const viewHeight = size.viewSize[1];
-        const boxWidth = size.contentSize[0];
-        const boxHeight = size.contentSize[1];
-        const nextX = Math.min(Math.max(8, x - boxWidth / 2), viewWidth - boxWidth - 8);
-        const nextY = y < viewHeight / 2
-          ? Math.min(viewHeight - boxHeight - 8, y + 12)
-          : Math.max(8, y - boxHeight - 12);
-        return [nextX, nextY];
-      },
-      valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
-    },
-    xAxis: {
-      type: "category",
-      boundaryGap: false,
-      data: trend.labels,
-      axisLine: { lineStyle: { color: "#e1e8f2" } },
-      axisTick: { show: false },
-      axisLabel: { color: "#74819a", fontSize: 10, margin: 8 },
-    },
-    yAxis: {
-      type: "value",
-      min: 0,
-      max: maxValue,
-      splitNumber: 4,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: {
-        color: "#74819a",
-        fontSize: 10,
-        formatter: (value: number) => (value === 0 ? "0" : `${Math.round(value / 1000)}K`),
-      },
-      splitLine: { show: false },
-    },
-    series: [
-      {
-        type: "line",
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 6,
-        data: trend.income,
-        lineStyle: { width: 2, color: INCOME_BLUE },
-        itemStyle: { color: INCOME_BLUE, borderColor: "#ffffff", borderWidth: 1.2 },
-      },
-      {
-        type: "line",
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 6,
-        data: trend.expense,
-        lineStyle: { width: 2, color: EXPENSE_ORANGE },
-        itemStyle: { color: EXPENSE_ORANGE, borderColor: "#ffffff", borderWidth: 1.2 },
-      },
-    ],
-  };
-}
-
-function TrendChart({ trend }: { trend: HomeTrend }) {
-  const option = useMemo(() => buildTrendOption(trend), [trend]);
-  return <EChartView option={option} className="trend-chart" />;
-}
-
-function TrendCard({ trend }: { trend: HomeTrend }) {
-  return (
-    <SurfaceCard className="trend-card">
-      <div className="trend-panel">
-        <div className="section-head">
-          <h2>本月收支趋势</h2>
-          <TrendLegend />
-        </div>
-        <TrendChart trend={trend} />
-      </div>
-    </SurfaceCard>
-  );
-}
-
 function RecentFeed({ items }: { items: HomeRecentItem[] }) {
   return (
     <SurfaceCard className="recent-card">
@@ -393,7 +283,6 @@ export default function HomePage() {
       </div>
 
       <FinanceOverviewCard summary={summary} />
-      <TrendCard trend={summary.trend} />
       <RecentFeed items={summary.recent} />
     </div>
   );
