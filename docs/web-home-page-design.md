@@ -39,14 +39,15 @@
 3. 净资产等资产信息从 Hero 拆出到独立速览条，避免 Hero 过高。
 4. 收支趋势图由消费页承载，首页不重复展示。
 5. 百分比统一经 `formatPercent` 格式化（整数直出，小数保留 1 位）。
-6. 延续 liquid-glass 白卡 + 22px 圆角风格，单列排布。
-7. 移动端优先，420px 内完整显示、无横向溢出。
+6. 结余大数字自带自适应缩放：超宽时字号从 26px 逐步下调（≥10 位整数自动缩，永不省略号截断），hover 显示完整金额。
+7. 延续 liquid-glass 白卡 + 22px 圆角风格，单列排布。
+8. 移动端优先，420px 内完整显示、无横向溢出。
 
 ## 涉及文件
 
 - `web/src/app/(tabs)/page.tsx`：Hero 改为紧凑结构（`.overview-hero-balance` + `.overview-hero-flow`）；新增 `FinanceOverviewCard` 瘦身条、`ProgressCard` 进度卡、`ReminderCard` 预算预警卡（已删本周待办）；移除首页趋势图（`TrendCard`/`TrendChart`/`buildTrendOption`/`TrendLegend` 及 `EChartsCoreOption`/`EChartView`/`HomeTrend` 引用）；删除 `DeltaLine`/`hero-asset`。
 - `web/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.budget-alert-top` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。（`trend-*`/`budget-alert-*` 样式为消费页及本页共享，保留；`task-*` 样式随本周待办删除不再使用。）
-- `web/package.json`：版本 0.0.55 → 0.0.59。
+- `web/package.json`：版本 0.0.55 → 0.0.60。
 - `docs/web-home-page-design.md`：本文档。
 
 ## 验证
@@ -56,3 +57,4 @@
 3. 净资产、资产负债、储蓄/贷款进度、预算、最近流水金额均为真实数据，无硬编码假数字。
 4. 百分比显示已格式化（32%、32.3%、9.3%、5.7%），无裸小数。
 5. 首页不再展示本周待办与收支趋势图。
+6. 结余区（右侧为口径切换按钮，可用宽约 244px）：9 位整数内保持 26px；10 位起自动缩放（25px/20px/18px），大数字完整显示不截断。

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { PropsWithChildren } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
@@ -111,6 +111,20 @@ function MonthlySummaryCard({
     setSalaryDayInput(String(salaryDay));
   }, [salaryDay]);
 
+  const balanceRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const el = balanceRef.current;
+    if (!el) return;
+    const base = 26;
+    let size = base;
+    el.style.fontSize = `${base}px`;
+    while (el.scrollWidth > el.clientWidth && size > 14) {
+      size -= 1;
+      el.style.fontSize = `${size}px`;
+    }
+  }, [balance, balanceMode]);
+
   function saveSalaryDay() {
     const parsed = Number(salaryDayInput);
     if (!Number.isFinite(parsed)) return;
@@ -134,7 +148,13 @@ function MonthlySummaryCard({
         <div className="overview-hero-balance">
           <div>
             <span className="balance-label">{balanceLabel}</span>
-            <strong className={positive ? "positive" : "negative"}>{positive ? "" : "-"}¥ {formatMoney(Math.abs(balance))}</strong>
+            <strong
+              ref={balanceRef}
+              className={positive ? "positive" : "negative"}
+              title={`${positive ? "" : "-"}¥ ${formatMoney(Math.abs(balance))}`}
+            >
+              {positive ? "" : "-"}¥ {formatMoney(Math.abs(balance))}
+            </strong>
           </div>
           <div className="balance-toggle" role="tablist" aria-label="结余口径切换">
             <button
