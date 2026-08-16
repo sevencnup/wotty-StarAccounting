@@ -7,13 +7,20 @@ import { Skeleton } from "@/components/stark/Skeleton";
 import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
+  type HomeBudgetAlert,
+  type HomeProgress,
   type HomeRecentItem,
   type HomeSummary,
+  type HomeTaskItem,
 } from "@/lib/stark/dashboard/summary";
 import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 
 const manager = new DataModeManager();
+
+function formatPercent(value: number) {
+  return Number.isInteger(value) ? String(value) : `${Math.round(value * 10) / 10}`;
+}
 
 type IconProps = { size?: number; color?: string; strokeWidth?: number };
 
@@ -183,6 +190,94 @@ function MonthlySummaryCard({
   );
 }
 
+function ProgressCard({ saving, loan }: { saving: HomeProgress; loan: HomeProgress }) {
+  return (
+    <SurfaceCard className="progress-card">
+      <div className="section-head">
+        <h2>储蓄与贷款</h2>
+      </div>
+      <div className="progress-items">
+        <div className="progress-item">
+          <div className="progress-item-head">
+            <span>{saving.title}</span>
+            <strong>{formatPercent(saving.percent)}%</strong>
+          </div>
+          <div className="progress-track">
+            <span style={{ width: `${Math.min(saving.percent, 100)}%`, background: "#0060c0" }} />
+          </div>
+          <div className="progress-item-meta">
+            <span>已存 ¥ {formatMoney(saving.current)}</span>
+            <span>目标 ¥ {formatMoney(saving.total)}</span>
+          </div>
+        </div>
+        <div className="progress-item">
+          <div className="progress-item-head">
+            <span>{loan.title}</span>
+            <strong>{formatPercent(loan.percent)}%</strong>
+          </div>
+          <div className="progress-track">
+            <span style={{ width: `${Math.min(loan.percent, 100)}%`, background: "#0d8a5f" }} />
+          </div>
+          <div className="progress-item-meta">
+            <span>已还 ¥ {formatMoney(loan.current)}</span>
+            <span>总额 ¥ {formatMoney(loan.total)}</span>
+          </div>
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+function ReminderCard({ alerts, tasks }: { alerts: HomeBudgetAlert[]; tasks: HomeTaskItem[] }) {
+  return (
+    <SurfaceCard className="reminder-card">
+      <div className="section-head">
+        <h2>预算预警</h2>
+      </div>
+      {alerts.length ? (
+        <div className="budget-alert-list">
+          {alerts.map((item) => (
+            <div key={item.id} className="budget-alert-row">
+              <div className="budget-alert-copy">
+                <strong>{item.title}</strong>
+                <span>已用 ¥ {formatMoney(item.spent)} / ¥ {formatMoney(item.budget)} · {formatPercent(item.percent)}%</span>
+              </div>
+              <div className="budget-alert-side">
+                <span className={`budget-alert-badge ${item.tone}`}>{item.percent >= 100 ? "超支" : item.percent >= 60 ? "预警" : "正常"}</span>
+                <div className="budget-alert-track">
+                  <span className={item.tone} style={{ width: `${Math.min(item.percent, 100)}%` }} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="finance-empty">暂无预算预警</div>
+      )}
+      <div className="reminder-divider" />
+      <div className="section-head">
+        <h2>本周待办</h2>
+      </div>
+      {tasks.length ? (
+        <div className="tasks-list">
+          {tasks.map((item) => (
+            <div key={item.id} className="task-row">
+              <span className={`task-dot ${item.tone}`} />
+              <div className="task-copy">
+                <strong>{item.title}</strong>
+                <span>{item.subtitle}</span>
+              </div>
+              <span className={`task-badge ${item.tone}`}>{item.badge}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="finance-empty">暂无待办</div>
+      )}
+    </SurfaceCard>
+  );
+}
+
 function RecentFeed({ items }: { items: HomeRecentItem[] }) {
   return (
     <SurfaceCard className="recent-card">
@@ -261,6 +356,7 @@ export default function HomePage() {
         <Skeleton className="skeleton-card" />
         <Skeleton className="skeleton-card" />
         <Skeleton className="skeleton-card" />
+        <Skeleton className="skeleton-card" />
       </div>
     );
   }
@@ -283,6 +379,8 @@ export default function HomePage() {
       </div>
 
       <FinanceOverviewCard summary={summary} />
+      <ProgressCard saving={summary.savingProgress} loan={summary.loanProgress} />
+      <ReminderCard alerts={summary.budgetAlerts} tasks={summary.tasks} />
       <RecentFeed items={summary.recent} />
     </div>
   );
