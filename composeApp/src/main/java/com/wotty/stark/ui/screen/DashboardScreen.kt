@@ -80,8 +80,8 @@ private val HomeSubtle = Color(0xFF65718A)
 private val HomeBlue = Color(0xFF0060C0)
 private val HomeOrange = Color(0xFFFF7A32)
 private val HomeDeltaUp = Color(0xFFFF6848)
-private val HomeDeltaDown = Color(0xFF67CAA9)
-private val HomeGreen = Color(0xFF63C7A8)
+private val HomeDeltaDown = Color(0xFF0D8A5F)
+private val HomeGreen = Color(0xFF0D8A5F)
 private val HomeProgressTrack = Color(0xFFEAF0F7)
 private val HomeLoanTrack = Color(0xFFE8EFF8)
 private val HomeLoanRowBg = Color(0xFFF7FAFF)
@@ -92,12 +92,12 @@ private val HomeDetailText = Color(0xFF0060C0)
 
 private val HeroGradient = listOf(Color(0xFF0052AD), Color(0xFF0060C0), Color(0xFF1876D6))
 private val HeroStackGradient = listOf(Color(0xFF0052AD), Color(0xFF0060C0), Color(0xFF1A7AD8))
-private val LoanTrackGradient = listOf(Color(0xFF73D2B3), Color(0xFF58BF9F))
+private val LoanTrackGradient = listOf(Color(0xFF0D8A5F), Color(0xFF0B7D55))
 
 private val RatioPalette = listOf(
     Color(0xFF2A78D6),
     Color(0xFFEB6834),
-    Color(0xFF1BAF7A),
+    Color(0xFF0D8A5F),
     Color(0xFFEDA100),
     Color(0xFFE87BA4)
 )
@@ -588,7 +588,7 @@ private fun LoanMiniRow(loan: LoanMini) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(loan.platform, color = HomeText, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-            Text("${percent.roundToInt()}%", color = Color(0xFF59B995), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text("${percent.roundToInt()}%", color = Color(0xFF0D8A5F), fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
