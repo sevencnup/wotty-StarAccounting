@@ -90,7 +90,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
         fontSize: 10,
         formatter: (value: number) => (value === 0 ? "0" : `${Math.round(value / 1000)}K`),
       },
-      splitLine: { show: false },
+      splitLine: { lineStyle: { color: "#eef2f7", type: "dashed" } },
     },
     series: [
       {

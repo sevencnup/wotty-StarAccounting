@@ -3178,7 +3178,7 @@ nextjs-portal {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 3px;
 }
 
 .calendar-week-row {
@@ -3199,9 +3199,9 @@ nextjs-portal {
   align-content: center;
   gap: 1px;
   min-width: 0;
-  border: 1px solid rgba(123, 148, 184, 0.1);
-  border-radius: 5px;
-  background: #f0f5ff;
+  border: 1px solid rgba(123, 148, 184, 0.08);
+  border-radius: 8px;
+  background: #f4f7fb;
   color: #11182d;
   overflow: hidden;
 }
@@ -3233,20 +3233,20 @@ nextjs-portal {
 }
 
 .calendar-day.level-1 {
-  background: #dce9ff;
+  background: #e7f0ff;
 }
 
 .calendar-day.level-2 {
-  background: #b3d0ff;
+  background: #b9d4ff;
 }
 
 .calendar-day.level-3 {
-  background: #0060c0;
+  background: #3a86d6;
   color: #ffffff;
 }
 
 .calendar-day.level-4 {
-  background: #1a5dc9;
+  background: #0060c0;
   color: #ffffff;
 }
 
@@ -3258,12 +3258,24 @@ nextjs-portal {
 }
 
 .sankey-scroll {
+  position: relative;
   width: 100%;
   margin-top: 2px;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+.sankey-scroll::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.95));
+  pointer-events: none;
 }
 
 .sankey-chart {
