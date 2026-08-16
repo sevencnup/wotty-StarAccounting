@@ -1687,9 +1687,9 @@ nextjs-portal {
 }
 
 .budget-alert-track {
-  height: 7px;
+  height: 8px;
   border-radius: 999px;
-  background: #e7eef8;
+  background: #eaf0f7;
   overflow: hidden;
 }
 
@@ -1698,15 +1698,15 @@ nextjs-portal {
   position: relative;
   height: 100%;
   border-radius: inherit;
-  background: #0d8a5f;
+  background: linear-gradient(90deg, #0d8a5f, #2ea67a);
 }
 
 .budget-alert-track span.warn {
-  background: #eda100;
+  background: linear-gradient(90deg, #e89500, #f6b93b);
 }
 
 .budget-alert-track span.danger {
-  background: #ff6658;
+  background: linear-gradient(90deg, #e5533d, #ff7a66);
 }
 
 .task-row {
