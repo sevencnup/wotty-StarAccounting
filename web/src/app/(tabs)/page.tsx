@@ -283,12 +283,10 @@ function RecentFeed({ items }: { items: HomeRecentItem[] }) {
       </div>
       <div className="recent-list">
         {items.length ? items.map((item) => (
-          <div key={item.id} className="recent-row home-recent-row">
+          <div key={item.id} className="recent-row">
             <span className="recent-badge" style={{ background: item.badgeBg, color: item.badgeColor }}>{item.badgeLabel}</span>
-            <div className="home-recent-main">
-              <strong className="recent-title">{item.title}</strong>
-              <span className="recent-category">{item.subtitle}</span>
-            </div>
+            <strong className="recent-title">{item.title}</strong>
+            <span className="recent-category">{item.subtitle}</span>
             <span className="recent-time">{item.time}</span>
             <strong className={`recent-amount ${item.positive ? "income" : "expense"}`}>
               {item.positive ? "+¥ " : "-¥ "}{formatMoney(item.amount)}

@@ -13,6 +13,7 @@
 - **补内容**：`内容有点少` → 加回储蓄/贷款进度卡（154px）与预算预警/待办卡。
 - **压缩预警/待办卡**：`预算预警和本周待这两个模块貌似做的太高了吧` → 预算行改为单行布局、待办限 3 条，卡从 502px 压到 354px。
 - **删除本周待办**：`本周待办也删除吧` → 只保留预算预警，卡降到 159px。
+- **最近记账改用共享行**：`最近记账表格里，金额怎么不靠右了` → 此前首页为 4 列专用布局，与消费页 5 列不同；改为直接复用消费页同一个 `.recent-row` 5 列组件，金额回到最后一列贴右。
 
 ## 新首页结构（自上而下）
 
@@ -40,7 +41,7 @@
 4. 收支趋势图由消费页承载，首页不重复展示。
 5. 百分比统一经 `formatPercent` 格式化（整数直出，小数保留 1 位）。
 6. 结余大数字自带自适应缩放：超宽时字号从 26px 逐步下调（≥10 位整数自动缩，永不省略号截断），hover 显示完整金额。
-7. 最近记账首页专用 4 列布局（`.home-recent-row`）：类别下沉为标题下的灰色小字，标题列更宽松；消费页保持原 5 列不受影响。
+7. 最近记账直接复用消费页同一个 `.recent-row` 5 列布局（分类徽标 + 标题 + 类别 + 时间 + 金额），保证两页一致、金额始终贴右。
 8. 进度条玻璃化：填充段改为横向渐变 + 顶部微光罩层（`::after`），呼应 hero 液态玻璃。
 9. 延续 liquid-glass 白卡 + 22px 圆角风格，单列排布。
 10. 移动端优先，420px 内完整显示、无横向溢出。
@@ -48,8 +49,8 @@
 ## 涉及文件
 
 - `web/src/app/(tabs)/page.tsx`：Hero 改为紧凑结构（`.overview-hero-balance` + `.overview-hero-flow`）；新增 `FinanceOverviewCard` 瘦身条、`ProgressCard` 进度卡、`ReminderCard` 预算预警卡（已删本周待办）；移除首页趋势图（`TrendCard`/`TrendChart`/`buildTrendOption`/`TrendLegend` 及 `EChartsCoreOption`/`EChartView`/`HomeTrend` 引用）；删除 `DeltaLine`/`hero-asset`。
-- `web/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.budget-alert-top` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。（`trend-*`/`budget-alert-*` 样式为消费页及本页共享，保留；`task-*` 样式随本周待办删除不再使用。）
-- `web/package.json`：版本 0.0.55 → 0.0.61。
+- `web/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.budget-alert-top` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。最近记账复用共享 `.recent-row`，删除 `.home-recent-row`/`.home-recent-main`。（`trend-*`/`budget-alert-*` 样式为消费页及本页共享，保留；`task-*` 样式随本周待办删除不再使用。）
+- `web/package.json`：版本 0.0.55 → 0.0.62。
 - `docs/web-home-page-design.md`：本文档。
 
 ## 验证

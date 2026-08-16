@@ -1442,18 +1442,6 @@ nextjs-portal {
   border-top: 0;
 }
 
-.home-recent-row {
-  grid-template-columns: 34px minmax(0, 1fr) 70px minmax(82px, auto);
-  gap: 8px;
-  min-height: 48px;
-}
-
-.home-recent-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
 .recent-icon {
   display: inline-flex;
   align-items: center;
