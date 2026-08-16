@@ -222,7 +222,7 @@ function ProgressCard({ saving, loan }: { saving: HomeProgress; loan: HomeProgre
             <strong>{formatPercent(saving.percent)}%</strong>
           </div>
           <div className="progress-track">
-            <span style={{ width: `${Math.min(saving.percent, 100)}%`, background: "#0060c0" }} />
+            <span style={{ width: `${Math.min(saving.percent, 100)}%`, background: "linear-gradient(90deg, #0060c0, #3a86d6)" }} />
           </div>
           <div className="progress-item-meta">
             <span>已存 ¥ {formatMoney(saving.current)}</span>
@@ -235,7 +235,7 @@ function ProgressCard({ saving, loan }: { saving: HomeProgress; loan: HomeProgre
             <strong>{formatPercent(loan.percent)}%</strong>
           </div>
           <div className="progress-track">
-            <span style={{ width: `${Math.min(loan.percent, 100)}%`, background: "#0d8a5f" }} />
+            <span style={{ width: `${Math.min(loan.percent, 100)}%`, background: "linear-gradient(90deg, #0d8a5f, #2ea67a)" }} />
           </div>
           <div className="progress-item-meta">
             <span>已还 ¥ {formatMoney(loan.current)}</span>
@@ -283,10 +283,12 @@ function RecentFeed({ items }: { items: HomeRecentItem[] }) {
       </div>
       <div className="recent-list">
         {items.length ? items.map((item) => (
-          <div key={item.id} className="recent-row">
+          <div key={item.id} className="recent-row home-recent-row">
             <span className="recent-badge" style={{ background: item.badgeBg, color: item.badgeColor }}>{item.badgeLabel}</span>
-            <strong className="recent-title">{item.title}</strong>
-            <span className="recent-category">{item.subtitle}</span>
+            <div className="home-recent-main">
+              <strong className="recent-title">{item.title}</strong>
+              <span className="recent-category">{item.subtitle}</span>
+            </div>
             <span className="recent-time">{item.time}</span>
             <strong className={`recent-amount ${item.positive ? "income" : "expense"}`}>
               {item.positive ? "+¥ " : "-¥ "}{formatMoney(item.amount)}
