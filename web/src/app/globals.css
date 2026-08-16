@@ -1272,14 +1272,8 @@ nextjs-portal {
 
 .reminder-card {
   display: grid;
-  gap: 2px;
+  gap: 10px;
   padding: 12px;
-}
-
-.reminder-divider {
-  height: 1px;
-  margin: 6px 0;
-  background: var(--border-faint);
 }
 
 .loan-summary-head {
@@ -1539,7 +1533,7 @@ nextjs-portal {
 .insight-list {
   display: grid;
   gap: 0;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 
 .budget-alert-row,
@@ -1552,9 +1546,35 @@ nextjs-portal {
 
 .budget-alert-row {
   display: grid;
-  gap: 7px;
-  padding: 10px 0;
+  gap: 6px;
+  padding: 8px 0;
   border-top: 1px solid var(--border-faint);
+}
+
+.budget-alert-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.budget-alert-top strong {
+  color: #11182d;
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.budget-alert-top span {
+  margin-left: auto;
+  color: #70809a;
+  font-size: 11px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .budget-alert-row:first-child,
@@ -1610,7 +1630,7 @@ nextjs-portal {
 .task-copy span,
 .insight-row span {
   display: block;
-  margin-top: 4px;
+  margin-top: 3px;
   color: #70809a;
   font-size: 11px;
   line-height: 1.35;
@@ -1682,7 +1702,7 @@ nextjs-portal {
   grid-template-columns: 10px minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 10px 0;
+  padding: 7px 0;
   position: relative;
   border-top: 1px solid var(--border-faint);
 }

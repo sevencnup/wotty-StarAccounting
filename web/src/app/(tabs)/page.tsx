@@ -11,7 +11,6 @@ import {
   type HomeProgress,
   type HomeRecentItem,
   type HomeSummary,
-  type HomeTaskItem,
 } from "@/lib/stark/dashboard/summary";
 import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
@@ -228,7 +227,7 @@ function ProgressCard({ saving, loan }: { saving: HomeProgress; loan: HomeProgre
   );
 }
 
-function ReminderCard({ alerts, tasks }: { alerts: HomeBudgetAlert[]; tasks: HomeTaskItem[] }) {
+function ReminderCard({ alerts }: { alerts: HomeBudgetAlert[] }) {
   return (
     <SurfaceCard className="reminder-card">
       <div className="section-head">
@@ -238,41 +237,19 @@ function ReminderCard({ alerts, tasks }: { alerts: HomeBudgetAlert[]; tasks: Hom
         <div className="budget-alert-list">
           {alerts.map((item) => (
             <div key={item.id} className="budget-alert-row">
-              <div className="budget-alert-copy">
+              <div className="budget-alert-top">
                 <strong>{item.title}</strong>
                 <span>已用 ¥ {formatMoney(item.spent)} / ¥ {formatMoney(item.budget)} · {formatPercent(item.percent)}%</span>
+                <i className={`budget-alert-badge ${item.tone}`}>{item.percent >= 100 ? "超支" : item.percent >= 60 ? "预警" : "正常"}</i>
               </div>
-              <div className="budget-alert-side">
-                <span className={`budget-alert-badge ${item.tone}`}>{item.percent >= 100 ? "超支" : item.percent >= 60 ? "预警" : "正常"}</span>
-                <div className="budget-alert-track">
-                  <span className={item.tone} style={{ width: `${Math.min(item.percent, 100)}%` }} />
-                </div>
+              <div className="budget-alert-track">
+                <span className={item.tone} style={{ width: `${Math.min(item.percent, 100)}%` }} />
               </div>
             </div>
           ))}
         </div>
       ) : (
         <div className="finance-empty">暂无预算预警</div>
-      )}
-      <div className="reminder-divider" />
-      <div className="section-head">
-        <h2>本周待办</h2>
-      </div>
-      {tasks.length ? (
-        <div className="tasks-list">
-          {tasks.map((item) => (
-            <div key={item.id} className="task-row">
-              <span className={`task-dot ${item.tone}`} />
-              <div className="task-copy">
-                <strong>{item.title}</strong>
-                <span>{item.subtitle}</span>
-              </div>
-              <span className={`task-badge ${item.tone}`}>{item.badge}</span>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="finance-empty">暂无待办</div>
       )}
     </SurfaceCard>
   );
@@ -380,7 +357,7 @@ export default function HomePage() {
 
       <FinanceOverviewCard summary={summary} />
       <ProgressCard saving={summary.savingProgress} loan={summary.loanProgress} />
-      <ReminderCard alerts={summary.budgetAlerts} tasks={summary.tasks} />
+      <ReminderCard alerts={summary.budgetAlerts} />
       <RecentFeed items={summary.recent} />
     </div>
   );

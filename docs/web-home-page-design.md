@@ -11,6 +11,8 @@
 - **关键反馈：`第一个模块就是太大了我才不喜欢的`** → Hero 压到约 162px，净资产/总资产/总负债/储蓄拆出为独立的瘦身速览条（86px）。
 - **趋势图去重**：收支趋势折线图消费页已有，首页不再重复添加。
 - **补内容**：`内容有点少` → 加回储蓄/贷款进度卡（154px）与预算预警/待办卡。
+- **压缩预警/待办卡**：`预算预警和本周待这两个模块貌似做的太高了吧` → 预算行改为单行布局、待办限 3 条，卡从 502px 压到 354px。
+- **删除本周待办**：`本周待办也删除吧` → 只保留预算预警，卡降到 159px。
 
 ## 新首页结构（自上而下）
 
@@ -25,9 +27,9 @@
 3. **储蓄与贷款（约 154px）**：两条玻璃进度条。
    - 储蓄计划 `savingProgress`：已存 / 目标 / 百分比（蓝）。
    - 贷款还款进度 `loanProgress`：已还 / 总额 / 百分比（绿）。
-4. **预算预警与本周待办（约 502px）**：
-   - 预算预警 `budgetAlerts`：已用/预算/百分比 + 状态徽标（正常/预警/超支）+ 轨道条。
-   - 本周待办 `tasks`：圆点 + 标题 + 副标题 + 倒计时徽标，无数据时显示空状态。
+4. **预算预警（约 159px）**：`budgetAlerts` 单行列表。
+   - 行内：标题 + 「已用 ¥x / ¥y · z%」 + 状态徽标（正常/预警/超支）+ 细轨道条。
+   - 无数据时显示空状态。
 5. **最近记账（约 220px）**：真实流水 `summary.recent`，分类徽标 + 标题 + 类别 + 时间 + 收支金额（收绿支红），无数据时显示空状态。
 
 ## 设计要点
@@ -42,14 +44,15 @@
 
 ## 涉及文件
 
-- `web/src/app/(tabs)/page.tsx`：Hero 改为紧凑结构（`.overview-hero-balance` + `.overview-hero-flow`）；新增 `FinanceOverviewCard` 瘦身条、`ProgressCard` 进度卡、`ReminderCard` 预警/待办卡；移除首页趋势图（`TrendCard`/`TrendChart`/`buildTrendOption`/`TrendLegend` 及 `EChartsCoreOption`/`EChartView`/`HomeTrend` 引用）；删除 `DeltaLine`/`hero-asset`。
-- `web/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.reminder-divider` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。（`trend-*`/`budget-alert-*`/`task-*` 样式为消费页及本页共享，保留。）
-- `web/package.json`：版本 0.0.55 → 0.0.58。
+- `web/src/app/(tabs)/page.tsx`：Hero 改为紧凑结构（`.overview-hero-balance` + `.overview-hero-flow`）；新增 `FinanceOverviewCard` 瘦身条、`ProgressCard` 进度卡、`ReminderCard` 预算预警卡（已删本周待办）；移除首页趋势图（`TrendCard`/`TrendChart`/`buildTrendOption`/`TrendLegend` 及 `EChartsCoreOption`/`EChartView`/`HomeTrend` 引用）；删除 `DeltaLine`/`hero-asset`。
+- `web/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.budget-alert-top` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。（`trend-*`/`budget-alert-*` 样式为消费页及本页共享，保留；`task-*` 样式随本周待办删除不再使用。）
+- `web/package.json`：版本 0.0.55 → 0.0.59。
 - `docs/web-home-page-design.md`：本文档。
 
 ## 验证
 
 1. 类型检查 `pnpm typecheck` 通过。
-2. 首页浏览器截图：hero(162px) + 速览条(86px) + 进度卡(154px) + 预警待办(502px) + 最近记账(220px)，无横向溢出。
-3. 净资产、资产负债、储蓄/贷款进度、预算、待办、最近流水金额均为真实数据，无硬编码假数字。
+2. 首页浏览器截图：hero(162px) + 速览条(86px) + 进度卡(154px) + 预算预警(159px) + 最近记账(220px)，无横向溢出。
+3. 净资产、资产负债、储蓄/贷款进度、预算、最近流水金额均为真实数据，无硬编码假数字。
 4. 百分比显示已格式化（32%、32.3%、9.3%、5.7%），无裸小数。
+5. 首页不再展示本周待办与收支趋势图。
