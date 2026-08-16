@@ -8,7 +8,7 @@ import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData } from "@/lib/stark/dashboard/consumption-platforms";
 import type { Transaction } from "@/lib/stark/models";
 
-const INCOME_BLUE = "#3d86ff";
+const INCOME_BLUE = "#0060c0";
 const EXPENSE_ORANGE = "#ff7a32";
 const PLATFORM_COLORS: Record<string, string> = {
   "微信": "#07c160",
@@ -55,7 +55,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
       borderWidth: 0,
       padding: [8, 10],
       textStyle: { color: "#ffffff", fontSize: 12 },
-      axisPointer: { type: "line", lineStyle: { color: "rgba(61,134,255,0.28)" } },
+      axisPointer: { type: "line", lineStyle: { color: "rgba(0,96,192,0.28)" } },
       position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
         const [x, y] = point as [number, number];
         const viewWidth = size.viewSize[0];

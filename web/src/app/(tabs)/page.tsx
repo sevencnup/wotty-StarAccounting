@@ -21,7 +21,7 @@ import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/
 
 const manager = new DataModeManager();
 
-const INCOME_BLUE = "#3d86ff";
+const INCOME_BLUE = "#0060c0";
 const EXPENSE_ORANGE = "#ff7a32";
 const POSITIVE = "#ff6848";
 const NEGATIVE = "#67caa9";
@@ -143,7 +143,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
       borderWidth: 0,
       padding: [8, 10],
       textStyle: { color: "#ffffff", fontSize: 12 },
-      axisPointer: { type: "line", lineStyle: { color: "rgba(61,134,255,0.28)" } },
+      axisPointer: { type: "line", lineStyle: { color: "rgba(0,96,192,0.28)" } },
       position: (point: number[], _params: unknown, _dom: unknown, _rect: unknown, size: TooltipSize) => {
         const [x, y] = point as [number, number];
         const viewWidth = size.viewSize[0];
