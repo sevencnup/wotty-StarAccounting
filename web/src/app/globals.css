@@ -549,7 +549,7 @@ nextjs-portal {
 
 .overview-hero {
   position: relative;
-  padding: 14px 16px 15px;
+  padding: 12px 16px 13px;
   color: #ffffff;
   background: linear-gradient(135deg, #0052ad 0%, #0060c0 52%, #1876d6 100%);
 }
@@ -566,7 +566,7 @@ nextjs-portal {
 
 .home-liquid-screen .overview-hero {
   overflow: hidden;
-  padding: 14px 15px;
+  padding: 12px 15px 13px;
   border-radius: 22px;
   color: #ffffff;
   background: linear-gradient(135deg, #0052ad 0%, #0060c0 55%, #1876d6 100%);
@@ -709,6 +709,97 @@ nextjs-portal {
 .balance-toggle button.active {
   background: #ffffff;
   color: #0060c0;
+}
+
+.overview-hero-balance {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.overview-hero-balance > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.balance-label {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.overview-hero-balance strong {
+  color: #ffffff;
+  font-size: 26px;
+  line-height: 1.05;
+  font-weight: 600;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overview-hero-balance strong.positive {
+  color: #d6f7e6;
+}
+
+.overview-hero-balance strong.negative {
+  color: #ffe0d8;
+}
+
+.overview-hero-flow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.overview-hero-flow > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.overview-hero-flow span {
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.overview-hero-flow strong {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overview-hero-flow i {
+  font-style: normal;
+  font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.overview-hero-flow i.up {
+  color: #bff5dd;
+}
+
+.overview-hero-flow i.down {
+  color: #ffe0d8;
 }
 
 .salary-setting-row {
@@ -1039,6 +1130,96 @@ nextjs-portal {
   padding: 14px;
 }
 
+.finance-overview-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.fo-net-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.fo-net-label {
+  color: #65718a;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fo-net-row strong {
+  color: #11182d;
+  font-size: 20px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fo-net-row strong.positive {
+  color: #0d8a5f;
+}
+
+.fo-net-row strong.negative {
+  color: #d64545;
+}
+
+.fo-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(13, 138, 95, 0.1);
+  color: #0d8a5f;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fo-tag.negative {
+  background: rgba(214, 69, 69, 0.1);
+  color: #d64545;
+}
+
+.fo-mini-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.fo-mini-stats > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fo-mini-stats span {
+  color: #65718a;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fo-mini-stats strong {
+  color: #11182d;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .loan-summary-head {
   display: flex;
   align-items: center;
@@ -1208,6 +1389,19 @@ nextjs-portal {
   width: 28px;
   height: 28px;
   object-fit: contain;
+}
+
+.recent-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 500;
+  font-style: normal;
 }
 
 .recent-title,
@@ -1582,6 +1776,7 @@ nextjs-portal {
 .home-liquid-screen .progress-row,
 .home-liquid-screen .summary-card,
 .home-liquid-screen .loan-summary-card,
+.home-liquid-screen .finance-overview-card,
 .home-liquid-screen .budget-alert-card,
 .home-liquid-screen .tasks-card {
   padding: 12px;
@@ -1591,6 +1786,8 @@ nextjs-portal {
 .home-liquid-screen .progress-row,
 .home-liquid-screen .summary-card,
 .home-liquid-screen .loan-summary-card,
+.home-liquid-screen .finance-overview-card,
+.home-liquid-screen .recent-card,
 .home-liquid-screen .budget-alert-card,
 .home-liquid-screen .tasks-card {
   border-radius: 22px;
