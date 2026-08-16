@@ -97,7 +97,7 @@ export interface HomeSummary {
 const RATIO_PALETTE = [
   { color: "#2a78d6", badgeColor: "#e7effc" },
   { color: "#eb6834", badgeColor: "#f9eadf" },
-  { color: "#1baf7a", badgeColor: "#e4f4ec" },
+  { color: "#0d8a5f", badgeColor: "#e4f4ec" },
   { color: "#eda100", badgeColor: "#fbf0d7" },
   { color: "#e87ba4", badgeColor: "#f8e3eb" },
 ] as const;

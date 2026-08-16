@@ -11,13 +11,13 @@
   --primary: #0060c0;
   --primary-soft: #e2edfb;
   --danger: #ff5d5d;
-  --success: #20b26b;
+  --success: #0d8a5f;
   --warning: #ff9f43;
   --user-font-scale: 1;
 }
 
 html[data-app-theme="green"] {
-  --primary: #2da77a;
+  --primary: #0d8a5f;
   --primary-soft: #e8f7f1;
 }
 
@@ -422,7 +422,7 @@ nextjs-portal {
 }
 
 .app-list-value.positive {
-  color: #20b26b;
+  color: #0d8a5f;
 }
 
 .app-list-value.negative {
@@ -794,7 +794,7 @@ nextjs-portal {
 }
 
 .home-delta .down {
-  color: #67caa9;
+  color: #0d8a5f;
   font-weight: 500;
 }
 
@@ -1089,7 +1089,7 @@ nextjs-portal {
 
 .loan-mini-head span {
   font-size: 11px;
-  color: #59b995;
+  color: #0d8a5f;
   font-weight: 500;
 }
 
@@ -1126,7 +1126,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #73d2b3, #58bf9f);
+  background: linear-gradient(90deg, #0d8a5f, #0b7d55);
 }
 
 .loan-empty {
@@ -1249,7 +1249,7 @@ nextjs-portal {
 }
 
 .recent-amount.income {
-  color: #15966b;
+  color: #0d8a5f;
 }
 
 .recent-amount.transfer {
@@ -1329,7 +1329,7 @@ nextjs-portal {
 }
 
 .task-amount.neutral {
-  color: #20a365;
+  color: #0d8a5f;
 }
 
 .task-amount.warn {
@@ -1384,7 +1384,7 @@ nextjs-portal {
 .budget-alert-badge.safe,
 .task-badge.neutral {
   background: #e9f6ef;
-  color: #20a365;
+  color: #0d8a5f;
 }
 
 .budget-alert-badge.warn,
@@ -1410,7 +1410,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #20a365;
+  background: #0d8a5f;
 }
 
 .budget-alert-track span.warn {
@@ -1460,7 +1460,7 @@ nextjs-portal {
 }
 
 .task-dot.neutral {
-  background: #20a365;
+  background: #0d8a5f;
 }
 
 .task-dot.warn {
@@ -1504,7 +1504,7 @@ nextjs-portal {
 }
 
 .forecast-balance-row strong.positive {
-  color: #1c9f65;
+  color: #0d8a5f;
 }
 
 .forecast-balance-row strong.negative {
@@ -1848,7 +1848,7 @@ nextjs-portal {
 }
 
 .savings-row-label {
-  color: #15966b;
+  color: #0d8a5f;
   font-size: 11px;
 }
 
@@ -1935,12 +1935,12 @@ nextjs-portal {
 }
 
 .savings-calendar-card .calendar-day.level-3 {
-  background: #67c99d;
+  background: #0d8a5f;
   color: #ffffff;
 }
 
 .savings-calendar-card .calendar-day.level-4 {
-  background: #15966b;
+  background: #0d8a5f;
   color: #ffffff;
 }
 
@@ -1966,7 +1966,7 @@ nextjs-portal {
   height: 30px;
   border-radius: 9px;
   background: #e9f7f1;
-  color: #15966b;
+  color: #0d8a5f;
   font-size: 11px;
   font-weight: 500;
 }
@@ -1998,7 +1998,7 @@ nextjs-portal {
 }
 
 .savings-recent-row em {
-  color: #15966b;
+  color: #0d8a5f;
   text-align: right;
   font-style: normal;
   font-weight: 500;
@@ -2081,7 +2081,7 @@ nextjs-portal {
   --saving-ink: #142036;
   --saving-muted: #6f7f96;
   --saving-blue: #397fe8;
-  --saving-green: #30ad83;
+  --saving-green: #0d8a5f;
   --saving-coral: #e87962;
   --saving-amber: #df9d35;
   gap: 6px;
@@ -2475,7 +2475,7 @@ nextjs-portal {
 }
 
 .savings-recent-row em {
-  color: #15966b;
+  color: #0d8a5f;
   font-size: 12px;
   font-style: normal;
   font-weight: 500;
@@ -2553,7 +2553,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0060c0, #28af82);
+  background: linear-gradient(90deg, #0060c0, #0d8a5f);
 }
 
 .savings-lite-meta span {
@@ -2666,7 +2666,7 @@ nextjs-portal {
 }
 
 .savings-rhythm-track b {
-  background: #2ab382;
+  background: #0d8a5f;
 }
 
 .savings-recent-card {
@@ -3377,7 +3377,7 @@ nextjs-portal {
   --finance-ink: #152039;
   --finance-muted: #71809a;
   --finance-line: #dfe7f1;
-  --finance-green: #42af86;
+  --finance-green: #0d8a5f;
   --finance-red: #e36559;
   --finance-amber: #e7a33d;
   gap: 10px;
@@ -3572,7 +3572,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #bfead9;
+  background: #0d8a5f;
 }
 
 .loan-command-progress {
@@ -3870,7 +3870,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6bc6a3, #42ad84);
+  background: linear-gradient(90deg, #0d8a5f, #0b7d55);
 }
 
 .loan-portfolio-foot strong {
@@ -4025,7 +4025,7 @@ nextjs-portal {
 .asset-ledger-list > div:not(.finance-empty) { display: grid; grid-template-columns: 25px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 48px; border-bottom: 1px solid #eef2f6; }
 .asset-ledger-list > div:last-child { border-bottom: 0; }
 .asset-ledger-list i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; color: #fff; background: #df7c72; font-size: 9px; font-style: normal; }
-.asset-ledger-list i.savings-mark { background: #55b892; }
+.asset-ledger-list i.savings-mark { background: #0d8a5f; }
 .asset-ledger-list span { display: grid; gap: 3px; min-width: 0; }
 .asset-ledger-list span strong { overflow: hidden; color: var(--finance-ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .asset-ledger-list span small { color: var(--finance-muted); font-size: 8px; }
@@ -4220,7 +4220,7 @@ nextjs-portal {
 .account-wallet-card.cash .account-wallet-head i, .account-type-picker i.cash { background: #e6a33e; }
 .account-wallet-card.bank .account-wallet-head i, .account-type-picker i.bank { background: #3e80dc; }
 .account-wallet-card.alipay .account-wallet-head i, .account-type-picker i.alipay { background: #2d91e8; }
-.account-wallet-card.wechat .account-wallet-head i, .account-type-picker i.wechat { background: #2bab72; }
+.account-wallet-card.wechat .account-wallet-head i, .account-type-picker i.wechat { background: #0d8a5f; }
 .account-wallet-card.investment .account-wallet-head i, .account-type-picker i.investment { background: #df7966; }
 .account-wallet-head span { color: var(--finance-muted); font-size: 9px; }
 .account-wallet-head em { margin-left: auto; color: #4b6485; font-size: 9px; font-style: normal; }
@@ -4235,7 +4235,7 @@ nextjs-portal {
 .account-focus-track { margin-top: 10px; }
 .account-focus-track span.bank { background: #3e80dc; }
 .account-focus-track span.alipay { background: #2d91e8; }
-.account-focus-track span.wechat { background: #2bab72; }
+.account-focus-track span.wechat { background: #0d8a5f; }
 .account-focus-track span.cash { background: #e6a33e; }
 .account-focus-track span.investment { background: #df7966; }
 .account-focus-track span.other { background: #8291a7; }
@@ -4610,7 +4610,7 @@ nextjs-portal {
   flex: 0 0 auto;
   border-radius: 11px;
   color: #ffffff;
-  background: #22ab72;
+  background: #0d8a5f;
   font-size: 13px;
   font-weight: 600;
 }
@@ -4652,7 +4652,7 @@ nextjs-portal {
   height: 36px;
   border-radius: 10px;
   color: #ffffff;
-  background: #23aa73;
+  background: #0d8a5f;
   font-size: 12px;
   font-weight: 600;
 }
@@ -4720,7 +4720,7 @@ nextjs-portal {
   background: #3d84e8;
 }
 
-.theme-dot.green { border-color: #e4f5ef; background: #2da77a; }
+.theme-dot.green { border-color: #e4f5ef; background: #0d8a5f; }
 .theme-dot.amber { border-color: #fff1dd; background: #e8942f; }
 
 .settings-font-options {
@@ -4913,7 +4913,7 @@ nextjs-portal {
   width: 7px;
   height: 7px;
   border-radius: 999px;
-  background: #1fad73;
+  background: #0d8a5f;
 }
 
 .consumption-channel.alipay i { background: #2d89df; }
@@ -4934,8 +4934,8 @@ nextjs-portal {
 }
 
 .loans-page {
-  --finance-blue: #68c49c;
-  --finance-blue-deep: #42a57a;
+  --finance-blue: #0d8a5f;
+  --finance-blue-deep: #0d8a5f;
 }
 
 .loans-page .home-topbar h1 {
@@ -4960,7 +4960,7 @@ nextjs-portal {
 
 .loan-identity-hero .finance-state-chip {
   border: 0;
-  color: #aee2c9;
+  color: #0d8a5f;
   background: rgba(108, 198, 157, 0.13);
 }
 
@@ -4998,7 +4998,7 @@ nextjs-portal {
   width: 72px;
   height: 72px;
   border-radius: 999px;
-  background: radial-gradient(circle, #1b2634 58%, transparent 60%), conic-gradient(#76d0aa var(--loan-progress), rgba(255, 255, 255, 0.12) 0);
+  background: radial-gradient(circle, #1b2634 58%, transparent 60%), conic-gradient(#0d8a5f var(--loan-progress), rgba(255, 255, 255, 0.12) 0);
 }
 
 .loan-identity-progress strong {
@@ -5019,7 +5019,7 @@ nextjs-portal {
 }
 
 .loan-identity-hero .loan-progress-track span {
-  background: #76d0aa;
+  background: #0d8a5f;
 }
 
 .loan-identity-hero .loan-command-progress {
@@ -5058,7 +5058,7 @@ nextjs-portal {
 .loan-identity-hero .loan-command-metrics strong { color: #f3f6f9; }
 
 .assets-page {
-  --finance-blue: #2f9a72;
+  --finance-blue: #0d8a5f;
   --finance-blue-deep: #227b5a;
 }
 
@@ -5309,7 +5309,7 @@ nextjs-portal {
   border-radius: 999px;
 }
 
-.consumption-receipt-lines i.wechat { background: #22a873; }
+.consumption-receipt-lines i.wechat { background: #0d8a5f; }
 .consumption-receipt-lines i.alipay { background: #3189db; }
 .consumption-receipt-lines i.category { background: #d28148; }
 
@@ -5364,7 +5364,7 @@ nextjs-portal {
 
 .loan-operations-hero .finance-state-chip {
   border: 0;
-  color: #aee3c9;
+  color: #0d8a5f;
   background: rgba(106, 199, 155, 0.12);
 }
 
@@ -5416,7 +5416,7 @@ nextjs-portal {
 
 .loan-next-node > strong {
   margin-top: 4px;
-  color: #7bd4ad;
+  color: #0d8a5f;
   font-size: 34px;
   line-height: 1;
 }
@@ -5466,7 +5466,7 @@ nextjs-portal {
 }
 
 .loan-milestone-rail i.complete {
-  background: #72cda5;
+  background: #0d8a5f;
 }
 
 .loan-operations-metrics {
@@ -5507,7 +5507,7 @@ nextjs-portal {
 
 .asset-statement-hero {
   padding: 18px;
-  border-left: 5px solid #3a9a73;
+  border-left: 5px solid #0d8a5f;
   border-radius: 8px;
   color: #18382f;
   background: rgba(238, 247, 242, 0.94);
@@ -5587,7 +5587,7 @@ nextjs-portal {
   width: 8px;
   height: 8px;
   border-radius: 2px;
-  background: #3a9a73;
+  background: #0d8a5f;
 }
 
 .asset-statement-row.negative i { background: #d36b5e; }

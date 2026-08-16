@@ -13,7 +13,7 @@ const EXPENSE_ORANGE = "#ff7a32";
 const PLATFORM_COLORS: Record<string, string> = {
   "微信": "#07c160",
   "支付宝": "#1677ff",
-  "银行卡": "#45b787",
+  "银行卡": "#0d8a5f",
   "现金": "#ff9f43",
   "其他": "#9aa7bd",
 };
@@ -304,7 +304,7 @@ function buildSankeyOption(transactions: Transaction[]): EChartsCoreOption {
 
   const catColors: Record<string, string> = {
     "餐饮": "#ff7a32", "购物": "#ff4d6a", "交通": "#57b3ff", "住房": "#7c5cfc",
-    "娱乐": "#ff9f43", "医疗": "#ff5c8a", "日用": "#45b787", "服装": "#b37feb",
+    "娱乐": "#ff9f43", "医疗": "#ff5c8a", "日用": "#0d8a5f", "服装": "#b37feb",
     "美容": "#f759ab", "宠物": "#ff7a45", "通讯": "#597ef7", "运动": "#36cfc9",
     "旅行": "#9254de", "教育": "#40a9ff", "其他": "#bfbfbf",
   };

@@ -24,8 +24,8 @@ const manager = new DataModeManager();
 const INCOME_BLUE = "#0060c0";
 const EXPENSE_ORANGE = "#ff7a32";
 const POSITIVE = "#ff6848";
-const NEGATIVE = "#67caa9";
-const GREEN = "#63c7a8";
+const NEGATIVE = "#0d8a5f";
+const GREEN = "#0d8a5f";
 
 type IconProps = { size?: number; color?: string; strokeWidth?: number };
 

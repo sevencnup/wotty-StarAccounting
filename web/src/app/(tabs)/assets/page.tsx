@@ -74,7 +74,7 @@ export default function AssetsPage() {
       color: typeMeta[assetType].color,
       amount: positive.filter((item) => item.type === assetType).reduce((sum, item) => sum + item.balance, 0),
     }));
-    if (savingsTotal > 0) groups.push({ type: "OTHER", label: "储蓄计划", color: "#55b892", amount: savingsTotal });
+    if (savingsTotal > 0) groups.push({ type: "OTHER", label: "储蓄计划", color: "#0d8a5f", amount: savingsTotal });
 
     return { positive, negative, savingsTotal, loanTotal, assetTotal, liabilityTotal, netWorth, liquidity, debtRatio, concentration, groups: groups.filter((item) => item.amount > 0) };
   }, [list, savingsGoals, loans]);
