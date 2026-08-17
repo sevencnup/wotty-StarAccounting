@@ -79,19 +79,35 @@ export function JournalPanel({
     closeTimerRef.current = setTimeout(onClose, 220);
   }
 
-  const touchStart = useRef({ x: 0, y: 0, allow: false });
+  const touchStart = useRef({ x: 0, y: 0, allowClose: false, outsidePanel: false, leftEdge: false });
+  const panelRef = useRef<HTMLDivElement | null>(null);
   function handleTouchStart(e: React.TouchEvent) {
     const touch = e.touches[0];
-    const panelTop = (e.currentTarget as HTMLDivElement).getBoundingClientRect().top;
+    const panel = panelRef.current;
+    const insidePanel = Boolean(panel?.contains(e.target as Node));
+    const panelTop = panel?.getBoundingClientRect().top ?? 0;
+    const leftEdge = touch.clientX <= 24;
+    const inCloseRegion = insidePanel && touch.clientY <= panelTop + 96;
     touchStart.current = {
       x: touch.clientX,
       y: touch.clientY,
-      allow: isPage ? touch.clientY <= panelTop + 96 : true,
+      allowClose: isPage ? inCloseRegion && !leftEdge : insidePanel,
+      outsidePanel: !insidePanel,
+      leftEdge,
     };
+  }
+  function handleTouchMove(e: React.TouchEvent) {
+    const start = touchStart.current;
+    if (!isPage || (!start.outsidePanel && !start.leftEdge)) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    const isHorizontal = Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy) * 1.15;
+    if (isHorizontal) e.preventDefault();
   }
   function handleTouchEnd(e: React.TouchEvent) {
     const start = touchStart.current;
-    if (!start.allow) return;
+    if (!start.allowClose) return;
     const touch = e.changedTouches[0];
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
@@ -131,8 +147,18 @@ export function JournalPanel({
   }
 
   return (
-    <div className={`journal-overlay ${isPage ? "page" : ""} ${visible ? "visible" : ""}`} onClick={handleClose}>
-      <div className={`journal-panel ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${visible ? "visible" : ""}`} onClick={(e) => e.stopPropagation()} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+    <div
+      className={`journal-overlay ${isPage ? "page" : ""} ${visible ? "visible" : ""}`}
+      onClick={handleClose}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div
+        ref={panelRef}
+        className={`journal-panel ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${visible ? "visible" : ""}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="journal-header">
           <button type="button" className="journal-back" onClick={handleClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

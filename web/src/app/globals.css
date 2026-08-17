@@ -3081,6 +3081,7 @@ nextjs-portal {
 .journal-overlay.page {
   pointer-events: auto;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
   touch-action: pan-y;
 }
 
@@ -3114,6 +3115,8 @@ nextjs-portal {
   background: #ffffff;
   transform: translateY(100%);
   box-shadow: none;
+  touch-action: pan-y;
+  overscroll-behavior-x: contain;
 }
 
 .journal-panel.savings {
