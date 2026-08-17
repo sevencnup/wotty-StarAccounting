@@ -2379,16 +2379,16 @@ nextjs-portal {
   --saving-green: #0d8a5f;
   --saving-coral: #e87962;
   --saving-amber: #df9d35;
-  gap: 6px;
+  gap: 8px;
 }
 
 .savings-dashboard-page .home-card,
 .savings-dashboard-page .recent-card {
   border: 0;
-  border-radius: 24px;
+  border-radius: 22px;
 }
 
-.savings-vault-hero {
+.savings-dashboard-page .savings-vault-hero {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 96px;
@@ -2397,24 +2397,20 @@ nextjs-portal {
   min-height: 132px;
   padding: 16px;
   overflow: hidden;
-  background: rgba(232, 247, 241, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  background:
+    linear-gradient(135deg, rgba(233, 250, 243, 0.86), rgba(255, 255, 255, 0.76) 58%, rgba(242, 248, 255, 0.72)),
+    rgba(255, 255, 255, 0.68);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 12px 28px rgba(56, 107, 91, 0.09);
-}
-
-.savings-vault-hero::before {
-  content: "";
-  position: absolute;
-  inset: 12px auto 12px 0;
-  width: 4px;
-  border-radius: 999px;
-  background: var(--saving-green);
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 10px 26px rgba(67, 91, 125, 0.08);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
 }
 
 .savings-vault-copy {
   min-width: 0;
-  padding-left: 4px;
+  padding-left: 0;
 }
 
 .savings-vault-copy span,
@@ -2456,9 +2452,11 @@ nextjs-portal {
   height: 86px;
   border-radius: 999px;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.98) 0 57%, transparent 59%),
-    conic-gradient(var(--saving-green) var(--progress), #e6edf6 0);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(64, 93, 131, 0.1);
+    radial-gradient(circle, rgba(255, 255, 255, 0.94) 0 57%, transparent 59%),
+    conic-gradient(var(--saving-green) var(--progress), rgba(214, 227, 239, 0.72) 0);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 8px 18px rgba(67, 91, 125, 0.08);
 }
 
 .savings-vault-ring strong {
@@ -2487,9 +2485,14 @@ nextjs-portal {
   min-width: 0;
   min-height: 68px;
   padding: 11px 10px;
-  border-radius: 20px;
-  background: rgba(248, 251, 255, 0.82);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72), 0 8px 20px rgba(67, 91, 125, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 18px;
+  background: rgba(248, 251, 255, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 8px 20px rgba(67, 91, 125, 0.05);
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
 }
 
 .savings-metric-grid strong {
@@ -2503,12 +2506,18 @@ nextjs-portal {
   font-variant-numeric: tabular-nums;
 }
 
-.savings-goal-section,
-.savings-rhythm-card {
+.savings-dashboard-page .savings-goal-section,
+.savings-dashboard-page .savings-rhythm-card {
   padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 252, 255, 0.7)),
-    rgba(255, 255, 255, 0.74);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(248, 252, 255, 0.58)),
+    rgba(255, 255, 255, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 26px rgba(67, 91, 125, 0.07);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
 .savings-goal-grid {
@@ -2523,8 +2532,14 @@ nextjs-portal {
   gap: 8px 12px;
   min-width: 0;
   padding: 12px;
-  border-radius: 18px;
-  background: rgba(244, 249, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 17px;
+  background: rgba(244, 249, 255, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 7px 18px rgba(67, 91, 125, 0.045);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
 }
 
 .savings-goal-card div {
@@ -2552,15 +2567,29 @@ nextjs-portal {
 }
 
 .savings-goal-track {
+  position: relative;
   grid-column: 1 / -1;
-  height: 7px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e7eef7;
+  background: rgba(226, 236, 247, 0.72);
+  box-shadow: inset 0 1px 2px rgba(93, 119, 151, 0.12);
+}
+
+.savings-goal-track::after,
+.savings-rhythm-tile div::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1) 42%, rgba(0, 0, 0, 0.08));
+  pointer-events: none;
 }
 
 .savings-goal-track i {
   display: block;
+  position: relative;
+  z-index: 0;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, var(--saving-green), var(--saving-blue));
@@ -2589,12 +2618,18 @@ nextjs-portal {
   min-width: 0;
   min-height: 76px;
   padding: 10px;
-  border-radius: 18px;
-  background: rgba(244, 249, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 17px;
+  background: rgba(244, 249, 255, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.76),
+    0 7px 18px rgba(67, 91, 125, 0.045);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
 }
 
 .savings-rhythm-tile.current {
-  background: rgba(232, 247, 241, 0.9);
+  background: linear-gradient(135deg, rgba(224, 247, 238, 0.78), rgba(255, 255, 255, 0.58));
 }
 
 .savings-rhythm-tile span {
@@ -2625,10 +2660,11 @@ nextjs-portal {
 .savings-rhythm-tile div {
   position: relative;
   grid-column: 1 / -1;
-  height: 6px;
+  height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #e5edf6;
+  background: rgba(226, 236, 247, 0.72);
+  box-shadow: inset 0 1px 2px rgba(93, 119, 151, 0.12);
 }
 
 .savings-rhythm-tile i,
@@ -2639,11 +2675,11 @@ nextjs-portal {
 }
 
 .savings-rhythm-tile i {
-  background: #c8d8eb;
+  background: linear-gradient(90deg, #b5cbe3, #d2e0ee);
 }
 
 .savings-rhythm-tile b {
-  background: var(--saving-green);
+  background: linear-gradient(90deg, var(--saving-green), #2ea67a);
 }
 
 .savings-summary-card {
@@ -2964,13 +3000,18 @@ nextjs-portal {
   background: #0d8a5f;
 }
 
-.savings-recent-card {
+.savings-dashboard-page .savings-recent-card {
   padding: 0 14px 10px;
-  border: 0;
-  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 22px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 252, 255, 0.7)),
-    rgba(255, 255, 255, 0.74);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(248, 252, 255, 0.58)),
+    rgba(255, 255, 255, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 26px rgba(67, 91, 125, 0.07);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
 .savings-recent-card .recent-head {
@@ -2993,9 +3034,12 @@ nextjs-portal {
   gap: 3px 8px;
   min-height: 52px;
   padding: 8px 9px;
-  border-top: 0;
-  border-radius: 17px;
-  background: rgba(244, 249, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 16px;
+  background: rgba(244, 249, 255, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
 }
 
 .savings-dashboard-page .savings-recent-row strong {
@@ -5814,7 +5858,6 @@ nextjs-portal {
 
 .asset-statement-hero {
   padding: 18px;
-  border-left: 5px solid #0d8a5f;
   border-radius: 8px;
   color: #18382f;
   background: rgba(238, 247, 242, 0.94);
