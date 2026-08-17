@@ -106,66 +106,64 @@ export default function AssetsPage() {
           </div>
           <strong className={summary.netWorth >= 0 ? "positive" : "negative"}>{summary.netWorth >= 0 ? "结构健康" : "负债优先"}</strong>
         </div>
-        <div className="asset-statement-equation">
-          <div className="asset-statement-row positive">
-            <span><i />资产总额</span>
-            <strong>¥ {formatMoney(summary.assetTotal)}</strong>
-          </div>
-          <div className="asset-statement-row negative">
-            <span><i />减去负债</span>
-            <strong>- ¥ {formatMoney(summary.liabilityTotal)}</strong>
-          </div>
-          <div className="asset-statement-result">
-            <span>= 净资产</span>
+        <div className="asset-net-summary">
+          <div className="asset-net-total">
+            <span>净资产</span>
             <strong>¥ {formatMoney(summary.netWorth)}</strong>
+            <p>{summary.netWorth >= 0 ? "资产能够覆盖当前全部负债" : "当前负债高于资产，建议优先降低债务余额"}</p>
+          </div>
+          <div className="asset-net-side">
+            <div><span>资产总额</span><strong>¥ {formatMoney(summary.assetTotal)}</strong></div>
+            <div><span>负债总额</span><strong>¥ {formatMoney(summary.liabilityTotal)}</strong></div>
           </div>
         </div>
-        <p>{summary.netWorth >= 0 ? "资产能够覆盖当前全部负债" : "当前负债高于资产，建议优先降低债务余额"}</p>
       </section>
 
-      <section className="home-card finance-section asset-allocation-section">
-        <div className="finance-section-head"><h2>资产构成</h2><span>{summary.groups.length} 类配置</span></div>
-        {summary.groups.length ? (
-          <>
-            <div className="asset-allocation-bar">
-              {summary.groups.map((group) => <span key={`${group.label}-${group.amount}`} style={{ width: `${(group.amount / summary.assetTotal) * 100}%`, background: group.color }} />)}
-            </div>
-            <div className="asset-allocation-list">
-              {summary.groups.map((group) => (
-                <div key={`${group.label}-${group.amount}`} className="asset-allocation-row">
-                  <i style={{ background: group.color }} />
-                  <span>{group.label}</span>
-                  <em>{summary.assetTotal > 0 ? `${((group.amount / summary.assetTotal) * 100).toFixed(1)}%` : "0%"}</em>
-                  <strong>¥ {formatMoney(group.amount)}</strong>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : <div className="finance-empty">暂无资产配置数据</div>}
-      </section>
-
-      <section className="asset-health-section">
-        <div className="finance-section-head"><h2>财务体检</h2><span>基于当前资产</span></div>
-        <div className="asset-health-grid">
-          <article>
-            <div className="asset-health-ring" style={{ "--metric": `${clampPercent(summary.liquidity)}%` } as React.CSSProperties}><strong>{Math.round(summary.liquidity)}%</strong></div>
-            <span>流动资产率</span><p>现金与支付账户占比</p>
-          </article>
-          <article>
-            <div className="asset-health-ring debt" style={{ "--metric": `${clampPercent(summary.debtRatio)}%` } as React.CSSProperties}><strong>{Math.round(summary.debtRatio)}%</strong></div>
-            <span>负债率</span><p>{summary.debtRatio <= 40 ? "结构稳健" : "建议降低负债"}</p>
-          </article>
-          <article>
-            <div className="asset-health-ring focus" style={{ "--metric": `${clampPercent(summary.concentration)}%` } as React.CSSProperties}><strong>{Math.round(summary.concentration)}%</strong></div>
-            <span>集中度</span><p>{summary.concentration <= 50 ? "配置较分散" : "单项占比较高"}</p>
-          </article>
+      <section className="home-card finance-section asset-overview-section">
+        <div className="finance-section-head"><h2>资产结构</h2><span>{summary.groups.length} 类配置</span></div>
+        <div className="asset-overview-block asset-allocation-block">
+          {summary.groups.length ? (
+            <>
+              <div className="asset-allocation-bar">
+                {summary.groups.map((group) => <span key={`${group.label}-${group.amount}`} style={{ width: `${(group.amount / summary.assetTotal) * 100}%`, background: group.color }} />)}
+              </div>
+              <div className="asset-allocation-list">
+                {summary.groups.map((group) => (
+                  <div key={`${group.label}-${group.amount}`} className="asset-allocation-row">
+                    <i style={{ background: group.color }} />
+                    <span>{group.label}</span>
+                    <em>{summary.assetTotal > 0 ? `${((group.amount / summary.assetTotal) * 100).toFixed(1)}%` : "0%"}</em>
+                    <strong>¥ {formatMoney(group.amount)}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : <div className="finance-empty">暂无资产配置数据</div>}
+        </div>
+        <div className="asset-overview-divider" />
+        <div className="asset-overview-block asset-health-block">
+          <div className="asset-inline-head"><h3>财务体检</h3><span>基于当前资产</span></div>
+          <div className="asset-health-grid">
+            <article>
+              <div className="asset-health-ring" style={{ "--metric": `${clampPercent(summary.liquidity)}%` } as React.CSSProperties}><strong>{Math.round(summary.liquidity)}%</strong></div>
+              <span>流动资产率</span><p>现金与支付账户占比</p>
+            </article>
+            <article>
+              <div className="asset-health-ring debt" style={{ "--metric": `${clampPercent(summary.debtRatio)}%` } as React.CSSProperties}><strong>{Math.round(summary.debtRatio)}%</strong></div>
+              <span>负债率</span><p>{summary.debtRatio <= 40 ? "结构稳健" : "建议降低负债"}</p>
+            </article>
+            <article>
+              <div className="asset-health-ring focus" style={{ "--metric": `${clampPercent(summary.concentration)}%` } as React.CSSProperties}><strong>{Math.round(summary.concentration)}%</strong></div>
+              <span>集中度</span><p>{summary.concentration <= 50 ? "配置较分散" : "单项占比较高"}</p>
+            </article>
+          </div>
         </div>
       </section>
 
-      <section className="asset-ledger-section">
-        <div className="finance-section-head"><h2>资产负债清单</h2><span>完整口径</span></div>
-        <div className="asset-ledger-grid">
-          <div className="home-card asset-ledger-card positive-ledger">
+      <section className="home-card finance-section asset-ledger-section">
+        <div className="finance-section-head"><h2>资产明细</h2><span>账户与负债</span></div>
+        <div className="asset-ledger-card">
+          <div className="asset-ledger-group positive-ledger">
             <div className="asset-ledger-title"><span>资产</span><strong>¥ {formatMoney(summary.assetTotal)}</strong></div>
             <div className="asset-ledger-list">
               {summary.positive.map((item) => (
@@ -175,7 +173,8 @@ export default function AssetsPage() {
               {!summary.positive.length && summary.savingsTotal === 0 ? <div className="finance-empty">暂无资产</div> : null}
             </div>
           </div>
-          <div className="home-card asset-ledger-card negative-ledger">
+          <div className="asset-ledger-divider" />
+          <div className="asset-ledger-group negative-ledger">
             <div className="asset-ledger-title"><span>负债</span><strong>¥ {formatMoney(summary.liabilityTotal)}</strong></div>
             <div className="asset-ledger-list">
               {summary.negative.map((item) => (
