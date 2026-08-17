@@ -22,7 +22,9 @@
 ## 涉及文件
 
 - `web/src/app/globals.css`
-- `web/package.json`（版本 0.0.68 → 0.0.69）
+- `web/package.json`（版本 0.0.69 → 0.0.70）
+- `web/android/app/build.gradle`（Web APK 版本 0.0.3/c3 → 0.0.4/c4）
+- `web/android/app/src/main/java/com/wotty/stark/web/MainActivity.java`
 - `docs/web-savings-page-design.md`
 - `docs/web-home-page-design.md` 计划文件已同步本次背景与验证方案。
 
@@ -32,6 +34,12 @@
 - 左边缘起始手势不会触发弹层关闭；非边缘区域保留原有双向横滑关闭行为，垂直滚动不会误关闭。
 - 页面遮罩和弹层增加横向 `overscroll-behavior` 约束，同时保留储蓄计划表格自身的横向滚动。
 - 页面式弹层挂载期间锁定根 `body`，保存并恢复打开前的滚动位置，避免浏览器边缘手势拖动底层储蓄页面。
+
+## Web APK 返回行为
+
+- Android 系统侧滑返回和返回键优先调用 WebView 的历史回退。
+- “添加储蓄”打开时写入的 `pushState` 会先触发页面已有的 `popstate` 逻辑，关闭弹层并返回储蓄页。
+- 只有 WebView 没有历史记录时，返回动作才会交给 Android 系统退出 App。
 
 ## 验证
 
