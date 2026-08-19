@@ -28,5 +28,5 @@
 - [x] 在 `web/src/app/globals.css` 的 `.assets-page` 区块统一字号与模块尺寸。
 - [x] 同步 370px 窄屏适配。
 - [x] 更新 `web/package.json` 版本号。
-- [ ] 运行类型检查、测试与生产构建。
-- [ ] 移动端浏览器截图核验后推送 GitHub。
+- [x] 运行类型检查、测试与生产构建。
+- [x] 移动端浏览器截图核验后推送 GitHub。
