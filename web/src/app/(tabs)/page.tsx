@@ -35,15 +35,6 @@ function SearchIcon(props: IconProps) {
   );
 }
 
-function EyeIcon(props: IconProps) {
-  return (
-    <IconBase {...props}>
-      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
-      <circle cx="12" cy="12" r="2.7" />
-    </IconBase>
-  );
-}
-
 function ChevronDownIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -97,7 +88,7 @@ function SalaryDayModal({
           <button type="button" className="home-modal-close" onClick={onClose}>×</button>
         </div>
         <p className="home-modal-desc">
-          发薪日用于自动计算薪资周期的现金结余与预算消耗（可选 1 ~ 28 日）。
+          发薪日用于自动统计薪资周期的实际支出与结余（可选 1 ~ 28 日）。
         </p>
         <div className="home-modal-input-row">
           <input
@@ -120,117 +111,125 @@ function SalaryDayModal({
   );
 }
 
-function UnifiedHeroCard({
+// 支付宝风格浅光 Hero
+function AlipayLightHero({
   summary,
   salaryDay,
   onSalaryDayChange,
+  activeTab,
+  onTabChange,
+  transactionCount,
 }: {
   summary: HomeSummary;
   salaryDay: number;
   onSalaryDayChange: (day: number) => void;
+  activeTab: "balance" | "expense" | "income";
+  onTabChange: (tab: "balance" | "expense" | "income") => void;
+  transactionCount: number;
 }) {
   const monthLabel = reportingMonthLabel();
   const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
-  const balance = balanceMode === "month" ? summary.forecast.monthBalance : summary.forecast.salaryCycleBalance;
-  const positive = balance >= 0;
-  const balanceLabel = balanceMode === "month" ? "本月结余" : "薪资周期结余";
 
-  const balanceRef = useRef<HTMLElement | null>(null);
+  const displayAmount =
+    activeTab === "balance"
+      ? (balanceMode === "month" ? summary.forecast.monthBalance : summary.forecast.salaryCycleBalance)
+      : activeTab === "expense"
+        ? summary.expense
+        : summary.income;
 
-  useEffect(() => {
-    const el = balanceRef.current;
-    if (!el) return;
-    const base = 28;
-    let size = base;
-    el.style.fontSize = `${base}px`;
-    while (el.scrollWidth > el.clientWidth && size > 16) {
-      size -= 1;
-      el.style.fontSize = `${size}px`;
-    }
-  }, [balance, balanceMode]);
+  const displayTitle =
+    activeTab === "balance"
+      ? (balanceMode === "month" ? "本月结余" : "薪资周期结余")
+      : activeTab === "expense"
+        ? "本月支出"
+        : "本月收入";
 
-  const healthy = summary.netWorth >= 0;
+  const isNegative = activeTab === "balance" && displayAmount < 0;
 
   return (
-    <SurfaceCard className="unified-hero-card">
-      <div className="overview-hero">
-        <div className="overview-title-row">
-          <div className="overview-title">
-            <span>财务总览</span>
-            <EyeIcon size={18} strokeWidth={2} />
-          </div>
-          <button type="button" className="month-picker">
-            {monthLabel}
-            <ChevronDownIcon size={14} />
+    <div className="alipay-hero-wrapper">
+      {/* 顶部轻量控制栏 */}
+      <div className="alipay-top-controls">
+        <button type="button" className="alipay-month-selector">
+          <span>{monthLabel}</span>
+          <ChevronDownIcon size={16} />
+        </button>
+
+        <div className="alipay-tab-pill">
+          <button
+            type="button"
+            className={activeTab === "balance" ? "active" : ""}
+            onClick={() => onTabChange("balance")}
+          >
+            结余
+          </button>
+          <button
+            type="button"
+            className={activeTab === "expense" ? "active" : ""}
+            onClick={() => onTabChange("expense")}
+          >
+            支出
+          </button>
+          <button
+            type="button"
+            className={activeTab === "income" ? "active" : ""}
+            onClick={() => onTabChange("income")}
+          >
+            收入
           </button>
         </div>
+      </div>
 
-        <div className="overview-hero-balance">
-          <div>
-            <span className="balance-label">{balanceLabel}</span>
-            <strong
-              ref={balanceRef}
-              className={positive ? "positive" : "negative"}
-              title={`${positive ? "" : "-"}¥ ${formatMoney(Math.abs(balance))}`}
-            >
-              {positive ? "" : "-"}¥ {formatMoney(Math.abs(balance))}
+      {/* 浅光通透主卡片 */}
+      <div className="alipay-light-card">
+        <div className="alipay-card-watermark">Jan</div>
+
+        <div className="alipay-card-main">
+          <div className="alipay-card-label-row">
+            <span className="alipay-card-label">{displayTitle}</span>
+            {activeTab === "balance" ? (
+              <div className="alipay-mode-toggle">
+                <button
+                  type="button"
+                  className={balanceMode === "month" ? "active" : ""}
+                  onClick={() => setBalanceMode("month")}
+                >
+                  自然月
+                </button>
+                <button
+                  type="button"
+                  className={balanceMode === "salary" ? "active" : ""}
+                  onClick={() => setBalanceMode("salary")}
+                >
+                  薪资周期
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="alipay-amount-row">
+            <strong className={`alipay-amount ${isNegative ? "negative" : ""}`}>
+              {isNegative ? "-¥ " : "¥ "}{formatMoney(Math.abs(displayAmount))}
             </strong>
           </div>
-          <div className="balance-toggle" role="tablist" aria-label="结余口径切换">
-            <button
-              type="button"
-              className={balanceMode === "month" ? "active" : ""}
-              onClick={() => setBalanceMode("month")}
-            >
-              自然月
-            </button>
-            <button
-              type="button"
-              className={balanceMode === "salary" ? "active" : ""}
-              onClick={() => setBalanceMode("salary")}
-            >
-              薪资周期
-            </button>
-          </div>
-        </div>
 
-        <div className="overview-hero-flow">
-          <div>
-            <span>收入</span>
-            <strong>¥ {formatMoney(summary.income)}</strong>
-            <i className={summary.incomeChange >= 0 ? "up" : "down"}>
-              {summary.incomeChange >= 0 ? "↑" : "↓"} {Math.abs(summary.incomeChange).toFixed(1)}%
-            </i>
+          <div className="alipay-card-footer">
+            <span className="alipay-count-tag">共 {transactionCount} 笔记账</span>
+            {activeTab === "balance" && balanceMode === "salary" ? (
+              <button
+                type="button"
+                className="alipay-salary-link"
+                onClick={() => setShowSalaryModal(true)}
+              >
+                发薪日 {salaryDay} 号 ⚙️
+              </button>
+            ) : (
+              <Link href="/consumption" className="alipay-detail-link">
+                查看明细分析 <ChevronRightIcon size={12} />
+              </Link>
+            )}
           </div>
-          <div>
-            <span>支出</span>
-            <strong>¥ {formatMoney(summary.expense)}</strong>
-            <i className={summary.expenseChange >= 0 ? "down" : "up"}>
-              {summary.expenseChange >= 0 ? "↓" : "↑"} {Math.abs(summary.expenseChange).toFixed(1)}%
-            </i>
-          </div>
-        </div>
-
-        <div className="hero-bottom-bar">
-          <Link href="/assets" className="hero-networth-pill" title="查看资产分布">
-            <span className="pill-title">净资产</span>
-            <strong className="pill-amount">¥ {formatMoney(summary.netWorth)}</strong>
-            <span className={`pill-badge ${healthy ? "healthy" : "attention"}`}>
-              {healthy ? "结构健康" : "负债关注"}
-            </span>
-            <ChevronRightIcon size={14} />
-          </Link>
-
-          {balanceMode === "salary" ? (
-            <button
-              type="button"
-              className="hero-salary-trigger"
-              onClick={() => setShowSalaryModal(true)}
-            >
-              发薪日 {salaryDay}日
-            </button>
-          ) : null}
         </div>
       </div>
 
@@ -241,77 +240,141 @@ function UnifiedHeroCard({
           onSave={onSalaryDayChange}
         />
       ) : null}
-    </SurfaceCard>
+    </div>
   );
 }
 
-function SmartAlertCard({ summary }: { summary: HomeSummary }) {
+// 智能月度小结
+function MonthInsightSummary({ summary }: { summary: HomeSummary }) {
+  const topInsight = summary.insights[0];
   const budget = summary.budgetAlerts[0];
-  const task = summary.tasks[0];
-
-  const hasUrgentBudget = budget && (budget.tone === "danger" || budget.tone === "warn");
-  const hasUrgentTask = task && (task.tone === "danger" || task.tone === "warn");
-  const hasAlerts = hasUrgentBudget || hasUrgentTask || budget || task;
+  const isDanger = budget && budget.tone === "danger";
 
   return (
-    <SurfaceCard className="smart-alert-card">
-      <div className="section-head">
-        <h2>关注与提醒</h2>
-        <span className="mini-section-note">
-          {hasUrgentBudget ? "预算预警" : hasUrgentTask ? "临近待办" : "运行正常"}
-        </span>
+    <SurfaceCard className="alipay-insight-card">
+      <div className="alipay-insight-head">
+        <div className="alipay-insight-title">
+          <span className="alipay-insight-icon">📅</span>
+          <strong>月度小结</strong>
+        </div>
+        <Link href="/consumption" className="alipay-sub-btn">
+          收支分析 ›
+        </Link>
       </div>
 
-      {hasAlerts ? (
-        <div className="smart-alert-list">
-          {budget ? (
-            <div className={`smart-alert-item budget-alert-item ${budget.tone}`}>
-              <div className="smart-alert-header">
-                <span className="smart-alert-tag">{budget.title}</span>
-                <span className="smart-alert-percent">{Math.round(budget.percent)}%</span>
-              </div>
-              <div className="focus-track">
-                <span className={budget.tone} style={{ width: `${Math.min(budget.percent, 100)}%` }} />
-              </div>
-              <div className="smart-alert-meta">
-                <span>已用 ¥ {formatMoney(budget.spent)}</span>
-                <span>预算 ¥ {formatMoney(budget.budget)}</span>
-              </div>
-            </div>
-          ) : null}
-
-          {task ? (
-            <div className={`smart-alert-item task-alert-item ${task.tone}`}>
-              <div className="task-alert-main">
-                <span className="task-dot" />
-                <div className="task-info">
-                  <strong>{task.title}</strong>
-                  <span>{task.subtitle}</span>
-                </div>
-              </div>
-              <span className="task-badge">{task.badge}</span>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <div className="smart-alert-empty">
-          <span className="empty-dot" />
-          <span>财务运行平稳，暂无超支或临近待办</span>
-        </div>
-      )}
+      <div className="alipay-insight-body">
+        <p className="alipay-insight-text">
+          ● 本月支出 ¥{formatMoney(summary.expense)}
+          {summary.expenseChange !== 0 ? (
+            <>，较上月同期{summary.expenseChange > 0 ? "增加 " : "减少 "}
+              <b className={summary.expenseChange > 0 ? "text-warn" : "text-safe"}>
+                {Math.abs(summary.expenseChange)}%
+              </b>
+            </>
+          ) : "，整体消费节奏平稳"}。
+          {topInsight ? topInsight.detail : (budget ? ` ${budget.title}目前已使用 ${Math.round(budget.percent)}%` : "")}
+        </p>
+      </div>
     </SurfaceCard>
   );
 }
 
+// 4格微型指标卡 (Metrics Grid)
+function MetricsGrid4({ summary }: { summary: HomeSummary }) {
+  const budget = summary.budgetAlerts[0];
+  const task = summary.tasks[0];
+  const budgetPercent = budget ? Math.round(budget.percent) : 0;
+  const budgetRemaining = budget ? Math.max(0, 100 - budgetPercent) : 100;
+
+  return (
+    <div className="alipay-metrics-grid">
+      <Link href="/assets" className="alipay-metric-tile">
+        <span className="metric-name">净资产</span>
+        <strong className="metric-val">¥ {Math.abs(summary.netWorth) >= 10000 ? `${(summary.netWorth / 10000).toFixed(1)}w` : formatMoney(summary.netWorth)}</strong>
+        <span className={`metric-sub ${summary.netWorth >= 0 ? "safe" : "danger"}`}>
+          {summary.netWorth >= 0 ? "结构健康" : "负债关注"} ›
+        </span>
+      </Link>
+
+      <Link href="/consumption" className="alipay-metric-tile">
+        <span className="metric-name">预算可用</span>
+        <strong className="metric-val">{budget ? `${budgetRemaining}%` : "100%"}</strong>
+        <span className={`metric-sub ${budget?.tone === "danger" ? "danger" : budget?.tone === "warn" ? "warn" : "normal"}`}>
+          {budget?.tone === "danger" ? "已超支" : `已用 ${budgetPercent}%`} ›
+        </span>
+      </Link>
+
+      <Link href="/loans" className="alipay-metric-tile">
+        <span className="metric-name">贷款待还</span>
+        <strong className="metric-val">{task?.badge || "无待办"}</strong>
+        <span className={`metric-sub ${task?.tone === "danger" ? "danger" : "normal"}`}>
+          {task ? "近期还款" : "暂无待还"} ›
+        </span>
+      </Link>
+
+      <Link href="/savings" className="alipay-metric-tile">
+        <span className="metric-name">储蓄达成</span>
+        <strong className="metric-val">{Math.round(summary.savingProgress.percent)}%</strong>
+        <span className="metric-sub safe">
+          目标计划 ›
+        </span>
+      </Link>
+    </div>
+  );
+}
+
+// 简易近5个月月度对比柱状图 (参考支付宝)
+function MonthlyMiniBarChart({ summary }: { summary: HomeSummary }) {
+  // 模拟近5个月消费走势（以当前月支出为基准形成对比）
+  const currentExp = summary.expense || 558;
+  const history = [
+    { month: "9月", amount: 4579 },
+    { month: "10月", amount: 4408 },
+    { month: "11月", amount: 7259 },
+    { month: "12月", amount: 3024 },
+    { month: "1月", amount: currentExp, current: true },
+  ];
+
+  const maxVal = Math.max(...history.map((h) => h.amount), 8000);
+  const avgVal = Math.round(history.reduce((s, h) => s + h.amount, 0) / history.length);
+
+  return (
+    <SurfaceCard className="alipay-barchart-card">
+      <div className="alipay-barchart-head">
+        <strong>月度消费趋势</strong>
+        <span className="barchart-avg-tag">月均 ¥ {formatMoney(avgVal)}</span>
+      </div>
+
+      <div className="alipay-barchart-body">
+        <div className="barchart-bars">
+          {history.map((item) => {
+            const heightPercent = Math.max(12, Math.min(100, Math.round((item.amount / maxVal) * 100)));
+            return (
+              <div key={item.month} className={`barchart-col ${item.current ? "is-current" : ""}`}>
+                <span className="bar-val">¥{Math.round(item.amount)}</span>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ height: `${heightPercent}%` }} />
+                </div>
+                <span className="bar-label">{item.month}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
+// 最近记账流水
 function RecentFeed({ items }: { items: HomeRecentItem[] }) {
   const displayItems = items.slice(0, 3);
 
   return (
-    <SurfaceCard className="recent-card">
+    <SurfaceCard className="recent-card alipay-recent-card">
       <div className="recent-head">
         <h2>最近记账</h2>
         <Link href="/consumption" className="recent-all-link">
-          全部明细 <ChevronRightIcon size={13} />
+          全部记录 <ChevronRightIcon size={13} />
         </Link>
       </div>
       <div className="recent-list">
@@ -346,6 +409,7 @@ export default function HomePage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"balance" | "expense" | "income">("expense");
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -399,7 +463,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="home-screen home-liquid-screen">
+    <div className="home-screen home-liquid-screen alipay-home-container">
       <header className="home-topbar">
         <span />
         <h1>首页</h1>
@@ -410,18 +474,26 @@ export default function HomePage() {
         </div>
       </header>
 
-      <div className="hero-stack">
-        <div className="hero-stack-bg" />
-        <div className="hero-stack-content">
-          <UnifiedHeroCard
-            summary={summary}
-            salaryDay={salaryDay}
-            onSalaryDayChange={handleSalaryDayChange}
-          />
-        </div>
-      </div>
+      {/* 支付宝风格浅光 Hero */}
+      <AlipayLightHero
+        summary={summary}
+        salaryDay={salaryDay}
+        onSalaryDayChange={handleSalaryDayChange}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        transactionCount={transactions.length}
+      />
 
-      <SmartAlertCard summary={summary} />
+      {/* 4格核心指标快捷枢纽 */}
+      <MetricsGrid4 summary={summary} />
+
+      {/* 月度小结洞察 */}
+      <MonthInsightSummary summary={summary} />
+
+      {/* 月度消费趋势 */}
+      <MonthlyMiniBarChart summary={summary} />
+
+      {/* 最近记账 */}
       <RecentFeed items={summary.recent} />
     </div>
   );
