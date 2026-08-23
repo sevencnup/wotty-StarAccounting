@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
-import type { AssetType, Loan, Transaction, TransactionType } from "@/lib/stark/models";
+import type { AssetType, TransactionType } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
 
@@ -252,113 +252,268 @@ export function JournalPanel({
     >
       <div
         ref={panelRef}
-        className={`journal-panel ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${isAsset ? "asset" : ""} ${isLoan ? "loan" : ""} ${visible ? "visible" : ""}`}
+        className={`journal-panel modern-journal-shell ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${isAsset ? "asset" : ""} ${isLoan ? "loan" : ""} ${visible ? "visible" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="journal-header">
-          <button type="button" className="journal-back" onClick={handleClose}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {/* 顶部标题栏 */}
+        <div className="journal-header modern-journal-header">
+          <button type="button" className="journal-back-btn" onClick={handleClose}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="journal-title">{isSavings ? "添加储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记账"}</span>
-          <button type="button" className="journal-close" onClick={handleClose}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
+          <span className="journal-header-title">{isSavings ? "添加储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记一笔"}</span>
+          <button type="button" className="journal-close-btn" onClick={handleClose}>
+            ×
           </button>
         </div>
 
         {isSavings ? (
           <SavingsPlanner embedded onSaved={handleClose} />
         ) : isAsset ? (
-          <div className="asset-journal-form">
-            <div className="journal-section">
-              <h2 className="page-card-title">资产信息</h2>
-              <div className="finance-form-grid">
-                <label><span>资产名称</span><input value={assetName} onChange={(event) => setAssetName(event.target.value)} placeholder="如工资卡" /></label>
-                <label><span>资产类型</span><select value={assetType} onChange={(event) => setAssetType(event.target.value as AssetType)}>{assetTypes.map((item) => <option key={item} value={item}>{assetTypeLabels[item]}</option>)}</select></label>
-                <label className="wide"><span>当前余额</span><input inputMode="decimal" value={assetBalance} onChange={(event) => setAssetBalance(event.target.value.replace(/[^\d.-]/g, ""))} placeholder="0.00" /></label>
+          <div className="modern-form-wrapper">
+            <div className="modern-form-card">
+              <div className="modern-form-group">
+                <label>资产名称</label>
+                <input
+                  value={assetName}
+                  onChange={(event) => setAssetName(event.target.value)}
+                  placeholder="如：招行工资卡 / 微信零钱"
+                  className="modern-form-input"
+                />
+              </div>
+
+              <div className="modern-form-group">
+                <label>资产类型</label>
+                <div className="modern-select-pill-grid">
+                  {assetTypes.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`select-pill ${assetType === item ? "active" : ""}`}
+                      onClick={() => setAssetType(item)}
+                    >
+                      {assetTypeLabels[item]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="modern-form-group">
+                <label>当前余额 (元)</label>
+                <div className="modern-amount-box">
+                  <span className="cur-sym">¥</span>
+                  <input
+                    inputMode="decimal"
+                    value={assetBalance}
+                    onChange={(event) => setAssetBalance(event.target.value.replace(/[^\d.-]/g, ""))}
+                    placeholder="0.00"
+                    className="modern-amount-field"
+                  />
+                </div>
               </div>
             </div>
-            <button type="button" className="finance-primary-action" onClick={() => void saveAsset()}>新增资产</button>
+            <button type="button" className="modern-primary-submit" onClick={() => void saveAsset()}>
+              保存资产
+            </button>
           </div>
         ) : isLoan ? (
-          <div className="loan-journal-form">
-            <div className="journal-section">
-              <h2 className="page-card-title">贷款信息</h2>
-              <div className="finance-form-grid loan-form-grid">
-                <label><span>贷款名称</span><input value={loanPlatform} onChange={(event) => setLoanPlatform(event.target.value)} placeholder="如住房贷款" /></label>
-                <label><span>贷款总额</span><input inputMode="decimal" value={loanTotalAmount} onChange={(event) => setLoanTotalAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" /></label>
-                <label><span>剩余本金</span><input inputMode="decimal" value={loanRemainingAmount} onChange={(event) => setLoanRemainingAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="默认等于总额" /></label>
-                <label><span>每月月供</span><input inputMode="decimal" value={loanMonthlyPayment} onChange={(event) => setLoanMonthlyPayment(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" /></label>
-                <label><span>总期数</span><input inputMode="numeric" value={loanPeriods} onChange={(event) => setLoanPeriods(event.target.value.replace(/\D/g, ""))} /></label>
-                <label><span>每月还款日</span><input inputMode="numeric" value={loanDueDay} onChange={(event) => setLoanDueDay(event.target.value.replace(/\D/g, ""))} /></label>
+          <div className="modern-form-wrapper">
+            <div className="modern-form-card">
+              <div className="modern-form-group">
+                <label>贷款名称</label>
+                <input
+                  value={loanPlatform}
+                  onChange={(event) => setLoanPlatform(event.target.value)}
+                  placeholder="如：建设银行房贷 / 招行车贷"
+                  className="modern-form-input"
+                />
+              </div>
+
+              <div className="modern-form-grid-2">
+                <div className="modern-form-group">
+                  <label>贷款总额 (元)</label>
+                  <input
+                    inputMode="decimal"
+                    value={loanTotalAmount}
+                    onChange={(event) => setLoanTotalAmount(event.target.value.replace(/[^\d.]/g, ""))}
+                    placeholder="0.00"
+                    className="modern-form-input"
+                  />
+                </div>
+                <div className="modern-form-group">
+                  <label>剩余本金 (元)</label>
+                  <input
+                    inputMode="decimal"
+                    value={loanRemainingAmount}
+                    onChange={(event) => setLoanRemainingAmount(event.target.value.replace(/[^\d.]/g, ""))}
+                    placeholder="默认等于总额"
+                    className="modern-form-input"
+                  />
+                </div>
+              </div>
+
+              <div className="modern-form-grid-3">
+                <div className="modern-form-group">
+                  <label>每月月供 (元)</label>
+                  <input
+                    inputMode="decimal"
+                    value={loanMonthlyPayment}
+                    onChange={(event) => setLoanMonthlyPayment(event.target.value.replace(/[^\d.]/g, ""))}
+                    placeholder="0.00"
+                    className="modern-form-input"
+                  />
+                </div>
+                <div className="modern-form-group">
+                  <label>总期数</label>
+                  <input
+                    inputMode="numeric"
+                    value={loanPeriods}
+                    onChange={(event) => setLoanPeriods(event.target.value.replace(/\D/g, ""))}
+                    className="modern-form-input"
+                  />
+                </div>
+                <div className="modern-form-group">
+                  <label>每月还款日</label>
+                  <input
+                    inputMode="numeric"
+                    value={loanDueDay}
+                    onChange={(event) => setLoanDueDay(event.target.value.replace(/\D/g, ""))}
+                    className="modern-form-input"
+                  />
+                </div>
               </div>
             </div>
-            <button type="button" className="finance-primary-action" onClick={() => void saveLoan()}>新增贷款</button>
+            <button type="button" className="modern-primary-submit" onClick={() => void saveLoan()}>
+              保存贷款
+            </button>
           </div>
         ) : (
-          <>
-            <div className="segment-group">
+          <div className="modern-journal-flow">
+            {/* 顶栏类型切换 */}
+            <div className="modern-type-switch">
               {[
                 ["EXPENSE", "支出"],
                 ["INCOME", "收入"],
                 ["TRANSFER", "转账"],
-              ].map(([value, label]) => (
-                <button key={value} type="button" onClick={() => setType(value as TransactionType)} className={type === value ? "segment-button active" : "segment-button"}>
+              ].map(([val, label]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setType(val as TransactionType)}
+                  className={`type-tab ${type === val ? "active" : ""}`}
+                >
                   {label}
                 </button>
               ))}
             </div>
 
-            <div className="journal-section">
-              <h2 className="page-card-title">金额</h2>
-              <div className="amount-display">¥ {amount || "0.00"}</div>
-              <input className="app-input" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="输入金额" />
+            {/* 大字号计算器式金额大屏 */}
+            <div className="modern-amount-hero">
+              <span className="currency-label">¥</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
+                placeholder="0.00"
+                className="amount-huge-input"
+                autoFocus
+              />
+              {amount ? (
+                <button type="button" className="amount-clear-btn" onClick={() => setAmount("")}>
+                  ×
+                </button>
+              ) : null}
             </div>
 
-            <div className="journal-section">
-              <h2 className="page-card-title">分类</h2>
-              <div className="category-grid category-grid-with-icons">
+            {/* 精致分类网格 */}
+            <div className="modern-section-block">
+              <span className="section-mini-title">消费分类</span>
+              <div className="modern-category-matrix">
                 {categories.map((item) => (
-                  <button key={item} type="button" onClick={() => setCategory(item)} className={category === item ? "category-button active" : "category-button"}>
-                    <img src={`/category-icons/${categoryIcons[item] || "qita"}.png`} alt="" className="category-icon" />
-                    <span>{item}</span>
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setCategory(item)}
+                    className={`category-tile ${category === item ? "active" : ""}`}
+                  >
+                    <div className="tile-icon-box">
+                      <img src={`/category-icons/${categoryIcons[item] || "qita"}.png`} alt="" className="tile-icon" />
+                    </div>
+                    <span className="tile-label">{item}</span>
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="journal-section">
-              <h2 className="page-card-title">账户</h2>
-              <div className="pill-group">
+            {/* 支付账户选择 */}
+            <div className="modern-section-block">
+              <span className="section-mini-title">支付账户</span>
+              <div className="modern-pill-row">
                 {platforms.map((item) => (
-                  <button key={item} type="button" onClick={() => setPlatform(item)} className={platform === item ? "pill-button active" : "pill-button"}>
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setPlatform(item)}
+                    className={`account-pill ${platform === item ? "active" : ""}`}
+                  >
                     {item}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="journal-section">
-              <h2 className="page-card-title">时间与备注</h2>
-              <div className="app-field-grid">
-                <input className="app-input" value={date} onChange={(event) => setDate(event.target.value)} />
-                <input className="app-input" value={merchant} onChange={(event) => setMerchant(event.target.value)} placeholder="商户" />
-                <input className="app-input" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="备注" />
+            {/* 补充信息：日期、商户、备注 */}
+            <div className="modern-section-block">
+              <span className="section-mini-title">明细备注</span>
+              <div className="modern-meta-grid">
+                <input
+                  type="datetime-local"
+                  className="meta-input"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+                <input
+                  type="text"
+                  className="meta-input"
+                  value={merchant}
+                  onChange={(e) => setMerchant(e.target.value)}
+                  placeholder="商户名称 (选填)"
+                />
+                <input
+                  type="text"
+                  className="meta-input span-2"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="添加消费备注..."
+                />
               </div>
             </div>
 
-            <div className="action-grid">
-              <button type="button" className="secondary-button" onClick={() => { setAmount(""); setMerchant(""); setDescription(""); }}>
-                再记一笔
+            {/* 底部行动操作 */}
+            <div className="modern-action-bar">
+              <button
+                type="button"
+                className="action-sub-btn"
+                onClick={() => {
+                  setAmount("");
+                  setMerchant("");
+                  setDescription("");
+                }}
+              >
+                清空重填
               </button>
-              <button type="button" className="primary-button" onClick={() => void saveTransaction()}>
-                保存
+              <button
+                type="button"
+                className="action-main-btn"
+                onClick={() => void saveTransaction()}
+                disabled={!amount || Number(amount) <= 0}
+              >
+                保存记账
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
