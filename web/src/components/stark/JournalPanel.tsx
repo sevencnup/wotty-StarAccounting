@@ -418,7 +418,6 @@ export function JournalPanel({
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
                 placeholder="0.00"
                 className="amount-huge-input"
-                autoFocus
               />
               {amount ? (
                 <button type="button" className="amount-clear-btn" onClick={() => setAmount("")}>

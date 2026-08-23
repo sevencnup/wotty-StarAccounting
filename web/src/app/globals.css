@@ -4181,7 +4181,100 @@ nextjs-portal {
   transform: translateY(0);
 }
 
-/* Modern Journal Shell & Flow */
+/* Embedded savings planner: use the same compact glass language as the journal sheet. */
+.journal-panel.savings .savings-planner-shell.embedded {
+  min-width: 0;
+  max-width: 100%;
+  gap: 10px;
+}
+
+.journal-panel.savings .savings-plan-card.embedded {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
+  overflow: hidden;
+  background: transparent;
+}
+
+.journal-panel.savings .savings-panel-summary {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.journal-panel.savings .savings-panel-summary div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #f8fdff, #effaff);
+}
+
+.journal-panel.savings .savings-panel-summary strong {
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.journal-panel.savings .savings-goal-editor,
+.journal-panel.savings .savings-plan-toolbar,
+.journal-panel.savings .savings-column-adder,
+.journal-panel.savings .savings-table-scroll,
+.journal-panel.savings .savings-plan-footer {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.journal-panel.savings .savings-goal-field input,
+.journal-panel.savings .savings-column-adder input {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border-color: #dbeafe;
+  background: #f8fafc;
+}
+
+.journal-panel.savings .savings-deposit-switch,
+.journal-panel.savings .savings-mode-switch {
+  border-radius: 10px;
+  background: #f1f5f9;
+  padding: 3px;
+}
+
+.journal-panel.savings .savings-deposit-switch button,
+.journal-panel.savings .savings-mode-switch button {
+  border-radius: 8px;
+}
+
+.journal-panel.savings .savings-deposit-switch button.active,
+.journal-panel.savings .savings-mode-switch button.active {
+  background: #ffffff;
+  color: #0284c7;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.1);
+}
+
+.journal-panel.savings .savings-plan-footer .primary-button {
+  min-width: 108px;
+  height: 40px;
+  border-radius: 11px;
+  background: #0284c7;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.2);
+}
+
+.journal-panel.savings .savings-table-scroll {
+  border-color: #dbeafe;
+  border-radius: 12px;
+}
+
+.journal-panel.savings .savings-plan-table {
+  font-size: 10px;
+}
+
+.journal-panel.savings .savings-plan-table th,
+.journal-panel.savings .savings-plan-table td {
+  min-width: 66px;
+}
 .modern-journal-shell {
   background: #ffffff;
   border-radius: 24px 24px 0 0;
@@ -4574,16 +4667,67 @@ nextjs-portal {
   font-weight: 500;
 }
 
+.modern-form-wrapper,
+.modern-form-card,
+.modern-form-group,
+.modern-form-grid-2,
+.modern-form-grid-3 {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.modern-form-card {
+  overflow: hidden;
+}
+
+.modern-form-input,
+.modern-amount-field,
+.modern-select-pill-grid,
+.select-pill {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 .modern-form-grid-2 {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
 .modern-form-grid-3 {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+@media (max-width: 360px) {
+  .modern-journal-shell {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .modern-form-card {
+    padding: 12px;
+  }
+
+  .modern-form-grid-3 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .modern-form-grid-3 .modern-form-group:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .modern-category-matrix {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .amount-huge-input {
+    width: min(100%, 200px);
+    font-size: 34px;
+  }
 }
 
 .modern-primary-submit {
@@ -4658,26 +4802,58 @@ nextjs-portal {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 68px;
+  bottom: 70px;
   z-index: 60;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 36px;
-  padding: 0 16px;
-  border: 1.5px solid rgba(123, 148, 184, 0.25);
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  color: #0060c0;
+  gap: 7px;
+  height: 42px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 15px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(224, 242, 254, 0.92));
+  box-shadow:
+    0 8px 20px rgba(2, 132, 199, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  color: #0284c7;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: box-shadow 150ms ease;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+}
+
+.global-journal-trigger::before {
+  content: "+";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 19px;
+  height: 19px;
+  border-radius: 7px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.global-journal-trigger svg {
+  display: none;
 }
 
 .global-journal-trigger:active {
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transform: translateX(-50%) scale(0.96);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+}
+
+@media (max-width: 360px) {
+  .global-journal-trigger {
+    bottom: 68px;
+    height: 40px;
+    padding: 0 15px;
+  }
 }
 
 .calendar-chart {
