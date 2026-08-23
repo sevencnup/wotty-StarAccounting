@@ -129,14 +129,14 @@ export function JournalPanel({
     const panel = panelRef.current;
     const insidePanel = Boolean(panel?.contains(e.target as Node));
     const panelTop = panel?.getBoundingClientRect().top ?? 0;
-    const leftEdge = touch.clientX <= 24;
-    const inCloseRegion = insidePanel && touch.clientY <= panelTop + 96;
+    // 只有在顶部 50px 标题拖拽区域才允许横滑返回，防止子模块左右滑动误触
+    const inTopHeaderRegion = insidePanel && touch.clientY <= panelTop + 50;
     touchStart.current = {
       x: touch.clientX,
       y: touch.clientY,
-      allowClose: isPage ? inCloseRegion && !leftEdge : insidePanel,
+      allowClose: inTopHeaderRegion,
       outsidePanel: !insidePanel,
-      leftEdge,
+      leftEdge: touch.clientX <= 20,
     };
   }
   function handleTouchMove(e: React.TouchEvent) {
