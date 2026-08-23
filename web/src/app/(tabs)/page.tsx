@@ -112,7 +112,7 @@ function SalaryDayModal({
   );
 }
 
-// Stark 晶透浮岛 Hero
+// 极简通透 Hero 卡片（截图同款）
 function StarkCrystalHero({
   summary,
   salaryDay,
@@ -139,8 +139,14 @@ function StarkCrystalHero({
         ? summary.expense
         : summary.income;
 
+  const displayTitle =
+    activeMetric === "balance"
+      ? (balanceMode === "month" ? "本月结余" : "薪资周期结余")
+      : activeMetric === "expense"
+        ? "本月支出"
+        : "本月收入";
+
   const isNegative = activeMetric === "balance" && displayAmount < 0;
-  const isHealthy = summary.netWorth >= 0 && summary.forecast.monthBalance >= 0;
 
   return (
     <div className="stark-hero-island">
@@ -176,16 +182,13 @@ function StarkCrystalHero({
         </div>
       </div>
 
-      {/* 晶透主内容 */}
+      {/* 截图同款极简通透卡片 */}
       <div className="stark-hero-card">
-        <div className="stark-hero-meta-row">
-          <div className="stark-status-orb">
-            <span className={`orb-dot ${isHealthy ? "healthy" : "warning"}`} />
-            <span className="orb-text">
-              {activeMetric === "balance" ? (balanceMode === "month" ? "本月现金结余" : "薪资周期结余") : activeMetric === "expense" ? "本月总支出" : "本月总收入"}
-            </span>
-          </div>
+        {/* 背景轻淡月份水印 */}
+        <div className="stark-card-watermark">Jan</div>
 
+        <div className="stark-hero-meta-row">
+          <span className="stark-card-label">{displayTitle}</span>
           {activeMetric === "balance" ? (
             <div className="stark-scope-selector">
               <button
@@ -203,51 +206,28 @@ function StarkCrystalHero({
                 发薪周期
               </button>
             </div>
-          ) : (
-            <span className="stark-tx-count">共 {transactionCount} 笔流水</span>
-          )}
+          ) : null}
         </div>
 
         <div className="stark-hero-value-row">
-          <div className="stark-amount-group">
-            <span className="stark-currency">¥</span>
-            <strong className={`stark-big-amount ${isNegative ? "negative" : ""}`}>
-              {formatMoney(Math.abs(displayAmount))}
-            </strong>
-          </div>
-
-          {/* 微型走势指示 Sparkline */}
-          <div className="stark-sparkline-preview" title="近期收支走势">
-            <svg viewBox="0 0 80 28" className="sparkline-svg">
-              <path
-                d="M 2 22 Q 20 26, 38 12 T 78 6"
-                fill="none"
-                stroke={activeMetric === "expense" ? "#f43f5e" : "#0ea5e9"}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
+          <strong className={`stark-big-amount ${isNegative ? "negative" : ""}`}>
+            {isNegative ? "-¥ " : "¥ "}{formatMoney(Math.abs(displayAmount))}
+          </strong>
         </div>
 
         <div className="stark-hero-footer-row">
-          <div className="stark-flow-brief">
-            <span>收入 <b>¥{formatMoney(summary.income)}</b></span>
-            <span className="divider">/</span>
-            <span>支出 <b>¥{formatMoney(summary.expense)}</b></span>
-          </div>
-
+          <span className="stark-tx-count">共 {transactionCount} 笔记账</span>
           {activeMetric === "balance" && balanceMode === "salary" ? (
             <button
               type="button"
               className="stark-setting-pill"
               onClick={() => setShowSalaryModal(true)}
             >
-              发薪日 {salaryDay}日 ⚙️
+              发薪日 {salaryDay} 号 ⚙️
             </button>
           ) : (
             <Link href="/consumption" className="stark-detail-arrow">
-              流水分析 <ChevronRightIcon size={12} />
+              查看明细分析 <ChevronRightIcon size={12} />
             </Link>
           )}
         </div>

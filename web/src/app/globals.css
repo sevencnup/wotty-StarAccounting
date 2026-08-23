@@ -941,59 +941,42 @@ nextjs-portal {
 .stark-hero-card {
   position: relative;
   overflow: hidden;
-  border-radius: 22px;
-  padding: 18px 18px 16px;
-  background: linear-gradient(135deg, #dcf0ff 0%, #dff6ed 52%, #eaf4ff 100%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #dcf0ff 0%, #e2f8f0 55%, #eaf3ff 100%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 12px 28px rgba(35, 105, 175, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.85),
+    0 10px 24px rgba(45, 102, 168, 0.06);
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
-.stark-hero-card::before {
-  content: "";
+.stark-card-watermark {
   position: absolute;
-  top: -40px;
-  right: -30px;
-  width: 140px;
-  height: 140px;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 68px;
+  font-weight: 800;
+  font-style: italic;
+  letter-spacing: -2px;
+  color: rgba(0, 96, 192, 0.08);
   pointer-events: none;
+  user-select: none;
+  line-height: 1;
 }
 
 .stark-hero-meta-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.stark-status-orb {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.orb-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-}
-
-.orb-dot.healthy {
-  background: #10b981;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-}
-
-.orb-dot.warning {
-  background: #f43f5e;
-  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2);
-}
-
-.orb-text {
-  color: #3b5f7e;
+.stark-card-label {
+  color: #4b6b8b;
   font-size: 13px;
   font-weight: 500;
 }
@@ -1013,42 +996,25 @@ nextjs-portal {
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: #53718d;
+  color: #64748b;
   font-size: 10px;
   cursor: pointer;
 }
 
 .stark-scope-selector button.active {
   background: #ffffff;
-  color: #0284c7;
+  color: #0060c0;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
-.stark-tx-count {
-  color: #64829f;
-  font-size: 11px;
-}
-
 .stark-hero-value-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: baseline;
-  justify-content: space-between;
   min-width: 0;
-  margin: 2px 0 1px;
-}
-
-.stark-amount-group {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-  min-width: 0;
-}
-
-.stark-currency {
-  font-size: 22px;
-  font-weight: 600;
-  color: #0f2742;
+  margin: 1px 0;
 }
 
 .stark-big-amount {
@@ -1056,7 +1022,7 @@ nextjs-portal {
   font-weight: 750;
   letter-spacing: -0.5px;
   line-height: 1.1;
-  color: #0f2742;
+  color: #111827;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1067,40 +1033,19 @@ nextjs-portal {
   color: #e11d48;
 }
 
-.stark-sparkline-preview {
-  width: 80px;
-  height: 28px;
-  flex: 0 0 auto;
-}
-
-.sparkline-svg {
-  width: 100%;
-  height: 100%;
-}
-
 .stark-hero-footer-row {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 9px;
-  border-top: 1px solid rgba(255, 255, 255, 0.65);
+  margin-top: 4px;
   font-size: 11px;
 }
 
-.stark-flow-brief {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #4b6d8d;
-}
-
-.stark-flow-brief b {
-  color: #0f2742;
-  font-weight: 600;
-}
-
-.stark-flow-brief .divider {
-  color: rgba(75, 109, 141, 0.4);
+.stark-tx-count {
+  color: #64748b;
+  font-size: 11px;
 }
 
 .stark-detail-arrow,
@@ -1111,10 +1056,10 @@ nextjs-portal {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #0284c7;
+  color: #0060c0;
   text-decoration: none;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
 }
 
