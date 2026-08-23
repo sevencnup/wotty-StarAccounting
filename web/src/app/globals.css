@@ -878,125 +878,125 @@ nextjs-portal {
   background: rgba(255, 255, 255, 0.28);
 }
 
-/* Alipay Style Lightweight Home Components */
-.alipay-home-container {
+/* Stark Original Lightweight Layout & Crystal Island */
+.stark-home-layout {
   display: grid;
   gap: 12px;
   padding-bottom: 24px;
 }
 
-.alipay-hero-wrapper {
+.stark-hero-island {
   display: grid;
   gap: 8px;
 }
 
-.alipay-top-controls {
+.stark-hero-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 4px;
 }
 
-.alipay-month-selector {
+.stark-period-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  color: #111827;
-  font-size: 16px;
+  color: #1e293b;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.alipay-tab-pill {
+.stark-metric-switcher {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   padding: 2.5px;
   border-radius: 999px;
-  background: #eaeff6;
+  background: #f1f5f9;
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-.alipay-tab-pill button {
-  height: 26px;
-  padding: 0 11px;
+.stark-metric-switcher button {
+  height: 24px;
+  padding: 0 10px;
   border: 0;
   border-radius: 999px;
   background: transparent;
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: all 150ms ease;
 }
 
-.alipay-tab-pill button.active {
+.stark-metric-switcher button.active {
   background: #ffffff;
-  color: #0060c0;
-  box-shadow: 0 2px 6px rgba(0, 96, 192, 0.12);
+  color: #0284c7;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.14);
 }
 
-/* Light Card (Alipay Soft Gradient) */
-.alipay-light-card {
+/* Crystal Island Hero Card (Glassmorphism & Clean Slate) */
+.stark-hero-card {
   position: relative;
-  overflow: hidden;
   border-radius: 20px;
   padding: 16px 18px;
-  background: linear-gradient(135deg, #dcf0ff 0%, #e2f8f0 55%, #eaf3ff 100%);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96) 0%, rgba(240, 249, 255, 0.72) 100%);
+  border: 1px solid rgba(224, 242, 254, 0.95);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 10px 24px rgba(45, 102, 168, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-}
-
-.alipay-card-watermark {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 68px;
-  font-weight: 800;
-  font-style: italic;
-  letter-spacing: -2px;
-  color: rgba(0, 96, 192, 0.07);
-  pointer-events: none;
-  user-select: none;
-  line-height: 1;
-}
-
-.alipay-card-main {
-  position: relative;
-  z-index: 1;
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 10px 24px rgba(2, 132, 199, 0.05);
   display: grid;
-  gap: 8px;
+  gap: 10px;
 }
 
-.alipay-card-label-row {
+.stark-hero-meta-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.alipay-card-label {
-  color: #4b6b8b;
-  font-size: 13px;
+.stark-status-orb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.orb-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+.orb-dot.healthy {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+.orb-dot.warning {
+  background: #f43f5e;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2);
+}
+
+.orb-text {
+  color: #475569;
+  font-size: 12px;
   font-weight: 500;
 }
 
-.alipay-mode-toggle {
+.stark-scope-selector {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  padding: 2px;
+  padding: 1.5px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(226, 232, 240, 0.6);
 }
 
-.alipay-mode-toggle button {
-  height: 20px;
-  padding: 0 8px;
+.stark-scope-selector button {
+  height: 19px;
+  padding: 0 7px;
   border: 0;
   border-radius: 999px;
   background: transparent;
@@ -1005,251 +1005,370 @@ nextjs-portal {
   cursor: pointer;
 }
 
-.alipay-mode-toggle button.active {
+.stark-scope-selector button.active {
   background: #ffffff;
-  color: #0060c0;
-  font-weight: 500;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  color: #0284c7;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-.alipay-amount-row {
-  display: flex;
-  align-items: baseline;
-}
-
-.alipay-amount {
-  color: #111827;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.alipay-amount.negative {
-  color: #e11d48;
-}
-
-.alipay-card-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-}
-
-.alipay-count-tag {
-  color: #64748b;
+.stark-tx-count {
+  color: #94a3b8;
   font-size: 11px;
 }
 
-.alipay-detail-link,
-.alipay-salary-link {
+.stark-hero-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.stark-amount-group {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stark-currency {
+  font-size: 20px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.stark-big-amount {
+  font-size: 30px;
+  font-weight: 750;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stark-big-amount.negative {
+  color: #e11d48;
+}
+
+.stark-sparkline-preview {
+  width: 76px;
+  height: 26px;
+  flex: 0 0 auto;
+}
+
+.sparkline-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.stark-hero-footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  font-size: 11px;
+}
+
+.stark-flow-brief {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+}
+
+.stark-flow-brief b {
+  color: #1e293b;
+  font-weight: 500;
+}
+
+.stark-flow-brief .divider {
+  color: #cbd5e1;
+}
+
+.stark-detail-arrow,
+.stark-setting-pill {
   display: inline-flex;
   align-items: center;
   gap: 2px;
   border: 0;
   background: transparent;
   padding: 0;
-  color: #0060c0;
+  color: #0284c7;
   text-decoration: none;
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
 }
 
-/* 4 Metrics Grid (Alipay Square Tiles) */
-.alipay-metrics-grid {
+/* Stark AI Diagnostic Banner */
+.stark-diagnostic-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+.stark-diagnostic-banner.has-risk {
+  background: #fff8f8;
+  border-color: rgba(244, 63, 94, 0.2);
+}
+
+.diag-icon-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f0fdf4;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+
+.stark-diagnostic-banner.has-risk .diag-icon-box {
+  background: #ffe4e6;
+}
+
+.diag-content {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.diag-content strong {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.diag-content p {
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diag-link {
+  color: #0284c7;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+  flex: 0 0 auto;
+}
+
+/* Stark Four-Quadrant Compass Matrix */
+.stark-compass-matrix {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-.alipay-metric-tile {
+.stark-compass-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  min-height: 74px;
-  padding: 10px 8px 8px;
-  border-radius: 14px;
+  min-height: 82px;
+  padding: 11px 12px 10px;
+  border-radius: 16px;
   background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.8);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   text-decoration: none;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: transform 120ms ease;
 }
 
-.alipay-metric-tile:active {
-  transform: scale(0.97);
+.stark-compass-card:active {
+  transform: scale(0.98);
 }
 
-.alipay-metric-tile .metric-name {
+.compass-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.compass-icon {
+  font-size: 13px;
+}
+
+.compass-label {
   color: #64748b;
   font-size: 11px;
-  line-height: 1;
+  font-weight: 500;
 }
 
-.alipay-metric-tile .metric-val {
-  color: #1e293b;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.15;
+.compass-value {
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
-  margin: 4px 0 2px;
-  white-space: nowrap;
+  line-height: 1.2;
+  margin: 4px 0 3px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.alipay-metric-tile .metric-sub {
-  font-size: 9px;
-  line-height: 1;
   white-space: nowrap;
 }
 
-.alipay-metric-tile .metric-sub.safe {
-  color: #0d8a5f;
-}
-
-.alipay-metric-tile .metric-sub.danger {
-  color: #df3f4f;
-}
-
-.alipay-metric-tile .metric-sub.warn {
-  color: #eb6834;
-}
-
-.alipay-metric-tile .metric-sub.normal {
-  color: #64748b;
-}
-
-/* Natural Insight Card */
-.alipay-insight-card {
-  padding: 12px 14px;
-}
-
-.alipay-insight-head {
+.compass-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 8px;
+  color: #94a3b8;
 }
 
-.alipay-insight-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #1e293b;
+.compass-badge {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
 }
 
-.alipay-sub-btn {
-  color: #0060c0;
-  text-decoration: none;
-  font-size: 11px;
-  font-weight: 400;
+.compass-badge.healthy {
+  color: #059669;
 }
 
-.alipay-insight-text {
-  margin: 0;
-  color: #475569;
-  font-size: 12px;
-  line-height: 1.6;
+.compass-badge.attention {
+  color: #e11d48;
 }
 
-.alipay-insight-text b.text-warn {
-  color: #df3f4f;
+.compass-badge.danger {
+  color: #e11d48;
 }
 
-.alipay-insight-text b.text-safe {
-  color: #0d8a5f;
+.compass-badge.normal,
+.compass-badge.loan-badge,
+.compass-badge.saving-badge {
+  color: #0284c7;
 }
 
-/* Mini Bar Chart */
-.alipay-barchart-card {
-  padding: 12px 14px;
+/* Stark Original Cash Flow Trend */
+.stark-trend-card {
+  padding: 14px 16px;
 }
 
-.alipay-barchart-head {
+.stark-trend-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.alipay-barchart-head strong {
+.trend-title-block strong {
+  display: block;
   font-size: 13px;
-  color: #1e293b;
-  font-weight: 500;
+  font-weight: 600;
+  color: #0f172a;
 }
 
-.barchart-avg-tag {
-  font-size: 11px;
+.trend-sub {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.stark-trend-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
   color: #64748b;
 }
 
-.barchart-bars {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  align-items: flex-end;
-  height: 110px;
-  padding-top: 18px;
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.barchart-col {
+.legend-item.income i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #38bdf8;
+}
+
+.legend-item.expense i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #fb7185;
+}
+
+.stark-trend-body {
+  height: 100px;
+}
+
+.stark-bars-wrapper {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  height: 100%;
+  align-items: flex-end;
+}
+
+.stark-trend-col {
   display: flex;
   flex-direction: column;
   align-items: center;
   height: 100%;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 6px;
 }
 
-.barchart-col .bar-val {
-  font-size: 9px;
-  color: #94a3b8;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.barchart-col.is-current .bar-val {
-  color: #0060c0;
-  font-weight: 600;
-}
-
-.bar-track {
-  width: 22px;
-  height: 68px;
+.dual-bars {
   display: flex;
   align-items: flex-end;
-  border-radius: 6px;
-  background: transparent;
+  gap: 3px;
+  height: 72px;
+  width: 22px;
 }
 
-.bar-fill {
-  width: 100%;
-  border-radius: 6px;
-  background: #badefc;
+.bar-inc {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: #bae6fd;
   transition: height 200ms ease;
 }
 
-.barchart-col.is-current .bar-fill {
-  background: linear-gradient(180deg, #0060c0 0%, #258bf8 100%);
-  box-shadow: 0 4px 10px rgba(0, 96, 192, 0.25);
+.bar-exp {
+  flex: 1;
+  border-radius: 4px 4px 0 0;
+  background: #fecdd3;
+  transition: height 200ms ease;
 }
 
-.barchart-col .bar-label {
-  font-size: 11px;
-  color: #64748b;
+.stark-trend-col.is-current .bar-inc {
+  background: #0284c7;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+}
+
+.stark-trend-col.is-current .bar-exp {
+  background: #f43f5e;
+  box-shadow: 0 2px 6px rgba(244, 63, 94, 0.25);
+}
+
+.month-tag {
+  font-size: 10px;
+  color: #94a3b8;
   line-height: 1;
 }
 
-.barchart-col.is-current .bar-label {
-  color: #0060c0;
+.stark-trend-col.is-current .month-tag {
+  color: #0f172a;
   font-weight: 600;
 }
 
-.alipay-recent-card {
+.stark-recent-card {
   padding: 0 14px 8px;
 }
 .home-modal-mask {

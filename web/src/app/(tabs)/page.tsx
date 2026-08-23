@@ -63,6 +63,7 @@ function SurfaceCard({ children, className = "" }: PropsWithChildren<{ className
   return <section className={`home-card ${className}`}>{children}</section>;
 }
 
+// 发薪日快速配置浮层
 function SalaryDayModal({
   salaryDay,
   onClose,
@@ -84,11 +85,11 @@ function SalaryDayModal({
     <div className="home-modal-mask" onClick={onClose}>
       <div className="home-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="home-modal-head">
-          <h3>设置发薪日</h3>
+          <h3>薪资周期设置</h3>
           <button type="button" className="home-modal-close" onClick={onClose}>×</button>
         </div>
         <p className="home-modal-desc">
-          发薪日用于自动统计薪资周期的实际支出与结余（可选 1 ~ 28 日）。
+          配置每月固定发薪日（1 ~ 28 日），自动同步薪资周期结余与流水统计。
         </p>
         <div className="home-modal-input-row">
           <input
@@ -111,20 +112,20 @@ function SalaryDayModal({
   );
 }
 
-// 支付宝风格浅光 Hero
-function AlipayLightHero({
+// Stark 晶透浮岛 Hero
+function StarkCrystalHero({
   summary,
   salaryDay,
   onSalaryDayChange,
-  activeTab,
-  onTabChange,
+  activeMetric,
+  onMetricChange,
   transactionCount,
 }: {
   summary: HomeSummary;
   salaryDay: number;
   onSalaryDayChange: (day: number) => void;
-  activeTab: "balance" | "expense" | "income";
-  onTabChange: (tab: "balance" | "expense" | "income") => void;
+  activeMetric: "balance" | "expense" | "income";
+  onMetricChange: (metric: "balance" | "expense" | "income") => void;
   transactionCount: number;
 }) {
   const monthLabel = reportingMonthLabel();
@@ -132,104 +133,123 @@ function AlipayLightHero({
   const [showSalaryModal, setShowSalaryModal] = useState(false);
 
   const displayAmount =
-    activeTab === "balance"
+    activeMetric === "balance"
       ? (balanceMode === "month" ? summary.forecast.monthBalance : summary.forecast.salaryCycleBalance)
-      : activeTab === "expense"
+      : activeMetric === "expense"
         ? summary.expense
         : summary.income;
 
-  const displayTitle =
-    activeTab === "balance"
-      ? (balanceMode === "month" ? "本月结余" : "薪资周期结余")
-      : activeTab === "expense"
-        ? "本月支出"
-        : "本月收入";
-
-  const isNegative = activeTab === "balance" && displayAmount < 0;
+  const isNegative = activeMetric === "balance" && displayAmount < 0;
+  const isHealthy = summary.netWorth >= 0 && summary.forecast.monthBalance >= 0;
 
   return (
-    <div className="alipay-hero-wrapper">
-      {/* 顶部轻量控制栏 */}
-      <div className="alipay-top-controls">
-        <button type="button" className="alipay-month-selector">
+    <div className="stark-hero-island">
+      {/* 顶部控制行 */}
+      <div className="stark-hero-toolbar">
+        <div className="stark-period-badge">
           <span>{monthLabel}</span>
-          <ChevronDownIcon size={16} />
-        </button>
+          <ChevronDownIcon size={14} />
+        </div>
 
-        <div className="alipay-tab-pill">
+        <div className="stark-metric-switcher">
           <button
             type="button"
-            className={activeTab === "balance" ? "active" : ""}
-            onClick={() => onTabChange("balance")}
+            className={activeMetric === "balance" ? "active" : ""}
+            onClick={() => onMetricChange("balance")}
           >
             结余
           </button>
           <button
             type="button"
-            className={activeTab === "expense" ? "active" : ""}
-            onClick={() => onTabChange("expense")}
+            className={activeMetric === "expense" ? "active" : ""}
+            onClick={() => onMetricChange("expense")}
           >
             支出
           </button>
           <button
             type="button"
-            className={activeTab === "income" ? "active" : ""}
-            onClick={() => onTabChange("income")}
+            className={activeMetric === "income" ? "active" : ""}
+            onClick={() => onMetricChange("income")}
           >
             收入
           </button>
         </div>
       </div>
 
-      {/* 浅光通透主卡片 */}
-      <div className="alipay-light-card">
-        <div className="alipay-card-watermark">Jan</div>
-
-        <div className="alipay-card-main">
-          <div className="alipay-card-label-row">
-            <span className="alipay-card-label">{displayTitle}</span>
-            {activeTab === "balance" ? (
-              <div className="alipay-mode-toggle">
-                <button
-                  type="button"
-                  className={balanceMode === "month" ? "active" : ""}
-                  onClick={() => setBalanceMode("month")}
-                >
-                  自然月
-                </button>
-                <button
-                  type="button"
-                  className={balanceMode === "salary" ? "active" : ""}
-                  onClick={() => setBalanceMode("salary")}
-                >
-                  薪资周期
-                </button>
-              </div>
-            ) : null}
+      {/* 晶透主内容 */}
+      <div className="stark-hero-card">
+        <div className="stark-hero-meta-row">
+          <div className="stark-status-orb">
+            <span className={`orb-dot ${isHealthy ? "healthy" : "warning"}`} />
+            <span className="orb-text">
+              {activeMetric === "balance" ? (balanceMode === "month" ? "本月现金结余" : "薪资周期结余") : activeMetric === "expense" ? "本月总支出" : "本月总收入"}
+            </span>
           </div>
 
-          <div className="alipay-amount-row">
-            <strong className={`alipay-amount ${isNegative ? "negative" : ""}`}>
-              {isNegative ? "-¥ " : "¥ "}{formatMoney(Math.abs(displayAmount))}
+          {activeMetric === "balance" ? (
+            <div className="stark-scope-selector">
+              <button
+                type="button"
+                className={balanceMode === "month" ? "active" : ""}
+                onClick={() => setBalanceMode("month")}
+              >
+                自然月
+              </button>
+              <button
+                type="button"
+                className={balanceMode === "salary" ? "active" : ""}
+                onClick={() => setBalanceMode("salary")}
+              >
+                发薪周期
+              </button>
+            </div>
+          ) : (
+            <span className="stark-tx-count">共 {transactionCount} 笔流水</span>
+          )}
+        </div>
+
+        <div className="stark-hero-value-row">
+          <div className="stark-amount-group">
+            <span className="stark-currency">¥</span>
+            <strong className={`stark-big-amount ${isNegative ? "negative" : ""}`}>
+              {formatMoney(Math.abs(displayAmount))}
             </strong>
           </div>
 
-          <div className="alipay-card-footer">
-            <span className="alipay-count-tag">共 {transactionCount} 笔记账</span>
-            {activeTab === "balance" && balanceMode === "salary" ? (
-              <button
-                type="button"
-                className="alipay-salary-link"
-                onClick={() => setShowSalaryModal(true)}
-              >
-                发薪日 {salaryDay} 号 ⚙️
-              </button>
-            ) : (
-              <Link href="/consumption" className="alipay-detail-link">
-                查看明细分析 <ChevronRightIcon size={12} />
-              </Link>
-            )}
+          {/* 微型走势指示 Sparkline */}
+          <div className="stark-sparkline-preview" title="近期收支走势">
+            <svg viewBox="0 0 80 28" className="sparkline-svg">
+              <path
+                d="M 2 22 Q 20 26, 38 12 T 78 6"
+                fill="none"
+                stroke={activeMetric === "expense" ? "#f43f5e" : "#0ea5e9"}
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
           </div>
+        </div>
+
+        <div className="stark-hero-footer-row">
+          <div className="stark-flow-brief">
+            <span>收入 <b>¥{formatMoney(summary.income)}</b></span>
+            <span className="divider">/</span>
+            <span>支出 <b>¥{formatMoney(summary.expense)}</b></span>
+          </div>
+
+          {activeMetric === "balance" && balanceMode === "salary" ? (
+            <button
+              type="button"
+              className="stark-setting-pill"
+              onClick={() => setShowSalaryModal(true)}
+            >
+              发薪日 {salaryDay}日 ⚙️
+            </button>
+          ) : (
+            <Link href="/consumption" className="stark-detail-arrow">
+              流水分析 <ChevronRightIcon size={12} />
+            </Link>
+          )}
         </div>
       </div>
 
@@ -244,118 +264,145 @@ function AlipayLightHero({
   );
 }
 
-// 智能月度小结
-function MonthInsightSummary({ summary }: { summary: HomeSummary }) {
+// Stark AI 财务诊断条
+function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
   const topInsight = summary.insights[0];
   const budget = summary.budgetAlerts[0];
-  const isDanger = budget && budget.tone === "danger";
+  const hasRisk = budget && (budget.tone === "danger" || budget.tone === "warn");
 
   return (
-    <SurfaceCard className="alipay-insight-card">
-      <div className="alipay-insight-head">
-        <div className="alipay-insight-title">
-          <span className="alipay-insight-icon">📅</span>
-          <strong>月度小结</strong>
-        </div>
-        <Link href="/consumption" className="alipay-sub-btn">
-          收支分析 ›
-        </Link>
+    <div className={`stark-diagnostic-banner ${hasRisk ? "has-risk" : "normal"}`}>
+      <div className="diag-icon-box">
+        {hasRisk ? "⚡" : "✨"}
       </div>
-
-      <div className="alipay-insight-body">
-        <p className="alipay-insight-text">
-          ● 本月支出 ¥{formatMoney(summary.expense)}
-          {summary.expenseChange !== 0 ? (
-            <>，较上月同期{summary.expenseChange > 0 ? "增加 " : "减少 "}
-              <b className={summary.expenseChange > 0 ? "text-warn" : "text-safe"}>
-                {Math.abs(summary.expenseChange)}%
-              </b>
-            </>
-          ) : "，整体消费节奏平稳"}。
-          {topInsight ? topInsight.detail : (budget ? ` ${budget.title}目前已使用 ${Math.round(budget.percent)}%` : "")}
+      <div className="diag-content">
+        <strong>{hasRisk ? "预算需关注" : "财务诊断"}</strong>
+        <p>
+          {topInsight
+            ? topInsight.detail
+            : (budget
+              ? `${budget.title}已消耗 ${Math.round(budget.percent)}%，结余处于合理区间`
+              : "本月现金流平稳，无超支或临近违约风险")}
         </p>
       </div>
-    </SurfaceCard>
-  );
-}
-
-// 4格微型指标卡 (Metrics Grid)
-function MetricsGrid4({ summary }: { summary: HomeSummary }) {
-  const budget = summary.budgetAlerts[0];
-  const task = summary.tasks[0];
-  const budgetPercent = budget ? Math.round(budget.percent) : 0;
-  const budgetRemaining = budget ? Math.max(0, 100 - budgetPercent) : 100;
-
-  return (
-    <div className="alipay-metrics-grid">
-      <Link href="/assets" className="alipay-metric-tile">
-        <span className="metric-name">净资产</span>
-        <strong className="metric-val">¥ {Math.abs(summary.netWorth) >= 10000 ? `${(summary.netWorth / 10000).toFixed(1)}w` : formatMoney(summary.netWorth)}</strong>
-        <span className={`metric-sub ${summary.netWorth >= 0 ? "safe" : "danger"}`}>
-          {summary.netWorth >= 0 ? "结构健康" : "负债关注"} ›
-        </span>
-      </Link>
-
-      <Link href="/consumption" className="alipay-metric-tile">
-        <span className="metric-name">预算可用</span>
-        <strong className="metric-val">{budget ? `${budgetRemaining}%` : "100%"}</strong>
-        <span className={`metric-sub ${budget?.tone === "danger" ? "danger" : budget?.tone === "warn" ? "warn" : "normal"}`}>
-          {budget?.tone === "danger" ? "已超支" : `已用 ${budgetPercent}%`} ›
-        </span>
-      </Link>
-
-      <Link href="/loans" className="alipay-metric-tile">
-        <span className="metric-name">贷款待还</span>
-        <strong className="metric-val">{task?.badge || "无待办"}</strong>
-        <span className={`metric-sub ${task?.tone === "danger" ? "danger" : "normal"}`}>
-          {task ? "近期还款" : "暂无待还"} ›
-        </span>
-      </Link>
-
-      <Link href="/savings" className="alipay-metric-tile">
-        <span className="metric-name">储蓄达成</span>
-        <strong className="metric-val">{Math.round(summary.savingProgress.percent)}%</strong>
-        <span className="metric-sub safe">
-          目标计划 ›
-        </span>
+      <Link href="/consumption" className="diag-link">
+        查看 ›
       </Link>
     </div>
   );
 }
 
-// 简易近5个月月度对比柱状图 (参考支付宝)
-function MonthlyMiniBarChart({ summary }: { summary: HomeSummary }) {
-  // 模拟近5个月消费走势（以当前月支出为基准形成对比）
-  const currentExp = summary.expense || 558;
-  const history = [
-    { month: "9月", amount: 4579 },
-    { month: "10月", amount: 4408 },
-    { month: "11月", amount: 7259 },
-    { month: "12月", amount: 3024 },
-    { month: "1月", amount: currentExp, current: true },
-  ];
-
-  const maxVal = Math.max(...history.map((h) => h.amount), 8000);
-  const avgVal = Math.round(history.reduce((s, h) => s + h.amount, 0) / history.length);
+// 四维财务罗盘 (Compass Matrix)
+function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
+  const budget = summary.budgetAlerts[0];
+  const task = summary.tasks[0];
+  const budgetPercent = budget ? Math.round(budget.percent) : 0;
+  const budgetLeft = budget ? Math.max(0, 100 - budgetPercent) : 100;
+  const netWorthStr =
+    Math.abs(summary.netWorth) >= 10000
+      ? `${(summary.netWorth / 10000).toFixed(1)}w`
+      : formatMoney(summary.netWorth);
 
   return (
-    <SurfaceCard className="alipay-barchart-card">
-      <div className="alipay-barchart-head">
-        <strong>月度消费趋势</strong>
-        <span className="barchart-avg-tag">月均 ¥ {formatMoney(avgVal)}</span>
+    <div className="stark-compass-matrix">
+      <Link href="/assets" className="stark-compass-card asset">
+        <div className="compass-header">
+          <span className="compass-icon">💎</span>
+          <span className="compass-label">净资产</span>
+        </div>
+        <strong className="compass-value">¥ {netWorthStr}</strong>
+        <div className="compass-meta">
+          <span className={`compass-badge ${summary.netWorth >= 0 ? "healthy" : "attention"}`}>
+            {summary.netWorth >= 0 ? "结构健康" : "负债关注"}
+          </span>
+          <ChevronRightIcon size={12} />
+        </div>
+      </Link>
+
+      <Link href="/consumption" className="stark-compass-card budget">
+        <div className="compass-header">
+          <span className="compass-icon">🎯</span>
+          <span className="compass-label">预算余量</span>
+        </div>
+        <strong className="compass-value">{budget ? `${budgetLeft}%` : "100%"}</strong>
+        <div className="compass-meta">
+          <span className={`compass-badge ${budget?.tone === "danger" ? "danger" : "normal"}`}>
+            {budget?.tone === "danger" ? "已超支" : `已用 ${budgetPercent}%`}
+          </span>
+          <ChevronRightIcon size={12} />
+        </div>
+      </Link>
+
+      <Link href="/loans" className="stark-compass-card loan">
+        <div className="compass-header">
+          <span className="compass-icon">💳</span>
+          <span className="compass-label">待还贷款</span>
+        </div>
+        <strong className="compass-value">{task?.badge || "无待还"}</strong>
+        <div className="compass-meta">
+          <span className="compass-badge loan-badge">
+            {task ? "近期还款" : "状态良好"}
+          </span>
+          <ChevronRightIcon size={12} />
+        </div>
+      </Link>
+
+      <Link href="/savings" className="stark-compass-card saving">
+        <div className="compass-header">
+          <span className="compass-icon">🌱</span>
+          <span className="compass-label">储蓄达成</span>
+        </div>
+        <strong className="compass-value">{Math.round(summary.savingProgress.percent)}%</strong>
+        <div className="compass-meta">
+          <span className="compass-badge saving-badge">
+            计划进行中
+          </span>
+          <ChevronRightIcon size={12} />
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+// Stark 原创月度收支走势
+function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
+  const currentExp = summary.expense || 558;
+  const history = [
+    { month: "09月", expense: 4579, income: 12000 },
+    { month: "10月", expense: 4408, income: 12000 },
+    { month: "11月", expense: 7259, income: 13500 },
+    { month: "12月", expense: 3024, income: 12000 },
+    { month: "01月", expense: currentExp, income: summary.income || 12800, current: true },
+  ];
+
+  const maxVal = Math.max(...history.map((h) => Math.max(h.expense, h.income)), 14000);
+
+  return (
+    <SurfaceCard className="stark-trend-card">
+      <div className="stark-trend-head">
+        <div className="trend-title-block">
+          <strong>收支动态趋势</strong>
+          <span className="trend-sub">近 5 个月对比</span>
+        </div>
+        <div className="stark-trend-legend">
+          <span className="legend-item income"><i /> 收入</span>
+          <span className="legend-item expense"><i /> 支出</span>
+        </div>
       </div>
 
-      <div className="alipay-barchart-body">
-        <div className="barchart-bars">
+      <div className="stark-trend-body">
+        <div className="stark-bars-wrapper">
           {history.map((item) => {
-            const heightPercent = Math.max(12, Math.min(100, Math.round((item.amount / maxVal) * 100)));
+            const expH = Math.max(8, Math.min(100, Math.round((item.expense / maxVal) * 100)));
+            const incH = Math.max(8, Math.min(100, Math.round((item.income / maxVal) * 100)));
+
             return (
-              <div key={item.month} className={`barchart-col ${item.current ? "is-current" : ""}`}>
-                <span className="bar-val">¥{Math.round(item.amount)}</span>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ height: `${heightPercent}%` }} />
+              <div key={item.month} className={`stark-trend-col ${item.current ? "is-current" : ""}`}>
+                <div className="dual-bars">
+                  <div className="bar-inc" style={{ height: `${incH}%` }} title={`收入 ¥${item.income}`} />
+                  <div className="bar-exp" style={{ height: `${expH}%` }} title={`支出 ¥${item.expense}`} />
                 </div>
-                <span className="bar-label">{item.month}</span>
+                <span className="month-tag">{item.month}</span>
               </div>
             );
           })}
@@ -370,7 +417,7 @@ function RecentFeed({ items }: { items: HomeRecentItem[] }) {
   const displayItems = items.slice(0, 3);
 
   return (
-    <SurfaceCard className="recent-card alipay-recent-card">
+    <SurfaceCard className="recent-card stark-recent-card">
       <div className="recent-head">
         <h2>最近记账</h2>
         <Link href="/consumption" className="recent-all-link">
@@ -409,7 +456,7 @@ export default function HomePage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"balance" | "expense" | "income">("expense");
+  const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("balance");
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -463,7 +510,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="home-screen home-liquid-screen alipay-home-container">
+    <div className="home-screen home-liquid-screen stark-home-layout">
       <header className="home-topbar">
         <span />
         <h1>首页</h1>
@@ -474,24 +521,24 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* 支付宝风格浅光 Hero */}
-      <AlipayLightHero
+      {/* Stark 晶透浮岛 Hero */}
+      <StarkCrystalHero
         summary={summary}
         salaryDay={salaryDay}
         onSalaryDayChange={handleSalaryDayChange}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        activeMetric={activeMetric}
+        onMetricChange={setActiveMetric}
         transactionCount={transactions.length}
       />
 
-      {/* 4格核心指标快捷枢纽 */}
-      <MetricsGrid4 summary={summary} />
+      {/* Stark AI 财务诊断条 */}
+      <StarkDiagnosticBanner summary={summary} />
 
-      {/* 月度小结洞察 */}
-      <MonthInsightSummary summary={summary} />
+      {/* 四维财务罗盘 */}
+      <StarkCompassMatrix summary={summary} />
 
-      {/* 月度消费趋势 */}
-      <MonthlyMiniBarChart summary={summary} />
+      {/* Stark 收支平衡走势图 */}
+      <StarkCashflowTrend summary={summary} />
 
       {/* 最近记账 */}
       <RecentFeed items={summary.recent} />
