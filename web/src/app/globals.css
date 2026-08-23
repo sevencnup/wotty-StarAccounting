@@ -1348,9 +1348,208 @@ nextjs-portal {
   font-weight: 600;
 }
 
-.stark-recent-card {
-  padding: 0 14px 8px;
+/* Stark Category Breakdown (Expense Structure) */
+.stark-category-card {
+  padding: 14px 16px;
 }
+
+.category-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.category-title-block strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.category-sub {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.category-all-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #0284c7;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.category-card-body {
+  display: grid;
+  gap: 12px;
+}
+
+.category-segment-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #f1f5f9;
+  gap: 2px;
+}
+
+.category-segment-bar span {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 300ms ease;
+}
+
+.category-items-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.category-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  text-decoration: none;
+  transition: background 120ms ease;
+}
+
+.category-grid-item:active {
+  background: #f1f5f9;
+}
+
+.category-item-top {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.category-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.category-name {
+  color: #475569;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.category-amount {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.category-percent {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.category-empty {
+  padding: 16px 0;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* Stark Smart Financial Advisory */
+.stark-advisory-card {
+  padding: 14px 16px;
+  background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 100%);
+  border: 1px solid rgba(224, 242, 254, 0.9);
+}
+
+.advisory-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.advisory-title-block {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.advisory-title-block strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.advisory-status-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0284c7;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.advisory-card-body {
+  display: grid;
+  gap: 8px;
+}
+
+.advisory-tip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.tip-bullet {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.advisory-tip-row p {
+  margin: 0;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.advisory-tip-row b {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.advisory-inline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 4px;
+  color: #0284c7;
+  font-weight: 600;
+  text-decoration: none;
+}
+
 .home-modal-mask {
   position: fixed;
   inset: 0;

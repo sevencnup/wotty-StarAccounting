@@ -8,7 +8,6 @@ import { Skeleton } from "@/components/stark/Skeleton";
 import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
-  type HomeRecentItem,
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
 import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
@@ -51,7 +50,7 @@ function ChevronRightIcon(props: IconProps) {
   );
 }
 
-// 现代精细化矢量线性图标 (替换老土 Emoji)
+// 现代精细化矢量线性图标
 function SparklesIcon(props: IconProps) {
   return (
     <IconBase {...props} size={15}>
@@ -95,6 +94,15 @@ function PiggyBankIcon(props: IconProps) {
       <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.7 3.3 2 4.3V19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-1h3v1a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-2.2c1.7-1.2 2.5-3 2.5-4.8 0-1.7-.5-3.5-1.5-4.5V5Z" />
       <path d="M16 11h.01" />
       <path d="M2 9v1a2 2 0 0 0 2 2h1" />
+    </IconBase>
+  );
+}
+
+function CompassIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={15}>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
     </IconBase>
   );
 }
@@ -160,7 +168,7 @@ function SalaryDayModal({
   );
 }
 
-// 极简通透 Hero 卡片（截图同款）
+// 极简通透 Hero 卡片
 function StarkCrystalHero({
   summary,
   salaryDay,
@@ -230,7 +238,7 @@ function StarkCrystalHero({
         </div>
       </div>
 
-      {/* 截图同款极简通透卡片 */}
+      {/* 极简通透卡片 */}
       <div className="stark-hero-card">
         {/* 背景轻淡月份水印 */}
         <div className="stark-card-watermark">Jan</div>
@@ -400,6 +408,92 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
   );
 }
 
+// 本月支出构成 (替代老旧流水列表)
+function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
+  const ratios = summary.ratios.slice(0, 4);
+  const total = summary.expense || 1;
+
+  return (
+    <SurfaceCard className="stark-category-card">
+      <div className="category-card-head">
+        <div className="category-title-block">
+          <strong>本月支出结构</strong>
+          <span className="category-sub">共 {summary.ratios.length} 个分类</span>
+        </div>
+        <Link href="/consumption" className="category-all-link">
+          分类明细 <ChevronRightIcon size={12} />
+        </Link>
+      </div>
+
+      {ratios.length ? (
+        <div className="category-card-body">
+          {/* 分段多彩占比条 */}
+          <div className="category-segment-bar">
+            {ratios.map((item) => (
+              <span
+                key={item.name}
+                style={{ width: `${Math.max(item.percent, 4)}%`, background: item.color }}
+                title={`${item.name} ${item.percent}%`}
+              />
+            ))}
+          </div>
+
+          {/* 分类网格 */}
+          <div className="category-items-grid">
+            {ratios.map((item) => (
+              <Link href="/consumption" key={item.name} className="category-grid-item">
+                <div className="category-item-top">
+                  <span className="category-dot" style={{ background: item.color }} />
+                  <span className="category-name">{item.name}</span>
+                </div>
+                <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
+                <span className="category-percent">{item.percent}% 占比</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="category-empty">本月暂无支出记录</div>
+      )}
+    </SurfaceCard>
+  );
+}
+
+// 智能理财与省钱行动建议
+function SmartAdvisoryCard({ summary }: { summary: HomeSummary }) {
+  const dailyAvg = (summary.expense / Math.max(new Date().getDate(), 1)).toFixed(1);
+  const remainingBudget = summary.budgetAlerts[0] ? Math.max(0, summary.budgetAlerts[0].budget - summary.budgetAlerts[0].spent) : 5442;
+  const isHealthy = summary.forecast.monthBalance >= 0;
+
+  return (
+    <SurfaceCard className="stark-advisory-card">
+      <div className="advisory-card-head">
+        <div className="advisory-title-block">
+          <CompassIcon size={16} strokeWidth={2.2} color="#0284c7" />
+          <strong>财务行动建议</strong>
+        </div>
+        <span className="advisory-status-tag">{isHealthy ? "节律健康" : "需控制支出"}</span>
+      </div>
+
+      <div className="advisory-card-body">
+        <div className="advisory-tip-row">
+          <span className="tip-bullet">1</span>
+          <p>
+            当前日均支出 <b>¥{dailyAvg}</b>，若保持当前速率，预计月底可结余 <b>¥{formatMoney(Math.max(0, summary.forecast.monthBalance))}</b>。
+          </p>
+        </div>
+        <div className="advisory-tip-row">
+          <span className="tip-bullet">2</span>
+          <p>
+            剩余总预算 <b>¥{formatMoney(remainingBudget)}</b>，建议将富余资金分配至
+            <Link href="/savings" className="advisory-inline-link">储蓄计划 ›</Link>
+          </p>
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
 // Stark 原创月度收支走势
 function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
   const currentExp = summary.expense || 558;
@@ -417,7 +511,7 @@ function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
     <SurfaceCard className="stark-trend-card">
       <div className="stark-trend-head">
         <div className="trend-title-block">
-          <strong>收支动态趋势</strong>
+          <strong>收支动态走势</strong>
           <span className="trend-sub">近 5 个月对比</span>
         </div>
         <div className="stark-trend-legend">
@@ -448,42 +542,6 @@ function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
   );
 }
 
-// 最近记账流水
-function RecentFeed({ items }: { items: HomeRecentItem[] }) {
-  const displayItems = items.slice(0, 3);
-
-  return (
-    <SurfaceCard className="recent-card stark-recent-card">
-      <div className="recent-head">
-        <h2>最近记账</h2>
-        <Link href="/consumption" className="recent-all-link">
-          全部记录 <ChevronRightIcon size={13} />
-        </Link>
-      </div>
-      <div className="recent-list">
-        {displayItems.length ? (
-          displayItems.map((item) => (
-            <div key={item.id} className="recent-row">
-              <span className="recent-badge" style={{ background: item.badgeBg, color: item.badgeColor }}>
-                {item.badgeLabel}
-              </span>
-              <strong className="recent-title">{item.title}</strong>
-              <span className="recent-category">{item.subtitle}</span>
-              <span className="recent-time">{item.time}</span>
-              <strong className={`recent-amount ${item.positive ? "income" : "expense"}`}>
-                {item.positive ? "+¥ " : "-¥ "}
-                {formatMoney(item.amount)}
-              </strong>
-            </div>
-          ))
-        ) : (
-          <div className="finance-empty">暂无记账记录</div>
-        )}
-      </div>
-    </SurfaceCard>
-  );
-}
-
 export default function HomePage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -492,7 +550,7 @@ export default function HomePage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
-  const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("balance");
+  const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -557,7 +615,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Stark 晶透浮岛 Hero */}
+      {/* 极简通透 Hero */}
       <StarkCrystalHero
         summary={summary}
         salaryDay={salaryDay}
@@ -567,17 +625,20 @@ export default function HomePage() {
         transactionCount={transactions.length}
       />
 
-      {/* Stark AI 财务诊断条 */}
+      {/* AI 财务诊断条 */}
       <StarkDiagnosticBanner summary={summary} />
 
       {/* 四维财务罗盘 */}
       <StarkCompassMatrix summary={summary} />
 
-      {/* Stark 收支平衡走势图 */}
-      <StarkCashflowTrend summary={summary} />
+      {/* 本月支出构成 (替代老旧流水) */}
+      <TopExpenseStructure summary={summary} />
 
-      {/* 最近记账 */}
-      <RecentFeed items={summary.recent} />
+      {/* 财务行动建议 */}
+      <SmartAdvisoryCard summary={summary} />
+
+      {/* 收支动态走势 */}
+      <StarkCashflowTrend summary={summary} />
     </div>
   );
 }
