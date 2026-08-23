@@ -802,42 +802,365 @@ nextjs-portal {
   color: #ffe0d8;
 }
 
-.salary-setting-row {
+.hero-bottom-bar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-.salary-setting-button,
-.salary-setting-panel button {
-  height: 24px;
-  padding: 0 9px;
+.hero-networth-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 11px;
+  line-height: 1;
+  transition: background 150ms ease;
+}
+
+.hero-networth-pill:active {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.hero-networth-pill .pill-title {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.hero-networth-pill .pill-amount {
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+}
+
+.hero-networth-pill .pill-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.hero-networth-pill .pill-badge.healthy {
+  background: rgba(255, 255, 255, 0.9);
+  color: #0b7a54;
+}
+
+.hero-networth-pill .pill-badge.attention {
+  background: #ffe0d8;
+  color: #c93b3b;
+}
+
+.hero-salary-trigger {
+  height: 22px;
+  padding: 0 8px;
   border: 0;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.hero-salary-trigger:active {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+/* Home Lightweight Modal */
+.home-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+
+.home-modal-content {
+  width: min(100%, 320px);
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 16px 18px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+  display: grid;
+  gap: 12px;
+  animation: modalScaleIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleIn {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.home-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.home-modal-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.home-modal-close {
+  border: 0;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  color: #8f9cae;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.home-modal-desc {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: #65718a;
+}
+
+.home-modal-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+}
+
+.home-modal-input {
+  width: 80px;
+  height: 38px;
+  border: 1.5px solid #0060c0;
+  border-radius: 10px;
+  background: #f4f8fe;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0060c0;
+  text-align: center;
+}
+
+.home-modal-input-row span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.home-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.home-modal-btn {
+  height: 34px;
+  border-radius: 8px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.home-modal-btn.cancel {
+  background: #f1f4f9;
+  color: #65718a;
+}
+
+.home-modal-btn.confirm {
+  background: #0060c0;
+  color: #ffffff;
+}
+
+/* Smart Alert Card (Streamlined) */
+.smart-alert-card {
+  padding: 12px 14px;
+}
+
+.smart-alert-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.smart-alert-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(123, 148, 184, 0.12);
+  background: #f8fbff;
+  display: grid;
+  gap: 6px;
+}
+
+.smart-alert-item.danger {
+  background: #fff6f5;
+  border-color: rgba(223, 63, 79, 0.2);
+}
+
+.smart-alert-item.warn {
+  background: #fff9f0;
+  border-color: rgba(235, 137, 52, 0.2);
+}
+
+.smart-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.smart-alert-tag {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.smart-alert-percent {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #0060c0;
+}
+
+.smart-alert-item.danger .smart-alert-percent {
+  color: #df3f4f;
+}
+
+.smart-alert-item.warn .smart-alert-percent {
+  color: #eb6834;
+}
+
+.smart-alert-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #718096;
   font-size: 11px;
   line-height: 1;
 }
 
-.salary-setting-panel {
-  display: inline-flex;
+.task-alert-item {
+  display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
 }
 
-.salary-setting-panel input {
-  width: 52px;
-  height: 24px;
-  padding: 0 8px;
-  border: 0;
+.task-alert-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.task-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
+  background: #0060c0;
+  flex: 0 0 auto;
+}
+
+.task-alert-item.danger .task-dot {
+  background: #df3f4f;
+}
+
+.task-alert-item.warn .task-dot {
+  background: #eb6834;
+}
+
+.task-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.task-info strong {
+  font-size: 12px;
+  font-weight: 500;
   color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-info span {
+  font-size: 10px;
+  color: #718096;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-badge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #eef3f9;
+  color: #4a5568;
+  white-space: nowrap;
+}
+
+.task-alert-item.danger .task-badge {
+  background: #ffe3e3;
+  color: #c92a2a;
+}
+
+.task-alert-item.warn .task-badge {
+  background: #ffecd2;
+  color: #d9480f;
+}
+
+.smart-alert-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 4px;
+  color: #6b7280;
   font-size: 11px;
-  text-align: center;
+}
+
+.empty-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #10b981;
+}
+
+.recent-all-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #0060c0;
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.recent-all-link:active {
+  opacity: 0.7;
 }
 
 .overview-stat span:first-child {
