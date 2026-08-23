@@ -1084,16 +1084,15 @@ nextjs-portal {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: #f0fdf4;
-  font-size: 14px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: #f0f9ff;
   flex: 0 0 auto;
 }
 
 .stark-diagnostic-banner.has-risk .diag-icon-box {
-  background: #ffe4e6;
+  background: #fff1f2;
 }
 
 .diag-content {
@@ -1155,11 +1154,33 @@ nextjs-portal {
 .compass-header {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
-.compass-icon {
-  font-size: 13px;
+.compass-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  flex: 0 0 auto;
+}
+
+.compass-icon-wrapper.asset {
+  background: #ecfdf5;
+}
+
+.compass-icon-wrapper.budget {
+  background: #f0f9ff;
+}
+
+.compass-icon-wrapper.loan {
+  background: #fff1f2;
+}
+
+.compass-icon-wrapper.saving {
+  background: #fffbeb;
 }
 
 .compass-label {

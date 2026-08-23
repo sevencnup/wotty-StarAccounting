@@ -51,6 +51,54 @@ function ChevronRightIcon(props: IconProps) {
   );
 }
 
+// 现代精细化矢量线性图标 (替换老土 Emoji)
+function SparklesIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={15}>
+      <path d="m12 3-1.9 4.3a2 2 0 0 1-1.1 1.1L4.7 10.3a.6.6 0 0 0 0 1.1l4.3 1.9a2 2 0 0 1 1.1 1.1l1.9 4.3a.6.6 0 0 0 1.1 0l1.9-4.3a2 2 0 0 1 1.1-1.1l4.3-1.9a.6.6 0 0 0 0-1.1l-4.3-1.9a2 2 0 0 1-1.1-1.1L13.1 3a.6.6 0 0 0-1.1 0Z" />
+      <path d="M19 16v3M20.5 17.5h-3M5 4v2M6 5H4" />
+    </IconBase>
+  );
+}
+
+function ShieldCheckIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={14}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path d="m9 12 2 2 4-4" />
+    </IconBase>
+  );
+}
+
+function TargetIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={14}>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" />
+    </IconBase>
+  );
+}
+
+function CreditCardIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={14}>
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" x2="22" y1="10" y2="10" />
+    </IconBase>
+  );
+}
+
+function PiggyBankIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={14}>
+      <path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8.7 3.3 2 4.3V19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-1h3v1a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-2.2c1.7-1.2 2.5-3 2.5-4.8 0-1.7-.5-3.5-1.5-4.5V5Z" />
+      <path d="M16 11h.01" />
+      <path d="M2 9v1a2 2 0 0 0 2 2h1" />
+    </IconBase>
+  );
+}
+
 function HeaderAction({ children, label }: PropsWithChildren<{ label: string }>) {
   return (
     <button type="button" className="home-header-action" aria-label={label} title={label}>
@@ -223,7 +271,7 @@ function StarkCrystalHero({
               className="stark-setting-pill"
               onClick={() => setShowSalaryModal(true)}
             >
-              发薪日 {salaryDay} 号 ⚙️
+              发薪日 {salaryDay} 号 ›
             </button>
           ) : (
             <Link href="/consumption" className="stark-detail-arrow">
@@ -253,7 +301,7 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
   return (
     <div className={`stark-diagnostic-banner ${hasRisk ? "has-risk" : "normal"}`}>
       <div className="diag-icon-box">
-        {hasRisk ? "⚡" : "✨"}
+        <SparklesIcon size={16} strokeWidth={2.2} color={hasRisk ? "#e11d48" : "#0284c7"} />
       </div>
       <div className="diag-content">
         <strong>{hasRisk ? "预算需关注" : "财务诊断"}</strong>
@@ -287,7 +335,9 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
     <div className="stark-compass-matrix">
       <Link href="/assets" className="stark-compass-card asset">
         <div className="compass-header">
-          <span className="compass-icon">💎</span>
+          <span className="compass-icon-wrapper asset">
+            <ShieldCheckIcon size={14} strokeWidth={2.2} color="#059669" />
+          </span>
           <span className="compass-label">净资产</span>
         </div>
         <strong className="compass-value">¥ {netWorthStr}</strong>
@@ -301,7 +351,9 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
 
       <Link href="/consumption" className="stark-compass-card budget">
         <div className="compass-header">
-          <span className="compass-icon">🎯</span>
+          <span className="compass-icon-wrapper budget">
+            <TargetIcon size={14} strokeWidth={2.2} color="#0284c7" />
+          </span>
           <span className="compass-label">预算余量</span>
         </div>
         <strong className="compass-value">{budget ? `${budgetLeft}%` : "100%"}</strong>
@@ -315,7 +367,9 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
 
       <Link href="/loans" className="stark-compass-card loan">
         <div className="compass-header">
-          <span className="compass-icon">💳</span>
+          <span className="compass-icon-wrapper loan">
+            <CreditCardIcon size={14} strokeWidth={2.2} color="#e11d48" />
+          </span>
           <span className="compass-label">待还贷款</span>
         </div>
         <strong className="compass-value">{task?.badge || "无待还"}</strong>
@@ -329,7 +383,9 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
 
       <Link href="/savings" className="stark-compass-card saving">
         <div className="compass-header">
-          <span className="compass-icon">🌱</span>
+          <span className="compass-icon-wrapper saving">
+            <PiggyBankIcon size={14} strokeWidth={2.2} color="#d97706" />
+          </span>
           <span className="compass-label">储蓄达成</span>
         </div>
         <strong className="compass-value">{Math.round(summary.savingProgress.percent)}%</strong>
