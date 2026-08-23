@@ -2520,6 +2520,14 @@ nextjs-portal {
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
 }
 
+.savings-dashboard-page .savings-goal-section {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .savings-goal-grid {
   display: grid;
   gap: 9px;
@@ -3122,6 +3130,51 @@ nextjs-portal {
 .journal-panel.savings {
   gap: 8px;
   background: #ffffff;
+}
+
+.journal-panel.asset {
+  gap: 12px;
+  background: #ffffff;
+}
+
+.journal-panel.page.asset {
+  min-height: 0;
+  max-height: calc(100dvh - 24px);
+}
+
+.journal-panel.asset .asset-journal-form {
+  display: grid;
+  gap: 12px;
+}
+
+.journal-panel.asset .journal-section {
+  padding: 14px;
+}
+
+.journal-panel.asset .finance-primary-action {
+  margin-top: 0;
+  background: linear-gradient(135deg, #0d8a5f, #32a77d);
+  box-shadow: 0 7px 15px rgba(13, 138, 95, 0.14);
+}
+
+.journal-panel.page.loan {
+  min-height: 0;
+  max-height: calc(100dvh - 24px);
+}
+
+.journal-panel.loan .loan-journal-form {
+  display: grid;
+  gap: 12px;
+}
+
+.journal-panel.loan .journal-section {
+  padding: 14px;
+}
+
+.journal-panel.loan .finance-primary-action {
+  margin-top: 0;
+  background: linear-gradient(135deg, #0d8a5f, #32a77d);
+  box-shadow: 0 7px 15px rgba(13, 138, 95, 0.14);
 }
 
 .journal-panel.visible {
@@ -6573,6 +6626,11 @@ nextjs-portal {
   color: #a5574e;
 }
 
+.assets-page .positive-ledger .asset-ledger-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 14px;
+}
+
 .assets-page .asset-ledger-list > div:not(.finance-empty) {
   min-height: 44px;
   border-bottom-color: rgba(52, 99, 78, 0.09);
@@ -6668,5 +6726,812 @@ nextjs-portal {
   .assets-page .asset-health-grid article {
     padding-right: 3px;
     padding-left: 3px;
+  }
+}
+
+.tabs-liquid-shell .home-liquid-screen {
+  gap: 10px;
+  padding: 0 2px 2px;
+}
+
+.home-liquid-screen::before {
+  background:
+    radial-gradient(circle at 88% 5%, rgba(143, 199, 255, 0.38), transparent 31%),
+    radial-gradient(circle at 12% 1%, rgba(190, 226, 255, 0.52), transparent 34%),
+    linear-gradient(180deg, #eef7ff 0%, #f7fbff 56%, #f2f7fc 100%);
+}
+
+.home-liquid-screen .overview-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  color: #20334f;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(238, 247, 255, 0.48) 50%, rgba(196, 224, 255, 0.52)),
+    rgba(255, 255, 255, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.98),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.48),
+    0 0 0 1px rgba(255, 255, 255, 0.3),
+    0 0 22px rgba(255, 255, 255, 0.54),
+    0 16px 30px rgba(66, 137, 210, 0.16);
+  backdrop-filter: blur(22px) saturate(1.35);
+  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+}
+
+.home-liquid-screen .overview-hero::before {
+  content: "";
+  position: absolute;
+  inset: -16%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.92;
+  filter: blur(24px) saturate(1.12);
+  transform: scale(1.04);
+  background:
+    radial-gradient(ellipse at 28% 28%, rgba(83, 159, 255, 0.48) 0%, rgba(116, 184, 255, 0.28) 18%, transparent 47%),
+    radial-gradient(ellipse at 72% 18%, rgba(185, 220, 255, 0.56) 0%, rgba(205, 231, 255, 0.24) 22%, transparent 52%),
+    radial-gradient(ellipse at 76% 76%, rgba(119, 214, 172, 0.3) 0%, rgba(169, 232, 202, 0.16) 22%, transparent 52%),
+    radial-gradient(ellipse at 8% 92%, rgba(255, 255, 255, 0.62) 0%, transparent 38%);
+}
+
+.home-liquid-screen .overview-hero::after {
+  content: "";
+  position: absolute;
+  right: -30px;
+  bottom: -46px;
+  z-index: -1;
+  width: 142px;
+  height: 142px;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.72), rgba(183, 220, 255, 0.16) 48%, rgba(119, 183, 243, 0.08) 70%, transparent 72%);
+  box-shadow:
+    inset 10px 8px 18px rgba(255, 255, 255, 0.46),
+    inset -10px -12px 18px rgba(74, 142, 214, 0.12),
+    0 8px 18px rgba(71, 137, 205, 0.1);
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.home-liquid-screen .overview-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-liquid-screen .overview-title,
+.home-liquid-screen .month-picker {
+  color: #29476c;
+}
+
+.home-liquid-screen .overview-title svg,
+.home-liquid-screen .month-picker svg {
+  color: #6c86a5;
+}
+
+.home-liquid-screen .balance-label,
+.home-liquid-screen .overview-hero-flow span,
+.home-liquid-screen .overview-hero-flow i,
+.home-liquid-screen .home-delta {
+  color: #5d7392;
+}
+
+.home-liquid-screen .overview-hero-balance strong,
+.home-liquid-screen .overview-hero-flow strong {
+  color: #1d304a;
+}
+
+.home-liquid-screen .overview-hero-balance strong.positive {
+  color: #246ee0;
+}
+
+.home-liquid-screen .overview-hero-balance strong.negative,
+.home-liquid-screen .overview-forecast strong.negative {
+  color: #d64545;
+}
+
+.home-liquid-screen .overview-hero-flow {
+  border-top-color: rgba(92, 139, 189, 0.2);
+}
+
+.home-liquid-screen .overview-hero-flow i.up,
+.home-liquid-screen .home-delta.down {
+  color: #0d8a5f;
+}
+
+.home-liquid-screen .overview-hero-flow i.down,
+.home-liquid-screen .home-delta.up {
+  color: #d64545;
+}
+
+.home-liquid-screen .balance-toggle,
+.home-liquid-screen .salary-setting-button,
+.home-liquid-screen .salary-setting-panel button {
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  background: rgba(255, 255, 255, 0.36);
+  color: #466487;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.52);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.home-liquid-screen .balance-toggle button {
+  color: #557292;
+}
+
+.home-liquid-screen .balance-toggle button.active {
+  background: rgba(255, 255, 255, 0.82);
+  color: #2168d2;
+  box-shadow: 0 4px 12px rgba(70, 133, 204, 0.12);
+}
+
+.home-liquid-screen .salary-setting-panel input {
+  border: 1px solid rgba(129, 176, 224, 0.24);
+  background: rgba(255, 255, 255, 0.8);
+  color: #20334f;
+}
+
+.home-liquid-screen .finance-overview-card,
+.home-liquid-screen .progress-card,
+.home-liquid-screen .reminder-card,
+.home-liquid-screen .recent-card {
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 0 14px rgba(255, 255, 255, 0.46),
+    0 2px 7px rgba(67, 91, 125, 0.045);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.home-liquid-screen .finance-overview-card {
+  gap: 13px;
+  padding: 15px 14px 13px;
+}
+
+.home-liquid-screen .fo-net-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "label tag"
+    "value tag";
+  align-items: center;
+  gap: 3px 10px;
+}
+
+.home-liquid-screen .fo-net-label {
+  grid-area: label;
+  color: #7b8799;
+  font-size: 11px;
+}
+
+.home-liquid-screen .fo-net-row strong {
+  grid-area: value;
+  min-width: 0;
+  font-size: 23px;
+  line-height: 1.05;
+  text-align: left;
+}
+
+.home-liquid-screen .fo-tag {
+  grid-area: tag;
+  align-self: center;
+  height: 22px;
+  padding: 0 8px;
+  border: 0;
+  background: #edf8f2;
+  box-shadow: none;
+}
+
+.home-liquid-screen .fo-tag.negative {
+  background: #fff0ee;
+}
+
+.home-liquid-screen .fo-mini-stats {
+  gap: 0;
+  padding-top: 12px;
+  border-top: 1px solid #edf0f4;
+}
+
+.home-liquid-screen .fo-mini-stats > div {
+  padding: 0 10px;
+}
+
+.home-liquid-screen .fo-mini-stats > div:first-child {
+  padding-left: 0;
+}
+
+.home-liquid-screen .fo-mini-stats > div:last-child {
+  padding-right: 0;
+}
+
+.home-liquid-screen .fo-mini-stats > div + div {
+  border-left: 1px solid #edf0f4;
+}
+
+.home-liquid-screen .progress-card,
+.home-liquid-screen .reminder-card,
+.home-liquid-screen .recent-card {
+  border-top: 1px solid #e9edf2;
+}
+
+.home-liquid-screen .progress-card {
+  gap: 0;
+  padding: 15px 14px 8px;
+}
+
+.home-liquid-screen .progress-card .section-head,
+.home-liquid-screen .reminder-card .section-head {
+  padding-bottom: 4px;
+}
+
+.home-liquid-screen .progress-card .section-head h2,
+.home-liquid-screen .reminder-card .section-head h2,
+.home-liquid-screen .recent-head h2 {
+  color: #172338;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.home-liquid-screen .progress-items {
+  gap: 0;
+}
+
+.home-liquid-screen .progress-item {
+  gap: 7px;
+  padding: 12px 0;
+}
+
+.home-liquid-screen .progress-item:first-child {
+  padding-top: 9px;
+}
+
+.home-liquid-screen .progress-item + .progress-item {
+  border-top: 1px solid #edf0f4;
+}
+
+.home-liquid-screen .progress-item-head span {
+  color: #52627a;
+  font-size: 12px;
+}
+
+.home-liquid-screen .progress-item-head strong {
+  color: #172338;
+  font-size: 13px;
+}
+
+.home-liquid-screen .progress-track,
+.home-liquid-screen .budget-alert-track {
+  height: 7px;
+  background: #edf1f5;
+  box-shadow: none;
+}
+
+.home-liquid-screen .progress-track span::after,
+.home-liquid-screen .budget-alert-track span::after {
+  content: none;
+}
+
+.home-liquid-screen .reminder-card {
+  gap: 0;
+  padding: 15px 14px 8px;
+}
+
+.home-liquid-screen .budget-alert-list {
+  margin-top: 3px;
+}
+
+.home-liquid-screen .budget-alert-row {
+  padding: 11px 0;
+  border-top-color: #edf0f4;
+}
+
+.home-liquid-screen .budget-alert-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title badge"
+    "meta badge";
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.home-liquid-screen .budget-alert-top strong {
+  grid-area: title;
+  overflow: hidden;
+  color: #25334a;
+  text-overflow: ellipsis;
+}
+
+.home-liquid-screen .budget-alert-top span {
+  grid-area: meta;
+  margin-left: 0;
+  color: #7a899e;
+  font-size: 10px;
+}
+
+.home-liquid-screen .budget-alert-badge {
+  grid-area: badge;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent !important;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.home-liquid-screen .recent-card {
+  padding: 0 14px 7px;
+  border-radius: 15px;
+}
+
+.home-liquid-screen .recent-head {
+  padding: 14px 0 10px;
+  border-bottom: 0;
+}
+
+.home-liquid-screen .recent-list {
+  border-top: 1px solid #edf0f4;
+}
+
+.home-liquid-screen .recent-row {
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "badge title amount"
+    "badge category time";
+  column-gap: 10px;
+  row-gap: 2px;
+  min-width: 0;
+  min-height: 58px;
+  padding: 9px 0;
+  border-top-color: #edf0f4;
+}
+
+.home-liquid-screen .recent-row:first-child {
+  border-top: 0;
+}
+
+.home-liquid-screen .recent-badge {
+  grid-area: badge;
+  align-self: center;
+  border-radius: 9px;
+  box-shadow: none;
+}
+
+.home-liquid-screen .recent-title {
+  grid-area: title;
+  color: #1b2940;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.home-liquid-screen .recent-category {
+  grid-area: category;
+  color: #8995a7;
+  font-size: 10px;
+}
+
+.home-liquid-screen .recent-time {
+  grid-area: time;
+  color: #8995a7;
+  font-size: 10px;
+  text-align: right;
+}
+
+.home-liquid-screen .recent-amount {
+  grid-area: amount;
+  color: #53647d;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.home-liquid-screen .progress-icon {
+  background: #eef3f8 !important;
+  box-shadow: none;
+}
+
+@media (max-width: 360px) {
+  .home-liquid-screen .finance-overview-card,
+  .home-liquid-screen .progress-card,
+  .home-liquid-screen .reminder-card {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .home-liquid-screen .fo-mini-stats > div {
+    padding-left: 7px;
+    padding-right: 7px;
+  }
+
+  .home-liquid-screen .fo-mini-stats > div:first-child {
+    padding-left: 0;
+  }
+
+  .home-liquid-screen .fo-mini-stats > div:last-child {
+    padding-right: 0;
+  }
+
+  .home-liquid-screen .recent-card {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .home-liquid-screen .recent-row {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    column-gap: 9px;
+  }
+}
+
+/* Home density pass */
+.tabs-liquid-shell .home-liquid-screen {
+  gap: 8px;
+  padding: 0 2px 2px;
+}
+
+.home-liquid-screen::before {
+  background: linear-gradient(180deg, #f7fbff 0%, #f4f7fb 100%);
+}
+
+.home-liquid-screen .hero-stack {
+  padding: 0;
+}
+
+.home-liquid-screen .overview-hero {
+  padding: 14px 16px 13px;
+  border: 0;
+  border-radius: 18px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #075fbd 0%, #1678d5 100%);
+  box-shadow: 0 8px 18px rgba(25, 102, 183, 0.16);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.home-liquid-screen .overview-hero::before,
+.home-liquid-screen .overview-hero::after {
+  content: none;
+  display: none;
+}
+
+.home-liquid-screen .overview-hero > * {
+  position: relative;
+  z-index: 1;
+}
+
+.home-liquid-screen .overview-title,
+.home-liquid-screen .month-picker,
+.home-liquid-screen .overview-hero-balance strong,
+.home-liquid-screen .overview-hero-flow strong {
+  color: #ffffff;
+}
+
+.home-liquid-screen .overview-title svg,
+.home-liquid-screen .month-picker svg,
+.home-liquid-screen .balance-label,
+.home-liquid-screen .overview-hero-flow span,
+.home-liquid-screen .overview-hero-flow i {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.home-liquid-screen .overview-hero-balance strong.positive {
+  color: #ffffff;
+}
+
+.home-liquid-screen .overview-hero-balance strong.negative {
+  color: #ffe3df;
+}
+
+.home-liquid-screen .overview-hero-flow {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top-color: rgba(255, 255, 255, 0.2);
+}
+
+.home-liquid-screen .balance-toggle,
+.home-liquid-screen .salary-setting-button,
+.home-liquid-screen .salary-setting-panel button {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.home-liquid-screen .balance-toggle button {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.home-liquid-screen .balance-toggle button.active {
+  background: #ffffff;
+  color: #126ac5;
+  box-shadow: none;
+}
+
+.home-liquid-screen .finance-overview-card,
+.home-liquid-screen .focus-card,
+.home-liquid-screen .recent-card {
+  border: 1px solid #edf1f5;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(54, 75, 102, 0.05);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.home-liquid-screen .finance-overview-card {
+  gap: 11px;
+  padding: 13px 14px 12px;
+}
+
+.home-liquid-screen .fo-net-row {
+  gap: 3px 10px;
+}
+
+.home-liquid-screen .fo-net-label {
+  color: #7a8799;
+}
+
+.home-liquid-screen .fo-net-row strong {
+  font-size: 22px;
+}
+
+.home-liquid-screen .fo-mini-stats {
+  padding-top: 10px;
+}
+
+.home-liquid-screen .fo-mini-stats span {
+  color: #8994a4;
+}
+
+.home-liquid-screen .fo-mini-stats strong {
+  color: #26344a;
+}
+
+.home-liquid-screen .focus-card {
+  display: grid;
+  gap: 0;
+  padding: 13px 14px 0;
+}
+
+.home-liquid-screen .focus-card .section-head {
+  padding-bottom: 9px;
+}
+
+.home-liquid-screen .focus-card .section-head h2,
+.home-liquid-screen .recent-head h2 {
+  color: #18253a;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.focus-summary {
+  color: #159267;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+}
+
+.focus-summary.warn {
+  color: #c78300;
+}
+
+.focus-summary.danger {
+  color: #d64545;
+}
+
+.focus-budget {
+  display: grid;
+  gap: 7px;
+  padding: 10px 0 12px;
+  border-top: 1px solid #edf1f5;
+}
+
+.focus-budget-head,
+.focus-metric-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.focus-budget-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.focus-budget-head strong {
+  overflow: hidden;
+  color: #33425a;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-budget-head span,
+.focus-metric small {
+  overflow: hidden;
+  color: #8995a7;
+  font-size: 10px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-budget-head b,
+.focus-metric-head b {
+  color: #27364e;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf2f7;
+}
+
+.focus-track span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: #4d91e2;
+}
+
+.focus-track span.safe,
+.focus-track span.saving {
+  background: #4d91e2;
+}
+
+.focus-track span.warn {
+  background: #e2a62d;
+}
+
+.focus-track span.danger {
+  background: #db5b58;
+}
+
+.focus-track span.loan {
+  background: #58b99b;
+}
+
+.focus-empty {
+  padding: 11px 0 13px;
+  border-top: 1px solid #edf1f5;
+  color: #8b97a8;
+  font-size: 11px;
+}
+
+.focus-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-top: 1px solid #edf1f5;
+}
+
+.focus-metric {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 11px 10px 12px 0;
+}
+
+.focus-metric + .focus-metric {
+  padding-right: 0;
+  padding-left: 12px;
+  border-left: 1px solid #edf1f5;
+}
+
+.focus-metric-head span {
+  color: #53637a;
+  font-size: 11px;
+}
+
+.focus-metric small {
+  display: block;
+}
+
+.focus-task {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  margin: 0 -14px;
+  padding: 9px 14px 10px;
+  border-top: 1px solid #edf1f5;
+  background: #fafbfd;
+}
+
+.focus-task-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8d9aac;
+}
+
+.focus-task.warn .focus-task-dot {
+  background: #e2a62d;
+}
+
+.focus-task.danger .focus-task-dot {
+  background: #db5b58;
+}
+
+.focus-task > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.focus-task strong,
+.focus-task span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-task strong {
+  color: #41516a;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.focus-task div span {
+  color: #8b97a8;
+  font-size: 10px;
+}
+
+.focus-task > b {
+  color: #718096;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.home-liquid-screen .recent-card {
+  padding: 0 14px 5px;
+}
+
+.home-liquid-screen .recent-head {
+  padding: 13px 0 9px;
+}
+
+.home-liquid-screen .recent-list {
+  border-top: 1px solid #edf1f5;
+}
+
+.home-liquid-screen .recent-row {
+  min-height: 54px;
+  padding: 8px 0;
+}
+
+@media (max-width: 360px) {
+  .home-liquid-screen .finance-overview-card,
+  .home-liquid-screen .focus-card,
+  .home-liquid-screen .recent-card {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .home-liquid-screen .focus-task {
+    margin-right: -12px;
+    margin-left: -12px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .home-liquid-screen .focus-metric + .focus-metric {
+    padding-left: 9px;
   }
 }

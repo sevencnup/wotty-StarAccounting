@@ -7,8 +7,6 @@ import { Skeleton } from "@/components/stark/Skeleton";
 import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
-  type HomeBudgetAlert,
-  type HomeProgress,
   type HomeRecentItem,
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
@@ -209,68 +207,64 @@ function MonthlySummaryCard({
   );
 }
 
-function ProgressCard({ saving, loan }: { saving: HomeProgress; loan: HomeProgress }) {
-  return (
-    <SurfaceCard className="progress-card">
-      <div className="section-head">
-        <h2>储蓄与贷款</h2>
-      </div>
-      <div className="progress-items">
-        <div className="progress-item">
-          <div className="progress-item-head">
-            <span>{saving.title}</span>
-            <strong>{formatPercent(saving.percent)}%</strong>
-          </div>
-          <div className="progress-track">
-            <span style={{ width: `${Math.min(saving.percent, 100)}%`, background: "linear-gradient(90deg, #0060c0, #3a86d6)" }} />
-          </div>
-          <div className="progress-item-meta">
-            <span>已存 ¥ {formatMoney(saving.current)}</span>
-            <span>目标 ¥ {formatMoney(saving.total)}</span>
-          </div>
-        </div>
-        <div className="progress-item">
-          <div className="progress-item-head">
-            <span>{loan.title}</span>
-            <strong>{formatPercent(loan.percent)}%</strong>
-          </div>
-          <div className="progress-track">
-            <span style={{ width: `${Math.min(loan.percent, 100)}%`, background: "linear-gradient(90deg, #0d8a5f, #2ea67a)" }} />
-          </div>
-          <div className="progress-item-meta">
-            <span>已还 ¥ {formatMoney(loan.current)}</span>
-            <span>总额 ¥ {formatMoney(loan.total)}</span>
-          </div>
-        </div>
-      </div>
-    </SurfaceCard>
-  );
-}
+function FocusCard({ summary }: { summary: HomeSummary }) {
+  const budget = summary.budgetAlerts[0];
+  const task = summary.tasks[0];
+  const budgetToneLabel = budget?.tone === "danger" ? "已超预算" : budget?.tone === "warn" ? "接近上限" : budget ? "进行中" : "暂无预算";
+  const taskToneClass = task ? ` ${task.tone}` : "";
 
-function ReminderCard({ alerts }: { alerts: HomeBudgetAlert[] }) {
   return (
-    <SurfaceCard className="reminder-card">
+    <SurfaceCard className="focus-card">
       <div className="section-head">
-        <h2>预算预警</h2>
+        <h2>目标与提醒</h2>
+        <span className={`focus-summary${budget?.tone === "danger" ? " danger" : budget?.tone === "warn" ? " warn" : ""}`}>
+          {budgetToneLabel}
+        </span>
       </div>
-      {alerts.length ? (
-        <div className="budget-alert-list">
-          {alerts.map((item) => (
-            <div key={item.id} className="budget-alert-row">
-              <div className="budget-alert-top">
-                <strong>{item.title}</strong>
-                <span>已用 ¥ {formatMoney(item.spent)} / ¥ {formatMoney(item.budget)} · {formatPercent(item.percent)}%</span>
-                <i className={`budget-alert-badge ${item.tone}`}>{item.percent >= 100 ? "超支" : item.percent >= 60 ? "预警" : "正常"}</i>
-              </div>
-              <div className="budget-alert-track">
-                <span className={item.tone} style={{ width: `${Math.min(item.percent, 100)}%` }} />
-              </div>
+      {budget ? (
+        <div className="focus-budget">
+          <div className="focus-budget-head">
+            <div>
+              <strong>{budget.title}</strong>
+              <span>已用 ¥ {formatMoney(budget.spent)} / ¥ {formatMoney(budget.budget)}</span>
             </div>
-          ))}
+            <b>{Math.round(budget.percent)}%</b>
+          </div>
+          <div className="focus-track">
+            <span className={budget.tone} style={{ width: `${Math.min(budget.percent, 100)}%` }} />
+          </div>
         </div>
       ) : (
-        <div className="finance-empty">暂无预算预警</div>
+        <div className="focus-empty">暂时没有预算提醒</div>
       )}
+      <div className="focus-metrics">
+        <div className="focus-metric">
+          <div className="focus-metric-head">
+            <span>储蓄目标</span>
+            <b>{formatPercent(summary.savingProgress.percent)}%</b>
+          </div>
+          <div className="focus-track"><span className="saving" style={{ width: `${Math.min(summary.savingProgress.percent, 100)}%` }} /></div>
+          <small>¥ {formatMoney(summary.savingProgress.current)} / ¥ {formatMoney(summary.savingProgress.total)}</small>
+        </div>
+        <div className="focus-metric">
+          <div className="focus-metric-head">
+            <span>贷款进度</span>
+            <b>{formatPercent(summary.loanProgress.percent)}%</b>
+          </div>
+          <div className="focus-track"><span className="loan" style={{ width: `${Math.min(summary.loanProgress.percent, 100)}%` }} /></div>
+          <small>已还 ¥ {formatMoney(summary.loanProgress.current)} / ¥ {formatMoney(summary.loanProgress.total)}</small>
+        </div>
+      </div>
+      {task ? (
+        <div className={`focus-task${taskToneClass}`}>
+          <span className="focus-task-dot" />
+          <div>
+            <strong>{task.title}</strong>
+            <span>{task.subtitle}</span>
+          </div>
+          <b>{task.badge}</b>
+        </div>
+      ) : null}
     </SurfaceCard>
   );
 }
@@ -376,8 +370,7 @@ export default function HomePage() {
       </div>
 
       <FinanceOverviewCard summary={summary} />
-      <ProgressCard saving={summary.savingProgress} loan={summary.loanProgress} />
-      <ReminderCard alerts={summary.budgetAlerts} />
+      <FocusCard summary={summary} />
       <RecentFeed items={summary.recent} />
     </div>
   );

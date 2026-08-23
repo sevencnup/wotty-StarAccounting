@@ -9,7 +9,7 @@ import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/sta
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
 const DEPOSIT_TYPE_OPTIONS: Array<{ value: SavingsGoalDepositType; label: string }> = [
-  { value: "PRIVATE", label: "私企" },
+  { value: "PRIVATE", label: "死期" },
   { value: "CASH", label: "现金" },
   { value: "HELP_DEPOSIT", label: "他人帮存" },
 ];
@@ -309,7 +309,6 @@ export function SavingsPlanner({
             <input
               value={goalName}
               onChange={(event) => setGoalName(event.target.value)}
-              placeholder="存钱要买什么，如新手机"
               maxLength={24}
             />
           </label>
@@ -335,7 +334,6 @@ export function SavingsPlanner({
             <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
             <button type="button" className={frequency === "ALTERNATE" ? "active" : ""} onClick={() => setFrequency("ALTERNATE")}>隔月存</button>
           </div>
-          <span className="savings-mode-copy">{frequency === "MONTHLY" ? "每个月都存，共 12 行" : "隔一个月存，共 6 行"}</span>
         </div>
 
         <div className="savings-column-adder">
@@ -380,7 +378,7 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-plan-footer">
-          <span>{notice || "预计存不填时，扣除支出后的金额全部计入剩余"}</span>
+          <span>{notice}</span>
           <button type="button" className="primary-button" disabled={saving} onClick={() => void savePlans()}>{saving ? "保存中" : "保存计划"}</button>
         </div>
       </section>

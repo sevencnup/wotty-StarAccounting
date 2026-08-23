@@ -10,9 +10,11 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname();
   const isJournalRoute = pathname.startsWith("/journal");
   const isSavingsRoute = pathname.startsWith("/savings");
+  const isAssetsRoute = pathname.startsWith("/assets");
+  const isLoansRoute = pathname.startsWith("/loans");
   const isSettingsRoute = pathname.startsWith("/accounts");
   const [pendingPath, setPendingPath] = useState<string | null>(null);
-  const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | null>(null);
+  const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(null);
   const journalHistoryRef = useRef(false);
 
   useEffect(() => {
@@ -42,7 +44,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   }
 
   function openJournal() {
-    const variant = isSavingsRoute ? "savings" : "journal";
+    const variant = isLoansRoute ? "loan" : isAssetsRoute ? "asset" : isSavingsRoute ? "savings" : "journal";
     window.history.pushState({ starkJournal: true }, "", window.location.href);
     journalHistoryRef.current = true;
     setJournalVariant(variant);
@@ -73,7 +75,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
             <line x1="12" y1="5" x2="12" y2="19" />
             <line x1="5" y1="12" x2="19" y2="12" />
           </svg>
-          <span>{isSavingsRoute ? "添加储蓄" : "记账"}</span>
+          <span>{isLoansRoute ? "新增贷款" : isAssetsRoute ? "新增资产" : isSavingsRoute ? "添加储蓄" : "记账"}</span>
         </button>
       ) : null}
       {journalVariant ? (

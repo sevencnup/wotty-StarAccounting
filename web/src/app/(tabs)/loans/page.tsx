@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { REPORTING_MONTH_KEY, clampPercent, formatMoney, monthKey, nowText } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, clampPercent, formatMoney, monthKey } from "@/lib/stark/utils/format";
 import type { Loan, Transaction } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -50,12 +50,6 @@ export default function LoansPage() {
   const [list, setList] = useState<Loan[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [platform, setPlatform] = useState("");
-  const [totalAmount, setTotalAmount] = useState("");
-  const [remainingAmount, setRemainingAmount] = useState("");
-  const [monthlyPayment, setMonthlyPayment] = useState("");
-  const [periods, setPeriods] = useState("12");
-  const [dueDay, setDueDay] = useState("20");
 
   const reload = () => void repo.getLoans("default").then(setList);
 
@@ -72,6 +66,12 @@ export default function LoansPage() {
       if (active) setLoading(false);
     });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const handleLoanSaved = () => reload();
+    window.addEventListener("stark:loan-saved", handleLoanSaved);
+    return () => window.removeEventListener("stark:loan-saved", handleLoanSaved);
   }, []);
 
   const summary = useMemo(() => {
@@ -92,34 +92,6 @@ export default function LoansPage() {
   const schedule = useMemo(() => (
     [...summary.activeLoans].sort((a, b) => dueMeta(a).target.getTime() - dueMeta(b).target.getTime())
   ), [summary.activeLoans]);
-
-  async function saveLoan() {
-    const now = nowText();
-    const total = Number(totalAmount) || 0;
-    await repo.saveLoan({
-      id: crypto.randomUUID(),
-      userId: "local-user",
-      accountId: "default",
-      platform: platform.trim() || "新贷款",
-      totalAmount: total,
-      remainingAmount: remainingAmount === "" ? total : Number(remainingAmount) || 0,
-      periods: Math.max(1, Number(periods) || 12),
-      paidPeriods: 0,
-      monthlyPayment: Number(monthlyPayment) || 0,
-      dueDate: Math.min(31, Math.max(1, Number(dueDay) || 20)),
-      status: "ACTIVE",
-      matchKeywords: null,
-      createdAt: now,
-      updatedAt: now,
-    });
-    setPlatform("");
-    setTotalAmount("");
-    setRemainingAmount("");
-    setMonthlyPayment("");
-    setPeriods("12");
-    setDueDay("20");
-    reload();
-  }
 
   if (loading) return <PageSkeleton title="贷款" cards={4} />;
 
@@ -205,19 +177,6 @@ export default function LoansPage() {
             );
           }) : <div className="finance-empty bordered">暂无贷款，新增后会显示还款节奏</div>}
         </div>
-      </section>
-
-      <section className="home-card finance-section finance-create-section">
-        <div className="finance-section-head"><h2>新增贷款</h2><span>建立还款计划</span></div>
-        <div className="finance-form-grid loan-form-grid">
-          <label><span>贷款名称</span><input value={platform} onChange={(event) => setPlatform(event.target.value)} placeholder="如住房贷款" /></label>
-          <label><span>贷款总额</span><input inputMode="decimal" value={totalAmount} onChange={(event) => setTotalAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" /></label>
-          <label><span>剩余本金</span><input inputMode="decimal" value={remainingAmount} onChange={(event) => setRemainingAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="默认等于总额" /></label>
-          <label><span>每月月供</span><input inputMode="decimal" value={monthlyPayment} onChange={(event) => setMonthlyPayment(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" /></label>
-          <label><span>总期数</span><input inputMode="numeric" value={periods} onChange={(event) => setPeriods(event.target.value.replace(/\D/g, ""))} /></label>
-          <label><span>每月还款日</span><input inputMode="numeric" value={dueDay} onChange={(event) => setDueDay(event.target.value.replace(/\D/g, ""))} /></label>
-        </div>
-        <button type="button" className="finance-primary-action" onClick={() => void saveLoan()}>保存贷款计划</button>
       </section>
     </div>
   );

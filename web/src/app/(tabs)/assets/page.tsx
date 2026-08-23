@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { clampPercent, formatMoney, nowText } from "@/lib/stark/utils/format";
+import { clampPercent, formatMoney } from "@/lib/stark/utils/format";
 import type { Asset, AssetType, Loan, SavingsGoal } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -23,10 +23,6 @@ export default function AssetsPage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
-  const [name, setName] = useState("");
-  const [balance, setBalance] = useState("");
-  const [type, setType] = useState<AssetType>("ALIPAY");
-
   const reload = () => {
     void Promise.all([repo.getAssets("default"), repo.getSavingsGoals("default"), repo.getLoans("default")])
       .then(([assets, savings, loanList]) => {
@@ -48,6 +44,12 @@ export default function AssetsPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const handleAssetSaved = () => reload();
+    window.addEventListener("stark:asset-saved", handleAssetSaved);
+    return () => window.removeEventListener("stark:asset-saved", handleAssetSaved);
   }, []);
 
   const summary = useMemo(() => {
@@ -78,19 +80,6 @@ export default function AssetsPage() {
 
     return { positive, negative, savingsTotal, loanTotal, assetTotal, liabilityTotal, netWorth, liquidity, debtRatio, concentration, groups: groups.filter((item) => item.amount > 0) };
   }, [list, savingsGoals, loans]);
-
-  async function saveAsset() {
-    const now = nowText();
-    await repo.saveAsset({
-      id: crypto.randomUUID(), userId: "local-user", accountId: "default",
-      name: name.trim() || "新资产", type, balance: Number(balance) || 0, currency: "CNY",
-      createdAt: now, updatedAt: now,
-    });
-    setName("");
-    setBalance("");
-    setType("ALIPAY");
-    reload();
-  }
 
   if (loading) return <PageSkeleton title="资产" cards={4} />;
 
@@ -185,16 +174,6 @@ export default function AssetsPage() {
             </div>
           </div>
         </div>
-      </section>
-
-      <section className="home-card finance-section finance-create-section">
-        <div className="finance-section-head"><h2>新增资产</h2><span>负债余额可填负数</span></div>
-        <div className="finance-form-grid asset-form-grid">
-          <label><span>资产名称</span><input value={name} onChange={(event) => setName(event.target.value)} placeholder="如工资卡" /></label>
-          <label><span>资产类型</span><select value={type} onChange={(event) => setType(event.target.value as AssetType)}>{assetTypes.map((item) => <option key={item} value={item}>{typeMeta[item].label}</option>)}</select></label>
-          <label className="wide"><span>当前余额</span><input inputMode="decimal" value={balance} onChange={(event) => setBalance(event.target.value.replace(/[^\d.-]/g, ""))} placeholder="0.00" /></label>
-        </div>
-        <button type="button" className="finance-primary-action" onClick={() => void saveAsset()}>保存资产</button>
       </section>
     </div>
   );

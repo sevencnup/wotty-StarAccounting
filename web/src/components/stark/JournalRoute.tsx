@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 
-export function JournalRoute({ variant }: { variant?: "journal" | "savings" }) {
+export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "asset" | "loan" }) {
   const router = useRouter();
-  const [resolvedVariant, setResolvedVariant] = useState<"journal" | "savings" | null>(variant ?? null);
+  const [resolvedVariant, setResolvedVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(variant ?? null);
 
   useEffect(() => {
     if (variant) {
