@@ -96,6 +96,7 @@ export default function LoansPage() {
   if (loading) return <PageSkeleton title="贷款" cards={4} />;
 
   const nearest = schedule[0] ?? null;
+  const pressureClass = summary.pressure === null ? "neutral" : summary.pressure <= 25 ? "positive" : summary.pressure <= 40 ? "warning" : "danger";
   const pressureLevel = summary.pressure === null ? "暂无收入数据" : summary.pressure <= 25 ? "压力可控" : summary.pressure <= 40 ? "需要关注" : "压力偏高";
 
   return (
@@ -111,7 +112,7 @@ export default function LoansPage() {
           <div className="loan-operations-balance">
             <span>待还本金</span>
             <strong>¥ {formatMoney(summary.remaining)}</strong>
-            <small>已偿还 ¥ {formatMoney(summary.repaid)}</small>
+            <small>已偿还 ¥ {formatMoney(summary.repaid)} · 总额 ¥ {formatMoney(summary.total)}</small>
           </div>
           <div className="loan-next-node">
             {nearest ? (
@@ -127,31 +128,62 @@ export default function LoansPage() {
           </div>
         </div>
         <div className="loan-milestone-head">
-          <span>整体还款进度</span>
+          <span>整体已还进度</span>
           <strong>{Math.round(summary.progress)}%</strong>
         </div>
         <div className="loan-milestone-rail" aria-label={`整体已还 ${Math.round(summary.progress)}%`}>
-          {Array.from({ length: 10 }, (_, index) => (
-            <i key={index} className={index < Math.round(summary.progress / 10) ? "complete" : ""} />
-          ))}
+          <div className="loan-milestone-bar" style={{ width: `${summary.progress}%` }} />
+          <div className="loan-milestone-segments">
+            {Array.from({ length: 10 }, (_, index) => (
+              <i key={index} className={index < Math.round(summary.progress / 10) ? "complete" : ""} />
+            ))}
+          </div>
         </div>
         <div className="loan-operations-metrics">
-          <div><span>本月月供</span><strong>¥ {formatMoney(summary.monthly)}</strong></div>
-          <div><span>还款压力</span><strong>{pressureLevel}</strong></div>
-          <div><span>剩余期数</span><strong>{summary.remainingPeriods} 期</strong></div>
+          <div className="loan-metric-tile">
+            <span>本月月供</span>
+            <strong>¥ {formatMoney(summary.monthly)}</strong>
+          </div>
+          <div className={`loan-metric-tile ${pressureClass}`}>
+            <span>还款压力</span>
+            <strong>{pressureLevel}</strong>
+          </div>
+          <div className="loan-metric-tile">
+            <span>剩余期数</span>
+            <strong>{summary.remainingPeriods} 期</strong>
+          </div>
         </div>
       </section>
 
       <section className="home-card finance-section loan-schedule-section">
-        <div className="finance-section-head"><h2>还款日程</h2><span>按到期时间</span></div>
+        <div className="finance-section-head">
+          <div>
+            <h2>还款日程</h2>
+            <span>按到期时间排序</span>
+          </div>
+          <span className="mini-section-note">{schedule.length} 笔待还</span>
+        </div>
         <div className="loan-schedule-list">
           {schedule.length ? schedule.map((loan, index) => {
             const meta = dueMeta(loan);
+            const isToday = meta.days === 0;
+            const isUrgent = meta.days <= 3;
             return (
-              <div className="loan-schedule-row" key={loan.id}>
-                <div className="loan-timeline-marker"><i /><span>{index + 1}</span></div>
-                <div className="loan-schedule-main"><strong>{loan.platform}</strong><span>{meta.date} · 剩余 {Math.max(0, loan.periods - loan.paidPeriods)} 期</span></div>
-                <div className="loan-schedule-amount"><strong>¥ {formatMoney(loan.monthlyPayment)}</strong><span className={meta.days <= 3 ? "urgent" : ""}>{meta.days === 0 ? "今天" : `${meta.days} 天`}</span></div>
+              <div className={`loan-schedule-row ${isToday ? "today" : isUrgent ? "urgent" : ""}`} key={loan.id}>
+                <div className="loan-timeline-marker">
+                  <i />
+                  <span>{index + 1}</span>
+                </div>
+                <div className="loan-schedule-main">
+                  <strong>{loan.platform}</strong>
+                  <span>{meta.date} · 剩余 {Math.max(0, loan.periods - loan.paidPeriods)} 期</span>
+                </div>
+                <div className="loan-schedule-amount">
+                  <strong>¥ {formatMoney(loan.monthlyPayment)}</strong>
+                  <span className={`loan-due-tag ${isToday ? "today" : isUrgent ? "urgent" : ""}`}>
+                    {isToday ? "今天到期" : `${meta.days} 天后`}
+                  </span>
+                </div>
               </div>
             );
           }) : <div className="finance-empty">还款日程为空</div>}
@@ -159,20 +191,43 @@ export default function LoansPage() {
       </section>
 
       <section className="finance-section loan-portfolio-section">
-        <div className="finance-section-head"><h2>贷款组合</h2><span>{list.length} 笔</span></div>
+        <div className="finance-section-head">
+          <div>
+            <h2>贷款组合</h2>
+            <span>全部贷款明细与还款进度</span>
+          </div>
+          <span className="mini-section-note">{list.length} 笔记录</span>
+        </div>
         <div className="loan-portfolio-list">
           {list.length ? list.map((loan) => {
             const progress = loanProgress(loan);
+            const status = statusLabel(loan);
+            const statusKey = loan.status === "PAID_OFF" ? "paid" : loan.status === "OVERDUE" ? "overdue" : dueMeta(loan).days <= 3 ? "urgent" : "active";
+            const repaidAmount = Math.max(0, loan.totalAmount - loan.remainingAmount);
             return (
               <article className="loan-portfolio-card" key={loan.id}>
                 <div className="loan-portfolio-top">
                   <div className="loan-brand-mark">{loan.platform.slice(0, 1)}</div>
-                  <div className="loan-portfolio-title"><strong>{loan.platform}</strong><span className={`loan-status ${loan.status.toLowerCase()}`}>{statusLabel(loan)}</span></div>
-                  <strong className="loan-balance">¥ {formatMoney(loan.remainingAmount)}</strong>
+                  <div className="loan-portfolio-title">
+                    <strong>{loan.platform}</strong>
+                    <span className={`loan-status-chip ${statusKey}`}>{status}</span>
+                  </div>
+                  <div className="loan-balance-group">
+                    <span className="loan-balance-label">待还本金</span>
+                    <strong className="loan-balance">¥ {formatMoney(loan.remainingAmount)}</strong>
+                  </div>
                 </div>
-                <div className="loan-portfolio-meta"><span>已还 {loan.paidPeriods}/{loan.periods} 期</span><span>下期 {dueMeta(loan).date}</span></div>
-                <div className="loan-portfolio-progress"><span style={{ width: `${progress}%` }} /></div>
-                <div className="loan-portfolio-foot"><span>完成 {Math.round(progress)}%</span><strong>月供 ¥ {formatMoney(loan.monthlyPayment)}</strong></div>
+                <div className="loan-portfolio-meta">
+                  <span>已还 {loan.paidPeriods} / {loan.periods} 期</span>
+                  <span>下期还款 {dueMeta(loan).date}</span>
+                </div>
+                <div className="loan-portfolio-progress" aria-label={`还款进度 ${Math.round(progress)}%`}>
+                  <span style={{ width: `${progress}%` }} />
+                </div>
+                <div className="loan-portfolio-foot">
+                  <span>已还 ¥ {formatMoney(repaidAmount)} ({Math.round(progress)}%)</span>
+                  <strong>月供 ¥ {formatMoney(loan.monthlyPayment)}</strong>
+                </div>
               </article>
             );
           }) : <div className="finance-empty bordered">暂无贷款，新增后会显示还款节奏</div>}
