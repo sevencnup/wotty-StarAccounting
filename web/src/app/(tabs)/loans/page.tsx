@@ -86,8 +86,27 @@ export default function LoansPage() {
       .filter((item) => item.type === "INCOME" && monthKey(item.date) === REPORTING_MONTH_KEY)
       .reduce((sum, item) => sum + item.amount, 0);
     const pressure = income > 0 ? (monthly / income) * 100 : null;
-    return { activeLoans, total, remaining, repaid, monthly, remainingPeriods, progress, income, pressure };
+    const maxRemainingMonths = activeLoans.length
+      ? Math.max(0, ...activeLoans.map((item) => item.periods - item.paidPeriods))
+      : 0;
+    const estimatedCompletionYear = maxRemainingMonths > 0
+      ? new Date().getFullYear() + Math.ceil(maxRemainingMonths / 12)
+      : null;
+    return { activeLoans, total, remaining, repaid, monthly, remainingPeriods, progress, income, pressure, maxRemainingMonths, estimatedCompletionYear };
   }, [list, transactions]);
+
+  const debtStructure = useMemo(() => {
+    if (!summary.remaining) return [];
+    const palette = ["#0d8a5f", "#2a78d6", "#df9d35", "#e87962", "#8b5cf6", "#06b6d4"];
+    return summary.activeLoans.map((loan, idx) => ({
+      id: loan.id,
+      platform: loan.platform,
+      remaining: loan.remainingAmount,
+      monthlyPayment: loan.monthlyPayment,
+      percent: summary.remaining > 0 ? (loan.remainingAmount / summary.remaining) * 100 : 0,
+      color: palette[idx % palette.length],
+    })).sort((a, b) => b.remaining - a.remaining);
+  }, [summary.activeLoans, summary.remaining]);
 
   const schedule = useMemo(() => (
     [...summary.activeLoans].sort((a, b) => dueMeta(a).target.getTime() - dueMeta(b).target.getTime())
@@ -154,6 +173,41 @@ export default function LoansPage() {
           </div>
         </div>
       </section>
+
+      {debtStructure.length > 0 ? (
+        <section className="home-card finance-section loan-structure-section">
+          <div className="finance-section-head">
+            <div>
+              <h2>负债构成</h2>
+              <span>待还本金平台分布</span>
+            </div>
+            {summary.estimatedCompletionYear ? (
+              <span className="mini-section-note">预计 {summary.estimatedCompletionYear} 年结清</span>
+            ) : null}
+          </div>
+          <div className="loan-structure-bar" aria-label="待还本金平台占比条">
+            {debtStructure.map((item) => (
+              <span
+                key={item.id}
+                style={{ width: `${Math.max(item.percent, 3)}%`, background: item.color }}
+                title={`${item.platform}: ${item.percent.toFixed(1)}%`}
+              />
+            ))}
+          </div>
+          <div className="loan-structure-grid">
+            {debtStructure.map((item) => (
+              <div className="loan-structure-item" key={item.id}>
+                <div className="loan-structure-lead">
+                  <i style={{ background: item.color }} />
+                  <strong>{item.platform}</strong>
+                </div>
+                <span>{item.percent.toFixed(1)}%</span>
+                <em>¥ {formatMoney(item.remaining)}</em>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="home-card finance-section loan-schedule-section">
         <div className="finance-section-head">

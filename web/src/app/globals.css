@@ -8514,6 +8514,7 @@ nextjs-portal {
 .loans-page .loan-metric-tile.danger strong { color: #dc2626; }
 
 .loans-page .loan-schedule-section,
+.loans-page .loan-structure-section,
 .loans-page .loan-portfolio-section,
 .loans-page .finance-create-section {
   border: 1px solid rgba(255, 255, 255, 0.72);
@@ -8526,6 +8527,82 @@ nextjs-portal {
     0 11px 28px rgba(67, 91, 125, 0.075);
   backdrop-filter: blur(16px) saturate(1.2);
   -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.loans-page .loan-structure-section {
+  padding: 16px;
+}
+
+.loans-page .loan-structure-bar {
+  display: flex;
+  height: 9px;
+  margin: 6px 0 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(226, 236, 245, 0.8);
+  box-shadow: inset 0 1px 2px rgba(67, 91, 125, 0.1);
+  gap: 2px;
+}
+
+.loans-page .loan-structure-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.loans-page .loan-structure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.loans-page .loan-structure-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+.loans-page .loan-structure-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.loans-page .loan-structure-lead i {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.loans-page .loan-structure-lead strong {
+  overflow: hidden;
+  color: #172033;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loans-page .loan-structure-item span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.loans-page .loan-structure-item em {
+  color: #0d8a5f;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .loans-page .loan-portfolio-section {
@@ -8542,6 +8619,7 @@ nextjs-portal {
 }
 
 .loans-page .loan-schedule-section .finance-section-head,
+.loans-page .loan-structure-section .finance-section-head,
 .loans-page .loan-portfolio-section .finance-section-head,
 .loans-page .finance-create-section .finance-section-head {
   display: flex;
@@ -8848,6 +8926,10 @@ nextjs-portal {
 
   .loans-page .loan-next-node > strong {
     font-size: 24px;
+  }
+
+  .loans-page .loan-structure-grid {
+    grid-template-columns: 1fr;
   }
 
   .loans-page .loan-operations-metrics {
