@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageSkeleton } from "@/components/stark/Skeleton";
+import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REPORTING_MONTH_KEY, clampPercent, formatMoney, monthKey } from "@/lib/stark/utils/format";
 import type { Loan, Transaction } from "@/lib/stark/models";
+import type { EChartsCoreOption } from "echarts/core";
 
 const repo = new DataModeManager().getRepository();
 
@@ -44,6 +47,117 @@ function statusLabel(loan: Loan) {
   const days = dueMeta(loan).days;
   if (days <= 3) return "临近还款";
   return "还款中";
+}
+
+function buildForecastChartOption(activeLoans: Loan[]): EChartsCoreOption {
+  const now = new Date();
+  const months: string[] = [];
+  const monthAmounts: number[] = [];
+
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const mLabel = `${d.getMonth() + 1}月`;
+    months.push(mLabel);
+
+    // 计算当月需要还款的总额
+    const totalDue = activeLoans.reduce((sum, loan) => {
+      const remainingP = Math.max(0, loan.periods - loan.paidPeriods);
+      return i < remainingP ? sum + loan.monthlyPayment : sum;
+    }, 0);
+    monthAmounts.push(totalDue);
+  }
+
+  return {
+    grid: {
+      left: 12,
+      right: 16,
+      top: 24,
+      bottom: 24,
+      containLabel: true,
+    },
+    tooltip: {
+      trigger: "axis",
+      backgroundColor: "rgba(255, 255, 255, 0.96)",
+      borderColor: "rgba(13, 138, 95, 0.2)",
+      textStyle: { color: "#142036", fontSize: 12 },
+      formatter: (params: any) => {
+        const item = Array.isArray(params) ? params[0] : params;
+        return `<div style="font-size:11px;color:#64748b;">${item.name}应还</div><strong style="color:#0d8a5f;font-size:13px;">¥ ${formatMoney(Number(item.value))}</strong>`;
+      },
+    },
+    xAxis: {
+      type: "category",
+      data: months,
+      axisLine: { lineStyle: { color: "#e2ecf2" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#64748b", fontSize: 11 },
+    },
+    yAxis: {
+      type: "value",
+      splitLine: { lineStyle: { color: "rgba(226, 236, 242, 0.6)", type: "dashed" } },
+      axisLabel: {
+        color: "#94a3b8",
+        fontSize: 10,
+        formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`),
+      },
+    },
+    series: [
+      {
+        data: monthAmounts,
+        type: "line",
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 6,
+        itemStyle: { color: "#0d8a5f", borderWidth: 2, borderColor: "#ffffff" },
+        lineStyle: { width: 3, color: "#0d8a5f" },
+        areaStyle: {
+          color: {
+            type: "linear",
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: "rgba(13, 138, 95, 0.28)" },
+              { offset: 1, color: "rgba(13, 138, 95, 0.0)" },
+            ],
+          },
+        },
+      },
+    ],
+  };
+}
+
+function buildDonutChartOption(loans: Loan[]): EChartsCoreOption {
+  const palette = ["#0d8a5f", "#2a78d6", "#df9d35", "#e87962", "#8b5cf6", "#06b6d4"];
+  const activeLoans = loans.filter((l) => l.status !== "PAID_OFF" && l.remainingAmount > 0);
+  const data = activeLoans.map((l, i) => ({
+    name: l.platform,
+    value: l.remainingAmount,
+    itemStyle: { color: palette[i % palette.length] },
+  }));
+
+  return {
+    tooltip: {
+      trigger: "item",
+      backgroundColor: "rgba(255, 255, 255, 0.96)",
+      borderColor: "rgba(13, 138, 95, 0.2)",
+      textStyle: { color: "#142036", fontSize: 12 },
+      formatter: (params: any) => {
+        return `<div style="font-size:11px;color:#64748b;">${params.name}</div><strong style="color:#142036;">¥ ${formatMoney(params.value)}</strong> <span style="color:#0d8a5f;">(${params.percent}%)</span>`;
+      },
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["55%", "78%"],
+        center: ["50%", "50%"],
+        avoidLabelOverlap: false,
+        label: { show: false },
+        data: data.length ? data : [{ value: 1, name: "无贷款", itemStyle: { color: "#e2ecf2" } }],
+      },
+    ],
+  };
 }
 
 export default function LoansPage() {
@@ -112,6 +226,9 @@ export default function LoansPage() {
     [...summary.activeLoans].sort((a, b) => dueMeta(a).target.getTime() - dueMeta(b).target.getTime())
   ), [summary.activeLoans]);
 
+  const forecastOption = useMemo(() => buildForecastChartOption(summary.activeLoans), [summary.activeLoans]);
+  const donutOption = useMemo(() => buildDonutChartOption(list), [list]);
+
   if (loading) return <PageSkeleton title="贷款" cards={4} />;
 
   const nearest = schedule[0] ?? null;
@@ -122,93 +239,94 @@ export default function LoansPage() {
     <div className="page-stack finance-page loans-page">
       <PageTopBar title="贷款" />
 
-      <section className="loan-operations-hero">
+      {/* 核心驾驶舱：还款指挥台 */}
+      <section className="loan-operations-hero loan-cockpit-hero">
         <div className="finance-eyebrow-row">
-          <span className="finance-eyebrow">还款指挥台</span>
+          <span className="finance-eyebrow">还款控制中心</span>
           <span className="finance-state-chip">{summary.activeLoans.length} 笔进行中</span>
         </div>
-        <div className="loan-operations-main">
-          <div className="loan-operations-balance">
-            <span>待还本金</span>
+
+        <div className="loan-cockpit-main">
+          <div className="loan-cockpit-balance">
+            <span>待还本金总额</span>
             <strong>¥ {formatMoney(summary.remaining)}</strong>
-            <small>已偿还 ¥ {formatMoney(summary.repaid)} · 总额 ¥ {formatMoney(summary.total)}</small>
+            <p>已还清 ¥ {formatMoney(summary.repaid)} · 整体进度 {Math.round(summary.progress)}%</p>
           </div>
-          <div className="loan-next-node">
-            {nearest ? (
-              <>
-                <span>下一节点</span>
-                <strong>{dueMeta(nearest).days}</strong>
-                <em>{dueMeta(nearest).days === 0 ? "今天还款" : "天后还款"}</em>
-                <small>{nearest.platform} · ¥ {formatMoney(nearest.monthlyPayment)}</small>
-              </>
-            ) : (
-              <><span>下一节点</span><strong>--</strong><em>暂无还款</em></>
-            )}
+
+          <div className="loan-cockpit-ring-box">
+            <div className="loan-cockpit-ring" style={{ "--progress": `${summary.progress}%` } as CSSProperties}>
+              <strong>{Math.round(summary.progress)}%</strong>
+              <span>已还</span>
+            </div>
           </div>
         </div>
-        <div className="loan-milestone-head">
-          <span>整体已还进度</span>
-          <strong>{Math.round(summary.progress)}%</strong>
-        </div>
-        <div className="loan-milestone-rail" aria-label={`整体已还 ${Math.round(summary.progress)}%`}>
-          <div className="loan-milestone-bar" style={{ width: `${summary.progress}%` }} />
-          <div className="loan-milestone-segments">
-            {Array.from({ length: 10 }, (_, index) => (
-              <i key={index} className={index < Math.round(summary.progress / 10) ? "complete" : ""} />
-            ))}
-          </div>
-        </div>
-        <div className="loan-operations-metrics">
-          <div className="loan-metric-tile">
+
+        <div className="loan-cockpit-metrics">
+          <div className="loan-metric-card primary">
             <span>本月月供</span>
             <strong>¥ {formatMoney(summary.monthly)}</strong>
+            <small>{summary.activeLoans.length} 笔待还款</small>
           </div>
-          <div className={`loan-metric-tile ${pressureClass}`}>
+          <div className={`loan-metric-card ${pressureClass}`}>
             <span>还款压力</span>
             <strong>{pressureLevel}</strong>
+            <small>{summary.pressure ? `占收入 ${Math.round(summary.pressure)}%` : "暂无收入"}</small>
           </div>
-          <div className="loan-metric-tile">
-            <span>剩余期数</span>
-            <strong>{summary.remainingPeriods} 期</strong>
+          <div className="loan-metric-card node">
+            <span>下期到期</span>
+            <strong>{nearest ? `${dueMeta(nearest).days} 天后` : "--"}</strong>
+            <small>{nearest ? `${nearest.platform} · ${dueMeta(nearest).date}` : "已全部结清"}</small>
           </div>
         </div>
       </section>
 
+      {/* 数据驾驶舱：偿还趋势预测与构成 */}
+      <section className="home-card finance-section loan-charts-card">
+        <div className="finance-section-head">
+          <div>
+            <h2>未来6个月月供趋势</h2>
+            <span>按现有贷款期数推演</span>
+          </div>
+          {summary.estimatedCompletionYear ? (
+            <span className="mini-section-note">预计 {summary.estimatedCompletionYear} 年结清</span>
+          ) : null}
+        </div>
+        <div className="loan-trend-chart-box">
+          <EChartView option={forecastOption} className="loan-trend-chart" />
+        </div>
+      </section>
+
+      {/* 负债构成可视化 */}
       {debtStructure.length > 0 ? (
-        <section className="home-card finance-section loan-structure-section">
+        <section className="home-card finance-section loan-structure-card">
           <div className="finance-section-head">
             <div>
-              <h2>负债构成</h2>
-              <span>待还本金平台分布</span>
+              <h2>负债构成分析</h2>
+              <span>各平台贷款占比</span>
             </div>
-            {summary.estimatedCompletionYear ? (
-              <span className="mini-section-note">预计 {summary.estimatedCompletionYear} 年结清</span>
-            ) : null}
+            <span className="mini-section-note">共 {debtStructure.length} 个账户</span>
           </div>
-          <div className="loan-structure-bar" aria-label="待还本金平台占比条">
-            {debtStructure.map((item) => (
-              <span
-                key={item.id}
-                style={{ width: `${Math.max(item.percent, 3)}%`, background: item.color }}
-                title={`${item.platform}: ${item.percent.toFixed(1)}%`}
-              />
-            ))}
-          </div>
-          <div className="loan-structure-grid">
-            {debtStructure.map((item) => (
-              <div className="loan-structure-item" key={item.id}>
-                <div className="loan-structure-lead">
-                  <i style={{ background: item.color }} />
-                  <strong>{item.platform}</strong>
+          <div className="loan-structure-flex">
+            <div className="loan-donut-wrap">
+              <EChartView option={donutOption} className="loan-donut-chart" />
+            </div>
+            <div className="loan-structure-list">
+              {debtStructure.map((item) => (
+                <div className="loan-structure-item-row" key={item.id}>
+                  <div className="loan-structure-lead">
+                    <i style={{ background: item.color }} />
+                    <strong>{item.platform}</strong>
+                  </div>
+                  <span className="loan-structure-pct">{item.percent.toFixed(1)}%</span>
+                  <strong className="loan-structure-val">¥ {formatMoney(item.remaining)}</strong>
                 </div>
-                <span>{item.percent.toFixed(1)}%</span>
-                <em>¥ {formatMoney(item.remaining)}</em>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
       ) : null}
 
+      {/* 还款日程时间轴 */}
       <section className="home-card finance-section loan-schedule-section">
         <div className="finance-section-head">
           <div>
@@ -244,6 +362,7 @@ export default function LoansPage() {
         </div>
       </section>
 
+      {/* 贷款组合卡片 */}
       <section className="finance-section loan-portfolio-section">
         <div className="finance-section-head">
           <div>
