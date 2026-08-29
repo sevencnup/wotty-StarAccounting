@@ -7989,11 +7989,9 @@ nextjs-portal {
 .consumption-receipt-settlement strong.negative { color: #bd5140; }
 
 .tabs-liquid-shell .loan-operations-hero {
-  padding: 18px;
-  border-radius: 8px 26px 8px 26px;
-  color: #f7f9fb;
-  background: #202c3a;
-  box-shadow: 0 17px 36px rgba(25, 36, 49, 0.2);
+  border-radius: 24px;
+  background: transparent;
+  box-shadow: none;
 }
 
 .loan-operations-hero .finance-eyebrow {
@@ -8287,16 +8285,16 @@ nextjs-portal {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 26px;
-  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 22px;
+  padding: 16px 16px 14px;
   background:
     radial-gradient(circle at 100% 0%, rgba(220, 246, 236, 0.95), transparent 48%),
     radial-gradient(circle at 0% 100%, rgba(230, 242, 255, 0.9), transparent 42%),
     linear-gradient(135deg, rgba(243, 250, 247, 0.95) 0%, rgba(255, 255, 255, 0.92) 52%, rgba(240, 247, 255, 0.92) 100%);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 14px 32px rgba(45, 92, 130, 0.08);
+    0 12px 28px rgba(45, 92, 130, 0.07);
   backdrop-filter: blur(18px) saturate(1.2);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
 }
@@ -8673,56 +8671,57 @@ nextjs-portal {
 
 .loans-page .loan-portfolio-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .loans-page .loan-portfolio-card {
   position: relative;
   overflow: hidden;
-  padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  border-radius: 20px;
+  padding: 11px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(244, 250, 248, 0.68)),
-    rgba(244, 250, 248, 0.7);
+    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(244, 250, 248, 0.72)),
+    rgba(255, 255, 255, 0.75);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    0 9px 24px rgba(56, 92, 117, 0.065);
-  backdrop-filter: blur(14px) saturate(1.18);
-  -webkit-backdrop-filter: blur(14px) saturate(1.18);
+    0 6px 16px rgba(56, 92, 117, 0.045);
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
 }
 
 .loans-page .loan-portfolio-top {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .loans-page .loan-brand-mark {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
   color: #0d6f50;
   background: linear-gradient(145deg, #e6f7ef, #cdebdc);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .loans-page .loan-portfolio-title {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
 }
 
 .loans-page .loan-portfolio-title > strong {
   overflow: hidden;
   color: #172033;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8731,9 +8730,9 @@ nextjs-portal {
 .loans-page .loan-status-chip {
   display: inline-flex;
   width: fit-content;
-  padding: 2px 7px;
+  padding: 1px 6px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   line-height: 1.2;
 }
@@ -8759,19 +8758,20 @@ nextjs-portal {
 }
 
 .loans-page .loan-balance-group {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
   text-align: right;
 }
 
 .loans-page .loan-balance-label {
-  color: #7b8997;
-  font-size: 10px;
+  color: #8da0b3;
+  font-size: 9px;
 }
 
 .loans-page .loan-balance {
   color: #142036;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -8780,19 +8780,19 @@ nextjs-portal {
 .loans-page .loan-portfolio-meta {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  margin-top: 11px;
+  gap: 8px;
+  margin-top: 6px;
   color: #7b8997;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .loans-page .loan-portfolio-progress {
-  height: 8px;
-  margin: 8px 0 8px;
+  height: 6px;
+  margin: 6px 0;
   overflow: hidden;
   border-radius: 999px;
   background: #e2ecf0;
-  box-shadow: inset 0 1px 2px rgba(64, 100, 97, 0.1);
+  box-shadow: inset 0 1px 2px rgba(64, 100, 97, 0.08);
 }
 
 .loans-page .loan-portfolio-progress span {
@@ -8815,13 +8815,14 @@ nextjs-portal {
 .loans-page .loan-portfolio-foot {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   color: #7b8997;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .loans-page .loan-portfolio-foot strong {
   color: #0d6f50;
+  font-size: 11px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
