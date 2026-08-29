@@ -5673,10 +5673,15 @@ nextjs-portal {
 }
 
 .finance-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
   color: inherit;
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.03em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .finance-state-chip {
@@ -7739,6 +7744,11 @@ nextjs-portal {
 }
 
 .assets-page .asset-cockpit-hero .finance-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
   color: #0d6f50;
   background: rgba(13, 138, 95, 0.1);
   border: 1px solid rgba(13, 138, 95, 0.18);
@@ -8665,6 +8675,11 @@ nextjs-portal {
 }
 
 .loans-page .loan-operations-hero .finance-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
   color: #0d6f50;
   background: rgba(13, 138, 95, 0.1);
   border: 1px solid rgba(13, 138, 95, 0.18);
