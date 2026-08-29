@@ -17,6 +17,8 @@ export interface Transaction {
   paymentMethod?: string | null;
   status?: string | null;
   loanId?: string | null;
+  /** 备注归类：给转账等账单手动指定一个消费分类（如「房租水电」），参与支出统计。 */
+  remarkCategory?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -6674,6 +6674,216 @@ nextjs-portal {
 .settings-center-icon.font { background: linear-gradient(145deg, #28aab0, #45c4c8); }
 .settings-center-icon.help { background: linear-gradient(145deg, #c536e5, #ed45de); }
 .settings-center-icon.about { background: linear-gradient(145deg, #45516f, #687693); }
+.settings-center-icon.remark { background: linear-gradient(145deg, #e06a3e, #f08d4b); }
+
+/* ── 账单归类（账户设置页） ── */
+.bill-remark-sheet {
+  display: grid;
+  gap: 10px;
+}
+
+.bill-remark-filter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.bill-remark-filter button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
+  border: 1px solid #dce5f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #55617a;
+  font-size: 12px;
+}
+
+.bill-remark-filter button em {
+  font-style: normal;
+  color: #9aa4b8;
+}
+
+.bill-remark-filter button.active {
+  border-color: transparent;
+  background: #2a78d6;
+  color: #ffffff;
+}
+
+.bill-remark-filter button.active em {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.bill-remark-list {
+  display: grid;
+  max-height: 46dvh;
+  overflow-y: auto;
+  border: 1px solid #e3e9f2;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.bill-remark-row {
+  border-top: 1px solid #f1f4f9;
+}
+
+.bill-remark-row:first-child {
+  border-top: 0;
+}
+
+.bill-remark-row-main {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.bill-remark-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.bill-remark-info strong {
+  overflow: hidden;
+  color: #151e31;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bill-remark-info small {
+  overflow: hidden;
+  color: #65718a;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bill-remark-amount {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.bill-remark-amount.income { color: #0d8a5f; }
+.bill-remark-amount.expense { color: #df3f4f; }
+.bill-remark-amount.transfer { color: #65718a; }
+
+.bill-remark-chip {
+  padding: 3px 8px;
+  border: 1px solid #dce5f0;
+  border-radius: 999px;
+  color: #768096;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.bill-remark-chip.set {
+  border-color: transparent;
+  background: #e7effc;
+  color: #2a78d6;
+}
+
+.remark-category-editor {
+  display: grid;
+  gap: 10px;
+  padding: 4px 10px 12px;
+  border-top: 1px dashed #e9eef6;
+}
+
+.remark-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.remark-category-chips button {
+  padding: 5px 10px;
+  border: 1px solid #dce5f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #55617a;
+  font-size: 11px;
+}
+
+.remark-category-chips button.active {
+  border-color: transparent;
+  background: #2a78d6;
+  color: #ffffff;
+}
+
+.remark-category-input {
+  min-height: 38px;
+  padding: 0 12px;
+  border: 1px solid #dce5f0;
+  border-radius: 10px;
+  background: #f7f9fc;
+  color: #151e31;
+  font-size: 13px;
+}
+
+.remark-category-input:focus {
+  outline: none;
+  border-color: #2a78d6;
+}
+
+.remark-category-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.remark-category-actions > div {
+  display: flex;
+  gap: 8px;
+}
+
+.remark-btn-clear,
+.remark-btn-cancel,
+.remark-btn-save {
+  min-height: 32px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.remark-btn-clear {
+  border: 1px solid #f1c9c4;
+  background: #fff5f3;
+  color: #d0563f;
+}
+
+.remark-btn-cancel {
+  border: 1px solid #dce5f0;
+  background: #ffffff;
+  color: #65718a;
+}
+
+.remark-btn-save {
+  border: 1px solid transparent;
+  background: #2a78d6;
+  color: #ffffff;
+}
+
+.remark-btn-save:disabled {
+  opacity: 0.5;
+}
+
+.bill-remark-empty {
+  padding: 22px 0;
+  color: #8b94a8;
+  font-size: 12px;
+  text-align: center;
+}
 
 .settings-center-row > strong {
   overflow: hidden;

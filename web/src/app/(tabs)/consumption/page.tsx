@@ -6,32 +6,14 @@ import { ConsumptionCharts } from "@/components/stark/ConsumptionCharts";
 import { PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
+import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
+import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
 import { REPORTING_MONTH_KEY, formatMoney, monthKey, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
 
 type ViewMode = "expense" | "income" | "all";
-
-function categoryIconSrc(item: Transaction) {
-  const text = `${item.merchant || ""}${item.description || ""}${item.category}`;
-  if (item.type === "INCOME") return "/category-icons/jiaoyi.png";
-  if (text.includes("餐") || text.includes("咖啡")) return "/category-icons/canyin.png";
-  if (text.includes("交") || text.includes("地铁")) return "/category-icons/jiaotong.png";
-  if (text.includes("购") || text.includes("超市")) return "/category-icons/gouwu.png";
-  if (text.includes("娱") || text.includes("电影")) return "/category-icons/yule.png";
-  if (text.includes("生活") || text.includes("日用")) return "/category-icons/riyong.png";
-  if (text.includes("医")) return "/category-icons/yiliao.png";
-  if (text.includes("住")) return "/category-icons/zhufang.png";
-  if (text.includes("旅")) return "/category-icons/lvxing.png";
-  if (text.includes("美")) return "/category-icons/meirong.png";
-  if (text.includes("宠")) return "/category-icons/chongwu.png";
-  if (text.includes("服")) return "/category-icons/fuzhuang.png";
-  if (text.includes("通")) return "/category-icons/tongxun.png";
-  if (text.includes("运")) return "/category-icons/yundong.png";
-  if (text.includes("教")) return "/category-icons/jiaoyu.png";
-  return "/category-icons/qita.png";
-}
 
 function recentTimeLabel(dateStr: string) {
   const d = new Date(dateStr);
@@ -59,14 +41,6 @@ function ChevronDownIcon() {
   );
 }
 
-function ChevronRightIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
 export default function ConsumptionPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,13 +58,21 @@ export default function ConsumptionPage() {
     });
   }, []);
 
+  useEffect(() => {
+    const reload = () => {
+      void repo.getTransactions("default", 1, 200).then((data) => setTransactions(data));
+    };
+    window.addEventListener("stark:transaction-saved", reload);
+    return () => window.removeEventListener("stark:transaction-saved", reload);
+  }, []);
+
   const monthTransactions = useMemo(
     () => transactions.filter((item) => monthKey(item.date) === REPORTING_MONTH_KEY),
     [transactions],
   );
 
   const categories = useMemo(
-    () => ["全部分类", ...new Set(monthTransactions.map((item) => item.category).filter(Boolean))],
+    () => ["全部分类", ...new Set(monthTransactions.map((item) => effectiveCategory(item)).filter(Boolean))],
     [monthTransactions],
   );
 
@@ -103,22 +85,22 @@ export default function ConsumptionPage() {
     const normalizedQuery = query.trim().toLowerCase();
     return monthTransactions.filter((item) => {
       const matchesMode = viewMode === "all"
-        || (viewMode === "expense" && item.type === "EXPENSE")
+        || (viewMode === "expense" && effectiveType(item) === "EXPENSE")
         || (viewMode === "income" && item.type === "INCOME");
-      const matchesCategory = categoryFilter === "全部分类" || item.category === categoryFilter;
+      const matchesCategory = categoryFilter === "全部分类" || effectiveCategory(item) === categoryFilter;
       const matchesPlatform = platformFilter === "全部账户" || item.platform === platformFilter;
-      const text = `${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase();
+      const text = `${effectiveCategory(item)} ${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase();
       return matchesMode && matchesCategory && matchesPlatform && (!normalizedQuery || text.includes(normalizedQuery));
     });
   }, [categoryFilter, monthTransactions, platformFilter, query, viewMode]);
 
-  const chartTransactions = filteredTransactions;
+  const chartTransactions = useMemo(() => toAnalysisTransactions(filteredTransactions), [filteredTransactions]);
 
   const monthSummary = useMemo(() => {
-    const expenses = monthTransactions.filter((item) => item.type === "EXPENSE");
+    const expenses = monthTransactions.filter((item) => effectiveType(item) === "EXPENSE");
     const income = monthTransactions.filter((item) => item.type === "INCOME");
     const categoryTotals = expenses.reduce<Record<string, number>>((totals, item) => {
-      totals[item.category] = (totals[item.category] ?? 0) + item.amount;
+      totals[effectiveCategory(item)] = (totals[effectiveCategory(item)] ?? 0) + item.amount;
       return totals;
     }, {});
     const [topCategory = "暂无支出", topCategoryAmount = 0] = Object.entries(categoryTotals)
@@ -139,8 +121,8 @@ export default function ConsumptionPage() {
 
   const platformSummary = useMemo(() => {
     const calc = (items: Transaction[]) => ({
-      expense: items.filter((i) => i.type === "EXPENSE").reduce((s, i) => s + i.amount, 0),
-      count: items.filter((i) => i.type === "EXPENSE").length,
+      expense: items.filter((i) => effectiveType(i) === "EXPENSE").reduce((s, i) => s + i.amount, 0),
+      count: items.filter((i) => effectiveType(i) === "EXPENSE").length,
     });
     return {
       wechat: calc(monthTransactions.filter((item) => item.platform === "微信")),
@@ -157,7 +139,7 @@ export default function ConsumptionPage() {
     const normalizedQuery = detailQuery.trim().toLowerCase();
     return filteredTransactions.filter((item) => {
       if (!normalizedQuery) return true;
-      return `${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase().includes(normalizedQuery);
+      return `${effectiveCategory(item)} ${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase().includes(normalizedQuery);
     });
   }, [detailQuery, filteredTransactions]);
 
@@ -237,17 +219,21 @@ export default function ConsumptionPage() {
           <input value={detailQuery} onChange={(event) => setDetailQuery(event.target.value)} placeholder="在当前筛选结果中搜索" />
         </label>
         <div className="recent-list consumption-detail-list">
-          {detailTransactions.length ? detailTransactions.map((item) => (
-            <div key={item.id} className="recent-row">
-              <span className="recent-icon"><img src={categoryIconSrc(item)} alt="" /></span>
-              <strong className="recent-title">{item.category}</strong>
-              <span className="recent-category">{item.merchant || item.description || item.platform}</span>
-              <span className="recent-time">{recentTimeLabel(item.date)}</span>
-              <strong className={`recent-amount ${item.type === "INCOME" ? "income" : item.type === "EXPENSE" ? "expense" : "transfer"}`}>
-                {item.type === "INCOME" ? "+¥ " : item.type === "EXPENSE" ? "-¥ " : "±¥ "}{formatMoney(item.amount)}
-              </strong>
-            </div>
-          )) : <div className="consumption-empty-state">当前筛选下暂无流水</div>}
+          {detailTransactions.length ? detailTransactions.map((item) => {
+            const display = toAnalysisTransaction(item);
+            const transferred = hasRemark(item) && item.type !== "EXPENSE";
+            return (
+              <div key={item.id} className="recent-row">
+                <span className="recent-icon"><img src={categoryIconSrc(display)} alt="" /></span>
+                <strong className="recent-title">{display.category}</strong>
+                <span className="recent-category">{transferred ? "转账 · " : ""}{item.merchant || item.description || item.platform}</span>
+                <span className="recent-time">{recentTimeLabel(item.date)}</span>
+                <strong className={`recent-amount ${display.type === "INCOME" ? "income" : display.type === "EXPENSE" ? "expense" : "transfer"}`}>
+                  {display.type === "INCOME" ? "+¥ " : display.type === "EXPENSE" ? "-¥ " : "±¥ "}{formatMoney(item.amount)}
+                </strong>
+              </div>
+            );
+          }) : <div className="consumption-empty-state">当前筛选下暂无流水</div>}
         </div>
       </section>
 

@@ -196,6 +196,7 @@ object Transactions : Table("transaction") {
     val paymentMethod = varchar("paymentMethod", 191).nullable()
     val status = varchar("status", 191).nullable()
     val loanId = varchar("loanId", 191).nullable()
+    val remarkCategory = varchar("remarkCategory", 191).nullable()
     val createdAt = datetime("createdAt")
     val updatedAt = datetime("updatedAt")
 
@@ -379,6 +380,7 @@ private fun ResultRow.toTransactionRecord() = SyncRecordRow(
         "paymentMethod" to this[Transactions.paymentMethod],
         "status" to this[Transactions.status],
         "loanId" to this[Transactions.loanId],
+        "remarkCategory" to this[Transactions.remarkCategory],
         "createdAt" to formatDateTime(this[Transactions.createdAt]),
         "updatedAt" to formatDateTime(this[Transactions.updatedAt]),
     ),
@@ -600,6 +602,7 @@ private fun upsertTransaction(payload: JsonObject) = upsertById(Transactions, Tr
         row[Transactions.paymentMethod] = payload.getNullableString("paymentMethod")
         row[Transactions.status] = payload.getNullableString("status")
         row[Transactions.loanId] = payload.getNullableString("loanId")
+        row[Transactions.remarkCategory] = payload.getNullableString("remarkCategory")
         row[Transactions.createdAt] = payload.getDateTime("createdAt")
         row[Transactions.updatedAt] = payload.getDateTime("updatedAt")
     }

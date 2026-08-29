@@ -10,6 +10,7 @@ import {
   buildHomeSummary,
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
+import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 
@@ -558,24 +559,29 @@ export default function HomePage() {
 
   useEffect(() => {
     const repo = manager.getRepository();
-    void Promise.all([
-      repo.getTransactions("default", 1, 200),
-      repo.getAssets("default"),
-      repo.getBudgets("default"),
-      repo.getLoans("default"),
-      repo.getSavingsGoals("default"),
-    ]).then(([t, a, b, l, s]) => {
-      setTransactions(t);
-      setAssets(a);
-      setBudgets(b);
-      setLoans(l);
-      setSavingsGoals(s);
-      setLoading(false);
-    });
+    const load = () => {
+      void Promise.all([
+        repo.getTransactions("default", 1, 200),
+        repo.getAssets("default"),
+        repo.getBudgets("default"),
+        repo.getLoans("default"),
+        repo.getSavingsGoals("default"),
+      ]).then(([t, a, b, l, s]) => {
+        setTransactions(t);
+        setAssets(a);
+        setBudgets(b);
+        setLoans(l);
+        setSavingsGoals(s);
+        setLoading(false);
+      });
+    };
+    load();
+    window.addEventListener("stark:transaction-saved", load);
+    return () => window.removeEventListener("stark:transaction-saved", load);
   }, []);
 
   const summary = useMemo(
-    () => buildHomeSummary({ transactions, assets, budgets, loans, savingsGoals, salaryDay }),
+    () => buildHomeSummary({ transactions: toAnalysisTransactions(transactions), assets, budgets, loans, savingsGoals, salaryDay }),
     [transactions, assets, budgets, loans, savingsGoals, salaryDay],
   );
 

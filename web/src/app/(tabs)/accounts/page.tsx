@@ -9,6 +9,7 @@ import type { DataMode, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCloudApiUrl, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
+import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 
 const manager = new DataModeManager();
 const UI_SETTINGS_KEY = "wotty-stark:ui-settings";
@@ -16,7 +17,7 @@ const UI_SETTINGS_KEY = "wotty-stark:ui-settings";
 type ThemeChoice = "BLUE" | "GREEN" | "AMBER";
 type LanguageChoice = "SYSTEM" | "ZH_CN";
 type FontChoice = "SMALL" | "STANDARD" | "LARGE";
-type PanelKey = "MODE" | "IMPORT" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
+type PanelKey = "MODE" | "IMPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
 
 type UiSettings = {
@@ -49,6 +50,7 @@ function SettingIcon({ type }: { type: PanelKey }) {
   const paths: Record<PanelKey, React.ReactNode> = {
     MODE: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
+    REMARK: <><path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4-7 4V3a1 1 0 0 1 1-1Z" /><path d="M9 8h6" /><path d="M9 12h4" /></>,
     THEME: <><path d="M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12Z" /><circle cx="7.5" cy="10" r=".7" /><circle cx="9" cy="6.5" r=".7" /><circle cx="14" cy="6" r=".7" /></>,
     LANGUAGE: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" /></>,
     FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
@@ -199,6 +201,10 @@ export default function AccountsPage() {
       </section>
 
       <section className="settings-center-group">
+        <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
+      </section>
+
+      <section className="settings-center-group">
         <SettingsRow type="THEME" title="主题" value={themeLabels[uiSettings.theme]} onClick={() => setActivePanel("THEME")} />
         <SettingsRow type="LANGUAGE" title="语言" value={languageLabels[uiSettings.language]} onClick={() => setActivePanel("LANGUAGE")} />
         <SettingsRow type="FONT" title="字体大小" value={fontLabels[uiSettings.font]} onClick={() => setActivePanel("FONT")} />
@@ -213,7 +219,7 @@ export default function AccountsPage() {
         <div className="settings-sheet-overlay visible" onClick={() => setActivePanel(null)}>
           <section className="settings-sheet" onClick={(event) => event.stopPropagation()}>
             <div className="settings-sheet-handle" />
-            <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
+            <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
 
             {activePanel === "MODE" ? <div className="settings-sheet-body">
               <p className="settings-sheet-note">本地模式可离线使用；云端模式连接后端数据库，并在失败时自动读取本地数据。</p>
@@ -240,6 +246,10 @@ export default function AccountsPage() {
               <input ref={fileInputRef} type="file" hidden accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBill(file); }} />
               <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : `选择${importPlatform} CSV 账单`}</button>
               <p className="settings-sheet-tip">两个平台字段不同，请先选择正确平台，再上传对应官方 CSV 文件。</p>
+            </div> : null}
+
+            {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">
+              <BillRemarkSheet />
             </div> : null}
 
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
