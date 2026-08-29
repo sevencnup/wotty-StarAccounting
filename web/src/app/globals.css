@@ -8836,8 +8836,6 @@ nextjs-portal {
     grid-template-columns: 1fr;
   }
 }
-    rgba(255, 255, 255, 0.7);
-}
 
 .loans-page .loan-form-grid {
   gap: 10px 8px;
