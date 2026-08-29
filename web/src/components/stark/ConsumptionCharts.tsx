@@ -8,14 +8,14 @@ import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData } from "@/lib/stark/dashboard/consumption-platforms";
 import type { Transaction } from "@/lib/stark/models";
 
-const INCOME_BLUE = "#0060c0";
-const EXPENSE_ORANGE = "#ff7a32";
+const INCOME_BLUE = "#2a78d6";
+const EXPENSE_ORANGE = "#eb6834";
 const PLATFORM_COLORS: Record<string, string> = {
-  "微信": "#07c160",
-  "支付宝": "#1677ff",
-  "银行卡": "#0d8a5f",
-  "现金": "#ff9f43",
-  "其他": "#9aa7bd",
+  "微信": "#1baf7a",
+  "支付宝": "#2a78d6",
+  "银行卡": "#008300",
+  "现金": "#eda100",
+  "其他": "#4a3aa7",
 };
 
 function TrendLegend() {
@@ -362,10 +362,12 @@ export function ConsumptionCharts({
   trend,
   ratios,
   transactions,
+  showDeepAnalysis = true,
 }: {
   trend: HomeTrend;
   ratios: HomeRatio[];
   transactions: Transaction[];
+  showDeepAnalysis?: boolean;
 }) {
   const trendOption = useMemo(() => buildTrendOption(trend), [trend]);
   const ratioOption = useMemo(() => buildRatioOption(ratios), [ratios]);
@@ -375,42 +377,29 @@ export function ConsumptionCharts({
   const sankeyOption = useMemo(() => buildSankeyOption(transactions), [transactions]);
 
   return (
-    <>
-      {/* 折线图 */}
-      <section className="home-card trend-card">
+    <div className="consumption-chart-stack">
+      {/* 核心分析：趋势 */}
+      <section className="home-card trend-card consumption-chart-card">
         <div className="trend-panel">
           <div className="section-head">
-            <h2>本月收支趋势</h2>
+            <div className="consumption-chart-title">
+              <h2>收支趋势</h2>
+              <span>按当前筛选范围</span>
+            </div>
             <TrendLegend />
           </div>
           <EChartView option={trendOption} className="trend-chart consumption-trend-chart" />
         </div>
       </section>
 
-      {/* 日历图 */}
-      <section className="home-card">
-        <div className="trend-panel">
-          <div className="section-head">
-            <h2>每日支出日历</h2>
+      {/* 核心分析：分类结构 */}
+      <section className="home-card ratio-card consumption-chart-card">
+        <div className="section-head">
+          <div className="consumption-chart-title">
+            <h2>支出分类构成</h2>
+            <span>金额占比</span>
           </div>
-          <CalendarHeatmap transactions={transactions} />
         </div>
-      </section>
-
-      {/* 日柱状图 */}
-      <section className="home-card">
-        <div className="trend-panel">
-          <div className="section-head">
-            <h2>每日平台支出</h2>
-            <PlatformLegend platforms={barPlatforms} />
-          </div>
-          <EChartView option={barOption} className="bar-chart" />
-        </div>
-      </section>
-
-      {/* 占比图 */}
-      <section className="home-card ratio-card">
-        <h2>收支类型占比</h2>
         <div className="ratio-content">
           <EChartView option={ratioOption} className="ratio-donut" />
           <div className="ratio-list">
@@ -425,18 +414,49 @@ export function ConsumptionCharts({
         </div>
       </section>
 
-      {/* 桑基图 */}
-      <section className="home-card">
+      {/* 消费节律 */}
+      <section className="home-card consumption-chart-card">
         <div className="trend-panel">
           <div className="section-head">
-            <h2>消费流向图</h2>
-            <span style={{ fontSize: 11, color: "#65718a" }}>消费平台 → 消费类型</span>
+            <div className="consumption-chart-title">
+              <h2>消费节律</h2>
+              <span>每天的支出热度</span>
+            </div>
           </div>
-          <div className="sankey-scroll">
-            <EChartView option={sankeyOption} className="sankey-chart" />
-          </div>
+          <CalendarHeatmap transactions={transactions} />
         </div>
       </section>
-    </>
+
+      {showDeepAnalysis ? (
+        <>
+          <section className="home-card consumption-chart-card">
+            <div className="trend-panel">
+              <div className="section-head">
+                <div className="consumption-chart-title">
+                  <h2>每日平台支出</h2>
+                  <span>按账户拆分</span>
+                </div>
+                <PlatformLegend platforms={barPlatforms} />
+              </div>
+              <EChartView option={barOption} className="bar-chart" />
+            </div>
+          </section>
+
+          <section className="home-card consumption-chart-card">
+            <div className="trend-panel">
+              <div className="section-head">
+                <div className="consumption-chart-title">
+                  <h2>消费流向图</h2>
+                  <span>账户到分类</span>
+                </div>
+              </div>
+              <div className="sankey-scroll">
+                <EChartView option={sankeyOption} className="sankey-chart" />
+              </div>
+            </div>
+          </section>
+        </>
+      ) : null}
+    </div>
   );
 }

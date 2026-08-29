@@ -75,7 +75,7 @@ export default function ConsumptionPage() {
   const [platformFilter, setPlatformFilter] = useState("全部账户");
   const [query, setQuery] = useState("");
   const [detailQuery, setDetailQuery] = useState("");
-  const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
+  const [showDeepAnalysis, setShowDeepAnalysis] = useState(true);
 
   useEffect(() => {
     void repo.getTransactions("default", 1, 200).then((data) => {
