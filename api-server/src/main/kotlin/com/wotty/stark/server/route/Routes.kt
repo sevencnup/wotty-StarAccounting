@@ -6,6 +6,7 @@ import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import com.wotty.stark.server.util.DatabaseFactory
 import com.wotty.stark.server.util.SyncRecordRow
+import com.wotty.stark.server.util.reportingMonthRange
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonArray
@@ -88,12 +89,17 @@ fun Routing.accountRoutes() {
 }
 
 fun Routing.transactionRoutes() {
-    // GET /api/transactions?accountId=&page=&pageSize= - 分页查询交易
+    // GET /api/transactions?accountId=&month=&page=&pageSize= - 分页查询交易
     get("/api/transactions") {
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        val month = call.request.queryParameters["month"]
+        if (month != null && runCatching { reportingMonthRange(month) }.isFailure) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid month; expected YYYY-MM"))
+            return@get
+        }
         val page = (call.request.queryParameters["page"]?.toIntOrNull() ?: 1).coerceAtLeast(1)
         val pageSize = (call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 50).coerceIn(1, 500)
-        call.respond(DatabaseFactory.listTransactionsRest(accountId, page, pageSize))
+        call.respond(DatabaseFactory.listTransactionsRest(accountId, page, pageSize, month))
     }
 
     // GET /api/transactions/{id} - 单笔交易

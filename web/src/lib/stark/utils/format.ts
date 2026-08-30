@@ -1,18 +1,48 @@
 export const REPORTING_MONTH_KEY = "2026-01";
 
-export function reportingMonthDate(day = 1) {
-  const [year, month] = REPORTING_MONTH_KEY.split("-").map(Number);
-  return new Date(year, month - 1, day);
+const REPORTING_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
+
+export function isReportingMonthKey(value: string): boolean {
+  return REPORTING_MONTH_PATTERN.test(value);
 }
 
-export function reportingMonthEndDate() {
-  const [year, month] = REPORTING_MONTH_KEY.split("-").map(Number);
-  return new Date(year, month, 0);
+function reportingMonthParts(month: string) {
+  if (!isReportingMonthKey(month)) {
+    throw new Error(`Invalid reporting month: ${month}`);
+  }
+  const [year, monthNumber] = month.split("-").map(Number);
+  return { year, monthNumber };
 }
 
-export function reportingMonthLabel() {
-  const [year, month] = REPORTING_MONTH_KEY.split("-");
-  return `${year}年${Number(month)}月`;
+export function reportingMonthDate(month = REPORTING_MONTH_KEY, day = 1) {
+  const { year, monthNumber } = reportingMonthParts(month);
+  return new Date(year, monthNumber - 1, day);
+}
+
+export function reportingMonthEndDate(month = REPORTING_MONTH_KEY) {
+  const { year, monthNumber } = reportingMonthParts(month);
+  return new Date(year, monthNumber, 0);
+}
+
+export function reportingMonthLabel(month = REPORTING_MONTH_KEY) {
+  const { year, monthNumber } = reportingMonthParts(month);
+  return `${year}年${monthNumber}月`;
+}
+
+export function previousMonthKey(month: string) {
+  const date = reportingMonthDate(month);
+  const previous = new Date(date.getFullYear(), date.getMonth() - 1, 1);
+  return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}`;
+}
+
+export function reportingMonthSequence(month: string, count: number) {
+  const end = reportingMonthDate(month);
+  const safeCount = Math.max(0, Math.floor(count));
+  return Array.from({ length: safeCount }, (_, index) => {
+    const offset = safeCount - index - 1;
+    const date = new Date(end.getFullYear(), end.getMonth() - offset, 1);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  });
 }
 
 export function nowText() {

@@ -169,8 +169,8 @@ function shortAmount(amount: number) {
   return String(Math.round(amount));
 }
 
-function buildCalendarDays(transactions: Transaction[]) {
-  const now = reportingMonthDate();
+function buildCalendarDays(transactions: Transaction[], monthKey: string) {
+  const now = reportingMonthDate(monthKey);
   const year = now.getFullYear();
   const month = now.getMonth();
   const monthStr = String(month + 1).padStart(2, "0");
@@ -199,8 +199,8 @@ function buildCalendarDays(transactions: Transaction[]) {
   return { leading, days, maxAmount };
 }
 
-function CalendarHeatmap({ transactions }: { transactions: Transaction[] }) {
-  const { leading, days, maxAmount } = useMemo(() => buildCalendarDays(transactions), [transactions]);
+function CalendarHeatmap({ transactions, monthKey }: { transactions: Transaction[]; monthKey: string }) {
+  const { leading, days, maxAmount } = useMemo(() => buildCalendarDays(transactions, monthKey), [monthKey, transactions]);
   const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
 
   return (
@@ -228,8 +228,8 @@ function CalendarHeatmap({ transactions }: { transactions: Transaction[] }) {
 
 /* ────────── 日柱状图 ────────── */
 
-function buildBarOption(transactions: Transaction[]): EChartsCoreOption {
-  const { activePlatforms, days, platformDaily } = buildDailyPlatformData(transactions);
+function buildBarOption(transactions: Transaction[], monthKey: string): EChartsCoreOption {
+  const { activePlatforms, days, platformDaily } = buildDailyPlatformData(transactions, reportingMonthDate(monthKey));
 
   type TooltipSize = { contentSize: number[]; viewSize: number[] };
 
@@ -362,18 +362,21 @@ export function ConsumptionCharts({
   trend,
   ratios,
   transactions,
+  monthKey,
   showDeepAnalysis = true,
 }: {
   trend: HomeTrend;
   ratios: HomeRatio[];
   transactions: Transaction[];
+  monthKey: string;
   showDeepAnalysis?: boolean;
 }) {
+  const reportingDate = useMemo(() => reportingMonthDate(monthKey), [monthKey]);
   const trendOption = useMemo(() => buildTrendOption(trend), [trend]);
   const ratioOption = useMemo(() => buildRatioOption(ratios), [ratios]);
   const displayRatios = ratios.length ? ratios : [];
-  const barOption = useMemo(() => buildBarOption(transactions), [transactions]);
-  const barPlatforms = useMemo(() => buildDailyPlatformData(transactions).activePlatforms, [transactions]);
+  const barOption = useMemo(() => buildBarOption(transactions, monthKey), [monthKey, transactions]);
+  const barPlatforms = useMemo(() => buildDailyPlatformData(transactions, reportingDate).activePlatforms, [reportingDate, transactions]);
   const sankeyOption = useMemo(() => buildSankeyOption(transactions), [transactions]);
 
   return (
@@ -423,7 +426,7 @@ export function ConsumptionCharts({
               <span>每天的支出热度</span>
             </div>
           </div>
-          <CalendarHeatmap transactions={transactions} />
+          <CalendarHeatmap transactions={transactions} monthKey={monthKey} />
         </div>
       </section>
 

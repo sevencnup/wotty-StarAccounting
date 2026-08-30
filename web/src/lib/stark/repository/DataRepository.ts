@@ -24,6 +24,7 @@ export interface DataRepository {
   deleteAccount(id: string): Promise<void>;
 
   getTransactions(accountId: string, page?: number, pageSize?: number): Promise<Transaction[]>;
+  getTransactionsByMonth(accountId: string, month: string): Promise<Transaction[]>;
   getTransaction(id: string): Promise<Transaction | null>;
   saveTransaction(transaction: Transaction): Promise<void>;
   deleteTransaction(id: string): Promise<void>;

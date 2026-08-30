@@ -112,6 +112,18 @@ export class RemoteRepository implements DataRepository {
     const records = sortByDateDesc(await this.list("transactions", accountId) as unknown as Transaction[]);
     return records.slice((page - 1) * pageSize, page * pageSize);
   }
+  async getTransactionsByMonth(accountId: string, month: string) {
+    const pageSize = 500;
+    const transactions: Transaction[] = [];
+    for (let page = 1; ; page += 1) {
+      const batch = await this.request<Transaction[]>(
+        `/api/transactions?accountId=${encodeURIComponent(accountId)}&month=${encodeURIComponent(month)}&page=${page}&pageSize=${pageSize}`,
+      );
+      transactions.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+    return transactions;
+  }
   async getTransaction(id: string) { return (await this.list("transactions")).find((item) => item.id === id) as Transaction | undefined ?? null; }
   async saveTransaction(transaction: Transaction) { await this.save("transactions", transaction); }
   async deleteTransaction(id: string) { await this.delete("transactions", id); }
@@ -129,19 +141,27 @@ export class RemoteRepository implements DataRepository {
     };
   }
 
-  async getAssets(accountId: string) { return await this.list("assets", accountId) as unknown as Asset[]; }
+  async getAssets(accountId: string) {
+    return await this.request<Asset[]>(`/api/assets?accountId=${encodeURIComponent(accountId)}`);
+  }
   async saveAsset(asset: Asset) { await this.save("assets", asset); }
   async deleteAsset(id: string) { await this.delete("assets", id); }
 
-  async getBudgets(accountId: string) { return await this.list("budgets", accountId) as unknown as Budget[]; }
+  async getBudgets(accountId: string) {
+    return await this.request<Budget[]>(`/api/budgets?accountId=${encodeURIComponent(accountId)}`);
+  }
   async saveBudget(budget: Budget) { await this.save("budgets", budget); }
   async deleteBudget(id: string) { await this.delete("budgets", id); }
 
-  async getLoans(accountId: string) { return await this.list("loans", accountId) as unknown as Loan[]; }
+  async getLoans(accountId: string) {
+    return await this.request<Loan[]>(`/api/loans?accountId=${encodeURIComponent(accountId)}`);
+  }
   async saveLoan(loan: Loan) { await this.save("loans", loan); }
   async deleteLoan(id: string) { await this.delete("loans", id); }
 
-  async getSavingsGoals(accountId: string) { return await this.list("savingsGoals", accountId) as unknown as SavingsGoal[]; }
+  async getSavingsGoals(accountId: string) {
+    return await this.request<SavingsGoal[]>(`/api/savings-goals?accountId=${encodeURIComponent(accountId)}`);
+  }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
   async deleteSavingsGoal(id: string) { await this.delete("savingsGoals", id); }
   async getSavingsPlans(goalId: string) { return (await this.list("savingsPlans")).filter((item) => item.goalId === goalId) as unknown as SavingsPlan[]; }

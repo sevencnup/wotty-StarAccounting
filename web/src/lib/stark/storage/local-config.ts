@@ -1,4 +1,6 @@
 const CONFIG_PREFIX = "wotty-stark:";
+const DEFAULT_REPORTING_MONTH = "2026-01";
+const REPORTING_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
 function readValue(key: string) {
   if (typeof window === "undefined") return null;
@@ -32,6 +34,17 @@ export function getCloudApiUrl() {
 
 export function setCloudApiUrl(url: string) {
   writeValue("cloud-api-url", url.replace(/\/$/, ""));
+}
+
+export function getSelectedReportMonth() {
+  const value = readValue("reporting-month");
+  return value && REPORTING_MONTH_PATTERN.test(value) ? value : DEFAULT_REPORTING_MONTH;
+}
+
+export function setSelectedReportMonth(month: string) {
+  if (REPORTING_MONTH_PATTERN.test(month)) {
+    writeValue("reporting-month", month);
+  }
 }
 
 export function getSeededFlag() {

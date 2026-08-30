@@ -23,3 +23,14 @@ test("keeps other alongside known active platforms", () => {
   assert.equal(result.platformDaily["支付宝"][15], 88);
   assert.equal(result.platformDaily["其他"][19], 1268);
 });
+
+test("uses the selected leap month and excludes other months", () => {
+  const result = buildDailyPlatformData([
+    { amount: 29, date: "2024-02-29 12:00:00", platform: "微信", type: "EXPENSE" },
+    { amount: 31, date: "2024-03-01 12:00:00", platform: "微信", type: "EXPENSE" },
+  ], new Date(2024, 1, 1));
+
+  assert.equal(result.days.length, 29);
+  assert.equal(result.platformDaily["微信"][28], 29);
+  assert.equal(result.platformDaily["微信"].reduce((sum, amount) => sum + amount, 0), 29);
+});

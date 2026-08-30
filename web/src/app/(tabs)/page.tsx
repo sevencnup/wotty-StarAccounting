@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
-import { getCloudApiUrl, getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
+import { getCloudApiUrl, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
-import { formatMoney, reportingMonthLabel } from "@/lib/stark/utils/format";
+import { formatMoney, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 
 const manager = new DataModeManager();
@@ -177,6 +177,8 @@ function StarkCrystalHero({
   activeMetric,
   onMetricChange,
   transactionCount,
+  reportingMonth,
+  onReportingMonthChange,
 }: {
   summary: HomeSummary;
   salaryDay: number;
@@ -184,8 +186,10 @@ function StarkCrystalHero({
   activeMetric: "balance" | "expense" | "income";
   onMetricChange: (metric: "balance" | "expense" | "income") => void;
   transactionCount: number;
+  reportingMonth: string;
+  onReportingMonthChange: (month: string) => void;
 }) {
-  const monthLabel = reportingMonthLabel();
+  const monthLabel = reportingMonthLabel(reportingMonth);
   const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
 
@@ -209,10 +213,18 @@ function StarkCrystalHero({
     <div className="stark-hero-island">
       {/* 顶部控制行 */}
       <div className="stark-hero-toolbar">
-        <div className="stark-period-badge">
+        <label className="stark-period-badge">
           <span>{monthLabel}</span>
           <ChevronDownIcon size={14} />
-        </div>
+          <input
+            type="month"
+            value={reportingMonth}
+            aria-label="选择首页统计月份"
+            onChange={(event) => {
+              if (event.target.value) onReportingMonthChange(event.target.value);
+            }}
+          />
+        </label>
 
         <div className="stark-metric-switcher">
           <button
@@ -242,7 +254,9 @@ function StarkCrystalHero({
       {/* 极简通透卡片 */}
       <div className="stark-hero-card">
         {/* 背景轻淡月份水印 */}
-        <div className="stark-card-watermark">Jan</div>
+        <div className="stark-card-watermark">
+          {new Intl.DateTimeFormat("en", { month: "short" }).format(reportingMonthDate(reportingMonth))}
+        </div>
 
         <div className="stark-hero-meta-row">
           <span className="stark-card-label">{displayTitle}</span>
@@ -461,8 +475,8 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
 }
 
 // 智能理财与省钱行动建议
-function SmartAdvisoryCard({ summary }: { summary: HomeSummary }) {
-  const dailyAvg = (summary.expense / Math.max(new Date().getDate(), 1)).toFixed(1);
+function SmartAdvisoryCard({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
+  const dailyAvg = (summary.expense / Math.max(reportingMonthEndDate(reportingMonth).getDate(), 1)).toFixed(1);
   const remainingBudget = summary.budgetAlerts[0]
     ? Math.max(0, summary.budgetAlerts[0].budget - summary.budgetAlerts[0].spent)
     : 0;
@@ -498,16 +512,20 @@ function SmartAdvisoryCard({ summary }: { summary: HomeSummary }) {
 }
 
 // Stark 原创月度收支走势
-function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
-  const history = [
-    { month: "09月", expense: 0, income: 0 },
-    { month: "10月", expense: 0, income: 0 },
-    { month: "11月", expense: 0, income: 0 },
-    { month: "12月", expense: 0, income: 0 },
-    { month: "01月", expense: summary.expense, income: summary.income, current: true },
-  ];
+function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Transaction[]; reportingMonth: string }) {
+  const monthKeys = reportingMonthSequence(reportingMonth, 5);
+  const history = monthKeys.map((key) => {
+    const monthTransactions = transactions.filter((item) => monthKey(item.date) === key);
+    return {
+      key,
+      month: `${Number(key.slice(5))}月`,
+      expense: monthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
+      income: monthTransactions.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
+      current: key === reportingMonth,
+    };
+  });
 
-  const maxVal = Math.max(...history.map((h) => Math.max(h.expense, h.income)), 14000);
+  const maxVal = Math.max(...history.map((item) => Math.max(item.expense, item.income)), 1);
 
   return (
     <SurfaceCard className="stark-trend-card">
@@ -529,7 +547,7 @@ function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
             const incH = Math.max(8, Math.min(100, Math.round((item.income / maxVal) * 100)));
 
             return (
-              <div key={item.month} className={`stark-trend-col ${item.current ? "is-current" : ""}`}>
+              <div key={item.key} className={`stark-trend-col ${item.current ? "is-current" : ""}`}>
                 <div className="dual-bars">
                   <div className="bar-inc" style={{ height: `${incH}%` }} title={`收入 ¥${item.income}`} />
                   <div className="bar-exp" style={{ height: `${expH}%` }} title={`支出 ¥${item.expense}`} />
@@ -554,28 +572,34 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [loadVersion, setLoadVersion] = useState(0);
+  const [reportingMonth, setReportingMonth] = useState("2026-01");
+  const [monthReady, setMonthReady] = useState(false);
   const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
+    setReportingMonth(getSelectedReportMonth());
+    setMonthReady(true);
   }, []);
 
   useEffect(() => {
+    if (!monthReady) return;
     const repo = manager.getRepository();
     let active = true;
     const load = async () => {
       setLoading(true);
       setLoadError("");
       try {
-        const [t, a, b, l, s] = await Promise.all([
-          repo.getTransactions("default", 1, 200),
+        const monthKeys = reportingMonthSequence(reportingMonth, 5);
+        const [monthlyTransactions, a, b, l, s] = await Promise.all([
+          Promise.all(monthKeys.map((month) => repo.getTransactionsByMonth("default", month))),
           repo.getAssets("default"),
           repo.getBudgets("default"),
           repo.getLoans("default"),
           repo.getSavingsGoals("default"),
         ]);
         if (!active) return;
-        setTransactions(t);
+        setTransactions(monthlyTransactions.flat());
         setAssets(a);
         setBudgets(b);
         setLoans(l);
@@ -593,16 +617,26 @@ export default function HomePage() {
       active = false;
       window.removeEventListener("stark:transaction-saved", load);
     };
-  }, [loadVersion]);
+  }, [loadVersion, monthReady, reportingMonth]);
 
+  const analysisTransactions = useMemo(() => toAnalysisTransactions(transactions), [transactions]);
+  const currentTransactions = useMemo(
+    () => transactions.filter((item) => monthKey(item.date) === reportingMonth),
+    [reportingMonth, transactions],
+  );
   const summary = useMemo(
-    () => buildHomeSummary({ transactions: toAnalysisTransactions(transactions), assets, budgets, loans, savingsGoals, salaryDay }),
-    [transactions, assets, budgets, loans, savingsGoals, salaryDay],
+    () => buildHomeSummary({ transactions: analysisTransactions, assets, budgets, loans, savingsGoals, salaryDay, reportingMonth }),
+    [analysisTransactions, assets, budgets, loans, reportingMonth, savingsGoals, salaryDay],
   );
 
   function handleSalaryDayChange(day: number) {
     persistSalaryDay(day);
     setSalaryDay(day);
+  }
+
+  function handleReportingMonthChange(month: string) {
+    setSelectedReportMonth(month);
+    setReportingMonth(month);
   }
 
   if (loading) {
@@ -668,7 +702,9 @@ export default function HomePage() {
         onSalaryDayChange={handleSalaryDayChange}
         activeMetric={activeMetric}
         onMetricChange={setActiveMetric}
-        transactionCount={transactions.length}
+        transactionCount={currentTransactions.length}
+        reportingMonth={reportingMonth}
+        onReportingMonthChange={handleReportingMonthChange}
       />
 
       {/* AI 财务诊断条 */}
@@ -681,10 +717,10 @@ export default function HomePage() {
       <TopExpenseStructure summary={summary} />
 
       {/* 财务行动建议 */}
-      <SmartAdvisoryCard summary={summary} />
+      <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} />
 
       {/* 收支动态走势 */}
-      <StarkCashflowTrend summary={summary} />
+      <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} />
     </div>
   );
 }

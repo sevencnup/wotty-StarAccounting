@@ -958,6 +958,7 @@ nextjs-portal {
 }
 
 .stark-period-badge {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -965,6 +966,22 @@ nextjs-portal {
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.stark-period-badge input[type="month"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.stark-period-badge:focus-within {
+  border-radius: 6px;
+  outline: 2px solid rgba(2, 132, 199, 0.4);
+  outline-offset: 3px;
 }
 
 .stark-metric-switcher {
@@ -7360,6 +7377,7 @@ nextjs-portal {
 }
 
 .consumption-period-button {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -7371,6 +7389,21 @@ nextjs-portal {
   color: #3b5f7e;
   font-size: 11px;
   cursor: pointer;
+}
+
+.consumption-period-button input[type="month"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.consumption-period-button:focus-within {
+  outline: 2px solid rgba(2, 132, 199, 0.4);
+  outline-offset: 2px;
 }
 
 .consumption-overview-total {

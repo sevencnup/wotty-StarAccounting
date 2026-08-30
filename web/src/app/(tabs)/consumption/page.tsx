@@ -8,7 +8,8 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
-import { REPORTING_MONTH_KEY, formatMoney, monthKey, reportingMonthLabel } from "@/lib/stark/utils/format";
+import { getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
+import { formatMoney, reportingMonthEndDate, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -46,6 +47,8 @@ export default function ConsumptionPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
+  const [reportingMonth, setReportingMonth] = useState("2026-01");
+  const [monthReady, setMonthReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("expense");
   const [categoryFilter, setCategoryFilter] = useState("全部分类");
   const [platformFilter, setPlatformFilter] = useState("全部账户");
@@ -54,10 +57,16 @@ export default function ConsumptionPage() {
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(true);
 
   useEffect(() => {
+    setReportingMonth(getSelectedReportMonth());
+    setMonthReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!monthReady) return;
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void repo.getTransactions("default", 1, 200)
+    void repo.getTransactionsByMonth("default", reportingMonth)
       .then((data) => {
         if (!active) return;
         setTransactions(data);
@@ -69,22 +78,28 @@ export default function ConsumptionPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [loadVersion]);
+  }, [loadVersion, monthReady, reportingMonth]);
 
   useEffect(() => {
+    if (!monthReady) return;
+    let active = true;
     const reload = () => {
-      void repo.getTransactions("default", 1, 200)
-        .then((data) => setTransactions(data))
-        .catch(() => setLoadError(true));
+      void repo.getTransactionsByMonth("default", reportingMonth)
+        .then((data) => {
+          if (active) setTransactions(data);
+        })
+        .catch(() => {
+          if (active) setLoadError(true);
+        });
     };
     window.addEventListener("stark:transaction-saved", reload);
-    return () => window.removeEventListener("stark:transaction-saved", reload);
-  }, []);
+    return () => {
+      active = false;
+      window.removeEventListener("stark:transaction-saved", reload);
+    };
+  }, [monthReady, reportingMonth]);
 
-  const monthTransactions = useMemo(
-    () => transactions.filter((item) => monthKey(item.date) === REPORTING_MONTH_KEY),
-    [transactions],
-  );
+  const monthTransactions = transactions;
 
   const categories = useMemo(
     () => ["全部分类", ...new Set(monthTransactions.map((item) => effectiveCategory(item)).filter(Boolean))],
@@ -130,9 +145,9 @@ export default function ConsumptionPage() {
       expenseCount: expenses.length,
       topCategory,
       topCategoryAmount,
-      dailyAverage: expense / Math.max(new Date().getDate(), 1),
+      dailyAverage: expense / Math.max(reportingMonthEndDate(reportingMonth).getDate(), 1),
     };
-  }, [monthTransactions]);
+  }, [monthTransactions, reportingMonth]);
 
   const platformSummary = useMemo(() => {
     const calc = (items: Transaction[]) => ({
@@ -146,8 +161,8 @@ export default function ConsumptionPage() {
   }, [monthTransactions]);
 
   const charts = useMemo(
-    () => buildHomeSummary({ transactions: chartTransactions, assets: [], budgets: [], loans: [], savingsGoals: [] }),
-    [chartTransactions],
+    () => buildHomeSummary({ transactions: chartTransactions, assets: [], budgets: [], loans: [], savingsGoals: [], reportingMonth }),
+    [chartTransactions, reportingMonth],
   );
 
   const detailTransactions = useMemo(() => {
@@ -157,6 +172,15 @@ export default function ConsumptionPage() {
       return `${effectiveCategory(item)} ${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase().includes(normalizedQuery);
     });
   }, [detailQuery, filteredTransactions]);
+
+  function handleReportingMonthChange(month: string) {
+    setSelectedReportMonth(month);
+    setReportingMonth(month);
+    setCategoryFilter("全部分类");
+    setPlatformFilter("全部账户");
+    setQuery("");
+    setDetailQuery("");
+  }
 
   if (loading) {
     return <PageSkeleton title="消费" cards={3} />;
@@ -173,12 +197,21 @@ export default function ConsumptionPage() {
       <section className="consumption-overview-card">
         <div className="consumption-overview-head">
           <div>
-            <span>{reportingMonthLabel()} · 现金流概览</span>
+            <span>{reportingMonthLabel(reportingMonth)} · 现金流概览</span>
             <h2>本月支出</h2>
           </div>
-          <button type="button" className="consumption-period-button">
-            本月 <ChevronDownIcon />
-          </button>
+          <label className="consumption-period-button">
+            <span>{reportingMonthLabel(reportingMonth)}</span>
+            <ChevronDownIcon />
+            <input
+              type="month"
+              value={reportingMonth}
+              aria-label="选择消费统计月份"
+              onChange={(event) => {
+                if (event.target.value) handleReportingMonthChange(event.target.value);
+              }}
+            />
+          </label>
         </div>
         <strong className="consumption-overview-total">¥ {formatMoney(monthSummary.expense)}</strong>
         <div className="consumption-overview-stats">
@@ -223,7 +256,13 @@ export default function ConsumptionPage() {
         </div>
       </section>
 
-      <ConsumptionCharts trend={charts.trend} ratios={charts.ratios} transactions={chartTransactions} showDeepAnalysis={showDeepAnalysis} />
+      <ConsumptionCharts
+        trend={charts.trend}
+        ratios={charts.ratios}
+        transactions={chartTransactions}
+        monthKey={reportingMonth}
+        showDeepAnalysis={showDeepAnalysis}
+      />
 
       <section className="consumption-detail-card">
         <div className="consumption-detail-head">

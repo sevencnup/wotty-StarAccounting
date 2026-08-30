@@ -19,8 +19,11 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.javatime.datetime
@@ -46,6 +49,17 @@ internal data class DatabaseSettings(
     val username: String,
     val password: String,
 )
+
+internal data class ReportingMonthRange(
+    val start: LocalDateTime,
+    val endExclusive: LocalDateTime,
+)
+
+internal fun reportingMonthRange(month: String): ReportingMonthRange {
+    require(Regex("^\\d{4}-(0[1-9]|1[0-2])$").matches(month)) { "Invalid reporting month" }
+    val start = LocalDate.parse("$month-01").atStartOfDay()
+    return ReportingMonthRange(start = start, endExclusive = start.plusMonths(1))
+}
 
 internal fun loadDatabaseSettings(
     environment: Map<String, String> = System.getenv(),
@@ -404,13 +418,25 @@ object DatabaseFactory {
         Accounts.selectAll().where { Accounts.id eq id }.firstOrNull()?.toAccountRecord()?.toPayloadJson()
     }
 
-    fun listTransactionsRest(accountId: String, page: Int, pageSize: Int): List<JsonObject> = transaction {
-        Transactions.selectAll()
-            .where { Transactions.accountId eq accountId }
-            .orderBy(Transactions.date to SortOrder.DESC)
+    fun listTransactionsRest(accountId: String, page: Int, pageSize: Int, month: String? = null): List<JsonObject> = transaction {
+        val query = Transactions.selectAll().where {
+            if (month == null) {
+                Transactions.accountId eq accountId
+            } else {
+                val range = reportingMonthRange(month)
+                (Transactions.accountId eq accountId) and
+                    (Transactions.date greaterEq range.start) and
+                    (Transactions.date less range.endExclusive)
+            }
+        }
+        query
+            .orderBy(
+                Transactions.date to SortOrder.DESC,
+                Transactions.id to SortOrder.DESC,
+            )
+            .limit(pageSize.coerceAtLeast(1))
+            .offset((page - 1).coerceAtLeast(0).toLong() * pageSize)
             .map { it.toTransactionRecord().toPayloadJson() }
-            .drop((page - 1).coerceAtLeast(0) * pageSize)
-            .take(pageSize.coerceAtLeast(1))
     }
 
     fun getTransactionRest(id: String): JsonObject? = transaction {

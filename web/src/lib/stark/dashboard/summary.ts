@@ -1,5 +1,9 @@
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
-import { REPORTING_MONTH_KEY, clampPercent, monthKey, reportingMonthDate, reportingMonthEndDate } from "@/lib/stark/utils/format";
+import {
+  buildReportingMonthTrendRanges,
+  splitReportingMonthTransactions,
+} from "@/lib/stark/dashboard/reporting-month";
+import { REPORTING_MONTH_KEY, clampPercent, reportingMonthDate } from "@/lib/stark/utils/format";
 
 export interface HomeTrend {
   labels: string[];
@@ -113,17 +117,6 @@ function comparePercent(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-function previousMonthParts() {
-  const now = reportingMonthDate();
-  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  return { year: previous.getFullYear(), month: previous.getMonth() };
-}
-
-function isInMonth(raw: string, year: number, month: number) {
-  const date = parseDate(raw);
-  return !!date && date.getFullYear() === year && date.getMonth() === month;
-}
-
 function normalizeCategory(category: string) {
   if (category.includes("生活")) return "生活消费";
   if (category.includes("交") || category.includes("车")) return "交通出行";
@@ -147,10 +140,6 @@ function readableDateLabel(raw: string) {
   return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${time}`;
 }
 
-function daysInMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-}
-
 function formatMonthDay(date: Date) {
   return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -171,29 +160,17 @@ function nextDueDate(dueDay: number) {
   return date;
 }
 
-function currentSalaryCycleStart(salaryDay: number) {
-  const now = reportingMonthEndDate();
-  if (now.getDate() >= salaryDay) {
-    return new Date(now.getFullYear(), now.getMonth(), salaryDay);
-  }
-  return new Date(now.getFullYear(), now.getMonth() - 1, salaryDay);
+function currentSalaryCycleStart(reportingMonth: string, salaryDay: number) {
+  const monthStart = reportingMonthDate(reportingMonth);
+  return new Date(monthStart.getFullYear(), monthStart.getMonth(), salaryDay);
 }
 
-function buildTrend(transactions: Transaction[]) {
-  const labels = ["1", "5", "10", "15", "20", "25", "30"];
-  const ranges = [
-    [1, 4],
-    [5, 9],
-    [10, 14],
-    [15, 19],
-    [20, 24],
-    [25, 29],
-    [30, 31],
-  ] as const;
+function buildTrend(transactions: Transaction[], reportingMonth: string) {
+  const ranges = buildReportingMonthTrendRanges(reportingMonth);
 
   return {
-    labels,
-    expense: ranges.map(([start, end]) =>
+    labels: ranges.map((range) => range.label),
+    expense: ranges.map(({ start, end }) =>
       transactions
         .filter((item) => item.type === "EXPENSE")
         .filter((item) => {
@@ -202,7 +179,7 @@ function buildTrend(transactions: Transaction[]) {
         })
         .reduce((sum, item) => sum + item.amount, 0),
     ),
-    income: ranges.map(([start, end]) =>
+    income: ranges.map(({ start, end }) =>
       transactions
         .filter((item) => item.type === "INCOME")
         .filter((item) => {
@@ -383,10 +360,10 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
   return tasks.slice(0, 4);
 }
 
-function buildForecast(_transactions: Transaction[], income: number, expense: number, salaryDay: number): HomeForecast {
+function buildForecast(transactions: Transaction[], income: number, expense: number, salaryDay: number, reportingMonth: string): HomeForecast {
   const monthBalance = income - expense;
-  const cycleStart = currentSalaryCycleStart(salaryDay);
-  const salaryCycleTransactions = _transactions.filter((item) => {
+  const cycleStart = currentSalaryCycleStart(reportingMonth, salaryDay);
+  const salaryCycleTransactions = transactions.filter((item) => {
     const date = parseDate(item.date);
     return !!date && date >= cycleStart;
   });
@@ -474,12 +451,14 @@ export function buildHomeSummary(input: {
   loans: Loan[];
   savingsGoals: SavingsGoal[];
   salaryDay?: number;
+  reportingMonth?: string;
 }) {
-  const currentMonth = REPORTING_MONTH_KEY;
+  const currentMonth = input.reportingMonth ?? REPORTING_MONTH_KEY;
   const salaryDay = Math.max(1, Math.min(28, Math.round(input.salaryDay ?? 15)));
-  const currentMonthTransactions = input.transactions.filter((item) => monthKey(item.date) === currentMonth);
-  const previous = previousMonthParts();
-  const previousMonthTransactions = input.transactions.filter((item) => isInMonth(item.date, previous.year, previous.month));
+  const { current: currentMonthTransactions, previous: previousMonthTransactions } = splitReportingMonthTransactions(
+    input.transactions,
+    currentMonth,
+  );
 
   const income = currentMonthTransactions.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0);
   const expense = currentMonthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0);
@@ -502,7 +481,7 @@ export function buildHomeSummary(input: {
     income,
     expenseChange: previousExpense > 0 ? comparePercent(expense, previousExpense) : 0,
     incomeChange: previousIncome > 0 ? comparePercent(income, previousIncome) : 0,
-    trend: buildTrend(currentMonthTransactions),
+    trend: buildTrend(currentMonthTransactions, currentMonth),
     ratios: buildRatios(currentMonthTransactions),
     savingProgress: {
       title: "储蓄计划",
@@ -525,8 +504,8 @@ export function buildHomeSummary(input: {
     loanDelta: input.loans.reduce((sum, item) => sum + item.monthlyPayment, 0),
     budgetAlerts,
     tasks: buildTasks(input.loans, input.savingsGoals),
-    forecast: buildForecast(currentMonthTransactions, income, expense, salaryDay),
+    forecast: buildForecast(currentMonthTransactions, income, expense, salaryDay, currentMonth),
     insights: buildInsights(currentMonthTransactions, previousMonthTransactions, expense, budgetAlerts),
-    recent: buildRecent(input.transactions),
+    recent: buildRecent(currentMonthTransactions),
   } satisfies HomeSummary;
 }

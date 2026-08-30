@@ -155,6 +155,16 @@ export class LocalRepository implements DataRepository {
     return all.slice((page - 1) * pageSize, page * pageSize);
   }
 
+  async getTransactionsByMonth(accountId: string, month: string) {
+    await this.ensureSeeded();
+    const targetAccountId = accountId || getCurrentAccountId();
+    return sortByDateDesc(
+      (await getAllRecords<Transaction>("transactions")).filter(
+        (item) => item.accountId === targetAccountId && item.date.slice(0, 7) === month,
+      ),
+    );
+  }
+
   async getTransaction(id: string) {
     await this.ensureSeeded();
     return (await getRecord<Transaction>("transactions", id)) ?? null;
