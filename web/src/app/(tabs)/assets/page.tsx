@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { PageSkeleton } from "@/components/stark/Skeleton";
+import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { clampPercent, formatMoney } from "@/lib/stark/utils/format";
@@ -56,28 +56,38 @@ export default function AssetsPage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadVersion, setLoadVersion] = useState(0);
   const reload = () => {
     void Promise.all([repo.getAssets("default"), repo.getSavingsGoals("default"), repo.getLoans("default")])
       .then(([assets, savings, loanList]) => {
         setList(assets);
         setSavingsGoals(savings);
         setLoans(loanList);
-      });
+        setLoadError(false);
+      })
+      .catch(() => setLoadError(true));
   };
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError(false);
     void Promise.all([repo.getAssets("default"), repo.getSavingsGoals("default"), repo.getLoans("default")])
       .then(([assets, savings, loanList]) => {
         if (!active) return;
         setList(assets);
         setSavingsGoals(savings);
         setLoans(loanList);
-      }).finally(() => {
+      })
+      .catch(() => {
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, []);
+  }, [loadVersion]);
 
   useEffect(() => {
     const handleAssetSaved = () => reload();
@@ -130,6 +140,7 @@ export default function AssetsPage() {
   const assetDonutOption = useMemo(() => buildAssetDonutOption(summary.groups), [summary.groups]);
 
   if (loading) return <PageSkeleton title="资产" cards={4} />;
+  if (loadError) return <PageDataError title="资产" onRetry={() => setLoadVersion((version) => version + 1)} />;
 
   const assetRatioPct = summary.assetTotal + summary.liabilityTotal > 0
     ? (summary.assetTotal / (summary.assetTotal + summary.liabilityTotal)) * 100

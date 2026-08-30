@@ -53,13 +53,20 @@ export class RemoteRepository implements DataRepository {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    });
-    if (!response.ok) throw new Error(`Cloud API ${response.status}: ${await response.text()}`);
-    if (response.status === 204) return undefined as T;
-    return response.json() as Promise<T>;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(`${this.baseUrl}${path}`, {
+        ...init,
+        signal: controller.signal,
+        headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      });
+      if (!response.ok) throw new Error(`Cloud API ${response.status}: ${await response.text()}`);
+      if (response.status === 204) return undefined as T;
+      return response.json() as Promise<T>;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   private async list(entityType: EntityType, accountId?: string) {

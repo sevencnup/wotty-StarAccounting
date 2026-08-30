@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { ConsumptionCharts } from "@/components/stark/ConsumptionCharts";
-import { PageSkeleton } from "@/components/stark/Skeleton";
+import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
@@ -44,6 +44,8 @@ function ChevronDownIcon() {
 export default function ConsumptionPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadVersion, setLoadVersion] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>("expense");
   const [categoryFilter, setCategoryFilter] = useState("全部分类");
   const [platformFilter, setPlatformFilter] = useState("全部账户");
@@ -52,15 +54,28 @@ export default function ConsumptionPage() {
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(true);
 
   useEffect(() => {
-    void repo.getTransactions("default", 1, 200).then((data) => {
-      setTransactions(data);
-      setLoading(false);
-    });
-  }, []);
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    void repo.getTransactions("default", 1, 200)
+      .then((data) => {
+        if (!active) return;
+        setTransactions(data);
+      })
+      .catch(() => {
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [loadVersion]);
 
   useEffect(() => {
     const reload = () => {
-      void repo.getTransactions("default", 1, 200).then((data) => setTransactions(data));
+      void repo.getTransactions("default", 1, 200)
+        .then((data) => setTransactions(data))
+        .catch(() => setLoadError(true));
     };
     window.addEventListener("stark:transaction-saved", reload);
     return () => window.removeEventListener("stark:transaction-saved", reload);
@@ -145,6 +160,10 @@ export default function ConsumptionPage() {
 
   if (loading) {
     return <PageSkeleton title="消费" cards={3} />;
+  }
+
+  if (loadError) {
+    return <PageDataError title="消费" onRetry={() => setLoadVersion((version) => version + 1)} />;
   }
 
   return (

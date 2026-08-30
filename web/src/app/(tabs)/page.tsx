@@ -5,7 +5,7 @@ import type { PropsWithChildren } from "react";
 import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
-import { getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
+import { getCloudApiUrl, getSalaryDay, setSalaryDay as persistSalaryDay } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
   type HomeSummary,
@@ -552,6 +552,8 @@ export default function HomePage() {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [loadVersion, setLoadVersion] = useState(0);
   const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
 
   useEffect(() => {
@@ -560,26 +562,38 @@ export default function HomePage() {
 
   useEffect(() => {
     const repo = manager.getRepository();
-    const load = () => {
-      void Promise.all([
-        repo.getTransactions("default", 1, 200),
-        repo.getAssets("default"),
-        repo.getBudgets("default"),
-        repo.getLoans("default"),
-        repo.getSavingsGoals("default"),
-      ]).then(([t, a, b, l, s]) => {
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setLoadError("");
+      try {
+        const [t, a, b, l, s] = await Promise.all([
+          repo.getTransactions("default", 1, 200),
+          repo.getAssets("default"),
+          repo.getBudgets("default"),
+          repo.getLoans("default"),
+          repo.getSavingsGoals("default"),
+        ]);
+        if (!active) return;
         setTransactions(t);
         setAssets(a);
         setBudgets(b);
         setLoans(l);
         setSavingsGoals(s);
-        setLoading(false);
-      });
+      } catch {
+        if (!active) return;
+        setLoadError("云端数据加载失败，请检查后端服务和数据库连接后重试。");
+      } finally {
+        if (active) setLoading(false);
+      }
     };
-    load();
+    void load();
     window.addEventListener("stark:transaction-saved", load);
-    return () => window.removeEventListener("stark:transaction-saved", load);
-  }, []);
+    return () => {
+      active = false;
+      window.removeEventListener("stark:transaction-saved", load);
+    };
+  }, [loadVersion]);
 
   const summary = useMemo(
     () => buildHomeSummary({ transactions: toAnalysisTransactions(transactions), assets, budgets, loans, savingsGoals, salaryDay }),
@@ -606,6 +620,31 @@ export default function HomePage() {
         <Skeleton className="skeleton-hero" />
         <Skeleton className="skeleton-card" />
         <Skeleton className="skeleton-card" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="home-screen home-liquid-screen stark-home-layout">
+        <header className="home-topbar">
+          <span />
+          <h1>首页</h1>
+          <div className="home-actions">
+            <HeaderAction label="搜索">
+              <SearchIcon size={24} strokeWidth={1.8} />
+            </HeaderAction>
+          </div>
+        </header>
+        <section className="home-data-error" role="alert">
+          <strong>未能读取数据库数据</strong>
+          <p>{loadError}</p>
+          <code>{getCloudApiUrl()}</code>
+          <div className="home-data-error-actions">
+            <button type="button" onClick={() => setLoadVersion((version) => version + 1)}>重新加载</button>
+            <Link href="/accounts">检查数据源设置</Link>
+          </div>
+        </section>
       </div>
     );
   }

@@ -885,6 +885,66 @@ nextjs-portal {
   padding-bottom: 24px;
 }
 
+.home-data-error {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 22px 18px;
+  border: 1px solid #fecaca;
+  border-radius: 20px;
+  background: #fff7f7;
+  box-shadow: 0 10px 26px rgba(127, 29, 29, 0.08);
+}
+
+.home-data-error strong {
+  color: #991b1b;
+  font-size: 16px;
+}
+
+.home-data-error p {
+  margin: 0;
+  color: #7f1d1d;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.home-data-error code {
+  overflow-wrap: anywhere;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.home-data-error-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.home-data-error-actions button,
+.home-data-error-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.home-data-error-actions button {
+  border: 0;
+  color: #ffffff;
+  background: #0284c7;
+}
+
+.home-data-error-actions a {
+  border: 1px solid #0284c7;
+  color: #0284c7;
+  background: #ffffff;
+}
+
 .stark-hero-island {
   display: grid;
   gap: 8px;

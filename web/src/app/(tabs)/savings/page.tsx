@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { PageSkeleton } from "@/components/stark/Skeleton";
+import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REPORTING_MONTH_KEY, formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
@@ -83,9 +83,13 @@ export default function SavingsPage() {
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [plans, setPlans] = useState<SavingsPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadVersion, setLoadVersion] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError(false);
     async function loadSavingsDashboard() {
       try {
         const data = await repo.getSavingsGoals("default");
@@ -94,9 +98,7 @@ export default function SavingsPage() {
         setGoals(data);
         setPlans(planGroups.flat());
       } catch {
-        if (!active) return;
-        setGoals([]);
-        setPlans([]);
+        if (active) setLoadError(true);
       } finally {
         if (active) setLoading(false);
       }
@@ -105,7 +107,7 @@ export default function SavingsPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadVersion]);
 
   const summary = useMemo(() => {
     const monthPlans = plans.filter((plan) => plan.month === REPORTING_MONTH_KEY);
@@ -142,6 +144,7 @@ export default function SavingsPage() {
   const focusPercent = focusGoal ? goalPercent(focusGoal) : 0;
 
   if (loading) return <PageSkeleton title="储蓄" cards={3} />;
+  if (loadError) return <PageDataError title="储蓄" onRetry={() => setLoadVersion((version) => version + 1)} />;
 
   return (
     <div className="page-stack savings-dashboard-page">

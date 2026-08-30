@@ -129,8 +129,14 @@ export default function AccountsPage() {
     const timer = window.setTimeout(() => controller.abort(), 5000);
     try {
       const response = await fetch(`${url}/api/health`, { signal: controller.signal });
-      const payload = await response.json() as { status?: string };
+      const payload = await response.json() as { status?: string; db?: boolean };
       if (!response.ok || payload.status !== "ok") throw new Error("Invalid health response");
+      if (!payload.db) {
+        setConnectionState("ERROR");
+        setConnectionMessage("后端服务可访问，但数据库尚未连接");
+        setTestedUrl("");
+        return;
+      }
       setConnectionState("SUCCESS");
       setConnectionMessage("连接成功，可以切换到云端模式");
       setTestedUrl(url);
@@ -219,7 +225,7 @@ export default function AccountsPage() {
             <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
 
             {activePanel === "MODE" ? <div className="settings-sheet-body">
-              <p className="settings-sheet-note">本地模式可离线使用；云端模式连接后端数据库，并在失败时自动读取本地数据。</p>
+              <p className="settings-sheet-note">本地模式将数据保存在当前设备；云端模式只读取后端数据库，连接失败时不会混用本地数据。</p>
               <div className="settings-choice-grid">
                 <button type="button" className={pendingMode === "LOCAL" ? "active" : ""} onClick={() => setPendingMode("LOCAL")}><strong>本地模式</strong><span>数据保存在当前设备</span></button>
                 <button type="button" className={pendingMode === "CLOUD" ? "active" : ""} onClick={() => setPendingMode("CLOUD")}><strong>云端模式</strong><span>连接 MySQL 后端服务</span></button>

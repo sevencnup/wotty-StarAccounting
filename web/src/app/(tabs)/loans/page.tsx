@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { PageSkeleton } from "@/components/stark/Skeleton";
+import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REPORTING_MONTH_KEY, clampPercent, formatMoney, monthKey } from "@/lib/stark/utils/format";
@@ -164,11 +164,22 @@ export default function LoansPage() {
   const [list, setList] = useState<Loan[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadVersion, setLoadVersion] = useState(0);
 
-  const reload = () => void repo.getLoans("default").then(setList);
+  const reload = () => {
+    void repo.getLoans("default")
+      .then((loans) => {
+        setList(loans);
+        setLoadError(false);
+      })
+      .catch(() => setLoadError(true));
+  };
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError(false);
     void Promise.all([
       repo.getLoans("default"),
       repo.getTransactions("default", 1, 200),
@@ -176,11 +187,13 @@ export default function LoansPage() {
       if (!active) return;
       setList(loans);
       setTransactions(records);
+    }).catch(() => {
+      if (active) setLoadError(true);
     }).finally(() => {
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, []);
+  }, [loadVersion]);
 
   useEffect(() => {
     const handleLoanSaved = () => reload();
@@ -230,6 +243,7 @@ export default function LoansPage() {
   const donutOption = useMemo(() => buildDonutChartOption(list), [list]);
 
   if (loading) return <PageSkeleton title="贷款" cards={4} />;
+  if (loadError) return <PageDataError title="贷款" onRetry={() => setLoadVersion((version) => version + 1)} />;
 
   const nearest = schedule[0] ?? null;
   const pressureClass = summary.pressure === null ? "neutral" : summary.pressure <= 25 ? "positive" : summary.pressure <= 40 ? "warning" : "danger";
