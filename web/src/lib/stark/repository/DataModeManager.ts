@@ -4,7 +4,7 @@ import { LocalRepository } from "@/lib/stark/repository/LocalRepository";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { RemoteRepository } from "@/lib/stark/repository/RemoteRepository";
 
-function withTimeout<T>(promise: Promise<T>, ms = 1500): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("Cloud repository timeout")), ms);
     promise.then(
@@ -28,19 +28,10 @@ class FallbackRepository implements DataRepository {
 
   private async read<T>(remoteCall: () => Promise<T>, localCall: () => Promise<T>, fallback: T) {
     try {
-      const value = await withTimeout(remoteCall());
-      // 云端没有数据时回落到本地（本地仓库首次使用会自动种入演示数据）
-      if (Array.isArray(value) && value.length === 0) {
-        try {
-          return await withTimeout(localCall(), 1000);
-        } catch {
-          return value;
-        }
-      }
-      return value;
+      return await withTimeout(remoteCall());
     } catch {
       try {
-        return await withTimeout(localCall(), 1000);
+        return await withTimeout(localCall(), 5000);
       } catch {
         return fallback;
       }

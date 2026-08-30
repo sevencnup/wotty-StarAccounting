@@ -46,6 +46,7 @@ function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: 
 
 export class RemoteRepository implements DataRepository {
   private readonly baseUrl: string;
+  private readonly syncRequests = new Map<string, Promise<SyncRecord[]>>();
 
   constructor(baseUrl = getCloudApiUrl()) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -62,7 +63,14 @@ export class RemoteRepository implements DataRepository {
   }
 
   private async list(entityType: EntityType, accountId?: string) {
-    const records = await this.request<SyncRecord[]>(`/api/sync?accountId=${encodeURIComponent(accountId ?? "default")}`);
+    const targetAccountId = accountId ?? "default";
+    let syncRequest = this.syncRequests.get(targetAccountId);
+    if (!syncRequest) {
+      syncRequest = this.request<SyncRecord[]>(`/api/sync?accountId=${encodeURIComponent(targetAccountId)}`)
+        .finally(() => this.syncRequests.delete(targetAccountId));
+      this.syncRequests.set(targetAccountId, syncRequest);
+    }
+    const records = await syncRequest;
     return records.filter((record) => record.entityType === entityType && !record.payload.__deleted).map((record) => record.payload);
   }
 

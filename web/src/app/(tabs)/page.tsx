@@ -463,7 +463,9 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
 // 智能理财与省钱行动建议
 function SmartAdvisoryCard({ summary }: { summary: HomeSummary }) {
   const dailyAvg = (summary.expense / Math.max(new Date().getDate(), 1)).toFixed(1);
-  const remainingBudget = summary.budgetAlerts[0] ? Math.max(0, summary.budgetAlerts[0].budget - summary.budgetAlerts[0].spent) : 5442;
+  const remainingBudget = summary.budgetAlerts[0]
+    ? Math.max(0, summary.budgetAlerts[0].budget - summary.budgetAlerts[0].spent)
+    : 0;
   const isHealthy = summary.forecast.monthBalance >= 0;
 
   return (
@@ -497,13 +499,12 @@ function SmartAdvisoryCard({ summary }: { summary: HomeSummary }) {
 
 // Stark 原创月度收支走势
 function StarkCashflowTrend({ summary }: { summary: HomeSummary }) {
-  const currentExp = summary.expense || 558;
   const history = [
-    { month: "09月", expense: 4579, income: 12000 },
-    { month: "10月", expense: 4408, income: 12000 },
-    { month: "11月", expense: 7259, income: 13500 },
-    { month: "12月", expense: 3024, income: 12000 },
-    { month: "01月", expense: currentExp, income: summary.income || 12800, current: true },
+    { month: "09月", expense: 0, income: 0 },
+    { month: "10月", expense: 0, income: 0 },
+    { month: "11月", expense: 0, income: 0 },
+    { month: "12月", expense: 0, income: 0 },
+    { month: "01月", expense: summary.expense, income: summary.income, current: true },
   ];
 
   const maxVal = Math.max(...history.map((h) => Math.max(h.expense, h.income)), 14000);
