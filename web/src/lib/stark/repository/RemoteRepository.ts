@@ -15,6 +15,7 @@ import type {
 } from "@/lib/stark/models/types";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
+import { selectTransactionsForImport } from "@/lib/stark/repository/transaction-import";
 
 type EntityType =
   | "users"
@@ -99,7 +100,19 @@ export class RemoteRepository implements DataRepository {
   async getTransaction(id: string) { return (await this.list("transactions")).find((item) => item.id === id) as Transaction | undefined ?? null; }
   async saveTransaction(transaction: Transaction) { await this.save("transactions", transaction); }
   async deleteTransaction(id: string) { await this.delete("transactions", id); }
-  async importTransactions(transactions: Transaction[]): Promise<ImportResult> { await Promise.all(transactions.map((item) => this.saveTransaction(item))); return { imported: transactions.length, skipped: 0, errors: 0 }; }
+  async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
+    if (!transactions.length) return { imported: 0, skipped: 0, errors: 0 };
+
+    const existing = await this.list("transactions", transactions[0].accountId) as unknown as Transaction[];
+    const { pending, skipped } = selectTransactionsForImport(transactions, existing);
+    const results = await Promise.allSettled(pending.map((transaction) => this.saveTransaction(transaction)));
+
+    return {
+      imported: results.filter((result) => result.status === "fulfilled").length,
+      skipped,
+      errors: results.filter((result) => result.status === "rejected").length,
+    };
+  }
 
   async getAssets(accountId: string) { return await this.list("assets", accountId) as unknown as Asset[]; }
   async saveAsset(asset: Asset) { await this.save("assets", asset); }

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import packageInfo from "../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { detectBillPlatform, parseBillCsv } from "@/lib/stark/import/bill-csv";
+import { detectBillFilePlatform, parseBillFile } from "@/lib/stark/import/bill-csv";
 import type { BillPlatform } from "@/lib/stark/import/bill-csv";
 import type { DataMode, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -85,7 +85,7 @@ export default function AccountsPage() {
   const [testedUrl, setTestedUrl] = useState("");
   const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
   const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
-  const [importMessage, setImportMessage] = useState("支持微信、支付宝导出的 CSV 账单");
+  const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单");
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -118,7 +118,7 @@ export default function AccountsPage() {
 
   function selectImportPlatform(platform: BillPlatform) {
     setImportPlatform(platform);
-    setImportMessage(`请选择${platform}官方导出的 CSV 账单`);
+    setImportMessage(`请选择${platform}官方导出的 CSV / Excel 账单`);
   }
 
   async function testCloudConnection() {
@@ -161,15 +161,12 @@ export default function AccountsPage() {
     setImporting(true);
     setImportMessage("正在读取账单...");
     try {
-      const bytes = await file.arrayBuffer();
-      let content = new TextDecoder("utf-8").decode(bytes);
-      if (content.includes("�")) content = new TextDecoder("gb18030").decode(bytes);
-      const detectedPlatform = detectBillPlatform(content, file.name);
-      const rows = parseBillCsv(content, importPlatform);
+      const detectedPlatform = await detectBillFilePlatform(file);
+      const rows = await parseBillFile(file, importPlatform);
       if (!rows.length) {
         setImportMessage(detectedPlatform !== importPlatform
           ? `当前选择的是${importPlatform}，但文件看起来是${detectedPlatform}账单`
-          : `没有识别到有效${importPlatform}流水，请检查 CSV 文件格式`);
+          : `没有识别到有效${importPlatform}流水，请检查 CSV/Excel 文件格式`);
         return;
       }
 
@@ -178,7 +175,7 @@ export default function AccountsPage() {
         id: crypto.randomUUID(), userId: "local-user", accountId: "default",
         amount: row.amount, type: row.type, category: row.category, platform: row.platform,
         merchant: row.merchant, date: row.date, description: row.description,
-        orderId: null, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
+        orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
         createdAt: now, updatedAt: now,
       }));
       const result = await manager.getRepository().importTransactions(transactions);
@@ -239,13 +236,13 @@ export default function AccountsPage() {
 
             {activePanel === "IMPORT" ? <div className="settings-sheet-body">
               <div className="bill-platform-picker">
-                <button type="button" className={importPlatform === "微信" ? "active wechat" : "wechat"} onClick={() => selectImportPlatform("微信")}><span>微</span><div><strong>微信账单</strong><small>微信支付 CSV 格式</small></div></button>
-                <button type="button" className={importPlatform === "支付宝" ? "active alipay" : "alipay"} onClick={() => selectImportPlatform("支付宝")}><span>支</span><div><strong>支付宝账单</strong><small>支付宝交易记录 CSV</small></div></button>
+                <button type="button" className={importPlatform === "微信" ? "active wechat" : "wechat"} onClick={() => selectImportPlatform("微信")}><span>微</span><div><strong>微信账单</strong><small>微信支付 CSV / Excel 格式</small></div></button>
+                <button type="button" className={importPlatform === "支付宝" ? "active alipay" : "alipay"} onClick={() => selectImportPlatform("支付宝")}><span>支</span><div><strong>支付宝账单</strong><small>支付宝交易记录 CSV / Excel</small></div></button>
               </div>
               <div className={`bill-import-message ${importMessage.startsWith("已导入") ? "success" : ""}`}>{importMessage}</div>
-              <input ref={fileInputRef} type="file" hidden accept=".csv,text/csv" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBill(file); }} />
-              <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : `选择${importPlatform} CSV 账单`}</button>
-              <p className="settings-sheet-tip">两个平台字段不同，请先选择正确平台，再上传对应官方 CSV 文件。</p>
+              <input ref={fileInputRef} type="file" hidden accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBill(file); }} />
+              <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : `选择${importPlatform}账单文件`}</button>
+              <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件，请先选择对应平台。</p>
             </div> : null}
 
             {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">
@@ -255,7 +252,7 @@ export default function AccountsPage() {
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : "固定使用简体中文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
-            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>先在切换模式中确认当前数据源，云端模式还需要后端服务可访问。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV 文件。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">前往 GitHub 提交反馈 <ChevronIcon /></a></div> : null}
+            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>先在切换模式中确认当前数据源，云端模式还需要后端服务可访问。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">前往 GitHub 提交反馈 <ChevronIcon /></a></div> : null}
             {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星记账</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div></div> : null}
           </section>
         </div>
