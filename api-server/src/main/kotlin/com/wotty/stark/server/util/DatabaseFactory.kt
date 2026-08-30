@@ -30,12 +30,43 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import kotlinx.datetime.Clock
 import java.math.BigDecimal
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Properties
 
 private val json = Json { ignoreUnknownKeys = true }
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+
+internal data class DatabaseSettings(
+    val jdbcUrl: String,
+    val username: String,
+    val password: String,
+)
+
+internal fun loadDatabaseSettings(
+    environment: Map<String, String> = System.getenv(),
+    userHome: Path = Path.of(System.getProperty("user.home")),
+): DatabaseSettings {
+    val properties = Properties()
+    val configPath = userHome.resolve(".wotty-stark").resolve("db.properties")
+    if (Files.isRegularFile(configPath)) {
+        Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use(properties::load)
+    }
+
+    fun value(key: String): String? =
+        environment[key]?.trim()?.takeIf(String::isNotEmpty)
+            ?: properties.getProperty(key)?.trim()?.takeIf(String::isNotEmpty)
+
+    return DatabaseSettings(
+        jdbcUrl = value("DATABASE_URL") ?: error("Missing database setting: DATABASE_URL"),
+        username = value("DB_USER") ?: "root",
+        password = value("DB_PASSWORD") ?: error("Missing database setting: DB_PASSWORD"),
+    )
+}
 
 object Users : Table("user") {
     val id = varchar("id", 191)
@@ -232,11 +263,12 @@ data class SyncRecordRow(
 
 object DatabaseFactory {
     private val dataSource by lazy {
+        val settings = loadDatabaseSettings()
         val config = HikariConfig().apply {
-            jdbcUrl = System.getenv("DATABASE_URL") ?: error("DATABASE_URL environment variable not set")
+            jdbcUrl = settings.jdbcUrl
             driverClassName = "com.mysql.cj.jdbc.Driver"
-            username = System.getenv("DB_USER") ?: "root"
-            password = System.getenv("DB_PASSWORD") ?: error("DB_PASSWORD environment variable not set")
+            username = settings.username
+            password = settings.password
             // 统一 UTF-8，避免中文/emoji 写入被错编成乱码
             jdbcUrl = jdbcUrl.let { url -> if (url.contains("?")) url else "$url?useUnicode=true&characterEncoding=UTF-8" }
             maximumPoolSize = 10

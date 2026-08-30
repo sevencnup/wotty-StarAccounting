@@ -74,7 +74,7 @@ fun Application.module() {
             val log = environment.log
             log.error("==================================================================")
             log.error("数据库未连接！所有数据接口将返回 500，仅 /api/health、/api/app/version 可用")
-            log.error("请在启动时设置环境变量：")
+            log.error("请设置环境变量，或配置用户目录下的 .wotty-stark/db.properties：")
             log.error("  DATABASE_URL=jdbc:mysql://<host>:3306/<db>   DB_USER=<user>   DB_PASSWORD=<密码>")
             log.error("原因：${cause.message}")
             log.error("==================================================================")
