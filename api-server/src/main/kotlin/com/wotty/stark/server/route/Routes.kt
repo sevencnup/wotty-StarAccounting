@@ -8,7 +8,15 @@ import com.wotty.stark.server.util.DatabaseFactory
 import com.wotty.stark.server.util.SyncRecordRow
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
 import kotlinx.datetime.Clock
+
+private fun JsonObject.jsonText(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
 
 @Serializable
 data class AppVersionResponse(
@@ -39,23 +47,93 @@ fun Routing.appRoutes() {
 
 fun Routing.userRoutes() {
     // GET /api/user/me - 获取当前用户
+    get("/api/user/me") {
+        call.respond(DatabaseFactory.listUsersRest().firstOrNull() ?: JsonNull)
+    }
+
     // POST /api/user - 创建/保存用户
+    post("/api/user") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("users", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.accountRoutes() {
-    // GET /api/accounts - 获取账本列表
-    // GET /api/accounts/{id} - 获取单个账本
+    // GET /api/accounts - 账本列表
+    get("/api/accounts") {
+        call.respond(DatabaseFactory.listAccountsRest())
+    }
+
+    // GET /api/accounts/{id} - 单个账本
+    get("/api/accounts/{id}") {
+        call.respond(DatabaseFactory.getAccountRest(call.parameters["id"] ?: "") ?: JsonNull)
+    }
+
     // POST /api/accounts - 创建/更新账本
+    post("/api/accounts") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("accounts", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+
     // DELETE /api/accounts/{id} - 删除账本
+    delete("/api/accounts/{id}") {
+        DatabaseFactory.deleteEntity("accounts", call.parameters["id"] ?: "")
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.transactionRoutes() {
     // GET /api/transactions?accountId=&page=&pageSize= - 分页查询交易
-    // GET /api/transactions/{id} - 获取单笔交易
-    // POST /api/transactions - 创建交易
-    // PUT /api/transactions/{id} - 更新交易
+    get("/api/transactions") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        val page = (call.request.queryParameters["page"]?.toIntOrNull() ?: 1).coerceAtLeast(1)
+        val pageSize = (call.request.queryParameters["pageSize"]?.toIntOrNull() ?: 50).coerceIn(1, 500)
+        call.respond(DatabaseFactory.listTransactionsRest(accountId, page, pageSize))
+    }
+
+    // GET /api/transactions/{id} - 单笔交易
+    get("/api/transactions/{id}") {
+        call.respond(DatabaseFactory.getTransactionRest(call.parameters["id"] ?: "") ?: JsonNull)
+    }
+
+    // POST /api/transactions - 创建/更新交易
+    post("/api/transactions") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("transactions", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+
+    // POST /api/transactions/import - 批量导入（按 orderId 去重）
+    post("/api/transactions/import") {
+        val items = call.receive<JsonArray>()
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        val existing = DatabaseFactory.listTransactionOrderIds(accountId).toMutableSet()
+        var imported = 0
+        var skipped = 0
+        var errors = 0
+        items.forEach { element ->
+            runCatching {
+                val payload = element.jsonObject
+                val orderId = payload.jsonText("orderId")
+                if (!orderId.isNullOrBlank() && orderId in existing) {
+                    skipped++
+                } else {
+                    DatabaseFactory.upsertEntityPayload("transactions", payload)
+                    if (!orderId.isNullOrBlank()) existing.add(orderId)
+                    imported++
+                }
+            }.onFailure { errors++ }
+        }
+        call.respond(mapOf("imported" to imported, "skipped" to skipped, "errors" to errors))
+    }
+
     // DELETE /api/transactions/{id} - 删除交易
-    // POST /api/transactions/import - 批量导入
+    delete("/api/transactions/{id}") {
+        DatabaseFactory.deleteEntity("transactions", call.parameters["id"] ?: "")
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 @Serializable
@@ -217,46 +295,115 @@ fun Routing.syncRoutes() {
 }
 
 fun Routing.assetRoutes() {
-    // GET /api/assets?accountId= - 资产列表
-    // POST /api/assets - 创建/更新资产
-    // DELETE /api/assets/{id} - 删除资产
+    get("/api/assets") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        call.respond(DatabaseFactory.listAssetsRest(accountId))
+    }
+    post("/api/assets") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("assets", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+    delete("/api/assets/{id}") {
+        DatabaseFactory.deleteEntity("assets", call.parameters["id"] ?: "")
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.budgetRoutes() {
-    // GET /api/budgets?accountId= - 预算列表
-    // POST /api/budgets - 创建/更新预算
-    // DELETE /api/budgets/{id} - 删除预算
+    get("/api/budgets") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        call.respond(DatabaseFactory.listBudgetsRest(accountId))
+    }
+    post("/api/budgets") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("budgets", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+    delete("/api/budgets/{id}") {
+        DatabaseFactory.deleteEntity("budgets", call.parameters["id"] ?: "")
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.loanRoutes() {
-    // GET /api/loans?accountId= - 贷款列表
-    // POST /api/loans - 创建/更新贷款
-    // DELETE /api/loans/{id} - 删除贷款
+    get("/api/loans") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        call.respond(DatabaseFactory.listLoansRest(accountId))
+    }
+    post("/api/loans") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("loans", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+    delete("/api/loans/{id}") {
+        DatabaseFactory.deleteEntity("loans", call.parameters["id"] ?: "")
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.savingsRoutes() {
-    // GET /api/savings-goals?accountId= - 储蓄目标列表
-    // POST /api/savings-goals - 创建/更新储蓄目标
-    // DELETE /api/savings-goals/{id} - 删除储蓄目标
-    // GET /api/savings-plans?goalId= - 储蓄计划列表
-    // POST /api/savings-plans - 创建/更新储蓄计划
+    get("/api/savings-goals") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        call.respond(DatabaseFactory.listSavingsGoalsRest(accountId))
+    }
+    post("/api/savings-goals") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("savingsGoals", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+    delete("/api/savings-goals/{id}") {
+        DatabaseFactory.deleteEntity("savingsGoals", call.parameters["id"] ?: "")
+        call.respond(HttpStatusCode.NoContent)
+    }
+    get("/api/savings-plans") {
+        val goalId = call.request.queryParameters["goalId"] ?: ""
+        call.respond(DatabaseFactory.listSavingsPlansRest(goalId))
+    }
+    post("/api/savings-plans") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("savingsPlans", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.categoryRuleRoutes() {
-    // GET /api/category-rules?accountId= - 分类规则列表
-    // POST /api/category-rules - 创建/更新分类规则
+    get("/api/category-rules") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        call.respond(DatabaseFactory.listCategoryRulesRest(accountId))
+    }
+    post("/api/category-rules") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("categoryRules", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.importErrorRoutes() {
-    // GET /api/import-errors?accountId= - 导入错误列表
-    // POST /api/import-errors - 创建导入错误
+    get("/api/import-errors") {
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        call.respond(DatabaseFactory.listImportErrorLogsRest(accountId))
+    }
+    post("/api/import-errors") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("importErrorLogs", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
 }
 
 fun Routing.exchangeRateRoutes() {
-    // GET /api/exchange-rates - 汇率列表
+    get("/api/exchange-rates") {
+        call.respond(DatabaseFactory.listExchangeRatesRest())
+    }
 }
 
 fun Routing.themeConfigRoutes() {
-    // GET /api/theme-config/{userId} - 获取主题配置
-    // PUT /api/theme-config - 更新主题配置
+    get("/api/theme-config/{userId}") {
+        call.respond(DatabaseFactory.getThemeConfigRest(call.parameters["userId"] ?: "") ?: JsonNull)
+    }
+    put("/api/theme-config") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("themeConfigs", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
 }

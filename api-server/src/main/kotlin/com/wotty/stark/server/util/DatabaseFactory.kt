@@ -17,6 +17,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
@@ -27,6 +28,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import kotlinx.datetime.Clock
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -235,6 +237,8 @@ object DatabaseFactory {
             driverClassName = "com.mysql.cj.jdbc.Driver"
             username = System.getenv("DB_USER") ?: "root"
             password = System.getenv("DB_PASSWORD") ?: error("DB_PASSWORD environment variable not set")
+            // 统一 UTF-8，避免中文/emoji 写入被错编成乱码
+            jdbcUrl = jdbcUrl.let { url -> if (url.contains("?")) url else "$url?useUnicode=true&characterEncoding=UTF-8" }
             maximumPoolSize = 10
             minimumIdle = 5
             idleTimeout = 30000
@@ -288,7 +292,7 @@ object DatabaseFactory {
     fun upsertRecord(record: SyncRecordRow) {
         val payload = json.parseToJsonElement(record.payload).jsonObject
         if (payload["__deleted"]?.jsonPrimitive?.booleanOrNull == true) {
-            deleteRecord(record.entityType, record.id)
+            deleteEntity(record.entityType, record.id)
             return
         }
         transaction {
@@ -309,7 +313,7 @@ object DatabaseFactory {
         }
     }
 
-    private fun deleteRecord(entityType: String, id: String) = transaction {
+    fun deleteEntity(entityType: String, id: String) = transaction {
         when (entityType) {
             "users" -> Users.deleteWhere { Users.id eq id }
             "accounts" -> Accounts.deleteWhere { Accounts.id eq id }
@@ -324,6 +328,94 @@ object DatabaseFactory {
             "exchangeRates" -> ExchangeRates.deleteWhere { ExchangeRates.id eq id }
             "themeConfigs" -> ThemeConfigs.deleteWhere { ThemeConfigs.id eq id }
         }
+    }
+
+    // —— REST 接口辅助：写/删走通用记录，读复用 toXRecord 序列化 ——
+    private fun SyncRecordRow.toPayloadJson(): JsonObject = json.parseToJsonElement(payload).jsonObject
+
+    fun upsertEntityPayload(entityType: String, payload: JsonObject) {
+        val updatedAt = payload.getNullableString("updatedAt")
+            ?: payload.getNullableString("createdAt")
+            ?: Clock.System.now().toString().replace("T", " ").replace("Z", "")
+        upsertRecord(
+            SyncRecordRow(
+                id = payload.getString("id"),
+                entityType = entityType,
+                accountId = payload.getNullableString("accountId"),
+                userId = payload.getNullableString("userId"),
+                payload = payload.toString(),
+                updatedAt = updatedAt,
+            ),
+        )
+    }
+
+    fun listTransactionOrderIds(accountId: String): Set<String> = transaction {
+        Transactions.selectAll()
+            .where { Transactions.accountId eq accountId }
+            .map { it[Transactions.orderId] ?: "" }
+            .filter { it.isNotBlank() }
+            .toSet()
+    }
+
+    fun listUsersRest(): List<JsonObject> = transaction {
+        Users.selectAll().map { it.toUserRecord().toPayloadJson() }
+    }
+
+    fun listAccountsRest(): List<JsonObject> = transaction {
+        Accounts.selectAll().map { it.toAccountRecord().toPayloadJson() }
+    }
+
+    fun getAccountRest(id: String): JsonObject? = transaction {
+        Accounts.selectAll().where { Accounts.id eq id }.firstOrNull()?.toAccountRecord()?.toPayloadJson()
+    }
+
+    fun listTransactionsRest(accountId: String, page: Int, pageSize: Int): List<JsonObject> = transaction {
+        Transactions.selectAll()
+            .where { Transactions.accountId eq accountId }
+            .orderBy(Transactions.date to SortOrder.DESC)
+            .map { it.toTransactionRecord().toPayloadJson() }
+            .drop((page - 1).coerceAtLeast(0) * pageSize)
+            .take(pageSize.coerceAtLeast(1))
+    }
+
+    fun getTransactionRest(id: String): JsonObject? = transaction {
+        Transactions.selectAll().where { Transactions.id eq id }.firstOrNull()?.toTransactionRecord()?.toPayloadJson()
+    }
+
+    fun listAssetsRest(accountId: String): List<JsonObject> = transaction {
+        Assets.selectAll().where { Assets.accountId eq accountId }.map { it.toAssetRecord().toPayloadJson() }
+    }
+
+    fun listBudgetsRest(accountId: String): List<JsonObject> = transaction {
+        Budgets.selectAll().where { Budgets.accountId eq accountId }.map { it.toBudgetRecord().toPayloadJson() }
+    }
+
+    fun listLoansRest(accountId: String): List<JsonObject> = transaction {
+        Loans.selectAll().where { Loans.accountId eq accountId }.map { it.toLoanRecord().toPayloadJson() }
+    }
+
+    fun listSavingsGoalsRest(accountId: String): List<JsonObject> = transaction {
+        SavingsGoals.selectAll().where { SavingsGoals.accountId eq accountId }.map { it.toSavingsGoalRecord().toPayloadJson() }
+    }
+
+    fun listSavingsPlansRest(goalId: String): List<JsonObject> = transaction {
+        SavingsPlans.selectAll().where { SavingsPlans.goalId eq goalId }.map { it.toSavingsPlanRecord().toPayloadJson() }
+    }
+
+    fun listCategoryRulesRest(accountId: String): List<JsonObject> = transaction {
+        TransactionCategoryRules.selectAll().where { TransactionCategoryRules.accountId eq accountId }.map { it.toCategoryRuleRecord().toPayloadJson() }
+    }
+
+    fun listImportErrorLogsRest(accountId: String): List<JsonObject> = transaction {
+        ImportErrorLogs.selectAll().where { ImportErrorLogs.accountId eq accountId }.map { it.toImportErrorLogRecord().toPayloadJson() }
+    }
+
+    fun listExchangeRatesRest(): List<JsonObject> = transaction {
+        ExchangeRates.selectAll().map { it.toExchangeRateRecord().toPayloadJson() }
+    }
+
+    fun getThemeConfigRest(userId: String): JsonObject? = transaction {
+        ThemeConfigs.selectAll().where { ThemeConfigs.userId eq userId }.firstOrNull()?.toThemeConfigRecord()?.toPayloadJson()
     }
 }
 
