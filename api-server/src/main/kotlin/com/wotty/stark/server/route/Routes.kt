@@ -27,9 +27,12 @@ data class AppVersionResponse(
     val forceUpdate: Boolean = false
 )
 
+@Serializable
+data class HealthResponse(val status: String, val db: Boolean)
+
 fun Routing.appRoutes() {
     get("/api/health") {
-        call.respond(mapOf("status" to "ok", "db" to DatabaseFactory.isReady()))
+        call.respond(HealthResponse(status = "ok", db = DatabaseFactory.isReady()))
     }
 
     get("/api/app/version") {
