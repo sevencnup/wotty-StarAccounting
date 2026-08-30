@@ -268,6 +268,9 @@ object DatabaseFactory {
         }
     }
 
+    /** 数据库是否已连接并可用（供健康检查诊断，未配 DATABASE_URL 时为 false） */
+    fun isReady(): Boolean = runCatching { transaction { exec("SELECT 1") } }.isSuccess
+
     fun listRecords(accountId: String): List<SyncRecordRow> = transaction {
         buildList {
             addAll(Users.selectAll().map { it.toUserRecord() })

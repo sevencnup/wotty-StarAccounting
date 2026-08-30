@@ -29,7 +29,7 @@ data class AppVersionResponse(
 
 fun Routing.appRoutes() {
     get("/api/health") {
-        call.respond(mapOf("status" to "ok"))
+        call.respond(mapOf("status" to "ok", "db" to DatabaseFactory.isReady()))
     }
 
     get("/api/app/version") {

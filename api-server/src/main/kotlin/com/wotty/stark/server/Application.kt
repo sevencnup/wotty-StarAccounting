@@ -68,9 +68,15 @@ fun Application.module() {
         syncRoutes()
     }
 
-    // 数据库依赖的路由后续需要真实实现；这里先避免因环境变量缺失导致健康检查和版本接口不可用。
+    // 数据库缺失时保留健康检查与版本接口可用，但给出醒目的告警，避免"接口全 500 却误以为后端正常"
     runCatching { DatabaseFactory.init() }
         .onFailure { cause ->
-            environment.log.warn("Database initialization skipped: ${cause.message}")
+            val log = environment.log
+            log.error("==================================================================")
+            log.error("数据库未连接！所有数据接口将返回 500，仅 /api/health、/api/app/version 可用")
+            log.error("请在启动时设置环境变量：")
+            log.error("  DATABASE_URL=jdbc:mysql://<host>:3306/<db>   DB_USER=<user>   DB_PASSWORD=<密码>")
+            log.error("原因：${cause.message}")
+            log.error("==================================================================")
         }
 }
