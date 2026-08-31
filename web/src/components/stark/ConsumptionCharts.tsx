@@ -5,7 +5,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
 import { formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
-import { buildDailyPlatformData } from "@/lib/stark/dashboard/consumption-platforms";
+import { buildDailyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
 import type { Transaction } from "@/lib/stark/models";
 
 const INCOME_BLUE = "#2a78d6";
@@ -286,18 +286,8 @@ function buildBarOption(transactions: Transaction[], monthKey: string): EChartsC
 
 function buildSankeyOption(transactions: Transaction[]): EChartsCoreOption {
   const expenseFiltered = transactions.filter((t) => t.type === "EXPENSE");
-
-  // platform → category flow
-  const flow: Record<string, Record<string, number>> = {};
-  expenseFiltered.forEach((t) => {
-    const plat = t.platform || "其他";
-    const cat = t.category || "其他";
-    if (!flow[plat]) flow[plat] = {};
-    flow[plat][cat] = (flow[plat][cat] || 0) + t.amount;
-  });
-
-  const allPlatforms = ["微信", "支付宝", "银行卡", "现金", "其他"].filter((p) => flow[p] && Object.keys(flow[p]).length > 0);
-  const allCategories = [...new Set(expenseFiltered.map((t) => t.category || "其他"))];
+  const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
+  const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
 
   const nodes: { name: string; itemStyle?: { color: string } }[] = [];
   const links: { source: string; target: string; value: number }[] = [];

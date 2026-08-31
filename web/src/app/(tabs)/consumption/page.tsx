@@ -8,6 +8,7 @@ import { MonthPicker } from "@/components/stark/MonthPicker";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
+import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
 import { getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import { formatMoney, reportingMonthEndDate, reportingMonthLabel } from "@/lib/stark/utils/format";
@@ -108,7 +109,7 @@ export default function ConsumptionPage() {
   );
 
   const platforms = useMemo(
-    () => ["全部账户", ...new Set(monthTransactions.map((item) => item.platform).filter(Boolean))],
+    () => ["全部账户", ...new Set(monthTransactions.map((item) => normalizeConsumptionPlatform(item.platform)))],
     [monthTransactions],
   );
 
@@ -119,7 +120,7 @@ export default function ConsumptionPage() {
         || (viewMode === "expense" && effectiveType(item) === "EXPENSE")
         || (viewMode === "income" && item.type === "INCOME");
       const matchesCategory = categoryFilter === "全部分类" || effectiveCategory(item) === categoryFilter;
-      const matchesPlatform = platformFilter === "全部账户" || item.platform === platformFilter;
+      const matchesPlatform = platformFilter === "全部账户" || normalizeConsumptionPlatform(item.platform) === platformFilter;
       const text = `${effectiveCategory(item)} ${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase();
       return matchesMode && matchesCategory && matchesPlatform && (!normalizedQuery || text.includes(normalizedQuery));
     });
@@ -156,8 +157,8 @@ export default function ConsumptionPage() {
       count: items.filter((i) => effectiveType(i) === "EXPENSE").length,
     });
     return {
-      wechat: calc(monthTransactions.filter((item) => item.platform === "微信")),
-      alipay: calc(monthTransactions.filter((item) => item.platform === "支付宝")),
+      wechat: calc(monthTransactions.filter((item) => normalizeConsumptionPlatform(item.platform) === "微信")),
+      alipay: calc(monthTransactions.filter((item) => normalizeConsumptionPlatform(item.platform) === "支付宝")),
     };
   }, [monthTransactions]);
 
