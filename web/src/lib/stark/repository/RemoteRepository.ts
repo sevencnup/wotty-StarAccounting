@@ -172,6 +172,7 @@ export class RemoteRepository implements DataRepository {
 
   async getCategoryRules(accountId: string) { return await this.list("categoryRules", accountId) as unknown as CategoryRule[]; }
   async saveCategoryRule(rule: CategoryRule) { await this.save("categoryRules", rule); }
+  async deleteCategoryRule(id: string, accountId = "default") { await this.delete("categoryRules", id, accountId); }
   async getImportErrorLogs(accountId: string) { return await this.list("importErrorLogs", accountId) as unknown as ImportErrorLog[]; }
   async saveImportErrorLog(log: ImportErrorLog) { await this.save("importErrorLogs", log); }
   async getExchangeRates() { return await this.list("exchangeRates") as unknown as ExchangeRate[]; }

@@ -1,4 +1,4 @@
-import type { Transaction } from "@/lib/stark/models";
+import type { CategoryRule, Transaction } from "@/lib/stark/models";
 
 /**
  * 备注归类：给转账等账单手动指定一个消费分类（如「房租水电」）。
@@ -26,6 +26,48 @@ export const REMARK_SUGGESTIONS = [
 
 export function hasRemark(tx: Transaction): boolean {
   return Boolean(tx.remarkCategory?.trim());
+}
+
+function normalizeKeyword(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, "").toLowerCase();
+}
+
+/** 用于规则匹配的流水文本，覆盖微信/支付宝常见的交易对象、商品和备注字段。 */
+export function transactionSearchText(tx: Transaction): string {
+  return [
+    tx.merchant,
+    tx.description,
+    tx.platform,
+    tx.paymentMethod,
+    tx.category,
+    tx.orderId,
+  ]
+    .filter((value): value is string => Boolean(value?.trim()))
+    .map(normalizeKeyword)
+    .join(" ");
+}
+
+export function matchesCategoryKeyword(tx: Transaction, keyword: string): boolean {
+  const normalizedKeyword = normalizeKeyword(keyword);
+  return tx.type !== "INCOME" && Boolean(normalizedKeyword) && transactionSearchText(tx).includes(normalizedKeyword);
+}
+
+export function matchesCategoryRule(tx: Transaction, rule: CategoryRule): boolean {
+  if (!rule.isActive) return false;
+  return matchesCategoryKeyword(tx, rule.merchantKey || rule.merchant);
+}
+
+/** 将规则应用到匹配流水；收入不参与消费归类。 */
+export function applyCategoryRule(transactions: Transaction[], rule: CategoryRule): Transaction[] {
+  return transactions.map((tx) =>
+    matchesCategoryRule(tx, rule)
+      ? { ...tx, remarkCategory: rule.category.trim() || null }
+      : tx,
+  );
+}
+
+export function applyCategoryRules(transactions: Transaction[], rules: CategoryRule[]): Transaction[] {
+  return rules.filter((rule) => rule.isActive).reduce(applyCategoryRule, transactions);
 }
 
 /** 分析用有效类型：有备注归类时按 EXPENSE 统计。 */

@@ -277,6 +277,11 @@ export class LocalRepository implements DataRepository {
     await putRecord("categoryRules", rule);
   }
 
+  async deleteCategoryRule(id: string) {
+    await this.ensureSeeded();
+    await deleteRecord("categoryRules", id);
+  }
+
   async getImportErrorLogs(accountId: string) {
     await this.ensureSeeded();
     return (await getAllRecords<ImportErrorLog>("importErrorLogs")).filter((item) => item.accountId === accountId);

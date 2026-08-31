@@ -9,6 +9,7 @@ import type { DataMode, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCloudApiUrl, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
+import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 
 const manager = new DataModeManager();
@@ -184,7 +185,9 @@ export default function AccountsPage() {
         orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
         createdAt: now, updatedAt: now,
       }));
-      const result = await manager.getRepository().importTransactions(transactions);
+      const repository = manager.getRepository();
+      const rules = await repository.getCategoryRules("default");
+      const result = await repository.importTransactions(applyCategoryRules(transactions, rules));
       setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔`);
     } catch {
       setImportMessage("账单导入失败，请检查文件编码和数据格式");
