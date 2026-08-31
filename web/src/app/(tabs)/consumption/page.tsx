@@ -27,6 +27,11 @@ function recentTimeLabel(dateStr: string) {
   return `${mm}-${dd} ${hh}:${mi}`;
 }
 
+function transactionTimestamp(dateStr: string) {
+  const timestamp = Date.parse(dateStr);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 function SearchIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -167,13 +172,20 @@ export default function ConsumptionPage() {
     [chartTransactions, reportingMonth],
   );
 
-  const detailTransactions = useMemo(() => {
+  const detailMatchedTransactions = useMemo(() => {
     const normalizedQuery = detailQuery.trim().toLowerCase();
     return filteredTransactions.filter((item) => {
       if (!normalizedQuery) return true;
       return `${effectiveCategory(item)} ${item.category} ${item.merchant || ""} ${item.description || ""} ${item.platform}`.toLowerCase().includes(normalizedQuery);
     });
   }, [detailQuery, filteredTransactions]);
+
+  const detailTransactions = useMemo(
+    () => [...detailMatchedTransactions]
+      .sort((a, b) => transactionTimestamp(b.date) - transactionTimestamp(a.date))
+      .slice(0, 5),
+    [detailMatchedTransactions],
+  );
 
   function handleReportingMonthChange(month: string) {
     setSelectedReportMonth(month);
@@ -267,7 +279,7 @@ export default function ConsumptionPage() {
         <div className="consumption-detail-head">
           <div>
             <h2>流水明细</h2>
-            <span>{filteredTransactions.length} 笔筛选结果 · 共 {monthSummary.count} 笔本月记录</span>
+            <span>{filteredTransactions.length} 笔筛选结果 · 显示最近 {Math.min(detailMatchedTransactions.length, 5)} 笔</span>
           </div>
           <span className="consumption-top-category">最高分类 {monthSummary.topCategory} · ¥{formatMoney(monthSummary.topCategoryAmount)}</span>
         </div>
