@@ -524,6 +524,12 @@ function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Tr
   });
 
   const maxVal = Math.max(...history.map((item) => Math.max(item.expense, item.income)), 1);
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
+  const selectedMonth = history.find((item) => item.key === selectedMonthKey);
+
+  useEffect(() => {
+    setSelectedMonthKey(null);
+  }, [reportingMonth]);
 
   return (
     <SurfaceCard className="stark-trend-card">
@@ -539,19 +545,48 @@ function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Tr
       </div>
 
       <div className="stark-trend-body">
+        {selectedMonth ? (
+          <div id="stark-trend-detail" className="stark-trend-detail" role="status" aria-live="polite">
+            <span className="stark-trend-detail-month">{selectedMonth.month}收支</span>
+            <div className="stark-trend-detail-values">
+              <span className="stark-trend-detail-value">
+                <i className="income" aria-hidden="true" />
+                <span>收入</span>
+                <strong>¥{formatMoney(selectedMonth.income)}</strong>
+              </span>
+              <span className="stark-trend-detail-value">
+                <i className="expense" aria-hidden="true" />
+                <span>支出</span>
+                <strong>¥{formatMoney(selectedMonth.expense)}</strong>
+              </span>
+            </div>
+          </div>
+        ) : null}
+
         <div className="stark-bars-wrapper">
           {history.map((item) => {
             const expH = Math.max(8, Math.min(100, Math.round((item.expense / maxVal) * 100)));
             const incH = Math.max(8, Math.min(100, Math.round((item.income / maxVal) * 100)));
+            const selected = item.key === selectedMonthKey;
+            const detailLabel = `${item.month}：收入 ¥${formatMoney(item.income)}，支出 ¥${formatMoney(item.expense)}`;
 
             return (
-              <div key={item.key} className={`stark-trend-col ${item.current ? "is-current" : ""}`}>
-                <div className="dual-bars">
-                  <div className="bar-inc" style={{ height: `${incH}%` }} title={`收入 ¥${item.income}`} />
-                  <div className="bar-exp" style={{ height: `${expH}%` }} title={`支出 ¥${item.expense}`} />
+              <button
+                key={item.key}
+                type="button"
+                className={`stark-trend-col ${item.current ? "is-current" : ""} ${selected ? "is-selected" : ""}`}
+                onClick={() => setSelectedMonthKey(selected ? null : item.key)}
+                aria-label={detailLabel}
+                aria-pressed={selected}
+                aria-describedby={selected ? "stark-trend-detail" : undefined}
+                title={detailLabel}
+              >
+                <div className="dual-bars" aria-hidden="true">
+                  <div className="bar-inc" style={{ height: `${incH}%` }} />
+                  <div className="bar-exp" style={{ height: `${expH}%` }} />
                 </div>
                 <span className="month-tag">{item.month}</span>
-              </div>
+              </button>
             );
           })}
         </div>

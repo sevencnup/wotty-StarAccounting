@@ -1499,14 +1499,73 @@ nextjs-portal {
 }
 
 .stark-trend-body {
-  height: 100px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100px;
+}
+
+.stark-trend-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.58);
+  color: #64748b;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.stark-trend-detail-month {
+  flex: 0 0 auto;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.stark-trend-detail-values {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.stark-trend-detail-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+.stark-trend-detail-value i {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.stark-trend-detail-value i.income {
+  background: #38bdf8;
+}
+
+.stark-trend-detail-value i.expense {
+  background: #fb7185;
+}
+
+.stark-trend-detail-value strong {
+  color: #0f172a;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .stark-bars-wrapper {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
-  height: 100%;
+  height: 100px;
   align-items: flex-end;
 }
 
@@ -1514,9 +1573,38 @@ nextjs-portal {
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: 100%;
   justify-content: flex-end;
   gap: 6px;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.stark-trend-col:focus-visible {
+  outline: 2px solid #0284c7;
+  outline-offset: 3px;
+}
+
+.stark-trend-col.is-selected .dual-bars {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 3px 4px rgba(2, 132, 199, 0.16));
+}
+
+.stark-trend-col.is-selected .month-tag {
+  padding: 3px 5px;
+  border-radius: 6px;
+  background: rgba(186, 230, 253, 0.58);
+  color: #0284c7;
+  font-weight: 600;
 }
 
 .dual-bars {
@@ -1525,6 +1613,7 @@ nextjs-portal {
   gap: 3px;
   height: 72px;
   width: 22px;
+  transition: transform 200ms ease, filter 200ms ease;
 }
 
 .bar-inc {
