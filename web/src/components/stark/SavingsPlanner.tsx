@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildSavingsMonths, calculateSavingsRow, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
@@ -87,20 +87,23 @@ export function SavingsPlanner({
   embedded?: boolean;
 }) {
   const year = new Date().getFullYear();
-  const [goal, setGoal] = useState<SavingsGoal | null>(null);
-  const [goalName, setGoalName] = useState("");
+  const [goal, setGoal] = useState<SavingsGoal>(() => createDefaultGoal(year));
+  const [goalName, setGoalName] = useState(() => `${year} 年度储蓄`);
   const [depositType, setDepositType] = useState<SavingsGoalDepositType>("CASH");
   const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [rows, setRows] = useState<Record<string, PlannerRow>>({});
   const [newColumn, setNewColumn] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [hydrating, setHydrating] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const loadStartedRef = useRef(false);
 
   const months = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
 
   useEffect(() => {
+    if (loadStartedRef.current) return;
+    loadStartedRef.current = true;
     void loadPlanner();
   }, []);
 
@@ -123,7 +126,7 @@ export function SavingsPlanner({
   async function loadPlanner() {
     try {
       const goals = await repo.getSavingsGoals("default");
-      const activeGoal = goals[0] ?? createDefaultGoal(year);
+      const activeGoal = goals[0] ?? goal;
       if (!goals.length) void saveGoalWithFallback(activeGoal);
 
       const config = parseConfig(activeGoal.planConfig);
@@ -159,7 +162,7 @@ export function SavingsPlanner({
       setRows({});
       setNotice("储蓄计划已进入本地编辑模式");
     } finally {
-      setLoading(false);
+      setHydrating(false);
     }
   }
 
@@ -220,7 +223,7 @@ export function SavingsPlanner({
   }
 
   async function savePlans() {
-    if (!goal || saving) return;
+    if (saving) return;
     setSaving(true);
     try {
       const now = nowText();
@@ -270,9 +273,7 @@ export function SavingsPlanner({
     return result;
   }, { salary: 0, expected: 0, remaining: 0 }), [months, rows]);
 
-  if (loading) {
-    return <div className="savings-planner-loading">储蓄计划加载中...</div>;
-  }
+
 
   return (
     <div className={`savings-planner-shell ${embedded ? "embedded" : ""}`}>
@@ -378,7 +379,7 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-plan-footer">
-          <span>{notice}</span>
+          <span>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
           <button type="button" className="primary-button" disabled={saving} onClick={() => void savePlans()}>{saving ? "保存中" : "保存计划"}</button>
         </div>
       </section>

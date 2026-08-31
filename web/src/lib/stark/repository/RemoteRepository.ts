@@ -16,6 +16,7 @@ import type {
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { selectTransactionsForImport } from "@/lib/stark/repository/transaction-import";
+import { savingsPlansPath } from "@/lib/stark/repository/remote-paths";
 
 type EntityType =
   | "users"
@@ -164,7 +165,9 @@ export class RemoteRepository implements DataRepository {
   }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
   async deleteSavingsGoal(id: string) { await this.delete("savingsGoals", id); }
-  async getSavingsPlans(goalId: string) { return (await this.list("savingsPlans")).filter((item) => item.goalId === goalId) as unknown as SavingsPlan[]; }
+  async getSavingsPlans(goalId: string) {
+    return await this.request<SavingsPlan[]>(savingsPlansPath(goalId));
+  }
   async saveSavingsPlan(plan: SavingsPlan) { await this.save("savingsPlans", plan); }
 
   async getCategoryRules(accountId: string) { return await this.list("categoryRules", accountId) as unknown as CategoryRule[]; }
