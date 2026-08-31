@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { ConsumptionCharts } from "@/components/stark/ConsumptionCharts";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
+import { MonthPicker } from "@/components/stark/MonthPicker";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
@@ -200,18 +201,15 @@ export default function ConsumptionPage() {
             <span>{reportingMonthLabel(reportingMonth)} · 现金流概览</span>
             <h2>本月支出</h2>
           </div>
-          <label className="consumption-period-button">
+          <MonthPicker
+            value={reportingMonth}
+            onChange={handleReportingMonthChange}
+            ariaLabel="选择消费统计月份"
+            triggerClassName="consumption-period-button"
+          >
             <span>{reportingMonthLabel(reportingMonth)}</span>
             <ChevronDownIcon />
-            <input
-              type="month"
-              value={reportingMonth}
-              aria-label="选择消费统计月份"
-              onChange={(event) => {
-                if (event.target.value) handleReportingMonthChange(event.target.value);
-              }}
-            />
-          </label>
+          </MonthPicker>
         </div>
         <strong className="consumption-overview-total">¥ {formatMoney(monthSummary.expense)}</strong>
         <div className="consumption-overview-stats">

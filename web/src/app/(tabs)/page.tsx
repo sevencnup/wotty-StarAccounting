@@ -5,6 +5,7 @@ import type { PropsWithChildren } from "react";
 import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
+import { MonthPicker } from "@/components/stark/MonthPicker";
 import { getCloudApiUrl, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
@@ -213,18 +214,15 @@ function StarkCrystalHero({
     <div className="stark-hero-island">
       {/* 顶部控制行 */}
       <div className="stark-hero-toolbar">
-        <label className="stark-period-badge">
+        <MonthPicker
+          value={reportingMonth}
+          onChange={onReportingMonthChange}
+          ariaLabel="选择首页统计月份"
+          triggerClassName="stark-period-badge"
+        >
           <span>{monthLabel}</span>
           <ChevronDownIcon size={14} />
-          <input
-            type="month"
-            value={reportingMonth}
-            aria-label="选择首页统计月份"
-            onChange={(event) => {
-              if (event.target.value) onReportingMonthChange(event.target.value);
-            }}
-          />
-        </label>
+        </MonthPicker>
 
         <div className="stark-metric-switcher">
           <button
