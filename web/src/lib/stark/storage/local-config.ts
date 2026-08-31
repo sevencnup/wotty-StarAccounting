@@ -1,5 +1,7 @@
 const CONFIG_PREFIX = "wotty-stark:";
 const DEFAULT_REPORTING_MONTH = "2026-01";
+const DEFAULT_CLOUD_API_PORT = 12367;
+const DEFAULT_CLOUD_API_HOST = "localhost";
 const REPORTING_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 
 function readValue(key: string) {
@@ -28,8 +30,30 @@ export function setCurrentDataMode(mode: "LOCAL" | "CLOUD") {
   writeValue("data-mode", mode);
 }
 
+function getDefaultCloudApiUrl() {
+  if (typeof window === "undefined") {
+    return `http://${DEFAULT_CLOUD_API_HOST}:${DEFAULT_CLOUD_API_PORT}`;
+  }
+
+  const hostname = window.location.hostname || DEFAULT_CLOUD_API_HOST;
+  const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+  return `${protocol}//${hostname}:${DEFAULT_CLOUD_API_PORT}`;
+}
+
+function migrateCloudApiUrl(url: string) {
+  return url.trim().replace(/\/$/, "").replace(
+    /:8080(?=\/|$)/,
+    `:${DEFAULT_CLOUD_API_PORT}`,
+  );
+}
+
 export function getCloudApiUrl() {
-  return readValue("cloud-api-url") ?? "http://localhost:8080";
+  const saved = readValue("cloud-api-url");
+  if (!saved) return getDefaultCloudApiUrl();
+
+  const migrated = migrateCloudApiUrl(saved);
+  if (migrated !== saved) writeValue("cloud-api-url", migrated);
+  return migrated;
 }
 
 export function setCloudApiUrl(url: string) {

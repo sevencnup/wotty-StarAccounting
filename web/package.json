@@ -1,11 +1,11 @@
 {
   "name": "wotty-stark-web",
   "private": true,
-  "version": "0.0.79",
+  "version": "0.0.80",
   "scripts": {
-    "dev": "next dev -H 0.0.0.0",
+    "dev": "next dev -H 0.0.0.0 -p 12366",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0 -p 12366",
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/**/*.test.mjs",
     "apk": "pnpm build && pnpm exec cap sync android && cd android && .\\gradlew.bat assembleDebug"

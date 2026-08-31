@@ -79,7 +79,7 @@ export default function AccountsPage() {
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [pendingMode, setPendingMode] = useState<DataMode>("CLOUD");
-  const [cloudUrl, setCloudUrl] = useState("http://localhost:8080");
+  const [cloudUrl, setCloudUrl] = useState("");
   const [connectionState, setConnectionState] = useState<ConnectionState>("IDLE");
   const [connectionMessage, setConnectionMessage] = useState("请先测试云端服务是否可连接");
   const [testedUrl, setTestedUrl] = useState("");
@@ -122,7 +122,7 @@ export default function AccountsPage() {
   }
 
   async function testCloudConnection() {
-    const url = (cloudUrl.trim() || "http://localhost:8080").replace(/\/$/, "");
+    const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
     setConnectionState("TESTING");
     setConnectionMessage("正在测试连接...");
     const controller = new AbortController();
@@ -150,7 +150,7 @@ export default function AccountsPage() {
   }
 
   async function confirmMode() {
-    const url = (cloudUrl.trim() || "http://localhost:8080").replace(/\/$/, "");
+    const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
     if (pendingMode === "CLOUD" && (connectionState !== "SUCCESS" || testedUrl !== url)) {
       setConnectionState("ERROR");
       setConnectionMessage("请先测试当前云端地址，连接成功后才能确定");
@@ -231,7 +231,7 @@ export default function AccountsPage() {
                 <button type="button" className={pendingMode === "CLOUD" ? "active" : ""} onClick={() => setPendingMode("CLOUD")}><strong>云端模式</strong><span>连接 MySQL 后端服务</span></button>
               </div>
               {pendingMode === "CLOUD" ? <>
-                <label className="settings-url-field"><span>云端服务地址</span><input value={cloudUrl} onChange={(event) => { setCloudUrl(event.target.value); setConnectionState("IDLE"); setTestedUrl(""); }} placeholder="http://localhost:8080" /></label>
+                <label className="settings-url-field"><span>云端服务地址</span><input value={cloudUrl} onChange={(event) => { setCloudUrl(event.target.value); setConnectionState("IDLE"); setTestedUrl(""); }} placeholder="http://localhost:12367" /></label>
                 <div className={`cloud-test-status ${connectionState.toLowerCase()}`}>{connectionMessage}</div>
               </> : null}
               <div className="settings-mode-actions">
