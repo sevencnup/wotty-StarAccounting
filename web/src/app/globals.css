@@ -4671,7 +4671,7 @@ nextjs-portal {
   max-height: 90%;
   overflow-y: auto;
   overflow-x: hidden;
-  background: #f5f8fe;
+  background: #ffffff;
   border-radius: 16px 16px 0 0;
   padding: 10px 14px 20px;
   display: grid;
@@ -4802,8 +4802,8 @@ nextjs-portal {
   max-width: 100%;
   box-sizing: border-box;
   border-radius: 10px;
-  border-color: #dbeafe;
-  background: #f8fafc;
+  border-color: #e2e8f0;
+  background: #ffffff;
 }
 
 .journal-panel.savings .savings-deposit-switch,
@@ -4821,21 +4821,49 @@ nextjs-portal {
 .journal-panel.savings .savings-deposit-switch button.active,
 .journal-panel.savings .savings-mode-switch button.active {
   background: #ffffff;
-  color: #0284c7;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.1);
+  color: #334155;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
 }
 
 .journal-panel.savings .savings-plan-footer .primary-button {
   min-width: 108px;
   height: 40px;
   border-radius: 11px;
-  background: #0284c7;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.2);
+  background: #334155;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
 }
 
 .journal-panel.savings .savings-table-scroll {
-  border-color: #dbeafe;
+  border-color: #e2e8f0;
   border-radius: 12px;
+}
+
+.journal-panel.savings .savings-plan-table thead th,
+.journal-panel.savings .savings-plan-table thead .salary-column {
+  background: #f8fafc;
+}
+
+.journal-panel.savings .savings-plan-table .month-column,
+.journal-panel.savings .savings-plan-table .expected-column {
+  background: #f8fafc;
+}
+
+.journal-panel.savings .savings-plan-table .salary-column {
+  border-right-color: #e2e8f0;
+}
+
+.journal-panel.savings .savings-plan-table input {
+  border-color: #e2e8f0;
+  background: #ffffff;
+}
+
+.journal-panel.savings .savings-plan-table input:focus {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
+}
+
+.journal-panel.savings .savings-plan-table th.fixed-expense-column {
+  color: #334155;
 }
 
 .journal-panel.savings .savings-plan-table {
@@ -4913,9 +4941,9 @@ nextjs-portal {
 
 .type-tab.active {
   background: #ffffff;
-  color: #0284c7;
+  color: #0f172a;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
 }
 
 /* Big Amount Showcase Hero */
@@ -4927,14 +4955,15 @@ nextjs-portal {
   gap: 6px;
   padding: 18px 12px;
   border-radius: 18px;
-  background: #f0f9ff;
-  border: 1.5px solid #bae6fd;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
 }
 
 .currency-label {
   font-size: 26px;
   font-weight: 600;
-  color: #0284c7;
+  color: #0f172a;
 }
 
 .amount-huge-input {
@@ -5009,9 +5038,9 @@ nextjs-portal {
 }
 
 .category-tile.active {
-  background: #e0f2fe;
-  border-color: #7dd3fc;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.15);
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: none;
 }
 
 .tile-icon-box {
@@ -5025,7 +5054,7 @@ nextjs-portal {
 }
 
 .category-tile.active .tile-icon-box {
-  background: #0284c7;
+  background: #e2e8f0;
 }
 
 .tile-icon {
@@ -5045,7 +5074,7 @@ nextjs-portal {
 }
 
 .category-tile.active .tile-label {
-  color: #0284c7;
+  color: #0f172a;
   font-weight: 600;
 }
 
@@ -5068,8 +5097,8 @@ nextjs-portal {
 }
 
 .account-pill.active {
-  background: #0284c7;
-  border-color: #0284c7;
+  background: #334155;
+  border-color: #334155;
   color: #ffffff;
   font-weight: 500;
 }
@@ -5098,8 +5127,9 @@ nextjs-portal {
 }
 
 .meta-input:focus {
-  border-color: #0284c7;
+  border-color: #94a3b8;
   background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
 }
 
 .meta-input.span-2 {
@@ -5129,12 +5159,12 @@ nextjs-portal {
   height: 42px;
   border: 0;
   border-radius: 12px;
-  background: #0284c7;
+  background: #334155;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
   transition: opacity 150ms ease;
 }
 
@@ -5181,7 +5211,8 @@ nextjs-portal {
 }
 
 .modern-form-input:focus {
-  border-color: #0284c7;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
 }
 
 .modern-amount-box {
@@ -5196,13 +5227,14 @@ nextjs-portal {
 }
 
 .modern-amount-box:focus-within {
-  border-color: #0284c7;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
 }
 
 .cur-sym {
   font-size: 16px;
   font-weight: 600;
-  color: #0284c7;
+  color: #334155;
 }
 
 .modern-amount-field {
@@ -5232,8 +5264,8 @@ nextjs-portal {
 }
 
 .select-pill.active {
-  background: #0284c7;
-  border-color: #0284c7;
+  background: #334155;
+  border-color: #334155;
   color: #ffffff;
   font-weight: 500;
 }
@@ -5305,12 +5337,12 @@ nextjs-portal {
   height: 42px;
   border: 0;
   border-radius: 12px;
-  background: #0284c7;
+  background: #334155;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.25);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
 }
 
 .journal-header {
@@ -5668,7 +5700,8 @@ nextjs-portal {
 }
 
 .savings-goal-field input:focus {
-  border-color: #7aa8ef;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
 }
 
 .savings-deposit-switch {
@@ -5680,17 +5713,17 @@ nextjs-portal {
 .savings-deposit-switch button {
   height: 34px;
   padding: 0 8px;
-  border: 1px solid #dce6f3;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  color: #65718a;
-  background: #f8fbff;
+  color: #64748b;
+  background: #ffffff;
   font-size: 12px;
 }
 
 .savings-deposit-switch button.active {
-  color: #174f9d;
-  border-color: #9fc1f5;
-  background: #edf5ff;
+  color: #334155;
+  border-color: #cbd5e1;
+  background: #f1f5f9;
 }
 
 .savings-plan-toolbar {
@@ -5704,9 +5737,9 @@ nextjs-portal {
   display: inline-grid;
   grid-template-columns: repeat(2, 1fr);
   padding: 3px;
-  border: 1px solid #dce6f3;
+  border: 1px solid #e2e8f0;
   border-radius: 10px;
-  background: #f2f6fb;
+  background: #f1f5f9;
 }
 
 .savings-mode-switch button {
@@ -5715,15 +5748,15 @@ nextjs-portal {
   padding: 0 12px;
   border: 0;
   border-radius: 7px;
-  color: #65718a;
+  color: #64748b;
   background: transparent;
   font-size: 12px;
 }
 
 .savings-mode-switch button.active {
-  color: #174f9d;
+  color: #334155;
   background: #ffffff;
-  box-shadow: 0 1px 3px rgba(34, 76, 130, 0.12);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
 .savings-column-adder {
@@ -5747,22 +5780,23 @@ nextjs-portal {
 }
 
 .savings-column-adder input:focus {
-  border-color: #7aa8ef;
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
 }
 
 .savings-column-adder button {
   height: 34px;
   padding: 0 13px;
-  border: 1px solid #cdddf2;
+  border: 1px solid #cbd5e1;
   border-radius: 9px;
-  color: #245fae;
-  background: #edf5ff;
+  color: #334155;
+  background: #f1f5f9;
   font-size: 12px;
 }
 
 .savings-column-adder .fixed-expense-column-button {
-  color: #245fae;
-  background: #edf5ff;
+  color: #334155;
+  background: #f1f5f9;
 }
 
 .savings-column-adder .temporary-expense-column-button {
