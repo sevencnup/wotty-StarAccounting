@@ -310,10 +310,15 @@ function StarkCrystalHero({
             )}
           </div>
 
-          <Link href="/journal?preset=salary" className="stark-salary-action-btn" aria-label="添加薪资收入">
+          <button
+            type="button"
+            className="stark-salary-action-btn"
+            aria-label="添加薪资收入"
+            onClick={() => window.dispatchEvent(new Event("stark:open-salary-income"))}
+          >
             <PlusIcon size={13} strokeWidth={2.2} />
             <span>添加薪资收入</span>
-          </Link>
+          </button>
         </div>
 
       </div>

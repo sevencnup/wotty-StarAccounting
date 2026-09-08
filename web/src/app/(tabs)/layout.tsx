@@ -6,6 +6,8 @@ import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { TabsTransitionSkeleton } from "@/components/stark/Skeleton";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 
+type JournalPreset = { type: "INCOME"; category: "工资" };
+
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isJournalRoute = pathname.startsWith("/journal");
@@ -15,6 +17,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const isSettingsRoute = pathname.startsWith("/accounts");
   const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(null);
+  const [journalPreset, setJournalPreset] = useState<JournalPreset | undefined>();
   const journalHistoryRef = useRef(false);
 
   useEffect(() => {
@@ -32,10 +35,23 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       if (!journalHistoryRef.current) return;
       journalHistoryRef.current = false;
       setJournalVariant(null);
+      setJournalPreset(undefined);
     }
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    function handleOpenSalaryIncome() {
+      window.history.pushState({ starkJournal: true }, "", window.location.href);
+      journalHistoryRef.current = true;
+      setJournalVariant("journal");
+      setJournalPreset({ type: "INCOME", category: "工资" });
+    }
+
+    window.addEventListener("stark:open-salary-income", handleOpenSalaryIncome);
+    return () => window.removeEventListener("stark:open-salary-income", handleOpenSalaryIncome);
   }, []);
 
   function beginNavigation(target: string) {
@@ -48,10 +64,12 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     window.history.pushState({ starkJournal: true }, "", window.location.href);
     journalHistoryRef.current = true;
     setJournalVariant(variant);
+    setJournalPreset(undefined);
   }
 
   function closeJournal() {
     setJournalVariant(null);
+    setJournalPreset(undefined);
     if (!journalHistoryRef.current) return;
     journalHistoryRef.current = false;
     window.history.back();
@@ -82,6 +100,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         <JournalPanel
           mode="page"
           variant={journalVariant}
+          preset={journalPreset}
           onClose={closeJournal}
           onSaved={closeJournal}
         />
