@@ -4920,31 +4920,40 @@ nextjs-portal {
 
 /* Type Switch Tabs */
 .modern-type-switch {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  align-items: center;
   background: #f1f5f9;
-  border-radius: 999px;
+  border-radius: 12px;
   padding: 3px;
-  gap: 2px;
+  gap: 3px;
+  box-sizing: border-box;
+  height: 38px;
 }
 
 .type-tab {
-  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 32px;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
+  border-radius: 9px;
   background: transparent;
   color: #64748b;
   font-size: 13px;
   font-weight: 500;
+  line-height: 1;
   cursor: pointer;
-  transition: all 160ms ease;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+  box-sizing: border-box;
 }
 
 .type-tab.active {
   background: #ffffff;
   color: #0f172a;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
 }
 
 /* Big Amount Showcase Hero */
