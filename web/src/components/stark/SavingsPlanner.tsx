@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildSavingsMonths, calculateSavingsRow, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
+import { createId } from "@/lib/stark/utils/id";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -63,7 +64,7 @@ function depositTypeLabel(value?: SavingsGoalDepositType | null) {
 function createDefaultGoal(year: number): SavingsGoal {
   const now = nowText();
   return {
-    id: crypto.randomUUID(),
+    id: createId("savings-goal"),
     userId: "local-user",
     accountId: "default",
     name: `${year} 年度储蓄`,

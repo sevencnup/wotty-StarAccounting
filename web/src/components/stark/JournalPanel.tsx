@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
+import { createId } from "@/lib/stark/utils/id";
 import type { AssetType, TransactionType } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -39,11 +40,13 @@ export function JournalPanel({
   onSaved,
   mode = "sheet",
   variant = "journal",
+  preset,
 }: {
   onClose: () => void;
   onSaved?: () => void;
   mode?: "sheet" | "page";
   variant?: "journal" | "savings" | "asset" | "loan";
+  preset?: { type: TransactionType; category: string };
 }) {
   const isPage = mode === "page";
   const isSavings = variant === "savings";
@@ -81,6 +84,12 @@ export function JournalPanel({
     if (type === "INCOME" && !incomeCategories.includes(category)) setCategory("工资");
     if (type === "EXPENSE" && !expenseCategories.includes(category)) setCategory("餐饮");
   }, [type, category]);
+
+  useEffect(() => {
+    if (!preset || variant !== "journal") return;
+    setType(preset.type);
+    setCategory(preset.category);
+  }, [preset, variant]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setVisible(true));
@@ -163,7 +172,7 @@ export function JournalPanel({
     if (!Number.isFinite(value) || value <= 0) return;
     const now = nowText();
     await repo.saveTransaction({
-      id: crypto.randomUUID(),
+      id: createId("transaction"),
       userId: "local-user",
       accountId: "default",
       amount: value,
@@ -194,7 +203,7 @@ export function JournalPanel({
     if (!Number.isFinite(value) || value === 0) return;
     const now = nowText();
     await repo.saveAsset({
-      id: crypto.randomUUID(),
+      id: createId("asset"),
       userId: "local-user",
       accountId: "default",
       name: assetName.trim() || "新资产",
@@ -216,7 +225,7 @@ export function JournalPanel({
     const now = nowText();
     const total = Number(loanTotalAmount) || 0;
     await repo.saveLoan({
-      id: crypto.randomUUID(),
+      id: createId("loan"),
       userId: "local-user",
       accountId: "default",
       platform: loanPlatform.trim() || "新贷款",

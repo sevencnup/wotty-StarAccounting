@@ -9,6 +9,7 @@ import type { DataMode, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCloudApiUrl, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
+import { createId } from "@/lib/stark/utils/id";
 import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 
@@ -179,7 +180,7 @@ export default function AccountsPage() {
 
       const now = nowText();
       const transactions: Transaction[] = rows.map((row) => ({
-        id: crypto.randomUUID(), userId: "local-user", accountId: "default",
+        id: createId("account"), userId: "local-user", accountId: "default",
         amount: row.amount, type: row.type, category: row.category, platform: row.platform,
         merchant: row.merchant, date: row.date, description: row.description,
         orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null,

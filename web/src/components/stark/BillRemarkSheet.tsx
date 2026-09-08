@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
+import { createId } from "@/lib/stark/utils/id";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
 import { applyCategoryRule, hasRemark, matchesCategoryKeyword, REMARK_SUGGESTIONS } from "@/lib/stark/dashboard/remark";
 import type { CategoryRule, Transaction } from "@/lib/stark/models";
@@ -149,7 +150,7 @@ export function BillRemarkSheet() {
       const timestamp = nowText();
       const existing = rules.find((rule) => sameKeyword(ruleKeyword(rule), trimmedKeyword));
       const rule: CategoryRule = {
-        id: existing?.id ?? crypto.randomUUID(),
+        id: existing?.id ?? createId("category-rule"),
         userId: existing?.userId ?? "local-user",
         accountId: ACCOUNT_ID,
         name: trimmedKeyword,
