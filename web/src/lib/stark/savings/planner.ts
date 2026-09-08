@@ -26,6 +26,13 @@ export function shouldSyncSavingsExpense(
   return month === firstMonth && !temporaryColumns.includes(column);
 }
 
+export function validateSavingsExpenseColumn(name: string, columns: readonly string[]) {
+  const normalizedName = name.trim();
+  if (!normalizedName) return "请先输入支出名称";
+  if (columns.includes(normalizedName)) return "列已存在，请换一个名称";
+  return null;
+}
+
 export function calculateSavingsRow(values: SavingsRowValues) {
   const salary = amountOf(values.salary);
   const expenseTotal = Object.values(values.expenses).reduce<number>((sum, value) => sum + amountOf(value), 0);

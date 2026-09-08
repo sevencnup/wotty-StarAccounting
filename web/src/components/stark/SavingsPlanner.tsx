@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
@@ -102,6 +102,7 @@ export function SavingsPlanner({
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const loadStartedRef = useRef(false);
+  const columnInputRef = useRef<HTMLInputElement | null>(null);
 
   const months = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
 
@@ -216,7 +217,12 @@ export function SavingsPlanner({
 
   function addExpenseColumn(mode: "FIXED" | "TEMPORARY") {
     const name = newColumn.trim();
-    if (!name || columns.includes(name)) return;
+    const validationNotice = validateSavingsExpenseColumn(name, columns);
+    if (validationNotice) {
+      setNotice(validationNotice);
+      columnInputRef.current?.focus();
+      return;
+    }
     setColumns((current) => [...current, name]);
     if (mode === "TEMPORARY") setTemporaryColumns((current) => [...current, name]);
     setNewColumn("");
@@ -354,7 +360,7 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-column-adder">
-          <input value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn("FIXED")} placeholder="输入支出名称，如交通 / 临时医疗" />
+          <input ref={columnInputRef} value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn("FIXED")} placeholder="输入支出名称，如交通 / 临时医疗" />
           <button type="button" className="fixed-expense-column-button" onClick={() => addExpenseColumn("FIXED")}>新增固定支出</button>
           <button type="button" className="temporary-expense-column-button" onClick={() => addExpenseColumn("TEMPORARY")}>新增临时支出</button>
         </div>

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -48,4 +48,10 @@ test("temporary expenses are included in the row remaining calculation", () => {
   });
   assert.equal(result.expenseTotal, 2300);
   assert.equal(result.remaining, 1700);
+});
+
+test("new expense column validation explains empty and duplicate names", () => {
+  assert.equal(validateSavingsExpenseColumn("", ["房租"]), "请先输入支出名称");
+  assert.equal(validateSavingsExpenseColumn(" 房租 ", ["房租"]), "列已存在，请换一个名称");
+  assert.equal(validateSavingsExpenseColumn("临时医疗", ["房租"]), null);
 });
