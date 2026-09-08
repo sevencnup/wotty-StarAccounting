@@ -13,7 +13,7 @@ Web 开发服务器日志出现 Turbopack panic，并提示 `Next.js package not
 - [x] 确认 panic 日志与本地依赖解析状态。
 - [x] 补齐仓库 pnpm workspace 声明并恢复 Web 依赖。
 - [x] 清理本次故障产生的 Next.js 开发缓存。
-- [ ] 启动开发服务器并验证首页请求与重复编译情况（代码已具备启动条件，但当前执行环境对上级路径 `F:\1code` 返回 `EPERM`，无法完成进程级验证）。
+- [x] 在真实仓库路径 `F:\1code\wotty-stark\web` 启动开发服务器并验证首页请求与重复编译情况。
 - [x] 运行类型检查和生产构建。
 - [x] 更新版本记录并完成本地 Git 提交。
 
