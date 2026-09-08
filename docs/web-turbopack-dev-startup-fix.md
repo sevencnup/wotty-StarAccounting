@@ -6,7 +6,7 @@ Web 开发服务器日志出现 Turbopack panic，并提示 `Next.js package not
 
 ## 目标
 
-恢复 `web` 的完整 pnpm 依赖链接，清理受损的 Next.js 开发缓存，并确认 Web 开发服务器可以稳定编译首页。
+恢复 `web` 的完整 pnpm 依赖链接，清理受损的 Next.js 开发缓存，并确认 Web 开发服务器可以稳定编译首页。由于 Next 16 在当前多 workspace lockfile 环境下的 Turbopack 模块解析仍会 panic，开发启动暂时固定使用 Webpack。
 
 ## 实施步骤
 
@@ -14,6 +14,7 @@ Web 开发服务器日志出现 Turbopack panic，并提示 `Next.js package not
 - [x] 补齐仓库 pnpm workspace 声明并恢复 Web 依赖。
 - [x] 清理本次故障产生的 Next.js 开发缓存。
 - [x] 在真实仓库路径 `F:\1code\wotty-stark\web` 启动开发服务器并验证首页请求与重复编译情况。
+- [x] 为开发启动增加 `--webpack`，绕过当前 Turbopack 的模块解析 panic。
 - [x] 运行类型检查和生产构建。
 - [x] 更新版本记录并完成本地 Git 提交。
 
@@ -29,3 +30,7 @@ Web 开发服务器日志出现 Turbopack panic，并提示 `Next.js package not
 ### `0.0.1`
 
 修复 Web 开发服务器依赖解析与 Turbopack 启动异常。
+
+### `0.0.2`
+
+修复开发模式 Turbopack 反复刷新问题，改用 Webpack 启动 Web 服务。
