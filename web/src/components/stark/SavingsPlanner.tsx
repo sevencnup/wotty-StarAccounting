@@ -403,7 +403,7 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-plan-footer">
-          <span>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
+          <span style={notice === "请先输入支出名称" || notice === "列已存在，请换一个名称" ? { fontSize: 9 } : undefined}>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
           <button type="button" className="primary-button" disabled={saving} onClick={() => void savePlans()}>{saving ? "保存中" : "保存计划"}</button>
         </div>
       </section>
