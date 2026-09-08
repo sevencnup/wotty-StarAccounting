@@ -5,6 +5,7 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
+import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft, type NewEntryDraftKind } from "@/lib/stark/storage/new-entry-drafts";
 import type { AssetType, TransactionType } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -25,6 +26,31 @@ const assetTypeLabels: Record<AssetType, string> = {
   WECHAT: "微信",
   INVESTMENT: "投资",
   OTHER: "其他",
+};
+
+type JournalDraft = {
+  type: TransactionType;
+  amount: string;
+  category: string;
+  platform: string;
+  merchant: string;
+  description: string;
+  date: string;
+};
+
+type AssetDraft = {
+  assetName: string;
+  assetBalance: string;
+  assetType: AssetType;
+};
+
+type LoanDraft = {
+  loanPlatform: string;
+  loanTotalAmount: string;
+  loanRemainingAmount: string;
+  loanMonthlyPayment: string;
+  loanPeriods: string;
+  loanDueDay: string;
 };
 
 const categoryIcons: Record<string, string> = {
@@ -52,6 +78,7 @@ export function JournalPanel({
   const isSavings = variant === "savings";
   const isAsset = variant === "asset";
   const isLoan = variant === "loan";
+  const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : preset?.type === "INCOME" && preset.category === "工资" ? "salary" : "journal";
   const [visible, setVisible] = useState(false);
   const [type, setType] = useState<TransactionType>("EXPENSE");
   const [amount, setAmount] = useState("");
@@ -71,6 +98,8 @@ export function JournalPanel({
   const [loanDueDay, setLoanDueDay] = useState("20");
   const closingRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const draftSubmittedRef = useRef(false);
 
   const categories = useMemo((): string[] => {
     if (type === "INCOME") return incomeCategories;
@@ -90,6 +119,52 @@ export function JournalPanel({
     setType(preset.type);
     setCategory(preset.category);
   }, [preset, variant]);
+
+  useEffect(() => {
+    setDraftReady(false);
+    draftSubmittedRef.current = false;
+    if (draftKind === "asset") {
+      const draft = readNewEntryDraft<AssetDraft>(draftKind);
+      if (draft) {
+        setAssetName(draft.assetName);
+        setAssetBalance(draft.assetBalance);
+        setAssetType(draft.assetType);
+      }
+    } else if (draftKind === "loan") {
+      const draft = readNewEntryDraft<LoanDraft>(draftKind);
+      if (draft) {
+        setLoanPlatform(draft.loanPlatform);
+        setLoanTotalAmount(draft.loanTotalAmount);
+        setLoanRemainingAmount(draft.loanRemainingAmount);
+        setLoanMonthlyPayment(draft.loanMonthlyPayment);
+        setLoanPeriods(draft.loanPeriods);
+        setLoanDueDay(draft.loanDueDay);
+      }
+    } else if (draftKind === "journal" || draftKind === "salary") {
+      const draft = readNewEntryDraft<JournalDraft>(draftKind);
+      if (draft) {
+        setType(draft.type);
+        setAmount(draft.amount);
+        setCategory(draft.category);
+        setPlatform(draft.platform);
+        setMerchant(draft.merchant);
+        setDescription(draft.description);
+        setDate(draft.date);
+      }
+    }
+    setDraftReady(true);
+  }, [draftKind]);
+
+  useEffect(() => {
+    if (!draftReady || isSavings || draftSubmittedRef.current) return;
+    if (draftKind === "asset") {
+      saveNewEntryDraft(draftKind, { assetName, assetBalance, assetType } satisfies AssetDraft);
+    } else if (draftKind === "loan") {
+      saveNewEntryDraft(draftKind, { loanPlatform, loanTotalAmount, loanRemainingAmount, loanMonthlyPayment, loanPeriods, loanDueDay } satisfies LoanDraft);
+    } else {
+      saveNewEntryDraft(draftKind, { type, amount, category, platform, merchant, description, date } satisfies JournalDraft);
+    }
+  }, [assetBalance, assetName, assetType, date, description, draftKind, draftReady, isSavings, loanDueDay, loanMonthlyPayment, loanPeriods, loanPlatform, loanRemainingAmount, loanTotalAmount, amount, category, merchant, platform, type]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setVisible(true));
@@ -189,6 +264,8 @@ export function JournalPanel({
       createdAt: now,
       updatedAt: now,
     });
+    draftSubmittedRef.current = true;
+    clearNewEntryDraft(draftKind);
     setAmount("");
     setMerchant("");
     setDescription("");
@@ -213,6 +290,8 @@ export function JournalPanel({
       createdAt: now,
       updatedAt: now,
     });
+    draftSubmittedRef.current = true;
+    clearNewEntryDraft(draftKind);
     window.dispatchEvent(new Event("stark:asset-saved"));
     setAssetName("");
     setAssetBalance("");
@@ -240,6 +319,8 @@ export function JournalPanel({
       createdAt: now,
       updatedAt: now,
     });
+    draftSubmittedRef.current = true;
+    clearNewEntryDraft(draftKind);
     window.dispatchEvent(new Event("stark:loan-saved"));
     setLoanPlatform("");
     setLoanTotalAmount("");

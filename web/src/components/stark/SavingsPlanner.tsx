@@ -5,6 +5,7 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
+import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
@@ -28,6 +29,15 @@ type PlanConfig = {
   columns?: string[];
   fixedColumns?: string[];
   temporaryColumns?: string[];
+};
+
+type SavingsDraft = {
+  goalName: string;
+  depositType: SavingsGoalDepositType;
+  frequency: SavingsFrequency;
+  columns: string[];
+  temporaryColumns: string[];
+  rows: Record<string, PlannerRow>;
 };
 
 function parseConfig(raw?: string | null): PlanConfig {
@@ -103,6 +113,8 @@ export function SavingsPlanner({
   const [notice, setNotice] = useState("");
   const loadStartedRef = useRef(false);
   const columnInputRef = useRef<HTMLInputElement | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const draftSubmittedRef = useRef(false);
 
   const months = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
 
@@ -154,27 +166,46 @@ export function SavingsPlanner({
         };
       });
 
+      const draft = readNewEntryDraft<SavingsDraft>("savings");
+      const draftColumns = Array.isArray(draft?.columns) && draft.columns.length ? draft.columns : [...expenseColumns];
+      const draftTemporaryColumns = Array.isArray(draft?.temporaryColumns)
+        ? draft.temporaryColumns.filter((column) => draftColumns.includes(column))
+        : configuredTemporaryColumns.filter((column) => expenseColumns.has(column));
       setGoal(activeGoal);
-      setGoalName(activeGoal.name || "");
-      setDepositType(normalizeDepositType(activeGoal.depositType));
-      setFrequency(config.frequency ?? "MONTHLY");
-      setColumns([...expenseColumns]);
-      setTemporaryColumns(configuredTemporaryColumns.filter((column) => expenseColumns.has(column)));
-      setRows(hydratedRows);
+      setGoalName(draft?.goalName ?? activeGoal.name ?? "");
+      setDepositType(normalizeDepositType(draft?.depositType ?? activeGoal.depositType));
+      setFrequency(draft?.frequency ?? config.frequency ?? "MONTHLY");
+      setColumns(draftColumns);
+      setTemporaryColumns(draftTemporaryColumns);
+      setRows(draft?.rows ?? hydratedRows);
     } catch {
       const fallbackGoal = createDefaultGoal(year);
+      const draft = readNewEntryDraft<SavingsDraft>("savings");
       setGoal(fallbackGoal);
-      setGoalName(fallbackGoal.name);
-      setDepositType(fallbackGoal.depositType);
-      setFrequency("MONTHLY");
-      setColumns(DEFAULT_COLUMNS);
-      setTemporaryColumns([]);
-      setRows({});
+      setGoalName(draft?.goalName ?? fallbackGoal.name);
+      setDepositType(normalizeDepositType(draft?.depositType ?? fallbackGoal.depositType));
+      setFrequency(draft?.frequency ?? "MONTHLY");
+      setColumns(draft?.columns?.length ? draft.columns : DEFAULT_COLUMNS);
+      setTemporaryColumns(draft?.temporaryColumns ?? []);
+      setRows(draft?.rows ?? {});
       setNotice("储蓄计划已进入本地编辑模式");
     } finally {
+      setDraftReady(true);
       setHydrating(false);
     }
   }
+
+  useEffect(() => {
+    if (!draftReady || draftSubmittedRef.current) return;
+    saveNewEntryDraft<SavingsDraft>("savings", {
+      goalName,
+      depositType,
+      frequency,
+      columns,
+      temporaryColumns,
+      rows,
+    });
+  }, [columns, depositType, draftReady, frequency, goalName, rows, temporaryColumns]);
 
   function rowFor(month: string): PlannerRow {
     return rows[month] ?? { salary: "", expected: "", expenses: {} };
@@ -277,6 +308,8 @@ export function SavingsPlanner({
       }));
 
       setGoal(nextGoal);
+      draftSubmittedRef.current = true;
+      clearNewEntryDraft("savings");
       setNotice(`已保存 ${months.length} 个月的储蓄计划`);
       onSaved?.();
     } catch {
