@@ -22,4 +22,4 @@
 - [x] 步骤 3：调整 `.account-pill.active`、`.type-tab.active` 与 `.category-tile.active` 的选中质感与图标显示。
 - [x] 步骤 4：调整 `.currency-label`、`.cur-sym` 与 `.amount-huge-input` 为清晰深色 `#0f172a`。
 - [x] 步骤 5：运行类型检查、单元测试与生产构建验证。
-- [ ] 步骤 6：按规范完成本地 Git 提交并汇报。
+- [x] 步骤 6：按规范完成本地 Git 提交并汇报。
