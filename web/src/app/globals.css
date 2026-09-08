@@ -4821,16 +4821,17 @@ nextjs-portal {
 .journal-panel.savings .savings-deposit-switch button.active,
 .journal-panel.savings .savings-mode-switch button.active {
   background: #ffffff;
-  color: #334155;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+  color: #0060c0;
+  box-shadow: 0 2px 6px rgba(0, 96, 192, 0.12);
+  font-weight: 600;
 }
 
 .journal-panel.savings .savings-plan-footer .primary-button {
   min-width: 108px;
   height: 40px;
   border-radius: 11px;
-  background: #334155;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  background: #0060c0;
+  box-shadow: 0 4px 14px rgba(0, 96, 192, 0.22);
 }
 
 .journal-panel.savings .savings-table-scroll {
@@ -4958,6 +4959,12 @@ nextjs-portal {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.modern-amount-hero:focus-within {
+  border-color: #0060c0;
+  box-shadow: 0 0 0 3px rgba(0, 96, 192, 0.12);
 }
 
 .currency-label {
@@ -5038,9 +5045,9 @@ nextjs-portal {
 }
 
 .category-tile.active {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  box-shadow: none;
+  background: #ffffff;
+  border-color: #0060c0;
+  box-shadow: 0 2px 8px rgba(0, 96, 192, 0.12);
 }
 
 .tile-icon-box {
@@ -5054,7 +5061,7 @@ nextjs-portal {
 }
 
 .category-tile.active .tile-icon-box {
-  background: #e2e8f0;
+  background: #f0f6ff;
 }
 
 .tile-icon {
@@ -5064,7 +5071,7 @@ nextjs-portal {
 }
 
 .category-tile.active .tile-icon {
-  filter: brightness(0) invert(1);
+  filter: none;
 }
 
 .tile-label {
@@ -5074,7 +5081,7 @@ nextjs-portal {
 }
 
 .category-tile.active .tile-label {
-  color: #0f172a;
+  color: #0060c0;
   font-weight: 600;
 }
 
@@ -5097,8 +5104,8 @@ nextjs-portal {
 }
 
 .account-pill.active {
-  background: #334155;
-  border-color: #334155;
+  background: #0060c0;
+  border-color: #0060c0;
   color: #ffffff;
   font-weight: 500;
 }
@@ -5159,12 +5166,12 @@ nextjs-portal {
   height: 42px;
   border: 0;
   border-radius: 12px;
-  background: #334155;
+  background: #0060c0;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 4px 14px rgba(0, 96, 192, 0.22);
   transition: opacity 150ms ease;
 }
 
@@ -5234,7 +5241,7 @@ nextjs-portal {
 .cur-sym {
   font-size: 16px;
   font-weight: 600;
-  color: #334155;
+  color: #0f172a;
 }
 
 .modern-amount-field {
@@ -5264,8 +5271,8 @@ nextjs-portal {
 }
 
 .select-pill.active {
-  background: #334155;
-  border-color: #334155;
+  background: #0060c0;
+  border-color: #0060c0;
   color: #ffffff;
   font-weight: 500;
 }
@@ -5337,12 +5344,12 @@ nextjs-portal {
   height: 42px;
   border: 0;
   border-radius: 12px;
-  background: #334155;
+  background: #0060c0;
   color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+  box-shadow: 0 4px 14px rgba(0, 96, 192, 0.22);
 }
 
 .journal-header {
