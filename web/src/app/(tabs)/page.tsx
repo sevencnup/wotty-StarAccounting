@@ -109,6 +109,14 @@ function CompassIcon(props: IconProps) {
   );
 }
 
+function PlusIcon(props: IconProps) {
+  return (
+    <IconBase {...props} size={13}>
+      <path d="M12 5v14M5 12h14" />
+    </IconBase>
+  );
+}
+
 function HeaderAction({ children, label }: PropsWithChildren<{ label: string }>) {
   return (
     <button type="button" className="home-header-action" aria-label={label} title={label}>
@@ -285,21 +293,29 @@ function StarkCrystalHero({
         </div>
 
         <div className="stark-hero-footer-row">
-          <span className="stark-tx-count">共 {transactionCount} 笔记账</span>
-          {activeMetric === "balance" && balanceMode === "salary" ? (
-            <button
-              type="button"
-              className="stark-setting-pill"
-              onClick={() => setShowSalaryModal(true)}
-            >
-              发薪日 {salaryDay} 号 ›
-            </button>
-          ) : (
-            <Link href="/consumption" className="stark-detail-arrow">
-              查看明细分析 <ChevronRightIcon size={12} />
-            </Link>
-          )}
+          <div className="stark-hero-footer-left">
+            <span className="stark-tx-count">共 {transactionCount} 笔记账</span>
+            {activeMetric === "balance" && balanceMode === "salary" ? (
+              <button
+                type="button"
+                className="stark-setting-pill"
+                onClick={() => setShowSalaryModal(true)}
+              >
+                发薪日 {salaryDay} 号 ›
+              </button>
+            ) : (
+              <Link href="/consumption" className="stark-detail-arrow">
+                查看明细分析 <ChevronRightIcon size={12} />
+              </Link>
+            )}
+          </div>
+
+          <Link href="/journal?preset=salary" className="stark-salary-action-btn" aria-label="添加薪资收入">
+            <PlusIcon size={13} strokeWidth={2.2} />
+            <span>添加薪资收入</span>
+          </Link>
         </div>
+
       </div>
 
       {showSalaryModal ? (
@@ -344,7 +360,7 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
 // 四维财务罗盘 (Compass Matrix)
 function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
   const budget = summary.budgetAlerts[0];
-  const task = summary.tasks[0];
+  const loanTask = summary.tasks.find((task) => task.source === "loan");
   const budgetPercent = budget ? Math.round(budget.percent) : 0;
   const budgetLeft = budget ? Math.max(0, 100 - budgetPercent) : 100;
   const netWorthStr =
@@ -393,10 +409,10 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
           </span>
           <span className="compass-label">待还贷款</span>
         </div>
-        <strong className="compass-value">{task?.badge || "无待还"}</strong>
+        <strong className="compass-value">{loanTask?.badge || "无待还"}</strong>
         <div className="compass-meta">
           <span className="compass-badge loan-badge">
-            {task ? "近期还款" : "状态良好"}
+            {loanTask ? "近期还款" : "状态良好"}
           </span>
           <ChevronRightIcon size={12} />
         </div>

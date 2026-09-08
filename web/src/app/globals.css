@@ -1151,34 +1151,87 @@ nextjs-portal {
   box-shadow: 0 2px 6px rgba(2, 132, 199, 0.14);
 }
 
-/* Crystal Island Hero Card (Soft Cyan & Mint Glow) */
+/* Stark Clean White Hero Card (Pure Minimal Surface) */
 .stark-hero-card {
   position: relative;
+  isolation: isolate;
   overflow: hidden;
   border-radius: 20px;
-  padding: 16px 18px;
-  background: linear-gradient(135deg, #dcf0ff 0%, #e2f8f0 55%, #eaf3ff 100%);
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    0 10px 24px rgba(45, 102, 168, 0.06);
-  display: grid;
-  gap: 8px;
+  min-height: 146px;
+  padding: 16px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+}
+
+.stark-hero-three-surface {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.stark-hero-three-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.stark-salary-action-btn {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 13px;
+  border-radius: 999px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #1e293b;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 140ms ease;
+  flex-shrink: 0;
+}
+
+.stark-salary-action-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0284c7;
+}
+
+.stark-salary-action-btn:active {
+  transform: scale(0.98);
+  background: #e2e8f0;
+}
+
+.stark-salary-link-overlay {
+  display: none;
 }
 
 .stark-card-watermark {
   position: absolute;
-  right: 14px;
-  top: 50%;
+  right: 16px;
+  top: 32px;
   transform: translateY(-50%);
-  font-size: 68px;
+  font-size: 72px;
   font-weight: 800;
   font-style: italic;
   letter-spacing: -2px;
-  color: rgba(0, 96, 192, 0.08);
+  color: rgba(2, 132, 199, 0.065);
   pointer-events: none;
   user-select: none;
   line-height: 1;
+  z-index: 0;
 }
 
 .stark-hero-meta-row {
@@ -1190,7 +1243,7 @@ nextjs-portal {
 }
 
 .stark-card-label {
-  color: #4b6b8b;
+  color: #64748b;
   font-size: 13px;
   font-weight: 500;
 }
@@ -1201,7 +1254,8 @@ nextjs-portal {
   gap: 2px;
   padding: 2px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.65);
+  background: #f1f5f9;
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .stark-scope-selector button {
@@ -1217,7 +1271,7 @@ nextjs-portal {
 
 .stark-scope-selector button.active {
   background: #ffffff;
-  color: #0060c0;
+  color: #0284c7;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -1236,7 +1290,7 @@ nextjs-portal {
   font-weight: 750;
   letter-spacing: -0.5px;
   line-height: 1.1;
-  color: #111827;
+  color: #0f172a;
   font-variant-numeric: tabular-nums;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1251,14 +1305,22 @@ nextjs-portal {
   position: relative;
   z-index: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-top: 4px;
-  font-size: 11px;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+}
+
+.stark-hero-footer-left {
+  display: grid;
+  gap: 3px;
+  justify-items: start;
+  min-width: 0;
 }
 
 .stark-tx-count {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 11px;
 }
 
@@ -1270,11 +1332,23 @@ nextjs-portal {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #0060c0;
+  color: #0284c7;
   text-decoration: none;
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
+}
+
+.stark-detail-arrow,
+.stark-setting-pill {
+  justify-self: start;
+}
+
+@media (max-width: 350px) {
+  .stark-salary-action-btn {
+    padding: 0 10px;
+    font-size: 11px;
+  }
 }
 
 /* Stark AI Diagnostic Banner */
@@ -5740,6 +5814,34 @@ nextjs-portal {
   font-size: 12px;
 }
 
+.savings-column-adder .fixed-expense-column-button {
+  color: #245fae;
+  background: #edf5ff;
+}
+
+.savings-column-adder .temporary-expense-column-button {
+  border-color: #f0d5a4;
+  color: #9a6418;
+  background: #fff8e9;
+}
+
+.savings-plan-table th.temporary-expense-column {
+  color: #8a5b17;
+  background: #fffaf0;
+}
+
+.savings-plan-table th.fixed-expense-column {
+  color: #245fae;
+}
+
+.savings-plan-table th.temporary-expense-column small {
+  display: block;
+  margin-top: 1px;
+  color: #b17a2c;
+  font-size: 9px;
+  font-weight: 500;
+}
+
 .savings-table-scroll {
   width: 100%;
   overflow-x: auto;
@@ -7726,13 +7828,19 @@ nextjs-portal {
 .consumption-overview-stats strong.negative { color: #d9485f; }
 
 .consumption-filter-card {
+  position: relative;
   display: grid;
   gap: 10px;
   padding: 12px;
+  overflow: visible;
   border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 16px;
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+
+.consumption-filter-card.is-category-open {
+  z-index: 30;
 }
 
 .consumption-mode-tabs {
@@ -7766,6 +7874,7 @@ nextjs-portal {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 7px;
+  overflow: visible;
 }
 
 .consumption-select-wrap,
@@ -7787,7 +7896,7 @@ nextjs-portal {
   padding: 0 8px;
 }
 
-.consumption-select-wrap span {
+.consumption-select-wrap > span {
   flex: 0 0 auto;
   color: #94a3b8;
   font-size: 10px;
@@ -7804,9 +7913,248 @@ nextjs-portal {
   font-size: 11px;
 }
 
-.consumption-select-wrap svg {
+.consumption-select-wrap > svg {
   flex: 0 0 auto;
   pointer-events: none;
+}
+
+.consumption-category-select {
+  z-index: 20;
+  overflow: visible;
+}
+
+.consumption-category-select.is-open,
+.consumption-account-select.is-open {
+  border-color: #8ec9e7;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(56, 161, 214, 0.1);
+}
+
+.consumption-category-trigger {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+}
+
+.consumption-category-trigger:focus-visible {
+  border-radius: 7px;
+  box-shadow: 0 0 0 2px rgba(56, 161, 214, 0.25);
+}
+
+.consumption-category-trigger-icon,
+.consumption-category-option-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: #edf7fd;
+}
+
+.consumption-category-trigger-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.consumption-category-trigger-icon img {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+}
+
+.consumption-account-trigger-icon,
+.consumption-account-option-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  color: #1682b5;
+  background: #e5f5fc;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.consumption-account-trigger-icon {
+  width: 22px;
+  height: 22px;
+}
+
+.consumption-account-option-icon {
+  width: 28px;
+  height: 28px;
+  color: #27718f;
+  background: #edf7fb;
+}
+
+.consumption-category-option.selected .consumption-account-option-icon {
+  color: #0879b5;
+  background: #d4f0fc;
+}
+
+.consumption-category-trigger-value {
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+  color: #334155;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consumption-category-trigger svg {
+  flex: 0 0 auto;
+  color: #7891a4;
+  transition: transform 160ms ease;
+}
+
+.consumption-category-select.is-open .consumption-category-trigger svg,
+.consumption-account-select.is-open .consumption-category-trigger svg {
+  transform: rotate(180deg);
+}
+
+.consumption-category-menu {
+  position: fixed;
+  z-index: 600;
+  width: min(278px, calc(100vw - 32px));
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid #dbeaf4;
+  border-radius: 16px;
+  isolation: isolate;
+  background: #ffffff;
+  opacity: 1;
+  box-shadow: 0 18px 38px rgba(44, 78, 104, 0.17), 0 3px 8px rgba(44, 78, 104, 0.08);
+  transform-origin: top left;
+  animation: consumption-category-menu-in 150ms ease-out;
+}
+
+.consumption-category-menu-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 7px 8px;
+}
+
+.consumption-category-menu-head strong {
+  color: #163d59;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.consumption-category-menu-head span {
+  color: #94a9b8;
+  font-size: 10px;
+}
+
+.consumption-category-options {
+  display: grid;
+  gap: 2px;
+  max-height: min(52vh, 280px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.consumption-category-option {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #344b5c;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+.consumption-category-option:hover {
+  background: #f3f9fc;
+}
+
+.consumption-category-option:active {
+  transform: scale(0.985);
+}
+
+.consumption-category-option.selected {
+  background: linear-gradient(100deg, #e7f6fd, #f3fbff);
+  color: #0879b5;
+}
+
+.consumption-category-option:focus-visible {
+  outline: 2px solid rgba(56, 161, 214, 0.38);
+  outline-offset: -2px;
+}
+
+.consumption-category-option-icon {
+  width: 28px;
+  height: 28px;
+  background: #f0f5f8;
+}
+
+.consumption-category-option.selected .consumption-category-option-icon {
+  background: #d4f0fc;
+}
+
+.consumption-category-option-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.consumption-category-option-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.consumption-category-option-copy strong {
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consumption-category-option-copy small {
+  color: #9aabb7;
+  font-size: 9px;
+  line-height: 1;
+}
+
+.consumption-category-check {
+  color: #0793d0;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+@keyframes consumption-category-menu-in {
+  from {
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .consumption-category-menu {
+    width: min(300px, calc(100vw - 28px));
+    max-height: min(58vh, 360px);
+  }
 }
 
 .consumption-search-wrap {
