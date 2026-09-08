@@ -17,6 +17,15 @@ export function buildSavingsMonths(year: number, frequency: SavingsFrequency) {
     .map((month) => `${year}-${String(month).padStart(2, "0")}`);
 }
 
+export function shouldSyncSavingsExpense(
+  month: string,
+  firstMonth: string | undefined,
+  column: string,
+  temporaryColumns: readonly string[],
+) {
+  return month === firstMonth && !temporaryColumns.includes(column);
+}
+
 export function calculateSavingsRow(values: SavingsRowValues) {
   const salary = amountOf(values.salary);
   const expenseTotal = Object.values(values.expenses).reduce<number>((sum, value) => sum + amountOf(value), 0);

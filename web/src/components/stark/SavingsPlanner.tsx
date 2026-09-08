@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
@@ -26,6 +26,8 @@ type PlannerRow = {
 type PlanConfig = {
   frequency?: SavingsFrequency;
   columns?: string[];
+  fixedColumns?: string[];
+  temporaryColumns?: string[];
 };
 
 function parseConfig(raw?: string | null): PlanConfig {
@@ -93,6 +95,7 @@ export function SavingsPlanner({
   const [depositType, setDepositType] = useState<SavingsGoalDepositType>("CASH");
   const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
+  const [temporaryColumns, setTemporaryColumns] = useState<string[]>([]);
   const [rows, setRows] = useState<Record<string, PlannerRow>>({});
   const [newColumn, setNewColumn] = useState("");
   const [hydrating, setHydrating] = useState(true);
@@ -133,7 +136,10 @@ export function SavingsPlanner({
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
       const hydratedRows: Record<string, PlannerRow> = {};
-      const expenseColumns = new Set(config.columns?.length ? config.columns : DEFAULT_COLUMNS);
+      const configuredColumns = config.columns?.length ? config.columns : DEFAULT_COLUMNS;
+      const fixedColumns = config.fixedColumns?.length ? config.fixedColumns : configuredColumns;
+      const configuredTemporaryColumns = config.temporaryColumns ?? [];
+      const expenseColumns = new Set([...fixedColumns, ...configuredTemporaryColumns]);
 
       plans.forEach((plan) => {
         const expenses = parseExpenses(plan.expenses);
@@ -152,6 +158,7 @@ export function SavingsPlanner({
       setDepositType(normalizeDepositType(activeGoal.depositType));
       setFrequency(config.frequency ?? "MONTHLY");
       setColumns([...expenseColumns]);
+      setTemporaryColumns(configuredTemporaryColumns.filter((column) => expenseColumns.has(column)));
       setRows(hydratedRows);
     } catch {
       const fallbackGoal = createDefaultGoal(year);
@@ -160,6 +167,7 @@ export function SavingsPlanner({
       setDepositType(fallbackGoal.depositType);
       setFrequency("MONTHLY");
       setColumns(DEFAULT_COLUMNS);
+      setTemporaryColumns([]);
       setRows({});
       setNotice("储蓄计划已进入本地编辑模式");
     } finally {
@@ -193,7 +201,7 @@ export function SavingsPlanner({
 
   function updateExpense(month: string, column: string, value: string) {
     setRows((current) => {
-      if (month !== months[0]) {
+      if (!shouldSyncSavingsExpense(month, months[0], column, temporaryColumns)) {
         const row = current[month] ?? { salary: "", expected: "", expenses: {} };
         return { ...current, [month]: { ...row, expenses: { ...row.expenses, [column]: value } } };
       }
@@ -206,16 +214,18 @@ export function SavingsPlanner({
     setNotice("");
   }
 
-  function addExpenseColumn() {
+  function addExpenseColumn(mode: "FIXED" | "TEMPORARY") {
     const name = newColumn.trim();
     if (!name || columns.includes(name)) return;
     setColumns((current) => [...current, name]);
+    if (mode === "TEMPORARY") setTemporaryColumns((current) => [...current, name]);
     setNewColumn("");
-    setNotice(`已新增“${name}”列`);
+    setNotice(`已新增${mode === "TEMPORARY" ? "临时支出" : "固定支出"}“${name}”列`);
   }
 
   function removeExpenseColumn(name: string) {
     setColumns((current) => current.filter((column) => column !== name));
+    setTemporaryColumns((current) => current.filter((column) => column !== name));
     setRows((current) => Object.fromEntries(Object.entries(current).map(([month, row]) => {
       const expenses = { ...row.expenses };
       delete expenses[name];
@@ -232,7 +242,12 @@ export function SavingsPlanner({
         ...goal,
         name: goalName.trim() || `${year} 年度储蓄`,
         depositType: normalizeDepositType(depositType),
-        planConfig: JSON.stringify({ frequency, columns }),
+        planConfig: JSON.stringify({
+          frequency,
+          columns,
+          fixedColumns: columns.filter((column) => !temporaryColumns.includes(column)),
+          temporaryColumns,
+        }),
         updatedAt: now,
       };
       await saveGoalWithFallback(nextGoal);
@@ -339,8 +354,9 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-column-adder">
-          <input value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn()} placeholder="新增支出列，如交通" />
-          <button type="button" onClick={addExpenseColumn}>新增列</button>
+          <input value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn("FIXED")} placeholder="输入支出名称，如交通 / 临时医疗" />
+          <button type="button" className="fixed-expense-column-button" onClick={() => addExpenseColumn("FIXED")}>新增固定支出</button>
+          <button type="button" className="temporary-expense-column-button" onClick={() => addExpenseColumn("TEMPORARY")}>新增临时支出</button>
         </div>
 
         <div className="savings-table-scroll">
@@ -350,8 +366,9 @@ export function SavingsPlanner({
                 <th className="month-column">月份</th>
                 <th className="salary-column">薪资</th>
                 {columns.map((column) => (
-                  <th key={column}>
+                  <th key={column} className={temporaryColumns.includes(column) ? "temporary-expense-column" : "fixed-expense-column"}>
                     <span>{column}</span>
+                    {temporaryColumns.includes(column) ? <small>临时</small> : null}
                     <button type="button" onClick={() => removeExpenseColumn(column)} aria-label={`删除${column}列`}>×</button>
                   </th>
                 ))}

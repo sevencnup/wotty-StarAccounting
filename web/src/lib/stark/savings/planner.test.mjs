@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -29,4 +29,23 @@ test("remaining deducts expected savings when entered", () => {
     expected: 2000,
   });
   assert.equal(result.remaining, 700);
+});
+
+test("fixed expense columns sync from the first month", () => {
+  assert.equal(shouldSyncSavingsExpense("2026-01", "2026-01", "房租", []), true);
+});
+
+test("temporary expense columns only update the edited month", () => {
+  assert.equal(shouldSyncSavingsExpense("2026-01", "2026-01", "临时支出", ["临时支出"]), false);
+  assert.equal(shouldSyncSavingsExpense("2026-02", "2026-01", "房租", []), false);
+});
+
+test("temporary expenses are included in the row remaining calculation", () => {
+  const result = calculateSavingsRow({
+    salary: 6000,
+    expenses: { 房租: 1500, 临时医疗: 800 },
+    expected: 2000,
+  });
+  assert.equal(result.expenseTotal, 2300);
+  assert.equal(result.remaining, 1700);
 });
