@@ -134,9 +134,8 @@ nextjs-portal {
 
 .skeleton {
   border-radius: 12px;
-  background: linear-gradient(100deg, #e6eef9 25%, #f3f8ff 45%, #e6eef9 65%);
-  background-size: 220% 100%;
-  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+  background: #edf2f7;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
 }
 
 .skeleton-hero {
@@ -153,8 +152,8 @@ nextjs-portal {
 }
 
 @keyframes skeleton-shimmer {
-  0% { background-position: 220% 0; }
-  100% { background-position: -220% 0; }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .page-stack {
@@ -183,7 +182,7 @@ nextjs-portal {
   position: absolute;
   inset: 0 0 26px;
   border-radius: 14px;
-  background: linear-gradient(180deg, #0052ad 0%, #0060c0 58%, #1a7ad8 100%);
+  background: #0060c0;
 }
 
 .home-liquid-screen .hero-stack-bg {
@@ -202,7 +201,7 @@ nextjs-portal {
 }
 
 .home-card.page-hero {
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 52%, #1876d6 100%);
+  background: #0060c0;
 }
 
 .page-hero-label {
@@ -522,16 +521,10 @@ nextjs-portal {
 .tabs-liquid-shell .asset-ledger-card,
 .tabs-liquid-shell .account-wallet-card,
 .tabs-liquid-shell .settings-center-group {
-  border-color: transparent;
+  border-color: rgba(226, 232, 240, 0.85);
   border-radius: 22px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(247, 250, 255, 0.66)),
-    rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    0 10px 26px rgba(67, 91, 125, 0.08);
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .tabs-liquid-shell .home-card:active,
@@ -551,7 +544,7 @@ nextjs-portal {
   position: relative;
   padding: 12px 16px 13px;
   color: #ffffff;
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 52%, #1876d6 100%);
+  background: #0060c0;
 }
 
 .home-liquid-screen .overview-card {
@@ -569,12 +562,8 @@ nextjs-portal {
   padding: 12px 15px 13px;
   border-radius: 22px;
   color: #ffffff;
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 55%, #1876d6 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.32),
-    0 10px 26px rgba(0, 72, 150, 0.2);
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  background: #0060c0;
+  box-shadow: 0 8px 20px rgba(0, 72, 150, 0.16);
 }
 
 .home-liquid-screen .overview-hero::before {
@@ -1843,8 +1832,9 @@ nextjs-portal {
 /* Stark Smart Financial Advisory */
 .stark-advisory-card {
   padding: 14px 16px;
-  background: linear-gradient(145deg, #ffffff 0%, #f0f9ff 100%);
-  border: 1px solid rgba(224, 242, 254, 0.9);
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .advisory-card-head {
@@ -2480,12 +2470,7 @@ nextjs-portal {
 
 .progress-track span::after,
 .budget-alert-track span::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1) 42%, rgba(0, 0, 0, 0.08));
-  pointer-events: none;
+  display: none;
 }
 
 .summary-card {
@@ -2745,7 +2730,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0d8a5f, #0b7d55);
+  background: #0d8a5f;
 }
 
 .loan-empty {
@@ -3069,15 +3054,15 @@ nextjs-portal {
   position: relative;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0d8a5f, #2ea67a);
+  background: #0d8a5f;
 }
 
 .budget-alert-track span.warn {
-  background: linear-gradient(90deg, #e89500, #f6b93b);
+  background: #e89500;
 }
 
 .budget-alert-track span.danger {
-  background: linear-gradient(90deg, #e5533d, #ff7a66);
+  background: #e5533d;
 }
 
 .task-row {
@@ -3146,12 +3131,12 @@ nextjs-portal {
   margin-top: 10px;
   padding: 12px;
   border-radius: 12px;
-  background: linear-gradient(180deg, #f4f8ff 0%, #eef5ff 100%);
+  background: #f4f8ff;
   border: 1px solid var(--border-faint);
 }
 
 .forecast-balance-row.negative {
-  background: linear-gradient(180deg, #fff5f4 0%, #fff0ee 100%);
+  background: #fff5f4;
   border-color: #f5d6d2;
 }
 
@@ -3309,12 +3294,10 @@ nextjs-portal {
 .tabs-liquid-shell .loan-command-card,
 .tabs-liquid-shell .asset-net-block,
 .tabs-liquid-shell .account-wallet-hero {
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 55%, #1876d6 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 10px 26px rgba(0, 72, 150, 0.2);
-  backdrop-filter: blur(18px) saturate(1.35);
-  -webkit-backdrop-filter: blur(18px) saturate(1.35);
+  background: #0060c0;
+  box-shadow: 0 10px 26px rgba(0, 72, 150, 0.16);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .tabs-liquid-shell .cs-body {
@@ -3488,7 +3471,7 @@ nextjs-portal {
   padding: 14px 16px 15px;
   margin: 6px 0 6px 6px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 100%);
+  background: #0060c0;
 }
 
 .savings-summary-main .page-hero-label,
@@ -3682,7 +3665,7 @@ nextjs-portal {
   flex-direction: column;
   justify-content: center;
   padding: 14px 16px 15px;
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 52%, #1876d6 100%);
+  background: #0060c0;
   border-radius: 10px;
   margin: 6px 0 6px 6px;
 }
@@ -3760,17 +3743,16 @@ nextjs-portal {
   inset: 0 0 auto 0;
   z-index: -1;
   height: 260px;
-  background:
-    radial-gradient(circle at 14% 6%, rgba(13, 138, 95, 0.16), transparent 34%),
-    radial-gradient(circle at 88% 4%, rgba(57, 127, 232, 0.14), transparent 31%),
-    linear-gradient(180deg, rgba(241, 249, 246, 0.92), rgba(248, 251, 255, 0));
+  background: #f8fafc;
   pointer-events: none;
 }
 
 .savings-dashboard-page .home-card,
 .savings-dashboard-page .recent-card {
-  border: 0;
-  border-radius: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .savings-section-head {
@@ -3801,15 +3783,10 @@ nextjs-portal {
   min-height: 152px;
   padding: 17px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  background:
-    radial-gradient(circle at 92% 14%, rgba(255, 255, 255, 0.72) 0 42px, transparent 43px),
-    linear-gradient(135deg, rgba(223, 246, 237, 0.95), rgba(246, 252, 255, 0.88) 52%, rgba(235, 244, 255, 0.86));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 16px 34px rgba(67, 91, 125, 0.11);
-  backdrop-filter: blur(18px) saturate(1.25);
-  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .savings-dashboard-page .savings-vault-hero::after {
@@ -3888,8 +3865,8 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--saving-green), var(--saving-blue));
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+  background: var(--saving-green);
+  box-shadow: none;
 }
 
 .savings-hero-meta {
@@ -3955,16 +3932,10 @@ nextjs-portal {
   min-height: 82px;
   padding: 12px 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 19px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(247, 251, 255, 0.62)),
-    rgba(248, 251, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    0 9px 22px rgba(67, 91, 125, 0.065);
-  backdrop-filter: blur(12px) saturate(1.15);
-  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
 
 .savings-metric-grid strong {
@@ -3992,15 +3963,9 @@ nextjs-portal {
 .savings-dashboard-page .savings-focus-card,
 .savings-dashboard-page .savings-recent-card {
   padding: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.68);
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 252, 255, 0.62)),
-    rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.78),
-    0 11px 28px rgba(67, 91, 125, 0.075);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .savings-dashboard-page .savings-goal-section {
@@ -4075,16 +4040,10 @@ nextjs-portal {
   gap: 9px 12px;
   min-width: 0;
   padding: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 19px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(244, 249, 255, 0.62)),
-    rgba(244, 249, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.82),
-    0 8px 20px rgba(67, 91, 125, 0.055);
-  backdrop-filter: blur(12px) saturate(1.12);
-  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
 
 .savings-goal-card div {
@@ -4123,12 +4082,7 @@ nextjs-portal {
 
 .savings-goal-track::after,
 .savings-rhythm-tile div::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.1) 42%, rgba(0, 0, 0, 0.08));
-  pointer-events: none;
+  display: none;
 }
 
 .savings-goal-track i {
@@ -4137,7 +4091,7 @@ nextjs-portal {
   z-index: 0;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--saving-green), var(--saving-blue));
+  background: var(--saving-green);
 }
 
 .savings-goal-card p {
@@ -4184,7 +4138,7 @@ nextjs-portal {
 }
 
 .savings-rhythm-tile.current {
-  background: linear-gradient(135deg, rgba(224, 247, 238, 0.78), rgba(255, 255, 255, 0.58));
+  background: #f0fdf4;
 }
 
 .savings-rhythm-tile span {
@@ -4230,11 +4184,11 @@ nextjs-portal {
 }
 
 .savings-rhythm-tile i {
-  background: linear-gradient(90deg, #b5cbe3, #d2e0ee);
+  background: #cbd5e1;
 }
 
 .savings-rhythm-tile b {
-  background: linear-gradient(90deg, var(--saving-green), #2ea67a);
+  background: var(--saving-green);
 }
 
 .savings-summary-card {
@@ -4257,7 +4211,7 @@ nextjs-portal {
   border-radius: 10px;
   margin: 6px 0 6px 6px;
   color: #ffffff;
-  background: linear-gradient(135deg, #0052ad 0%, #0060c0 52%, #1876d6 100%);
+  background: #0060c0;
 }
 
 .savings-summary-main .page-hero-label,
@@ -4335,7 +4289,7 @@ nextjs-portal {
   height: 30px;
   border-radius: 11px;
   color: #0d6f50;
-  background: linear-gradient(135deg, rgba(223, 240, 233, 0.95), rgba(235, 244, 255, 0.9));
+  background: #def4ec;
   font-size: 11px;
   font-weight: 700;
 }
@@ -4509,7 +4463,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0060c0, #0d8a5f);
+  background: #0060c0;
 }
 
 .savings-lite-meta span {
@@ -4627,16 +4581,10 @@ nextjs-portal {
 
 .savings-dashboard-page .savings-recent-card {
   padding: 0 14px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 22px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(248, 252, 255, 0.58)),
-    rgba(255, 255, 255, 0.66);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.72),
-    0 10px 26px rgba(67, 91, 125, 0.07);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .savings-recent-card .recent-head {
@@ -4776,8 +4724,8 @@ nextjs-portal {
 
 .journal-panel.asset .finance-primary-action {
   margin-top: 0;
-  background: linear-gradient(135deg, #0d8a5f, #32a77d);
-  box-shadow: 0 7px 15px rgba(13, 138, 95, 0.14);
+  background: #0d8a5f;
+  box-shadow: 0 4px 12px rgba(13, 138, 95, 0.14);
 }
 
 .journal-panel.page.loan {
@@ -4796,8 +4744,8 @@ nextjs-portal {
 
 .journal-panel.loan .finance-primary-action {
   margin-top: 0;
-  background: linear-gradient(135deg, #0d8a5f, #32a77d);
-  box-shadow: 0 7px 15px rgba(13, 138, 95, 0.14);
+  background: #0d8a5f;
+  box-shadow: 0 4px 12px rgba(13, 138, 95, 0.14);
 }
 
 .journal-panel.visible {
@@ -4827,9 +4775,9 @@ nextjs-portal {
 .journal-panel.savings .savings-panel-summary div {
   min-width: 0;
   padding: 11px 12px;
-  border: 1px solid #dbeafe;
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 14px;
-  background: linear-gradient(145deg, #f8fdff, #effaff);
+  background: #ffffff;
 }
 
 .journal-panel.savings .savings-panel-summary strong {
@@ -4979,7 +4927,7 @@ nextjs-portal {
   gap: 6px;
   padding: 18px 12px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  background: #f0f9ff;
   border: 1.5px solid #bae6fd;
 }
 
@@ -5432,12 +5380,10 @@ nextjs-portal {
   gap: 7px;
   height: 42px;
   padding: 0 18px;
-  border: 1px solid rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: 15px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(224, 242, 254, 0.92));
-  box-shadow:
-    0 8px 20px rgba(2, 132, 199, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
   color: #0284c7;
   font-size: 13px;
   font-weight: 600;
@@ -5612,7 +5558,7 @@ nextjs-portal {
   justify-content: space-between;
   gap: 18px;
   padding: 18px;
-  background: linear-gradient(135deg, #f7fbff 0%, #ffffff 58%, #edf5ff 100%);
+  background: #ffffff;
 }
 
 .savings-hero-meta {
@@ -6179,12 +6125,10 @@ nextjs-portal {
   position: relative;
   padding: 15px;
   overflow: hidden;
-  border: 1px solid #4a8eec;
+  border: 1px solid #0052ad;
   border-radius: 14px;
   color: #ffffff;
-  background:
-    radial-gradient(circle at 91% 3%, rgba(255, 255, 255, 0.2) 0 2px, transparent 3px),
-    linear-gradient(126deg, #2e74db 0%, #4f94f1 62%, #65a3f4 100%);
+  background: #0060c0;
 }
 
 .loan-command-card::after {
@@ -6526,7 +6470,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0d8a5f, #0b7d55);
+  background: #0d8a5f;
 }
 
 .loan-portfolio-foot strong {
@@ -6550,7 +6494,7 @@ nextjs-portal {
   min-height: 128px;
   padding: 16px;
   color: #ffffff;
-  background: linear-gradient(142deg, #347add, #5797ed);
+  background: #0060c0;
 }
 
 .asset-net-block > strong {
@@ -6776,12 +6720,10 @@ nextjs-portal {
   min-height: 152px;
   padding: 16px;
   overflow: hidden;
-  border: 1px solid #4f91ec;
+  border: 1px solid #0052ad;
   border-radius: 14px;
   color: #ffffff;
-  background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 24px),
-    linear-gradient(135deg, #337ce1, #5b9af0);
+  background: #0060c0;
 }
 
 .account-wallet-copy { align-self: start; }
@@ -6866,7 +6808,7 @@ nextjs-portal {
   overflow: hidden;
   border: 1px solid #d9e4f1;
   border-radius: 13px;
-  background: linear-gradient(145deg, #ffffff, #f4f8fd);
+  background: #ffffff;
 }
 
 .account-wallet-card::after { content: ""; position: absolute; right: -19px; bottom: -27px; width: 70px; height: 70px; border: 12px solid rgba(65, 128, 219, 0.05); border-radius: 999px; }
@@ -7072,14 +7014,14 @@ nextjs-portal {
   height: 21px;
 }
 
-.settings-center-icon.mode { background: linear-gradient(145deg, #397ee6, #63a5fa); }
-.settings-center-icon.import { background: linear-gradient(145deg, #18a7a2, #42c8c0); }
-.settings-center-icon.theme { background: linear-gradient(145deg, #a84bea, #d44cec); }
-.settings-center-icon.language { background: linear-gradient(145deg, #f2a326, #ffbd36); }
-.settings-center-icon.font { background: linear-gradient(145deg, #28aab0, #45c4c8); }
-.settings-center-icon.help { background: linear-gradient(145deg, #c536e5, #ed45de); }
-.settings-center-icon.about { background: linear-gradient(145deg, #45516f, #687693); }
-.settings-center-icon.remark { background: linear-gradient(145deg, #e06a3e, #f08d4b); }
+.settings-center-icon.mode { background: #3b82f6; }
+.settings-center-icon.import { background: #14b8a6; }
+.settings-center-icon.theme { background: #a855f7; }
+.settings-center-icon.language { background: #f59e0b; }
+.settings-center-icon.font { background: #06b6d4; }
+.settings-center-icon.help { background: #d946ef; }
+.settings-center-icon.about { background: #64748b; }
+.settings-center-icon.remark { background: #f97316; }
 
 /* ── 账单归类（账户设置页） ── */
 .bill-remark-sheet {
@@ -7099,7 +7041,7 @@ nextjs-portal {
   padding: 12px;
   border: 1px solid #dce7f4;
   border-radius: 15px;
-  background: linear-gradient(145deg, #f5f9ff, #ffffff);
+  background: #ffffff;
 }
 
 .category-rule-heading {
@@ -7684,7 +7626,7 @@ nextjs-portal {
   text-align: center;
 }
 
-.settings-about > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; color: #ffffff; background: linear-gradient(145deg, #377ce0, #63a3f4); }
+.settings-about > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; color: #ffffff; background: #0060c0; }
 .settings-about > span svg { width: 31px; height: 31px; }
 .settings-about > strong { margin-top: 12px; color: #172033; font-size: 16px; }
 .settings-about p { margin: 6px 0 0; color: #657289; font-size: 10px; }
@@ -7710,12 +7652,10 @@ nextjs-portal {
   position: relative;
   overflow: hidden;
   padding: 16px 18px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 22px;
-  background: linear-gradient(135deg, #dcf0ff 0%, #e2f8f0 58%, #eef5ff 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 12px 28px rgba(45, 102, 168, 0.08);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .consumption-overview-card::after {
@@ -8089,7 +8029,7 @@ nextjs-portal {
 }
 
 .consumption-category-option.selected {
-  background: linear-gradient(100deg, #e7f6fd, #f3fbff);
+  background: #eef7fc;
   color: #0879b5;
 }
 
@@ -8499,10 +8439,7 @@ nextjs-portal {
   inset: 0 0 auto 0;
   z-index: -1;
   height: 280px;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(13, 138, 95, 0.18), transparent 36%),
-    radial-gradient(circle at 86% 6%, rgba(57, 127, 232, 0.15), transparent 32%),
-    linear-gradient(180deg, rgba(235, 245, 241, 0.88), rgba(246, 250, 255, 0));
+  background: #f8fafc;
   pointer-events: none;
 }
 
@@ -8638,10 +8575,7 @@ nextjs-portal {
   inset: 0 0 auto 0;
   z-index: -1;
   height: 280px;
-  background:
-    radial-gradient(circle at 10% 8%, rgba(13, 138, 95, 0.18), transparent 36%),
-    radial-gradient(circle at 90% 6%, rgba(46, 145, 238, 0.15), transparent 32%),
-    linear-gradient(180deg, rgba(235, 246, 241, 0.88), rgba(246, 250, 255, 0));
+  background: #f8fafc;
   pointer-events: none;
 }
 
@@ -8654,18 +8588,11 @@ nextjs-portal {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 22px;
   padding: 16px 16px 14px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(220, 246, 236, 0.95), transparent 48%),
-    radial-gradient(circle at 0% 100%, rgba(230, 242, 255, 0.9), transparent 42%),
-    linear-gradient(135deg, rgba(243, 250, 247, 0.95) 0%, rgba(255, 255, 255, 0.92) 52%, rgba(240, 247, 255, 0.92) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 12px 28px rgba(45, 92, 130, 0.07);
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .assets-page .asset-cockpit-hero .finance-eyebrow {
@@ -8790,7 +8717,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, #0d8a5f, #3cbd8e);
+  background: #0d8a5f;
   transition: width 0.3s ease;
 }
 
@@ -8798,7 +8725,7 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(90deg, #f87171, #ef4444);
+  background: #ef4444;
   transition: width 0.3s ease;
 }
 
@@ -8825,16 +8752,10 @@ nextjs-portal {
   gap: 4px;
   min-width: 0;
   padding: 10px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 16px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(244, 249, 255, 0.75)),
-    rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 6px 16px rgba(45, 92, 130, 0.05);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
 
 .assets-page .asset-metric-tile span {
@@ -8868,16 +8789,10 @@ nextjs-portal {
 /* 资产配置卡片与环形图 */
 .assets-page .asset-donut-card {
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 252, 255, 0.62)),
-    rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 11px 28px rgba(67, 91, 125, 0.075);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .assets-page .asset-donut-content {
@@ -8956,16 +8871,10 @@ nextjs-portal {
 /* 资产明细账本 */
 .assets-page .asset-ledger-section {
   padding: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 252, 255, 0.62)),
-    rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 11px 28px rgba(67, 91, 125, 0.075);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .assets-page .asset-ledger-modern-grid {
@@ -9588,15 +9497,9 @@ nextjs-portal {
   border: 1px solid rgba(255, 255, 255, 0.88);
   border-radius: 22px;
   padding: 16px 16px 14px;
-  background:
-    radial-gradient(circle at 100% 0%, rgba(220, 246, 236, 0.95), transparent 48%),
-    radial-gradient(circle at 0% 100%, rgba(230, 242, 255, 0.9), transparent 42%),
-    linear-gradient(135deg, rgba(243, 250, 247, 0.95) 0%, rgba(255, 255, 255, 0.92) 52%, rgba(240, 247, 255, 0.92) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 12px 28px rgba(45, 92, 130, 0.07);
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .loans-page .loan-operations-hero .finance-eyebrow {
@@ -9702,16 +9605,10 @@ nextjs-portal {
   gap: 4px;
   min-width: 0;
   padding: 10px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 16px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(244, 249, 255, 0.75)),
-    rgba(255, 255, 255, 0.8);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 6px 16px rgba(45, 92, 130, 0.05);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
 
 .loans-page .loan-metric-card span {
@@ -9813,16 +9710,10 @@ nextjs-portal {
 .loans-page .loan-schedule-section,
 .loans-page .loan-portfolio-section,
 .loans-page .finance-create-section {
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 24px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(248, 252, 255, 0.62)),
-    rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 11px 28px rgba(67, 91, 125, 0.075);
-  backdrop-filter: blur(16px) saturate(1.2);
-  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .loans-page .loan-portfolio-section {
@@ -9893,7 +9784,7 @@ nextjs-portal {
   bottom: 0;
   left: 50%;
   width: 2px;
-  background: linear-gradient(180deg, #d2e4dc, #bedad0);
+  background: #cbd5e1;
 }
 
 .loans-page .loan-timeline-marker span {
@@ -9905,7 +9796,7 @@ nextjs-portal {
   border: 1px solid #a4cebe;
   border-radius: 999px;
   color: #1a6f52;
-  background: linear-gradient(145deg, #ffffff, #ecf8f3);
+  background: #ffffff;
   box-shadow: 0 2px 7px rgba(42, 113, 87, 0.1);
   font-size: 10px;
   font-weight: 700;
@@ -9977,16 +9868,10 @@ nextjs-portal {
   position: relative;
   overflow: hidden;
   padding: 11px 13px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 16px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(244, 250, 248, 0.72)),
-    rgba(255, 255, 255, 0.75);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.88),
-    0 6px 16px rgba(56, 92, 117, 0.045);
-  backdrop-filter: blur(12px) saturate(1.15);
-  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
 
 .loans-page .loan-portfolio-top {
@@ -10003,8 +9888,7 @@ nextjs-portal {
   height: 28px;
   border-radius: 9px;
   color: #0d6f50;
-  background: linear-gradient(145deg, #e6f7ef, #cdebdc);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  background: #def4ec;
   font-size: 12px;
   font-weight: 700;
 }
@@ -10099,16 +9983,11 @@ nextjs-portal {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #0d8a5f, #3cbd8e);
+  background: #0d8a5f;
 }
 
 .loans-page .loan-portfolio-progress span::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.08) 46%, rgba(0, 0, 0, 0.08));
-  pointer-events: none;
+  display: none;
 }
 
 .loans-page .loan-portfolio-foot {
@@ -10180,12 +10059,12 @@ nextjs-portal {
   height: 42px;
   margin-top: 13px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #0d8a5f, #32a77d);
-  box-shadow: 0 8px 16px rgba(13, 138, 95, 0.16);
+  background: #0d8a5f;
+  box-shadow: 0 4px 12px rgba(13, 138, 95, 0.16);
 }
 
 .loans-page .finance-primary-action:active {
-  background: linear-gradient(135deg, #0a7651, #278e6a);
+  background: #0b7d55;
   box-shadow: none;
 }
 
@@ -10229,15 +10108,11 @@ nextjs-portal {
   position: relative;
   overflow: hidden;
   padding: 17px;
-  border: 0;
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 24px;
   color: var(--asset-ink);
-  background:
-    radial-gradient(circle at 100% 0%, rgba(111, 197, 157, 0.2), transparent 34%),
-    linear-gradient(145deg, rgba(240, 250, 245, 0.98), rgba(222, 243, 233, 0.9));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.74),
-    0 16px 34px rgba(48, 91, 72, 0.1);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .assets-page .asset-statement-hero::after {
@@ -10347,14 +10222,10 @@ nextjs-portal {
 .assets-page .asset-ledger-section,
 .assets-page .finance-create-section {
   padding: 15px;
-  border: 1px solid rgba(209, 226, 216, 0.82);
+  border: 1px solid rgba(226, 232, 240, 0.85);
   border-radius: 22px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(247, 251, 249, 0.76)),
-    rgba(255, 255, 255, 0.7);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.76),
-    0 10px 25px rgba(67, 105, 86, 0.06);
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .assets-page .asset-overview-section .finance-section-head,
@@ -10573,12 +10444,12 @@ nextjs-portal {
 .assets-page .finance-primary-action {
   height: 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #0d8a5f, #32a77d);
-  box-shadow: 0 7px 15px rgba(13, 138, 95, 0.14);
+  background: #0d8a5f;
+  box-shadow: 0 4px 12px rgba(13, 138, 95, 0.14);
 }
 
 .assets-page .finance-primary-action:active {
-  background: linear-gradient(135deg, #0a7651, #278e6a);
+  background: #0b7d55;
   box-shadow: none;
 }
 
@@ -10625,64 +10496,23 @@ nextjs-portal {
 }
 
 .home-liquid-screen::before {
-  background:
-    radial-gradient(circle at 88% 5%, rgba(143, 199, 255, 0.38), transparent 31%),
-    radial-gradient(circle at 12% 1%, rgba(190, 226, 255, 0.52), transparent 34%),
-    linear-gradient(180deg, #eef7ff 0%, #f7fbff 56%, #f2f7fc 100%);
+  background: #f8fafc;
 }
 
 .home-liquid-screen .overview-hero {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  color: #20334f;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(238, 247, 255, 0.48) 50%, rgba(196, 224, 255, 0.52)),
-    rgba(255, 255, 255, 0.36);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.98),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.48),
-    0 0 0 1px rgba(255, 255, 255, 0.3),
-    0 0 22px rgba(255, 255, 255, 0.54),
-    0 16px 30px rgba(66, 137, 210, 0.16);
-  backdrop-filter: blur(22px) saturate(1.35);
-  -webkit-backdrop-filter: blur(22px) saturate(1.35);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  color: #0f172a;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
-.home-liquid-screen .overview-hero::before {
-  content: "";
-  position: absolute;
-  inset: -16%;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.92;
-  filter: blur(24px) saturate(1.12);
-  transform: scale(1.04);
-  background:
-    radial-gradient(ellipse at 28% 28%, rgba(83, 159, 255, 0.48) 0%, rgba(116, 184, 255, 0.28) 18%, transparent 47%),
-    radial-gradient(ellipse at 72% 18%, rgba(185, 220, 255, 0.56) 0%, rgba(205, 231, 255, 0.24) 22%, transparent 52%),
-    radial-gradient(ellipse at 76% 76%, rgba(119, 214, 172, 0.3) 0%, rgba(169, 232, 202, 0.16) 22%, transparent 52%),
-    radial-gradient(ellipse at 8% 92%, rgba(255, 255, 255, 0.62) 0%, transparent 38%);
-}
-
+.home-liquid-screen .overview-hero::before,
 .home-liquid-screen .overview-hero::after {
-  content: "";
-  position: absolute;
-  right: -30px;
-  bottom: -46px;
-  z-index: -1;
-  width: 142px;
-  height: 142px;
-  border: 1px solid rgba(255, 255, 255, 0.62);
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.72), rgba(183, 220, 255, 0.16) 48%, rgba(119, 183, 243, 0.08) 70%, transparent 72%);
-  box-shadow:
-    inset 10px 8px 18px rgba(255, 255, 255, 0.46),
-    inset -10px -12px 18px rgba(74, 142, 214, 0.12),
-    0 8px 18px rgba(71, 137, 205, 0.1);
-  opacity: 0.88;
-  pointer-events: none;
+  display: none;
+  content: none;
 }
 
 .home-liquid-screen .overview-hero > * {
@@ -11065,7 +10895,7 @@ nextjs-portal {
 }
 
 .home-liquid-screen::before {
-  background: linear-gradient(180deg, #f7fbff 0%, #f4f7fb 100%);
+  background: #f8fafc;
 }
 
 .home-liquid-screen .hero-stack {
@@ -11077,7 +10907,7 @@ nextjs-portal {
   border: 0;
   border-radius: 18px;
   color: #ffffff;
-  background: linear-gradient(135deg, #075fbd 0%, #1678d5 100%);
+  background: #0060c0;
   box-shadow: 0 8px 18px rgba(25, 102, 183, 0.16);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
