@@ -42,7 +42,7 @@ html[data-app-theme] .app-list-value {
 }
 
 html {
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-x: none;
 }
@@ -205,13 +205,13 @@ nextjs-portal {
 }
 
 .page-hero-label {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   opacity: 0.9;
 }
 
 .page-hero-value {
   margin-top: 8px;
-  font-size: 24px;
+  font-size: calc(24px * var(--user-font-scale));
   line-height: 1.12;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -219,7 +219,7 @@ nextjs-portal {
 
 .page-hero-sub {
   margin-top: 8px;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   opacity: 0.92;
 }
 
@@ -230,7 +230,7 @@ nextjs-portal {
 .page-card-title {
   margin: 0 0 10px;
   color: #11182d;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
 }
@@ -255,7 +255,7 @@ nextjs-portal {
   min-height: 34px;
   background: #eef2f7;
   color: #6b7280;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 400;
 }
 
@@ -267,7 +267,7 @@ nextjs-portal {
 .amount-display {
   margin-bottom: 10px;
   color: #11182d;
-  font-size: 24px;
+  font-size: calc(24px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -287,7 +287,7 @@ nextjs-portal {
   padding: 10px 12px;
   background: #f8fbff;
   color: #162033;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .category-grid {
@@ -312,7 +312,7 @@ nextjs-portal {
   border: 1px solid var(--border-soft);
   background: #ffffff;
   color: #374151;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 400;
   line-height: 1.2;
 }
@@ -341,7 +341,7 @@ nextjs-portal {
   border: 1px solid var(--border-soft);
   background: #ffffff;
   color: #6b7280;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 400;
   border-radius: 999px;
 }
@@ -361,7 +361,7 @@ nextjs-portal {
 .primary-button,
 .secondary-button {
   min-height: 40px;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -398,7 +398,7 @@ nextjs-portal {
 
 .app-list-title {
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -408,13 +408,13 @@ nextjs-portal {
 .app-list-subtitle {
   margin-top: 4px;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.3;
 }
 
 .app-list-value {
   color: #0060c0;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -459,7 +459,7 @@ nextjs-portal {
 .home-topbar h1 {
   margin: 0;
   color: #121829;
-  font-size: 18px;
+  font-size: calc(18px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   letter-spacing: 0;
@@ -614,7 +614,7 @@ nextjs-portal {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   font-weight: 500;
   letter-spacing: 0;
 }
@@ -627,7 +627,7 @@ nextjs-portal {
   padding: 0;
   background: transparent;
   color: #ffffff;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 400;
 }
 
@@ -657,14 +657,14 @@ nextjs-portal {
 .overview-forecast span,
 .overview-forecast em {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-style: normal;
 }
 
 .overview-forecast strong {
   color: #ffffff;
-  font-size: 20px;
+  font-size: calc(20px * var(--user-font-scale));
   line-height: 1.08;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -691,7 +691,7 @@ nextjs-portal {
   border-radius: 999px;
   background: transparent;
   color: rgba(255, 255, 255, 0.88);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -717,14 +717,14 @@ nextjs-portal {
 
 .balance-label {
   color: rgba(255, 255, 255, 0.86);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
 
 .overview-hero-balance strong {
   color: #ffffff;
-  font-size: 26px;
+  font-size: calc(26px * var(--user-font-scale));
   line-height: 1.05;
   font-weight: 600;
   letter-spacing: 0;
@@ -759,14 +759,14 @@ nextjs-portal {
 
 .overview-hero-flow span {
   color: rgba(255, 255, 255, 0.86);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
 
 .overview-hero-flow strong {
   color: #ffffff;
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   letter-spacing: 0;
@@ -778,7 +778,7 @@ nextjs-portal {
 
 .overview-hero-flow i {
   font-style: normal;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
@@ -810,7 +810,7 @@ nextjs-portal {
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
   text-decoration: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   transition: background 150ms ease;
 }
@@ -824,7 +824,7 @@ nextjs-portal {
 }
 
 .hero-networth-pill .pill-amount {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: #ffffff;
@@ -836,7 +836,7 @@ nextjs-portal {
   height: 16px;
   padding: 0 5px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   font-weight: 500;
   line-height: 1;
 }
@@ -858,7 +858,7 @@ nextjs-portal {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -887,20 +887,20 @@ nextjs-portal {
 
 .home-data-error strong {
   color: #991b1b;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
 }
 
 .home-data-error p {
   margin: 0;
   color: #7f1d1d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.6;
 }
 
 .home-data-error code {
   overflow-wrap: anywhere;
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .home-data-error-actions {
@@ -917,7 +917,7 @@ nextjs-portal {
   justify-content: center;
   min-height: 38px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   text-decoration: none;
 }
@@ -956,7 +956,7 @@ nextjs-portal {
   background: transparent;
   color: #1e293b;
   font: inherit;
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
 }
@@ -1002,12 +1002,12 @@ nextjs-portal {
 
 .reporting-month-picker-head span {
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .reporting-month-picker-head strong {
   color: #0f172a;
-  font-size: 19px;
+  font-size: calc(19px * var(--user-font-scale));
   line-height: 1.3;
 }
 
@@ -1019,7 +1019,7 @@ nextjs-portal {
   border-radius: 999px;
   background: #eef2f7;
   color: #475569;
-  font-size: 23px;
+  font-size: calc(23px * var(--user-font-scale));
   line-height: 1;
   cursor: pointer;
 }
@@ -1042,7 +1042,7 @@ nextjs-portal {
 
 .reporting-year-picker button {
   padding: 0;
-  font-size: 24px;
+  font-size: calc(24px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -1055,7 +1055,7 @@ nextjs-portal {
   width: 100%;
   padding: 0 34px 0 12px;
   text-align: center;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -1073,7 +1073,7 @@ nextjs-portal {
   border-radius: 13px;
   background: #ffffff;
   color: #334155;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
 }
@@ -1093,7 +1093,7 @@ nextjs-portal {
   border-radius: 13px;
   background: #eef2f7;
   color: #475569;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 650;
   cursor: pointer;
 }
@@ -1127,7 +1127,7 @@ nextjs-portal {
   border-radius: 999px;
   background: transparent;
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
   cursor: pointer;
   transition: all 150ms ease;
@@ -1185,7 +1185,7 @@ nextjs-portal {
   border: 1px solid #e2e8f0;
   color: #1e293b;
   text-decoration: none;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition: all 140ms ease;
@@ -1212,7 +1212,7 @@ nextjs-portal {
   right: 16px;
   top: 32px;
   transform: translateY(-50%);
-  font-size: 72px;
+  font-size: calc(72px * var(--user-font-scale));
   font-weight: 800;
   font-style: italic;
   letter-spacing: -2px;
@@ -1233,7 +1233,7 @@ nextjs-portal {
 
 .stark-card-label {
   color: #64748b;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -1254,7 +1254,7 @@ nextjs-portal {
   border-radius: 999px;
   background: transparent;
   color: #64748b;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -1275,7 +1275,7 @@ nextjs-portal {
 }
 
 .stark-big-amount {
-  font-size: 32px;
+  font-size: calc(32px * var(--user-font-scale));
   font-weight: 750;
   letter-spacing: -0.5px;
   line-height: 1.1;
@@ -1310,7 +1310,7 @@ nextjs-portal {
 
 .stark-tx-count {
   color: #94a3b8;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .stark-detail-arrow,
@@ -1323,7 +1323,7 @@ nextjs-portal {
   padding: 0;
   color: #0284c7;
   text-decoration: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
   cursor: pointer;
 }
@@ -1336,7 +1336,7 @@ nextjs-portal {
 @media (max-width: 350px) {
   .stark-salary-action-btn {
     padding: 0 10px;
-    font-size: 11px;
+    font-size: calc(11px * var(--user-font-scale));
   }
 }
 
@@ -1380,14 +1380,14 @@ nextjs-portal {
 }
 
 .diag-content strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   color: #1e293b;
 }
 
 .diag-content p {
   margin: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   color: #64748b;
   line-height: 1.35;
   overflow: hidden;
@@ -1397,7 +1397,7 @@ nextjs-portal {
 
 .diag-link {
   color: #0284c7;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
   text-decoration: none;
   flex: 0 0 auto;
@@ -1462,13 +1462,13 @@ nextjs-portal {
 
 .compass-label {
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .compass-value {
   color: #0f172a;
-  font-size: 17px;
+  font-size: calc(17px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -1486,7 +1486,7 @@ nextjs-portal {
 }
 
 .compass-badge {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 500;
   line-height: 1;
 }
@@ -1523,13 +1523,13 @@ nextjs-portal {
 
 .trend-title-block strong {
   display: block;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
 }
 
 .trend-sub {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   color: #94a3b8;
 }
 
@@ -1537,7 +1537,7 @@ nextjs-portal {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   color: #64748b;
 }
 
@@ -1578,7 +1578,7 @@ nextjs-portal {
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.58);
   color: #64748b;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.2;
 }
 
@@ -1704,7 +1704,7 @@ nextjs-portal {
 }
 
 .month-tag {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   color: #94a3b8;
   line-height: 1;
 }
@@ -1728,13 +1728,13 @@ nextjs-portal {
 
 .category-title-block strong {
   display: block;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
 }
 
 .category-sub {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   color: #94a3b8;
 }
 
@@ -1744,7 +1744,7 @@ nextjs-portal {
   gap: 2px;
   color: #0284c7;
   text-decoration: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -1805,13 +1805,13 @@ nextjs-portal {
 
 .category-name {
   color: #475569;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .category-amount {
   color: #0f172a;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   margin-top: 2px;
@@ -1819,14 +1819,14 @@ nextjs-portal {
 
 .category-percent {
   color: #94a3b8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .category-empty {
   padding: 16px 0;
   text-align: center;
   color: #94a3b8;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 /* Stark Smart Financial Advisory */
@@ -1851,7 +1851,7 @@ nextjs-portal {
 }
 
 .advisory-title-block strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
 }
@@ -1864,7 +1864,7 @@ nextjs-portal {
   border-radius: 999px;
   background: #e0f2fe;
   color: #0284c7;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 600;
 }
 
@@ -1888,7 +1888,7 @@ nextjs-portal {
   border-radius: 999px;
   background: #0284c7;
   color: #ffffff;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 600;
   line-height: 1;
   flex: 0 0 auto;
@@ -1898,7 +1898,7 @@ nextjs-portal {
 .advisory-tip-row p {
   margin: 0;
   color: #475569;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.5;
 }
 
@@ -1959,7 +1959,7 @@ nextjs-portal {
 
 .home-modal-head h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   font-weight: 600;
   color: #111827;
 }
@@ -1967,7 +1967,7 @@ nextjs-portal {
 .home-modal-close {
   border: 0;
   background: transparent;
-  font-size: 20px;
+  font-size: calc(20px * var(--user-font-scale));
   line-height: 1;
   color: #8f9cae;
   cursor: pointer;
@@ -1976,7 +1976,7 @@ nextjs-portal {
 
 .home-modal-desc {
   margin: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.45;
   color: #65718a;
 }
@@ -1995,14 +1995,14 @@ nextjs-portal {
   border: 1.5px solid #0060c0;
   border-radius: 10px;
   background: #f4f8fe;
-  font-size: 18px;
+  font-size: calc(18px * var(--user-font-scale));
   font-weight: 600;
   color: #0060c0;
   text-align: center;
 }
 
 .home-modal-input-row span {
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 500;
   color: #374151;
 }
@@ -2018,7 +2018,7 @@ nextjs-portal {
   height: 34px;
   border-radius: 8px;
   border: 0;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
   cursor: pointer;
 }
@@ -2067,7 +2067,7 @@ nextjs-portal {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .smart-alert-tag {
@@ -2094,7 +2094,7 @@ nextjs-portal {
   align-items: center;
   justify-content: space-between;
   color: #718096;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -2135,7 +2135,7 @@ nextjs-portal {
 }
 
 .task-info strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
   color: #1f2937;
   overflow: hidden;
@@ -2144,7 +2144,7 @@ nextjs-portal {
 }
 
 .task-info span {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   color: #718096;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2152,7 +2152,7 @@ nextjs-portal {
 }
 
 .task-badge {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 500;
   padding: 3px 8px;
   border-radius: 999px;
@@ -2177,7 +2177,7 @@ nextjs-portal {
   gap: 6px;
   padding: 10px 0 4px;
   color: #6b7280;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .empty-dot {
@@ -2193,7 +2193,7 @@ nextjs-portal {
   gap: 2px;
   color: #0060c0;
   text-decoration: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 400;
 }
 
@@ -2204,7 +2204,7 @@ nextjs-portal {
 .overview-stat span:first-child {
   display: block;
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 400;
   opacity: 0.92;
 }
@@ -2212,7 +2212,7 @@ nextjs-portal {
 .overview-stat strong {
   display: block;
   color: #ffffff;
-  font-size: 24px;
+  font-size: calc(24px * var(--user-font-scale));
   line-height: 1.12;
   font-weight: 500;
   letter-spacing: 0;
@@ -2230,7 +2230,7 @@ nextjs-portal {
   gap: 4px;
   margin-top: 7px;
   color: rgba(255, 255, 255, 0.92);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-weight: 400;
   letter-spacing: 0;
@@ -2251,7 +2251,7 @@ nextjs-portal {
 }
 
 .home-delta .arrow {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -2271,7 +2271,7 @@ nextjs-portal {
 .progress-row h3 {
   margin: 0;
   color: #11182d;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
   letter-spacing: 0;
@@ -2279,7 +2279,7 @@ nextjs-portal {
 
 .mini-section-note {
   color: #7d8aa2;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
@@ -2289,7 +2289,7 @@ nextjs-portal {
   align-items: center;
   gap: 10px;
   color: #11182d;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 400;
 }
 
@@ -2371,7 +2371,7 @@ nextjs-portal {
   gap: 7px;
   align-items: center;
   color: #5c6880;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -2423,7 +2423,7 @@ nextjs-portal {
   display: grid;
   gap: 4px;
   color: #11182d;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   line-height: 1;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
@@ -2436,7 +2436,7 @@ nextjs-portal {
 
 .progress-money-total {
   color: #6f7c9b;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 400;
 }
 
@@ -2448,7 +2448,7 @@ nextjs-portal {
 }
 
 .progress-track-row strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   text-align: right;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -2483,7 +2483,7 @@ nextjs-portal {
   display: block;
   margin-top: 6px;
   color: #11182d;
-  font-size: 19px;
+  font-size: calc(19px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   letter-spacing: 0;
@@ -2513,14 +2513,14 @@ nextjs-portal {
 
 .fo-net-label {
   color: #65718a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
 
 .fo-net-row strong {
   color: #11182d;
-  font-size: 20px;
+  font-size: calc(20px * var(--user-font-scale));
   line-height: 1.1;
   font-weight: 600;
   letter-spacing: 0;
@@ -2546,7 +2546,7 @@ nextjs-portal {
   border-radius: 999px;
   background: rgba(13, 138, 95, 0.1);
   color: #0d8a5f;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
@@ -2570,14 +2570,14 @@ nextjs-portal {
 
 .fo-mini-stats span {
   color: #65718a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
 
 .fo-mini-stats strong {
   color: #11182d;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   letter-spacing: 0;
@@ -2612,14 +2612,14 @@ nextjs-portal {
 
 .progress-item-head span {
   color: #65718a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   white-space: nowrap;
 }
 
 .progress-item-head strong {
   color: #11182d;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -2631,7 +2631,7 @@ nextjs-portal {
   justify-content: space-between;
   gap: 10px;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -2686,13 +2686,13 @@ nextjs-portal {
 }
 
 .loan-mini-head strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
   color: #11182d;
 }
 
 .loan-mini-head span {
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   color: #0d8a5f;
   font-weight: 500;
 }
@@ -2703,7 +2703,7 @@ nextjs-portal {
   justify-content: space-between;
   gap: 8px;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.3;
 }
 
@@ -2739,7 +2739,7 @@ nextjs-portal {
   background: #f7faff;
   border: 1px solid var(--border-soft);
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-align: center;
 }
 
@@ -2753,7 +2753,7 @@ nextjs-portal {
   border-radius: 999px;
   background: #ffffff;
   color: #0060c0;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   font-weight: 400;
   white-space: nowrap;
@@ -2821,7 +2821,7 @@ nextjs-portal {
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-style: normal;
@@ -2829,7 +2829,7 @@ nextjs-portal {
 
 .recent-title,
 .recent-amount {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 400;
   letter-spacing: 0;
 }
@@ -2844,7 +2844,7 @@ nextjs-portal {
 .recent-time {
   min-width: 0;
   color: #65718a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 400;
   white-space: nowrap;
 }
@@ -2890,7 +2890,7 @@ nextjs-portal {
 .budget-insights-head h3 {
   margin: 0;
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
 }
@@ -2927,7 +2927,7 @@ nextjs-portal {
 
 .budget-alert-top strong {
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
   white-space: nowrap;
@@ -2936,7 +2936,7 @@ nextjs-portal {
 .budget-alert-top span {
   margin-left: auto;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -2964,7 +2964,7 @@ nextjs-portal {
 
 .task-amount {
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -2988,7 +2988,7 @@ nextjs-portal {
 .insight-row strong {
   display: block;
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
 }
@@ -2999,7 +2999,7 @@ nextjs-portal {
   display: block;
   margin-top: 3px;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.35;
 }
 
@@ -3018,7 +3018,7 @@ nextjs-portal {
   height: 22px;
   padding: 0 8px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-style: normal;
   font-weight: 500;
@@ -3141,7 +3141,7 @@ nextjs-portal {
 }
 
 .forecast-balance-row strong {
-  font-size: 21px;
+  font-size: calc(21px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -3157,7 +3157,7 @@ nextjs-portal {
 
 .forecast-balance-row span {
   color: #6f7c9b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .forecast-meta-grid {
@@ -3177,7 +3177,7 @@ nextjs-portal {
 .forecast-meta-grid span {
   display: block;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -3185,7 +3185,7 @@ nextjs-portal {
   display: block;
   margin-top: 6px;
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -3364,7 +3364,7 @@ nextjs-portal {
   min-width: 0;
   color: #9aa5b5;
   text-decoration: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-weight: 400;
 }
@@ -3393,7 +3393,7 @@ nextjs-portal {
   }
 
   .overview-stat strong {
-    font-size: 22px;
+    font-size: calc(22px * var(--user-font-scale));
   }
 
   .home-main-grid,
@@ -3498,7 +3498,7 @@ nextjs-portal {
 
 .savings-row-label {
   color: #0d8a5f;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-summary-row:nth-child(2) .savings-row-label {
@@ -3508,7 +3508,7 @@ nextjs-portal {
 .savings-row-value {
   margin-top: 4px;
   color: #11182d;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -3517,7 +3517,7 @@ nextjs-portal {
 .savings-row-sub {
   margin-top: 2px;
   color: #65718a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-goal-list {
@@ -3545,7 +3545,7 @@ nextjs-portal {
 .savings-goal-copy strong {
   display: block;
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
 }
@@ -3554,13 +3554,13 @@ nextjs-portal {
   display: block;
   margin-top: 4px;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.35;
 }
 
 .savings-goal-row em {
   color: #0060c0;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
   font-style: normal;
   font-weight: 500;
@@ -3616,7 +3616,7 @@ nextjs-portal {
   border-radius: 9px;
   background: #e9f7f1;
   color: #0d8a5f;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -3625,7 +3625,7 @@ nextjs-portal {
 .savings-recent-row time,
 .savings-recent-row em {
   min-width: 0;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -3699,13 +3699,13 @@ nextjs-portal {
 }
 
 .cs-row-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   color: #65718a;
 }
 
 .cs-row-value {
   margin-top: 4px;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -3714,7 +3714,7 @@ nextjs-portal {
 
 .cs-row-sub {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   color: #65718a;
 }
 
@@ -3771,7 +3771,7 @@ nextjs-portal {
 
 .savings-section-head > div > span {
   color: var(--saving-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-dashboard-page .savings-vault-hero {
@@ -3824,7 +3824,7 @@ nextjs-portal {
 .savings-metric-grid span,
 .savings-goal-card span {
   color: var(--saving-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -3832,7 +3832,7 @@ nextjs-portal {
   display: block;
   margin-top: 9px;
   color: var(--saving-ink);
-  font-size: 29px;
+  font-size: calc(29px * var(--user-font-scale));
   line-height: 1;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -3843,7 +3843,7 @@ nextjs-portal {
   margin: 9px 0 0;
   overflow: hidden;
   color: #52627a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3880,7 +3880,7 @@ nextjs-portal {
   min-width: 0;
   overflow: hidden;
   color: var(--saving-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -3906,7 +3906,7 @@ nextjs-portal {
 
 .savings-vault-ring strong {
   color: var(--saving-ink);
-  font-size: 19px;
+  font-size: calc(19px * var(--user-font-scale));
   line-height: 1;
   font-weight: 700;
 }
@@ -3914,7 +3914,7 @@ nextjs-portal {
 .savings-vault-ring span {
   margin-top: 5px;
   color: var(--saving-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -3941,7 +3941,7 @@ nextjs-portal {
 .savings-metric-grid strong {
   overflow: hidden;
   color: var(--saving-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   line-height: 1.1;
   font-weight: 650;
   text-overflow: ellipsis;
@@ -3952,7 +3952,7 @@ nextjs-portal {
 .savings-metric-grid small {
   overflow: hidden;
   color: var(--saving-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3997,13 +3997,13 @@ nextjs-portal {
 .savings-focus-head span,
 .savings-focus-meta span {
   color: var(--saving-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-focus-head strong {
   overflow: hidden;
   color: var(--saving-ink);
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.15;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4011,7 +4011,7 @@ nextjs-portal {
 
 .savings-focus-head em {
   color: var(--saving-green);
-  font-size: 18px;
+  font-size: calc(18px * var(--user-font-scale));
   font-style: normal;
   font-weight: 760;
   font-variant-numeric: tabular-nums;
@@ -4055,7 +4055,7 @@ nextjs-portal {
   margin-top: 5px;
   overflow: hidden;
   color: var(--saving-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   line-height: 1.15;
   font-weight: 650;
   text-overflow: ellipsis;
@@ -4064,7 +4064,7 @@ nextjs-portal {
 
 .savings-goal-card em {
   color: var(--saving-green);
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-style: normal;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -4101,7 +4101,7 @@ nextjs-portal {
   gap: 12px;
   margin: -1px 0 0;
   color: var(--saving-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
@@ -4143,7 +4143,7 @@ nextjs-portal {
 
 .savings-rhythm-tile span {
   color: var(--saving-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -4151,7 +4151,7 @@ nextjs-portal {
   grid-column: 1 / -1;
   overflow: hidden;
   color: var(--saving-ink);
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4161,7 +4161,7 @@ nextjs-portal {
 .savings-rhythm-tile small {
   justify-self: end;
   color: var(--saving-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.2;
   white-space: nowrap;
 }
@@ -4241,7 +4241,7 @@ nextjs-portal {
 
 .savings-row-label {
   color: #07c160;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-summary-row:nth-child(2) .savings-row-label {
@@ -4251,7 +4251,7 @@ nextjs-portal {
 .savings-row-value {
   margin-top: 4px;
   color: #11182d;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -4260,7 +4260,7 @@ nextjs-portal {
 .savings-row-sub {
   margin-top: 2px;
   color: #65718a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-calendar-card {
@@ -4290,7 +4290,7 @@ nextjs-portal {
   border-radius: 11px;
   color: #0d6f50;
   background: #def4ec;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 700;
 }
 
@@ -4315,19 +4315,19 @@ nextjs-portal {
 
 .savings-recent-row strong {
   color: #11182d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .savings-recent-row span,
 .savings-recent-row time {
   color: #65718a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-recent-row em {
   color: #0d8a5f;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-style: normal;
   font-weight: 500;
   text-align: right;
@@ -4351,7 +4351,7 @@ nextjs-portal {
   }
 
   .savings-vault-copy strong {
-    font-size: 25px;
+    font-size: calc(25px * var(--user-font-scale));
   }
 
   .savings-vault-ring {
@@ -4360,7 +4360,7 @@ nextjs-portal {
   }
 
   .savings-vault-ring strong {
-    font-size: 16px;
+    font-size: calc(16px * var(--user-font-scale));
   }
 
   .savings-metric-grid {
@@ -4418,7 +4418,7 @@ nextjs-portal {
 .savings-lite-total span,
 .savings-lite-grid span {
   color: #748097;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .savings-lite-head strong {
@@ -4426,7 +4426,7 @@ nextjs-portal {
   margin-top: 4px;
   overflow: hidden;
   color: #172033;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4435,7 +4435,7 @@ nextjs-portal {
 .savings-lite-head em {
   flex: 0 0 auto;
   color: #0060c0;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-style: normal;
 }
 
@@ -4444,7 +4444,7 @@ nextjs-portal {
   margin-top: 6px;
   overflow: hidden;
   color: #11182d;
-  font-size: 25px;
+  font-size: calc(25px * var(--user-font-scale));
   line-height: 1;
   font-weight: 600;
   text-overflow: ellipsis;
@@ -4468,7 +4468,7 @@ nextjs-portal {
 
 .savings-lite-meta span {
   color: #6f7c91;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   white-space: nowrap;
 }
 
@@ -4491,7 +4491,7 @@ nextjs-portal {
 .savings-lite-grid strong {
   overflow: hidden;
   color: #172033;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4524,7 +4524,7 @@ nextjs-portal {
 
 .savings-rhythm-row > span {
   color: #526179;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .savings-rhythm-row.current > span {
@@ -4542,7 +4542,7 @@ nextjs-portal {
 .savings-rhythm-row strong {
   overflow: hidden;
   color: #172033;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -4551,7 +4551,7 @@ nextjs-portal {
 
 .savings-rhythm-row small {
   color: #7a8798;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   white-space: nowrap;
 }
 
@@ -4617,24 +4617,24 @@ nextjs-portal {
 
 .savings-dashboard-page .savings-recent-row strong {
   grid-column: 2;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .savings-dashboard-page .savings-recent-row span {
   grid-column: 2;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-dashboard-page .savings-recent-row time {
   grid-column: 2;
   grid-row: 3;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-dashboard-page .savings-recent-row em {
   grid-column: 3;
   grid-row: 1 / span 3;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 /* floating journal panel */
@@ -4783,7 +4783,7 @@ nextjs-portal {
 
 .journal-panel.savings .savings-panel-summary strong {
   color: #0f172a;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -4869,7 +4869,7 @@ nextjs-portal {
 }
 
 .journal-panel.savings .savings-plan-table {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .journal-panel.savings .savings-plan-table th,
@@ -4904,12 +4904,12 @@ nextjs-portal {
   border-radius: 999px;
   background: #f1f5f9;
   color: #64748b;
-  font-size: 18px;
+  font-size: calc(18px * var(--user-font-scale));
   cursor: pointer;
 }
 
 .journal-header-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
 }
@@ -4942,7 +4942,7 @@ nextjs-portal {
   border-radius: 9px;
   background: transparent;
   color: #64748b;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
   line-height: 1;
   cursor: pointer;
@@ -4978,7 +4978,7 @@ nextjs-portal {
 }
 
 .currency-label {
-  font-size: 26px;
+  font-size: calc(26px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
 }
@@ -4987,7 +4987,7 @@ nextjs-portal {
   width: min(100%, 240px);
   border: 0;
   background: transparent;
-  font-size: 38px;
+  font-size: calc(38px * var(--user-font-scale));
   font-weight: 750;
   color: #0f172a;
   text-align: center;
@@ -5011,7 +5011,7 @@ nextjs-portal {
   border: 0;
   background: rgba(148, 163, 184, 0.25);
   color: #475569;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -5023,7 +5023,7 @@ nextjs-portal {
 
 .section-mini-title {
   color: #64748b;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -5087,7 +5087,7 @@ nextjs-portal {
 }
 
 .tile-label {
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   color: #475569;
   line-height: 1;
 }
@@ -5111,7 +5111,7 @@ nextjs-portal {
   border: 1px solid #e2e8f0;
   background: #ffffff;
   color: #475569;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -5140,7 +5140,7 @@ nextjs-portal {
   border-radius: 10px;
   background: #f8fafc;
   color: #1e293b;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   outline: none;
   min-width: 0;
 }
@@ -5169,7 +5169,7 @@ nextjs-portal {
   border-radius: 12px;
   background: #f8fafc;
   color: #64748b;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
   cursor: pointer;
 }
@@ -5180,7 +5180,7 @@ nextjs-portal {
   border-radius: 12px;
   background: #0060c0;
   color: #ffffff;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 96, 192, 0.22);
@@ -5214,7 +5214,7 @@ nextjs-portal {
 
 .modern-form-group label {
   color: #64748b;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -5224,7 +5224,7 @@ nextjs-portal {
   border-radius: 10px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   color: #0f172a;
   outline: none;
 }
@@ -5251,7 +5251,7 @@ nextjs-portal {
 }
 
 .cur-sym {
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
 }
@@ -5260,7 +5260,7 @@ nextjs-portal {
   flex: 1;
   border: 0;
   outline: none;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   font-weight: 600;
   color: #0f172a;
   font-variant-numeric: tabular-nums;
@@ -5278,7 +5278,7 @@ nextjs-portal {
   border: 1px solid #cbd5e1;
   background: #ffffff;
   color: #475569;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -5350,7 +5350,7 @@ nextjs-portal {
 
   .amount-huge-input {
     width: min(100%, 200px);
-    font-size: 34px;
+    font-size: calc(34px * var(--user-font-scale));
   }
 }
 
@@ -5360,7 +5360,7 @@ nextjs-portal {
   border-radius: 12px;
   background: #0060c0;
   color: #ffffff;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 96, 192, 0.22);
@@ -5386,7 +5386,7 @@ nextjs-portal {
 }
 
 .journal-title {
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   font-weight: 500;
   color: #11182d;
 }
@@ -5417,7 +5417,7 @@ nextjs-portal {
 
 .home-header-action.journal-action {
   color: #0060c0;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
   white-space: nowrap;
 }
@@ -5438,7 +5438,7 @@ nextjs-portal {
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
   color: #0284c7;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
   transition: transform 150ms ease, box-shadow 150ms ease;
@@ -5456,7 +5456,7 @@ nextjs-portal {
   border-radius: 7px;
   background: #0284c7;
   color: #ffffff;
-  font-size: 17px;
+  font-size: calc(17px * var(--user-font-scale));
   font-weight: 400;
   line-height: 1;
 }
@@ -5502,7 +5502,7 @@ nextjs-portal {
 
 .calendar-week-row span {
   color: #65718a;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1;
   text-align: center;
 }
@@ -5538,12 +5538,12 @@ nextjs-portal {
 }
 
 .calendar-day em {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .calendar-day strong {
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   font-weight: 400;
 }
 
@@ -5618,13 +5618,13 @@ nextjs-portal {
   display: grid;
   gap: 5px;
   color: #65718a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-align: right;
 }
 
 .savings-hero-meta strong {
   color: #172038;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -5666,7 +5666,7 @@ nextjs-portal {
 .savings-panel-summary span {
   display: block;
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -5674,7 +5674,7 @@ nextjs-portal {
   display: block;
   margin-top: 6px;
   color: #11182d;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -5687,7 +5687,7 @@ nextjs-portal {
 .savings-planner-loading {
   padding: 20px 4px;
   color: #70809a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   text-align: center;
 }
 
@@ -5704,7 +5704,7 @@ nextjs-portal {
 
 .savings-goal-field span {
   color: #70809a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
 }
 
@@ -5717,7 +5717,7 @@ nextjs-portal {
   outline: none;
   color: #172038;
   background: #ffffff;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-goal-field input:focus {
@@ -5738,7 +5738,7 @@ nextjs-portal {
   border-radius: 10px;
   color: #64748b;
   background: #ffffff;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-deposit-switch button.active {
@@ -5771,7 +5771,7 @@ nextjs-portal {
   border-radius: 7px;
   color: #64748b;
   background: transparent;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-mode-switch button.active {
@@ -5797,7 +5797,7 @@ nextjs-portal {
   outline: none;
   color: #172038;
   background: #ffffff;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-column-adder input:focus {
@@ -5812,7 +5812,7 @@ nextjs-portal {
   border-radius: 9px;
   color: #334155;
   background: #f1f5f9;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .savings-column-adder .fixed-expense-column-button {
@@ -5839,7 +5839,7 @@ nextjs-portal {
   display: block;
   margin-top: 1px;
   color: #b17a2c;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -5859,7 +5859,7 @@ nextjs-portal {
   border-collapse: separate;
   border-spacing: 0;
   color: #172038;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -5893,7 +5893,7 @@ nextjs-portal {
   border: 0;
   color: #a1adbd;
   background: transparent;
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   vertical-align: middle;
 }
 
@@ -5939,7 +5939,7 @@ nextjs-portal {
   outline: none;
   color: #172038;
   background: #fbfdff;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -5979,7 +5979,7 @@ nextjs-portal {
   border-radius: 999px;
   color: #4d6487;
   background: #f7fbff;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-plan-footer {
@@ -5992,7 +5992,7 @@ nextjs-portal {
 
 .savings-plan-footer span {
   color: #718098;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.45;
   min-height: 14px;
 }
@@ -6067,14 +6067,14 @@ nextjs-portal {
 .finance-section-head h2 {
   margin: 0;
   color: var(--finance-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 600;
 }
 
 .finance-section-head > span {
   color: var(--finance-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   white-space: nowrap;
 }
 
@@ -6085,7 +6085,7 @@ nextjs-portal {
   padding: 4px 10px;
   border-radius: 999px;
   color: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   letter-spacing: 0.04em;
 }
@@ -6097,13 +6097,13 @@ nextjs-portal {
   border-radius: 999px;
   color: #ffffff;
   background: rgba(255, 255, 255, 0.11);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .finance-empty {
   padding: 16px 8px;
   color: var(--finance-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-align: center;
 }
 
@@ -6136,7 +6136,7 @@ nextjs-portal {
 
 .finance-form-grid label > span {
   color: var(--finance-muted);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .finance-form-grid input,
@@ -6150,7 +6150,7 @@ nextjs-portal {
   outline: none;
   color: var(--finance-ink);
   background: #f9fbfe;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .finance-form-grid input:focus,
@@ -6167,7 +6167,7 @@ nextjs-portal {
   border-radius: 10px;
   color: #ffffff;
   background: var(--finance-blue);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -6201,7 +6201,7 @@ nextjs-portal {
   position: relative;
   z-index: 1;
   margin-top: 13px;
-  font-size: 27px;
+  font-size: calc(27px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -6210,7 +6210,7 @@ nextjs-portal {
 .loan-command-caption {
   margin-top: 6px;
   color: rgba(255, 255, 255, 0.78);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loan-progress-track {
@@ -6237,12 +6237,12 @@ nextjs-portal {
   justify-content: space-between;
   margin-top: 6px;
   color: rgba(255, 255, 255, 0.82);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loan-command-progress strong {
   color: #ffffff;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .loan-command-metrics {
@@ -6267,13 +6267,13 @@ nextjs-portal {
 
 .loan-command-metrics span {
   color: rgba(255, 255, 255, 0.72);
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-command-metrics strong {
   overflow: hidden;
   color: #ffffff;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -6312,13 +6312,13 @@ nextjs-portal {
 }
 
 .loan-date-tile strong {
-  font-size: 17px;
+  font-size: calc(17px * var(--user-font-scale));
   line-height: 1;
 }
 
 .loan-date-tile span {
   margin-top: 3px;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-next-copy {
@@ -6330,20 +6330,20 @@ nextjs-portal {
 .loan-next-copy strong {
   overflow: hidden;
   color: var(--finance-ink);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .loan-next-copy span {
   color: var(--finance-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   line-height: 1.35;
 }
 
 .loan-pressure-value {
   color: var(--finance-ink);
-  font-size: 22px;
+  font-size: calc(22px * var(--user-font-scale));
   line-height: 1;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -6367,7 +6367,7 @@ nextjs-portal {
 .loan-pressure-card p {
   margin: 7px 0 0;
   color: var(--finance-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   line-height: 1.35;
 }
 
@@ -6411,7 +6411,7 @@ nextjs-portal {
   border-radius: 999px;
   color: #3979d5;
   background: #ffffff;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-schedule-main,
@@ -6423,14 +6423,14 @@ nextjs-portal {
 .loan-schedule-main strong,
 .loan-schedule-amount strong {
   color: var(--finance-ink);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .loan-schedule-main span,
 .loan-schedule-amount span {
   color: var(--finance-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-schedule-amount { text-align: right; }
@@ -6463,7 +6463,7 @@ nextjs-portal {
   border-radius: 9px;
   color: #286ccf;
   background: #eaf3ff;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
 }
 
@@ -6477,7 +6477,7 @@ nextjs-portal {
 .loan-portfolio-title > strong {
   overflow: hidden;
   color: var(--finance-ink);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6488,7 +6488,7 @@ nextjs-portal {
   border-radius: 999px;
   color: #2c7b5e;
   background: #eaf7f2;
-  font-size: 8px;
+  font-size: calc(8px * var(--user-font-scale));
 }
 
 .loan-status.overdue { color: #b24a42; background: #fff0ee; }
@@ -6496,7 +6496,7 @@ nextjs-portal {
 
 .loan-balance {
   color: var(--finance-ink);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
@@ -6508,7 +6508,7 @@ nextjs-portal {
   justify-content: space-between;
   gap: 10px;
   color: var(--finance-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-portfolio-meta { margin-top: 10px; }
@@ -6554,7 +6554,7 @@ nextjs-portal {
 
 .asset-net-block > strong {
   margin-top: 10px;
-  font-size: 25px;
+  font-size: calc(25px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -6563,7 +6563,7 @@ nextjs-portal {
 .asset-net-block > span {
   margin-top: 9px;
   color: rgba(255, 255, 255, 0.8);
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .asset-sheet-side {
@@ -6582,8 +6582,8 @@ nextjs-portal {
 }
 
 .asset-sheet-side div:last-child { border-bottom: 0; }
-.asset-sheet-side span { color: var(--finance-muted); font-size: 9px; }
-.asset-sheet-side strong { overflow: hidden; color: var(--finance-ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.asset-sheet-side span { color: var(--finance-muted); font-size: calc(9px * var(--user-font-scale)); }
+.asset-sheet-side strong { overflow: hidden; color: var(--finance-ink); font-size: calc(12px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .asset-sheet-side i { position: absolute; top: 13px; right: 11px; width: 5px; height: 5px; border-radius: 999px; }
 .asset-sheet-side i.positive { background: var(--finance-green); }
 .asset-sheet-side i.negative { background: var(--finance-red); }
@@ -6616,9 +6616,9 @@ nextjs-portal {
 }
 
 .asset-allocation-row i { width: 7px; height: 7px; border-radius: 2px; }
-.asset-allocation-row span { color: #43516a; font-size: 10px; }
-.asset-allocation-row em { color: var(--finance-muted); font-size: 9px; font-style: normal; }
-.asset-allocation-row strong { grid-column: 2 / 4; margin-top: -5px; color: var(--finance-ink); font-size: 10px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.asset-allocation-row span { color: #43516a; font-size: calc(10px * var(--user-font-scale)); }
+.asset-allocation-row em { color: var(--finance-muted); font-size: calc(9px * var(--user-font-scale)); font-style: normal; }
+.asset-allocation-row strong { grid-column: 2 / 4; margin-top: -5px; color: var(--finance-ink); font-size: calc(10px * var(--user-font-scale)); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 .asset-health-section,
 .asset-ledger-section,
@@ -6654,9 +6654,9 @@ nextjs-portal {
 
 .asset-health-ring.debt { background: radial-gradient(circle, #fff 58%, transparent 60%), conic-gradient(var(--finance-red) var(--metric), #eaf0f6 0); }
 .asset-health-ring.focus { background: radial-gradient(circle, #fff 58%, transparent 60%), conic-gradient(var(--finance-amber) var(--metric), #eaf0f6 0); }
-.asset-health-ring strong { color: var(--finance-ink); font-size: 11px; }
-.asset-health-grid article > span { margin-top: 7px; color: var(--finance-ink); font-size: 10px; font-weight: 600; }
-.asset-health-grid article p { margin: 4px 0 0; color: var(--finance-muted); font-size: 8px; line-height: 1.3; }
+.asset-health-ring strong { color: var(--finance-ink); font-size: calc(11px * var(--user-font-scale)); }
+.asset-health-grid article > span { margin-top: 7px; color: var(--finance-ink); font-size: calc(10px * var(--user-font-scale)); font-weight: 600; }
+.asset-health-grid article p { margin: 4px 0 0; color: var(--finance-muted); font-size: calc(8px * var(--user-font-scale)); line-height: 1.3; }
 
 .asset-ledger-grid {
   display: grid;
@@ -6673,25 +6673,25 @@ nextjs-portal {
   border-bottom: 1px solid #e9eef4;
 }
 
-.asset-ledger-title span { color: var(--finance-muted); font-size: 10px; }
-.asset-ledger-title strong { color: var(--finance-ink); font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.asset-ledger-title span { color: var(--finance-muted); font-size: calc(10px * var(--user-font-scale)); }
+.asset-ledger-title strong { color: var(--finance-ink); font-size: calc(10px * var(--user-font-scale)); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .asset-ledger-list { display: grid; }
 .asset-ledger-list > div:not(.finance-empty) { display: grid; grid-template-columns: 25px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 48px; border-bottom: 1px solid #eef2f6; }
 .asset-ledger-list > div:last-child { border-bottom: 0; }
-.asset-ledger-list i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; color: #fff; background: #df7c72; font-size: 9px; font-style: normal; }
+.asset-ledger-list i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; color: #fff; background: #df7c72; font-size: calc(9px * var(--user-font-scale)); font-style: normal; }
 .asset-ledger-list i.savings-mark { background: #0d8a5f; }
 .asset-ledger-list span { display: grid; gap: 3px; min-width: 0; }
-.asset-ledger-list span strong { overflow: hidden; color: var(--finance-ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.asset-ledger-list span small { color: var(--finance-muted); font-size: 8px; }
-.asset-ledger-list em { grid-column: 2; margin-top: -10px; color: #36516f; font-size: 9px; font-style: normal; font-variant-numeric: tabular-nums; }
+.asset-ledger-list span strong { overflow: hidden; color: var(--finance-ink); font-size: calc(10px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }
+.asset-ledger-list span small { color: var(--finance-muted); font-size: calc(8px * var(--user-font-scale)); }
+.asset-ledger-list em { grid-column: 2; margin-top: -10px; color: #36516f; font-size: calc(9px * var(--user-font-scale)); font-style: normal; font-variant-numeric: tabular-nums; }
 
 .finance-page {
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .finance-page .finance-section-head h2 {
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
 }
 
 .finance-page .finance-section-head > span,
@@ -6699,17 +6699,17 @@ nextjs-portal {
 .finance-page .finance-state-chip,
 .finance-page .finance-empty,
 .finance-page .finance-form-grid label > span {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .finance-page .finance-form-grid input,
 .finance-page .finance-form-grid select,
 .finance-page .finance-primary-action {
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .finance-page .loan-command-value {
-  font-size: 29px;
+  font-size: calc(29px * var(--user-font-scale));
 }
 
 .finance-page .loan-command-caption,
@@ -6717,7 +6717,7 @@ nextjs-portal {
 .finance-page .loan-command-progress strong,
 .finance-page .loan-command-metrics strong,
 .finance-page .asset-health-ring strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .finance-page .loan-command-metrics span,
@@ -6730,7 +6730,7 @@ nextjs-portal {
 .finance-page .loan-portfolio-foot,
 .finance-page .asset-allocation-row em,
 .finance-page .asset-ledger-list em {
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .finance-page .loan-next-copy strong,
@@ -6739,7 +6739,7 @@ nextjs-portal {
 .finance-page .loan-portfolio-title > strong,
 .finance-page .loan-balance,
 .finance-page .asset-sheet-side strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .finance-page .loan-status,
@@ -6750,21 +6750,21 @@ nextjs-portal {
 .finance-page .asset-ledger-title span,
 .finance-page .asset-ledger-title strong,
 .finance-page .asset-ledger-list span strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .finance-page .asset-net-block > strong {
-  font-size: 27px;
+  font-size: calc(27px * var(--user-font-scale));
 }
 
 .finance-page .asset-net-block > span {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .finance-page .asset-health-grid article p,
 .finance-page .asset-ledger-list i,
 .finance-page .asset-ledger-list span small {
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 /* accounts: wallet center */
@@ -6782,9 +6782,9 @@ nextjs-portal {
 }
 
 .account-wallet-copy { align-self: start; }
-.account-wallet-copy > span { color: rgba(255, 255, 255, 0.82); font-size: 11px; }
-.account-wallet-copy > strong { display: block; margin-top: 10px; font-size: 27px; line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
-.account-wallet-copy p { margin: 8px 0 0; color: rgba(255, 255, 255, 0.75); font-size: 9px; }
+.account-wallet-copy > span { color: rgba(255, 255, 255, 0.82); font-size: calc(11px * var(--user-font-scale)); }
+.account-wallet-copy > strong { display: block; margin-top: 10px; font-size: calc(27px * var(--user-font-scale)); line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
+.account-wallet-copy p { margin: 8px 0 0; color: rgba(255, 255, 255, 0.75); font-size: calc(9px * var(--user-font-scale)); }
 
 .account-wallet-orbit {
   position: relative;
@@ -6805,7 +6805,7 @@ nextjs-portal {
   border-radius: inherit;
 }
 
-.account-wallet-orbit > span { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #2e70cc; background: #fff; font-size: 13px; font-weight: 600; }
+.account-wallet-orbit > span { position: relative; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; color: #2e70cc; background: #fff; font-size: calc(13px * var(--user-font-scale)); font-weight: 600; }
 .account-wallet-orbit > i { position: absolute; width: 6px; height: 6px; border-radius: 999px; background: #cce3ff; }
 .account-wallet-orbit > i:nth-child(1) { top: 7px; left: 19px; }
 .account-wallet-orbit > i:nth-child(2) { right: 5px; bottom: 24px; }
@@ -6825,8 +6825,8 @@ nextjs-portal {
 }
 
 .account-wallet-stats div { display: grid; gap: 4px; padding: 8px 10px; background: rgba(31, 101, 199, 0.18); }
-.account-wallet-stats span { color: rgba(255, 255, 255, 0.68); font-size: 8px; }
-.account-wallet-stats strong { overflow: hidden; color: #fff; font-size: 10px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.account-wallet-stats span { color: rgba(255, 255, 255, 0.68); font-size: calc(8px * var(--user-font-scale)); }
+.account-wallet-stats strong { overflow: hidden; color: #fff; font-size: calc(10px * var(--user-font-scale)); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 
 .account-filter-strip {
   display: flex;
@@ -6844,7 +6844,7 @@ nextjs-portal {
   border-radius: 999px;
   color: #687790;
   background: #fff;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .account-filter-strip button.active { border-color: #8bb4ee; color: #2466c1; background: #edf5ff; }
@@ -6869,22 +6869,22 @@ nextjs-portal {
 .account-wallet-card::after { content: ""; position: absolute; right: -19px; bottom: -27px; width: 70px; height: 70px; border: 12px solid rgba(65, 128, 219, 0.05); border-radius: 999px; }
 .account-wallet-head { display: flex; align-items: center; gap: 6px; }
 .account-wallet-head i,
-.account-type-picker i { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; color: #fff; background: #6985aa; font-size: 9px; font-style: normal; }
+.account-type-picker i { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; color: #fff; background: #6985aa; font-size: calc(9px * var(--user-font-scale)); font-style: normal; }
 .account-wallet-card.cash .account-wallet-head i, .account-type-picker i.cash { background: #e6a33e; }
 .account-wallet-card.bank .account-wallet-head i, .account-type-picker i.bank { background: #3e80dc; }
 .account-wallet-card.alipay .account-wallet-head i, .account-type-picker i.alipay { background: #2d91e8; }
 .account-wallet-card.wechat .account-wallet-head i, .account-type-picker i.wechat { background: #0d8a5f; }
 .account-wallet-card.investment .account-wallet-head i, .account-type-picker i.investment { background: #df7966; }
-.account-wallet-head span { color: var(--finance-muted); font-size: 9px; }
-.account-wallet-head em { margin-left: auto; color: #4b6485; font-size: 9px; font-style: normal; }
-.account-wallet-card > strong { display: block; margin-top: 11px; overflow: hidden; color: var(--finance-ink); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.account-wallet-balance { margin-top: 7px; color: var(--finance-ink); font-size: 17px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.account-wallet-foot { position: absolute; z-index: 1; right: 11px; bottom: 10px; left: 11px; display: flex; justify-content: space-between; gap: 4px; color: var(--finance-muted); font-size: 8px; }
+.account-wallet-head span { color: var(--finance-muted); font-size: calc(9px * var(--user-font-scale)); }
+.account-wallet-head em { margin-left: auto; color: #4b6485; font-size: calc(9px * var(--user-font-scale)); font-style: normal; }
+.account-wallet-card > strong { display: block; margin-top: 11px; overflow: hidden; color: var(--finance-ink); font-size: calc(11px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }
+.account-wallet-balance { margin-top: 7px; color: var(--finance-ink); font-size: calc(17px * var(--user-font-scale)); font-weight: 600; font-variant-numeric: tabular-nums; }
+.account-wallet-foot { position: absolute; z-index: 1; right: 11px; bottom: 10px; left: 11px; display: flex; justify-content: space-between; gap: 4px; color: var(--finance-muted); font-size: calc(8px * var(--user-font-scale)); }
 .account-wallet-foot time { white-space: nowrap; }
 
 .account-focus-summary { display: flex; align-items: baseline; gap: 9px; }
-.account-focus-summary strong { color: var(--finance-ink); font-size: 23px; line-height: 1; font-variant-numeric: tabular-nums; }
-.account-focus-summary span { color: var(--finance-muted); font-size: 10px; }
+.account-focus-summary strong { color: var(--finance-ink); font-size: calc(23px * var(--user-font-scale)); line-height: 1; font-variant-numeric: tabular-nums; }
+.account-focus-summary span { color: var(--finance-muted); font-size: calc(10px * var(--user-font-scale)); }
 .account-focus-track { margin-top: 10px; }
 .account-focus-track span.bank { background: #3e80dc; }
 .account-focus-track span.alipay { background: #2d91e8; }
@@ -6896,9 +6896,9 @@ nextjs-portal {
 .account-focus-list { display: grid; margin-top: 8px; }
 .account-focus-list > div:not(.finance-empty) { display: flex; justify-content: space-between; gap: 10px; min-height: 31px; align-items: center; border-top: 1px solid #eef2f6; }
 .account-focus-list > div:first-child { border-top: 0; }
-.account-focus-list span { display: flex; align-items: center; gap: 7px; color: #43516a; font-size: 10px; }
-.account-focus-list span i { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 5px; color: #52719a; background: #edf3fa; font-size: 8px; font-style: normal; }
-.account-focus-list strong { color: var(--finance-ink); font-size: 10px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.account-focus-list span { display: flex; align-items: center; gap: 7px; color: #43516a; font-size: calc(10px * var(--user-font-scale)); }
+.account-focus-list span i { display: grid; place-items: center; width: 17px; height: 17px; border-radius: 5px; color: #52719a; background: #edf3fa; font-size: calc(8px * var(--user-font-scale)); font-style: normal; }
+.account-focus-list strong { color: var(--finance-ink); font-size: calc(10px * var(--user-font-scale)); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 .account-settings-list {
   display: grid;
@@ -6925,13 +6925,13 @@ nextjs-portal {
 
 .account-setting-row strong {
   color: var(--finance-ink);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .account-setting-row small {
   color: var(--finance-muted);
-  font-size: 8px;
+  font-size: calc(8px * var(--user-font-scale));
 }
 
 .account-setting-row select {
@@ -6944,7 +6944,7 @@ nextjs-portal {
   outline: none;
   color: #43516a;
   background: #f8fbff;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .account-setting-switch {
@@ -6995,7 +6995,7 @@ nextjs-portal {
   border-radius: 9px;
   color: var(--finance-muted);
   background: #fff;
-  font-size: 8px;
+  font-size: calc(8px * var(--user-font-scale));
 }
 
 .account-type-picker button.active { border-color: #78a8ef; color: #2466c1; background: #f0f6ff; }
@@ -7107,37 +7107,37 @@ nextjs-portal {
 }
 
 .category-rule-heading > div { display: grid; gap: 3px; }
-.category-rule-heading span:first-child { color: #1d2a43; font-size: 13px; font-weight: 700; }
-.category-rule-heading small { color: #8491a6; font-size: 9px; }
-.category-rule-badge { padding: 4px 7px; border-radius: 999px; color: #2a78d6; background: #e5effd; font-size: 9px; white-space: nowrap; }
+.category-rule-heading span:first-child { color: #1d2a43; font-size: calc(13px * var(--user-font-scale)); font-weight: 700; }
+.category-rule-heading small { color: #8491a6; font-size: calc(9px * var(--user-font-scale)); }
+.category-rule-badge { padding: 4px 7px; border-radius: 999px; color: #2a78d6; background: #e5effd; font-size: calc(9px * var(--user-font-scale)); white-space: nowrap; }
 
 .category-rule-field { display: grid; gap: 6px; }
-.category-rule-field > span { color: #66758d; font-size: 10px; font-weight: 600; }
-.category-rule-field > input { width: 100%; min-height: 37px; padding: 0 11px; border: 1px solid #d9e3f0; border-radius: 9px; outline: none; color: #20304a; background: #ffffff; font-size: 12px; }
+.category-rule-field > span { color: #66758d; font-size: calc(10px * var(--user-font-scale)); font-weight: 600; }
+.category-rule-field > input { width: 100%; min-height: 37px; padding: 0 11px; border: 1px solid #d9e3f0; border-radius: 9px; outline: none; color: #20304a; background: #ffffff; font-size: calc(12px * var(--user-font-scale)); }
 .category-rule-field > input:focus { border-color: #2a78d6; box-shadow: 0 0 0 3px rgba(42, 120, 214, 0.1); }
-.category-rule-example { color: #8792a5; font-size: 9px; line-height: 1.4; }
+.category-rule-example { color: #8792a5; font-size: calc(9px * var(--user-font-scale)); line-height: 1.4; }
 
 .category-rule-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.category-rule-chips button { padding: 5px 8px; border: 1px solid #dce5f0; border-radius: 999px; color: #5d6b81; background: #ffffff; font-size: 10px; }
+.category-rule-chips button { padding: 5px 8px; border: 1px solid #dce5f0; border-radius: 999px; color: #5d6b81; background: #ffffff; font-size: calc(10px * var(--user-font-scale)); }
 .category-rule-chips button.active { border-color: transparent; color: #ffffff; background: #2a78d6; }
 
 .category-rule-preview { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 2px; }
-.category-rule-preview span { color: #66758d; font-size: 10px; line-height: 1.35; }
-.category-rule-preview button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 9px; color: #ffffff; background: #2a78d6; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.category-rule-preview span { color: #66758d; font-size: calc(10px * var(--user-font-scale)); line-height: 1.35; }
+.category-rule-preview button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 9px; color: #ffffff; background: #2a78d6; font-size: calc(11px * var(--user-font-scale)); font-weight: 600; white-space: nowrap; }
 .category-rule-preview button:disabled { opacity: 0.45; }
-.category-rule-message { margin: 0; color: #8b94a8; font-size: 9px; line-height: 1.4; }
+.category-rule-message { margin: 0; color: #8b94a8; font-size: calc(9px * var(--user-font-scale)); line-height: 1.4; }
 .category-rule-message.success { color: #26785c; }
 
 .category-rule-list { display: grid; gap: 7px; padding: 11px 12px; border: 1px solid #e3e9f2; border-radius: 13px; background: #ffffff; }
 .category-rule-list-heading { display: flex; align-items: center; justify-content: space-between; }
-.category-rule-list-heading strong { color: #293650; font-size: 11px; }
-.category-rule-list-heading small { color: #9aa4b6; font-size: 9px; }
+.category-rule-list-heading strong { color: #293650; font-size: calc(11px * var(--user-font-scale)); }
+.category-rule-list-heading small { color: #9aa4b6; font-size: calc(9px * var(--user-font-scale)); }
 .category-rule-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto auto; align-items: center; gap: 6px; min-width: 0; padding-top: 7px; border-top: 1px solid #f0f3f8; }
 .category-rule-row.disabled { opacity: 0.52; }
-.category-rule-keyword, .category-rule-target { overflow: hidden; color: #334159; font-size: 10px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.category-rule-keyword, .category-rule-target { overflow: hidden; color: #334159; font-size: calc(10px * var(--user-font-scale)); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .category-rule-target { color: #2a78d6; }
-.category-rule-arrow { color: #9aa4b8; font-size: 9px; }
-.category-rule-toggle, .category-rule-delete { padding: 4px 6px; border: 0; border-radius: 6px; color: #6e7c91; background: #f3f6fa; font-size: 9px; white-space: nowrap; }
+.category-rule-arrow { color: #9aa4b8; font-size: calc(9px * var(--user-font-scale)); }
+.category-rule-toggle, .category-rule-delete { padding: 4px 6px; border: 0; border-radius: 6px; color: #6e7c91; background: #f3f6fa; font-size: calc(9px * var(--user-font-scale)); white-space: nowrap; }
 .category-rule-delete { color: #c25a51; background: #fff2f0; }
 
 .bill-remark-filter button {
@@ -7150,7 +7150,7 @@ nextjs-portal {
   border-radius: 999px;
   background: #ffffff;
   color: #55617a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .bill-remark-filter button em {
@@ -7206,7 +7206,7 @@ nextjs-portal {
 .bill-remark-info strong {
   overflow: hidden;
   color: #151e31;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -7215,13 +7215,13 @@ nextjs-portal {
 .bill-remark-info small {
   overflow: hidden;
   color: #65718a;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .bill-remark-amount {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -7235,7 +7235,7 @@ nextjs-portal {
   border: 1px solid #dce5f0;
   border-radius: 999px;
   color: #768096;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   white-space: nowrap;
 }
 
@@ -7264,7 +7264,7 @@ nextjs-portal {
   border-radius: 999px;
   background: #ffffff;
   color: #55617a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .remark-category-chips button.active {
@@ -7280,7 +7280,7 @@ nextjs-portal {
   border-radius: 10px;
   background: #f7f9fc;
   color: #151e31;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .remark-category-input:focus {
@@ -7305,7 +7305,7 @@ nextjs-portal {
   min-height: 32px;
   padding: 0 14px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .remark-btn-clear {
@@ -7333,7 +7333,7 @@ nextjs-portal {
 .bill-remark-empty {
   padding: 22px 0;
   color: #8b94a8;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   text-align: center;
 }
 
@@ -7418,8 +7418,8 @@ nextjs-portal {
 }
 
 .settings-sheet > header::before { content: ""; }
-.settings-sheet > header strong { color: #151e31; font-size: 15px; font-weight: 600; }
-.settings-sheet > header button { width: 32px; height: 32px; padding: 0; border: 0; color: #768096; background: transparent; font-size: 23px; font-weight: 300; }
+.settings-sheet > header strong { color: #151e31; font-size: calc(15px * var(--user-font-scale)); font-weight: 600; }
+.settings-sheet > header button { width: 32px; height: 32px; padding: 0; border: 0; color: #768096; background: transparent; font-size: calc(23px * var(--user-font-scale)); font-weight: 300; }
 
 .settings-sheet-body {
   display: grid;
@@ -7430,7 +7430,7 @@ nextjs-portal {
 .settings-sheet-tip {
   margin: 0;
   color: #737f94;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.55;
 }
 
@@ -7458,16 +7458,16 @@ nextjs-portal {
   background: var(--primary-soft);
 }
 
-.settings-choice-grid strong { font-size: 12px; }
-.settings-choice-grid span { color: #7f899b; font-size: 9px; line-height: 1.35; }
+.settings-choice-grid strong { font-size: calc(12px * var(--user-font-scale)); }
+.settings-choice-grid span { color: #7f899b; font-size: calc(9px * var(--user-font-scale)); line-height: 1.35; }
 
 .settings-url-field {
   display: grid;
   gap: 6px;
 }
 
-.settings-url-field span { color: #68758a; font-size: 10px; }
-.settings-url-field input { width: 100%; height: 37px; padding: 0 11px; border: 1px solid #dce5f0; border-radius: 9px; outline: none; color: #26344c; background: #f8fafd; font-size: 11px; }
+.settings-url-field span { color: #68758a; font-size: calc(10px * var(--user-font-scale)); }
+.settings-url-field input { width: 100%; height: 37px; padding: 0 11px; border: 1px solid #dce5f0; border-radius: 9px; outline: none; color: #26344c; background: #f8fafd; font-size: calc(11px * var(--user-font-scale)); }
 .settings-url-field input:focus { border-color: var(--primary); background: #ffffff; }
 
 .cloud-test-status {
@@ -7477,7 +7477,7 @@ nextjs-portal {
   border-radius: 9px;
   color: #778298;
   background: #f8fafd;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   line-height: 1.4;
 }
 
@@ -7499,7 +7499,7 @@ nextjs-portal {
 .settings-confirm-button {
   height: 39px;
   border-radius: 10px;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -7531,14 +7531,14 @@ nextjs-portal {
   border-radius: 11px;
   color: #ffffff;
   background: #0d8a5f;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
 }
 
 .bill-import-platform > span.alipay { background: #2d91ea; }
 .bill-import-platform div { display: grid; gap: 5px; min-width: 0; }
-.bill-import-platform strong { color: #182238; font-size: 12px; }
-.bill-import-platform p { margin: 0; color: #748097; font-size: 9px; line-height: 1.4; }
+.bill-import-platform strong { color: #182238; font-size: calc(12px * var(--user-font-scale)); }
+.bill-import-platform p { margin: 0; color: #748097; font-size: calc(9px * var(--user-font-scale)); line-height: 1.4; }
 
 .bill-platform-picker {
   display: grid;
@@ -7573,14 +7573,14 @@ nextjs-portal {
   border-radius: 10px;
   color: #ffffff;
   background: #0d8a5f;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
 }
 
 .bill-platform-picker button.alipay > span { background: #2e91e9; }
 .bill-platform-picker button > div { display: grid; gap: 5px; min-width: 0; }
-.bill-platform-picker strong { font-size: 11px; font-weight: 600; }
-.bill-platform-picker small { overflow: hidden; color: #7d899c; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.bill-platform-picker strong { font-size: calc(11px * var(--user-font-scale)); font-weight: 600; }
+.bill-platform-picker small { overflow: hidden; color: #7d899c; font-size: calc(8px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }
 
 .bill-import-message {
   min-height: 34px;
@@ -7589,7 +7589,7 @@ nextjs-portal {
   border-radius: 9px;
   color: #748097;
   background: #f9fbfe;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   line-height: 1.45;
 }
 
@@ -7602,7 +7602,7 @@ nextjs-portal {
   border-radius: 10px;
   color: #ffffff;
   background: var(--primary);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -7628,9 +7628,9 @@ nextjs-portal {
 
 .settings-option-list button:first-child { border-top: 0; }
 .settings-option-list button > span { display: grid; gap: 5px; }
-.settings-option-list strong { font-size: 11px; font-weight: 500; }
-.settings-option-list small { color: #8490a2; font-size: 9px; }
-.settings-option-list em { color: var(--primary); font-size: 15px; font-style: normal; text-align: center; }
+.settings-option-list strong { font-size: calc(11px * var(--user-font-scale)); font-weight: 500; }
+.settings-option-list small { color: #8490a2; font-size: calc(9px * var(--user-font-scale)); }
+.settings-option-list em { color: var(--primary); font-size: calc(15px * var(--user-font-scale)); font-style: normal; text-align: center; }
 
 .theme-dot {
   width: 28px;
@@ -7662,16 +7662,16 @@ nextjs-portal {
 }
 
 .settings-font-options button.active { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
-.settings-font-options strong { font-size: 10px; font-weight: 500; }
+.settings-font-options strong { font-size: calc(10px * var(--user-font-scale)); font-weight: 500; }
 
 .help-sheet-body > div {
   padding: 11px 0;
   border-bottom: 1px solid #edf1f5;
 }
 
-.help-sheet-body strong { color: #202b41; font-size: 11px; }
-.help-sheet-body p { margin: 6px 0 0; color: #768297; font-size: 9px; line-height: 1.55; }
-.help-sheet-body a { display: flex; align-items: center; justify-content: space-between; min-height: 42px; color: var(--primary); font-size: 11px; text-decoration: none; }
+.help-sheet-body strong { color: #202b41; font-size: calc(11px * var(--user-font-scale)); }
+.help-sheet-body p { margin: 6px 0 0; color: #768297; font-size: calc(9px * var(--user-font-scale)); line-height: 1.55; }
+.help-sheet-body a { display: flex; align-items: center; justify-content: space-between; min-height: 42px; color: var(--primary); font-size: calc(11px * var(--user-font-scale)); text-decoration: none; }
 .help-sheet-body a svg { width: 15px; height: 15px; }
 
 .settings-about {
@@ -7683,10 +7683,10 @@ nextjs-portal {
 
 .settings-about > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; color: #ffffff; background: #0060c0; }
 .settings-about > span svg { width: 31px; height: 31px; }
-.settings-about > strong { margin-top: 12px; color: #172033; font-size: 16px; }
-.settings-about p { margin: 6px 0 0; color: #657289; font-size: 10px; }
-.settings-about small { margin-top: 12px; color: #7d889a; font-size: 9px; }
-.settings-about div { margin-top: 15px; padding: 8px 12px; border-radius: 999px; color: #748198; background: #f1f5f9; font-size: 9px; }
+.settings-about > strong { margin-top: 12px; color: #172033; font-size: calc(16px * var(--user-font-scale)); }
+.settings-about p { margin: 6px 0 0; color: #657289; font-size: calc(10px * var(--user-font-scale)); }
+.settings-about small { margin-top: 12px; color: #7d889a; font-size: calc(9px * var(--user-font-scale)); }
+.settings-about div { margin-top: 15px; padding: 8px 12px; border-radius: 999px; color: #748198; background: #f1f5f9; font-size: calc(9px * var(--user-font-scale)); }
 
 /* Distinct page identities: consumption, loans and assets */
 .consumption-page {
@@ -7745,13 +7745,13 @@ nextjs-portal {
 
 .consumption-overview-head span {
   color: #53718d;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-overview-head h2 {
   margin: 0;
   color: #0f2742;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 650;
 }
@@ -7768,7 +7768,7 @@ nextjs-portal {
   background: rgba(255, 255, 255, 0.48);
   color: #3b5f7e;
   font: inherit;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -7783,7 +7783,7 @@ nextjs-portal {
   display: block;
   margin: 17px 0 15px;
   color: #111827;
-  font-size: 32px;
+  font-size: calc(32px * var(--user-font-scale));
   line-height: 1;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
@@ -7805,13 +7805,13 @@ nextjs-portal {
 
 .consumption-overview-stats span {
   color: #53718d;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-overview-stats strong {
   overflow: hidden;
   color: #0f2742;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
@@ -7853,7 +7853,7 @@ nextjs-portal {
   border-radius: 999px;
   background: transparent;
   color: #64748b;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
   cursor: pointer;
 }
@@ -7894,7 +7894,7 @@ nextjs-portal {
 .consumption-select-wrap > span {
   flex: 0 0 auto;
   color: #94a3b8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-select-wrap select {
@@ -7905,7 +7905,7 @@ nextjs-portal {
   appearance: none;
   background: transparent;
   color: #334155;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .consumption-select-wrap > svg {
@@ -7974,7 +7974,7 @@ nextjs-portal {
   border-radius: 8px;
   color: #1682b5;
   background: #e5f5fc;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 800;
 }
 
@@ -8000,7 +8000,7 @@ nextjs-portal {
   overflow: hidden;
   flex: 1;
   color: #334155;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -8042,13 +8042,13 @@ nextjs-portal {
 
 .consumption-category-menu-head strong {
   color: #163d59;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 700;
 }
 
 .consumption-category-menu-head span {
   color: #94a9b8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-category-options {
@@ -8117,7 +8117,7 @@ nextjs-portal {
 
 .consumption-category-option-copy strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8125,13 +8125,13 @@ nextjs-portal {
 
 .consumption-category-option-copy small {
   color: #9aabb7;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   line-height: 1;
 }
 
 .consumption-category-check {
   color: #0793d0;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 800;
   text-align: center;
 }
@@ -8166,7 +8166,7 @@ nextjs-portal {
   outline: 0;
   background: transparent;
   color: #334155;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .consumption-chart-stack {
@@ -8187,14 +8187,14 @@ nextjs-portal {
 .consumption-chart-title h2 {
   margin: 0;
   color: #1e293b;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 600;
 }
 
 .consumption-chart-title span {
   color: #94a3b8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-detail-card {
@@ -8221,13 +8221,13 @@ nextjs-portal {
 .consumption-detail-head h2 {
   margin: 0;
   color: #1e293b;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .consumption-detail-head span {
   color: #94a3b8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-top-category {
@@ -8251,7 +8251,7 @@ nextjs-portal {
 .consumption-empty-state {
   padding: 26px 0 12px;
   color: #94a3b8;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   text-align: center;
 }
 
@@ -8264,7 +8264,7 @@ nextjs-portal {
   border: 0;
   color: #0284c7;
   background: transparent;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   cursor: pointer;
 }
 
@@ -8290,12 +8290,12 @@ nextjs-portal {
 .consumption-deep-summary span,
 .consumption-deep-summary small {
   color: #64748b;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .consumption-deep-summary strong {
   color: #0f172a;
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   font-variant-numeric: tabular-nums;
 }
 
@@ -8308,7 +8308,7 @@ nextjs-portal {
   }
 
   .consumption-overview-total {
-    font-size: 29px;
+    font-size: calc(29px * var(--user-font-scale));
   }
 
   .consumption-detail-list {
@@ -8344,7 +8344,7 @@ nextjs-portal {
   top: 36px;
   right: 12px;
   color: rgba(194, 103, 82, 0.07);
-  font-size: 118px;
+  font-size: calc(118px * var(--user-font-scale));
   line-height: 1;
   font-weight: 700;
   pointer-events: none;
@@ -8370,12 +8370,12 @@ nextjs-portal {
 
 .consumption-identity-head span {
   color: #a46758;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .consumption-identity-head h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 650;
 }
@@ -8385,7 +8385,7 @@ nextjs-portal {
   border-radius: 999px;
   color: #7f5a50;
   background: rgba(255, 255, 255, 0.55);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   white-space: nowrap;
 }
@@ -8404,14 +8404,14 @@ nextjs-portal {
 
 .consumption-total > span {
   color: var(--consumption-muted);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .consumption-total > strong {
   display: block;
   margin-top: 5px;
   color: #c05742;
-  font-size: 29px;
+  font-size: calc(29px * var(--user-font-scale));
   line-height: 1;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -8422,7 +8422,7 @@ nextjs-portal {
   gap: 4px;
   margin: 10px 0 0;
   color: var(--consumption-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.35;
 }
 
@@ -8451,7 +8451,7 @@ nextjs-portal {
   align-items: center;
   gap: 6px;
   color: #5e575b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .consumption-channel i {
@@ -8465,7 +8465,7 @@ nextjs-portal {
 
 .consumption-channel > strong {
   color: var(--consumption-ink);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -8475,7 +8475,7 @@ nextjs-portal {
   grid-column: 1 / -1;
   padding-left: 13px;
   color: #968b8f;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loans-page {
@@ -8534,20 +8534,20 @@ nextjs-portal {
 
 .loan-identity-balance > span {
   color: #9ca9b8;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .loan-identity-hero .loan-command-value {
   margin-top: 7px;
   color: #ffffff;
-  font-size: 30px;
+  font-size: calc(30px * var(--user-font-scale));
   font-weight: 700;
 }
 
 .loan-identity-hero .loan-command-caption {
   margin-top: 8px;
   color: #9ca9b8;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .loan-identity-progress {
@@ -8563,14 +8563,14 @@ nextjs-portal {
 
 .loan-identity-progress strong {
   color: #ffffff;
-  font-size: 17px;
+  font-size: calc(17px * var(--user-font-scale));
   line-height: 1;
 }
 
 .loan-identity-progress span {
   margin-top: 3px;
   color: #9ca9b8;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-identity-hero .loan-progress-track {
@@ -8700,14 +8700,14 @@ nextjs-portal {
 
 .assets-page .asset-cockpit-net > span {
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .assets-page .asset-cockpit-net > strong {
   display: block;
   margin: 6px 0 4px;
-  font-size: 30px;
+  font-size: calc(30px * var(--user-font-scale));
   line-height: 1.1;
   font-weight: 750;
   letter-spacing: -0.02em;
@@ -8720,7 +8720,7 @@ nextjs-portal {
 .assets-page .asset-cockpit-net > p {
   margin: 0;
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.35;
 }
 
@@ -8740,11 +8740,11 @@ nextjs-portal {
 
 .assets-page .asset-sub-val span {
   color: #64748b;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .assets-page .asset-sub-val strong {
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -8790,7 +8790,7 @@ nextjs-portal {
   gap: 10px;
   margin-top: 5px;
   color: #7b8997;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 /* 核心指标卡 */
@@ -8815,13 +8815,13 @@ nextjs-portal {
 
 .assets-page .asset-metric-tile span {
   color: #64748b;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .assets-page .asset-metric-tile strong {
   overflow: hidden;
   color: #142036;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.15;
   font-weight: 650;
   text-overflow: ellipsis;
@@ -8832,7 +8832,7 @@ nextjs-portal {
 .assets-page .asset-metric-tile small {
   overflow: hidden;
   color: #94a3b8;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -8902,7 +8902,7 @@ nextjs-portal {
 .assets-page .asset-donut-lead strong {
   overflow: hidden;
   color: #172033;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -8910,13 +8910,13 @@ nextjs-portal {
 
 .assets-page .asset-donut-pct {
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-align: right;
 }
 
 .assets-page .asset-donut-amount {
   color: #142036;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 650;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -8956,7 +8956,7 @@ nextjs-portal {
 .assets-page .pane-tag {
   padding: 2px 7px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 600;
 }
 
@@ -8972,7 +8972,7 @@ nextjs-portal {
 
 .assets-page .asset-pane-title strong {
   color: #142036;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -9003,7 +9003,7 @@ nextjs-portal {
   height: 28px;
   border-radius: 9px;
   color: #ffffff;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 700;
   font-style: normal;
 }
@@ -9029,7 +9029,7 @@ nextjs-portal {
 .assets-page .asset-item-name strong {
   overflow: hidden;
   color: #172033;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9037,12 +9037,12 @@ nextjs-portal {
 
 .assets-page .asset-item-name small {
   color: #94a3b8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .assets-page .asset-item-val {
   color: #0d8a5f;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -9094,7 +9094,7 @@ nextjs-portal {
   .loan-identity-hero .loan-command-value,
   .tabs-liquid-shell .assets-page .asset-net-block > strong,
   .consumption-total > strong {
-    font-size: 25px;
+    font-size: calc(25px * var(--user-font-scale));
   }
 }
 
@@ -9135,13 +9135,13 @@ nextjs-portal {
 
 .consumption-receipt-head span {
   color: #9e6255;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
 }
 
 .consumption-receipt-head strong {
   color: #887b7d;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
 }
 
@@ -9155,12 +9155,12 @@ nextjs-portal {
 
 .consumption-receipt-total span {
   color: #817579;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .consumption-receipt-total strong {
   color: #bd5140;
-  font-size: 34px;
+  font-size: calc(34px * var(--user-font-scale));
   line-height: 1;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
@@ -9179,7 +9179,7 @@ nextjs-portal {
   padding: 0 9px;
   color: #a29496;
   background: #fffaf7;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   transform: translateX(-50%);
   white-space: nowrap;
 }
@@ -9202,7 +9202,7 @@ nextjs-portal {
   gap: 7px;
   min-width: 0;
   color: #554e51;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .consumption-receipt-lines i {
@@ -9218,14 +9218,14 @@ nextjs-portal {
 .consumption-receipt-lines small {
   overflow: hidden;
   color: #9b8f92;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .consumption-receipt-lines strong {
   color: #403a3d;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -9240,11 +9240,11 @@ nextjs-portal {
   padding-top: 13px;
   border-top: 1px solid rgba(145, 112, 104, 0.15);
   color: #7f7477;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .consumption-receipt-settlement strong {
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 700;
   white-space: nowrap;
 }
@@ -9285,13 +9285,13 @@ nextjs-portal {
 .loan-operations-balance > span,
 .loan-next-node > span {
   color: #93a0ae;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loan-operations-balance > strong {
   margin-top: 8px;
   color: #ffffff;
-  font-size: 28px;
+  font-size: calc(28px * var(--user-font-scale));
   line-height: 1;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
@@ -9301,7 +9301,7 @@ nextjs-portal {
 .loan-operations-balance > small {
   margin-top: 9px;
   color: #a8b3be;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loan-next-node {
@@ -9317,14 +9317,14 @@ nextjs-portal {
 .loan-next-node > strong {
   margin-top: 4px;
   color: #0d8a5f;
-  font-size: 34px;
+  font-size: calc(34px * var(--user-font-scale));
   line-height: 1;
 }
 
 .loan-next-node > em {
   margin-top: 3px;
   color: #e7edf2;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-style: normal;
 }
 
@@ -9333,7 +9333,7 @@ nextjs-portal {
   margin-top: 8px;
   overflow: hidden;
   color: #8f9ba8;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -9344,12 +9344,12 @@ nextjs-portal {
   justify-content: space-between;
   margin-top: 17px;
   color: #97a4b1;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loan-milestone-head strong {
   color: #dce5eb;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .loan-milestone-rail {
@@ -9393,13 +9393,13 @@ nextjs-portal {
 
 .loan-operations-metrics span {
   color: #8794a2;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loan-operations-metrics strong {
   overflow: hidden;
   color: #eef3f6;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9429,21 +9429,21 @@ nextjs-portal {
 
 .asset-statement-head span {
   color: #4f7569;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .asset-statement-head h2 {
   margin: 0;
   color: #18382f;
-  font-size: 16px;
+  font-size: calc(16px * var(--user-font-scale));
   line-height: 1.2;
 }
 
 .asset-statement-head > strong {
   padding: 5px 9px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .asset-statement-head > strong.positive {
@@ -9479,7 +9479,7 @@ nextjs-portal {
   align-items: center;
   gap: 8px;
   color: #58786f;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .asset-statement-row i {
@@ -9493,7 +9493,7 @@ nextjs-portal {
 
 .asset-statement-row strong {
   color: #294a40;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -9506,13 +9506,13 @@ nextjs-portal {
 
 .asset-statement-result span {
   color: #345e51;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 700;
 }
 
 .asset-statement-result strong {
   color: #173d32;
-  font-size: 27px;
+  font-size: calc(27px * var(--user-font-scale));
   line-height: 1;
   font-weight: 750;
   font-variant-numeric: tabular-nums;
@@ -9521,13 +9521,13 @@ nextjs-portal {
 .asset-statement-hero > p {
   margin: 13px 0 0;
   color: #70887f;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.4;
 }
 
 @media (max-width: 370px) {
   .consumption-receipt-total strong {
-    font-size: 29px;
+    font-size: calc(29px * var(--user-font-scale));
   }
 
   .loan-operations-main {
@@ -9537,11 +9537,11 @@ nextjs-portal {
 
   .loan-operations-balance > strong,
   .asset-statement-result strong {
-    font-size: 21px;
+    font-size: calc(21px * var(--user-font-scale));
   }
 
   .loan-operations-metrics strong {
-    font-size: 10px;
+    font-size: calc(10px * var(--user-font-scale));
   }
 }
 
@@ -9588,7 +9588,7 @@ nextjs-portal {
 
 .loans-page .loan-cockpit-balance > span {
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -9596,7 +9596,7 @@ nextjs-portal {
   display: block;
   margin: 6px 0 4px;
   color: #142036;
-  font-size: 30px;
+  font-size: calc(30px * var(--user-font-scale));
   line-height: 1.1;
   font-weight: 750;
   letter-spacing: -0.02em;
@@ -9606,7 +9606,7 @@ nextjs-portal {
 .loans-page .loan-cockpit-balance > p {
   margin: 0;
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.35;
 }
 
@@ -9635,7 +9635,7 @@ nextjs-portal {
 
 .loans-page .loan-cockpit-ring strong {
   color: #142036;
-  font-size: 18px;
+  font-size: calc(18px * var(--user-font-scale));
   line-height: 1;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -9644,7 +9644,7 @@ nextjs-portal {
 .loans-page .loan-cockpit-ring span {
   margin-top: 3px;
   color: #64748b;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loans-page .loan-cockpit-metrics {
@@ -9668,13 +9668,13 @@ nextjs-portal {
 
 .loans-page .loan-metric-card span {
   color: #64748b;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loans-page .loan-metric-card strong {
   overflow: hidden;
   color: #142036;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.15;
   font-weight: 650;
   text-overflow: ellipsis;
@@ -9685,7 +9685,7 @@ nextjs-portal {
 .loans-page .loan-metric-card small {
   overflow: hidden;
   color: #94a3b8;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -9749,13 +9749,13 @@ nextjs-portal {
 
 .loans-page .loan-structure-pct {
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   text-align: right;
 }
 
 .loans-page .loan-structure-val {
   color: #142036;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 650;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -9805,13 +9805,13 @@ nextjs-portal {
 .loans-page .finance-section-head h2 {
   margin: 0;
   color: #1a2736;
-  font-size: 15px;
+  font-size: calc(15px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .loans-page .finance-section-head > div > span {
   color: #7b8997;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .loans-page .loan-schedule-row {
@@ -9853,7 +9853,7 @@ nextjs-portal {
   color: #1a6f52;
   background: #ffffff;
   box-shadow: 0 2px 7px rgba(42, 113, 87, 0.1);
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 700;
 }
 
@@ -9872,7 +9872,7 @@ nextjs-portal {
 .loans-page .loan-schedule-main strong {
   overflow: hidden;
   color: #172033;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9880,7 +9880,7 @@ nextjs-portal {
 
 .loans-page .loan-schedule-main span {
   color: #7b8997;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .loans-page .loan-schedule-amount {
@@ -9891,7 +9891,7 @@ nextjs-portal {
 
 .loans-page .loan-schedule-amount strong {
   color: #1a2736;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -9900,7 +9900,7 @@ nextjs-portal {
   display: inline-flex;
   justify-content: flex-end;
   color: #64748b;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -9944,7 +9944,7 @@ nextjs-portal {
   border-radius: 9px;
   color: #0d6f50;
   background: #def4ec;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 700;
 }
 
@@ -9959,7 +9959,7 @@ nextjs-portal {
 .loans-page .loan-portfolio-title > strong {
   overflow: hidden;
   color: #172033;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 650;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -9970,7 +9970,7 @@ nextjs-portal {
   width: fit-content;
   padding: 1px 6px;
   border-radius: 999px;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
   font-weight: 600;
   line-height: 1.2;
 }
@@ -10004,12 +10004,12 @@ nextjs-portal {
 
 .loans-page .loan-balance-label {
   color: #8da0b3;
-  font-size: 9px;
+  font-size: calc(9px * var(--user-font-scale));
 }
 
 .loans-page .loan-balance {
   color: #142036;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -10021,7 +10021,7 @@ nextjs-portal {
   gap: 8px;
   margin-top: 6px;
   color: #7b8997;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loans-page .loan-portfolio-progress {
@@ -10050,12 +10050,12 @@ nextjs-portal {
   justify-content: space-between;
   gap: 8px;
   color: #7b8997;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .loans-page .loan-portfolio-foot strong {
   color: #0d6f50;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
@@ -10080,7 +10080,7 @@ nextjs-portal {
   }
 
   .loans-page .loan-next-node > strong {
-    font-size: 24px;
+    font-size: calc(24px * var(--user-font-scale));
   }
 
   .loans-page .loan-structure-grid {
@@ -10130,11 +10130,11 @@ nextjs-portal {
   }
 
   .loans-page .loan-operations-balance > strong {
-    font-size: 22px;
+    font-size: calc(22px * var(--user-font-scale));
   }
 
   .loans-page .loan-next-node > strong {
-    font-size: 29px;
+    font-size: calc(29px * var(--user-font-scale));
   }
 
   .loans-page .loan-operations-metrics div {
@@ -10194,18 +10194,18 @@ nextjs-portal {
 
 .assets-page .asset-statement-head span {
   color: #4b7766;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .assets-page .asset-statement-head h2 {
   color: var(--asset-ink);
-  font-size: 17px;
+  font-size: calc(17px * var(--user-font-scale));
 }
 
 .assets-page .asset-statement-head > strong {
   border-radius: 999px;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -10223,14 +10223,14 @@ nextjs-portal {
 
 .assets-page .asset-net-total > span {
   color: #5d8172;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .assets-page .asset-net-total > strong {
   display: block;
   margin-top: 6px;
   color: #173d32;
-  font-size: 31px;
+  font-size: calc(31px * var(--user-font-scale));
   line-height: 1;
   font-weight: 750;
   letter-spacing: -0.02em;
@@ -10241,7 +10241,7 @@ nextjs-portal {
 .assets-page .asset-net-total p {
   margin: 10px 0 0;
   color: #70887f;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1.45;
 }
 
@@ -10260,13 +10260,13 @@ nextjs-portal {
 
 .assets-page .asset-net-side span {
   color: #719085;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .assets-page .asset-net-side strong {
   overflow: hidden;
   color: #294a40;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -10318,19 +10318,19 @@ nextjs-portal {
 .assets-page .asset-allocation-row span {
   overflow: hidden;
   color: #47675b;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .assets-page .asset-allocation-row em {
   color: #82958d;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .assets-page .asset-allocation-row strong {
   color: #294a40;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -10352,13 +10352,13 @@ nextjs-portal {
 .assets-page .asset-inline-head h3 {
   margin: 0;
   color: var(--asset-ink);
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .assets-page .asset-inline-head span {
   color: var(--asset-muted);
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .assets-page .asset-health-grid {
@@ -10390,13 +10390,13 @@ nextjs-portal {
 
 .assets-page .asset-health-ring strong {
   color: var(--asset-ink);
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .assets-page .asset-health-grid article > span {
   margin-top: 7px;
   color: #345e51;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -10404,7 +10404,7 @@ nextjs-portal {
   margin-top: 3px;
   overflow: hidden;
   color: #7a9188;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -10427,13 +10427,13 @@ nextjs-portal {
 
 .assets-page .asset-ledger-title span {
   color: #55786a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .assets-page .asset-ledger-title strong {
   color: #294a40;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 700;
 }
 
@@ -10463,17 +10463,17 @@ nextjs-portal {
 
 .assets-page .asset-ledger-list span strong {
   color: #294a40;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .assets-page .asset-ledger-list span small {
   color: #7c9289;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .assets-page .asset-ledger-list em {
   color: #365f50;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
 }
 
@@ -10515,7 +10515,7 @@ nextjs-portal {
   }
 
   .assets-page .asset-net-total > strong {
-    font-size: 26px;
+    font-size: calc(26px * var(--user-font-scale));
   }
 
   .assets-page .asset-net-side {
@@ -10523,7 +10523,7 @@ nextjs-portal {
   }
 
   .assets-page .asset-net-side strong {
-    font-size: 12px;
+    font-size: calc(12px * var(--user-font-scale));
   }
 
   .assets-page .asset-allocation-list {
@@ -10681,13 +10681,13 @@ nextjs-portal {
 .home-liquid-screen .fo-net-label {
   grid-area: label;
   color: #7b8799;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .home-liquid-screen .fo-net-row strong {
   grid-area: value;
   min-width: 0;
-  font-size: 23px;
+  font-size: calc(23px * var(--user-font-scale));
   line-height: 1.05;
   text-align: left;
 }
@@ -10748,7 +10748,7 @@ nextjs-portal {
 .home-liquid-screen .reminder-card .section-head h2,
 .home-liquid-screen .recent-head h2 {
   color: #172338;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
 }
 
@@ -10771,12 +10771,12 @@ nextjs-portal {
 
 .home-liquid-screen .progress-item-head span {
   color: #52627a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .home-liquid-screen .progress-item-head strong {
   color: #172338;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
 }
 
 .home-liquid-screen .progress-track,
@@ -10826,7 +10826,7 @@ nextjs-portal {
   grid-area: meta;
   margin-left: 0;
   color: #7a899e;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .home-liquid-screen .budget-alert-badge {
@@ -10837,7 +10837,7 @@ nextjs-portal {
   border-radius: 0;
   background: transparent !important;
   box-shadow: none;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
 }
 
@@ -10882,27 +10882,27 @@ nextjs-portal {
 .home-liquid-screen .recent-title {
   grid-area: title;
   color: #1b2940;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .home-liquid-screen .recent-category {
   grid-area: category;
   color: #8995a7;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .home-liquid-screen .recent-time {
   grid-area: time;
   color: #8995a7;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   text-align: right;
 }
 
 .home-liquid-screen .recent-amount {
   grid-area: amount;
   color: #53647d;
-  font-size: 13px;
+  font-size: calc(13px * var(--user-font-scale));
   font-weight: 500;
 }
 
@@ -11053,7 +11053,7 @@ nextjs-portal {
 }
 
 .home-liquid-screen .fo-net-row strong {
-  font-size: 22px;
+  font-size: calc(22px * var(--user-font-scale));
 }
 
 .home-liquid-screen .fo-mini-stats {
@@ -11081,13 +11081,13 @@ nextjs-portal {
 .home-liquid-screen .focus-card .section-head h2,
 .home-liquid-screen .recent-head h2 {
   color: #18253a;
-  font-size: 14px;
+  font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
 }
 
 .focus-summary {
   color: #159267;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   line-height: 1;
   font-weight: 500;
 }
@@ -11124,7 +11124,7 @@ nextjs-portal {
 .focus-budget-head strong {
   overflow: hidden;
   color: #33425a;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -11134,7 +11134,7 @@ nextjs-portal {
 .focus-metric small {
   overflow: hidden;
   color: #8995a7;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   text-overflow: ellipsis;
@@ -11144,7 +11144,7 @@ nextjs-portal {
 .focus-budget-head b,
 .focus-metric-head b {
   color: #27364e;
-  font-size: 12px;
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -11185,7 +11185,7 @@ nextjs-portal {
   padding: 11px 0 13px;
   border-top: 1px solid #edf1f5;
   color: #8b97a8;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .focus-metrics {
@@ -11209,7 +11209,7 @@ nextjs-portal {
 
 .focus-metric-head span {
   color: #53637a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .focus-metric small {
@@ -11258,18 +11258,18 @@ nextjs-portal {
 
 .focus-task strong {
   color: #41516a;
-  font-size: 11px;
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
 }
 
 .focus-task div span {
   color: #8b97a8;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .focus-task > b {
   color: #718096;
-  font-size: 10px;
+  font-size: calc(10px * var(--user-font-scale));
   font-weight: 500;
   white-space: nowrap;
 }

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { AppPreferences } from "@/components/stark/AppPreferences";
 
 export const metadata: Metadata = {
   title: "wotty stark web",
@@ -18,7 +19,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <AppPreferences />
+        {children}
+      </body>
     </html>
   );
 }

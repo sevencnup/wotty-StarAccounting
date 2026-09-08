@@ -12,41 +12,14 @@ import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
+import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 
 const manager = new DataModeManager();
-const UI_SETTINGS_KEY = "wotty-stark:ui-settings";
-
-type ThemeChoice = "BLUE" | "GREEN" | "AMBER";
-type LanguageChoice = "SYSTEM" | "ZH_CN";
-type FontChoice = "SMALL" | "STANDARD" | "LARGE";
 type PanelKey = "MODE" | "IMPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
-
-type UiSettings = {
-  theme: ThemeChoice;
-  language: LanguageChoice;
-  font: FontChoice;
-};
-
-const defaultUiSettings: UiSettings = { theme: "BLUE", language: "SYSTEM", font: "STANDARD" };
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
-
-function applyUiSettings(settings: UiSettings) {
-  document.documentElement.dataset.appTheme = settings.theme.toLowerCase();
-  document.documentElement.dataset.fontSize = settings.font.toLowerCase();
-  document.documentElement.lang = settings.language === "SYSTEM" ? navigator.language : "zh-CN";
-}
-
-function readUiSettings() {
-  try {
-    const stored = window.localStorage.getItem(UI_SETTINGS_KEY);
-    return stored ? { ...defaultUiSettings, ...JSON.parse(stored) as Partial<UiSettings> } : defaultUiSettings;
-  } catch {
-    return defaultUiSettings;
-  }
-}
 
 function SettingIcon({ type }: { type: PanelKey }) {
   const paths: Record<PanelKey, React.ReactNode> = {
@@ -104,7 +77,7 @@ export default function AccountsPage() {
   function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
     setUiSettings((current) => {
       const next = { ...current, [key]: value };
-      window.localStorage.setItem(UI_SETTINGS_KEY, JSON.stringify(next));
+      saveUiSettings(next);
       applyUiSettings(next);
       return next;
     });
