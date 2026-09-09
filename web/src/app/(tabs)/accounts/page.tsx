@@ -18,7 +18,7 @@ const manager = new DataModeManager();
 type PanelKey = "MODE" | "IMPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
-const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文" };
+const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
 
 function SettingIcon({ type }: { type: PanelKey }) {
@@ -233,7 +233,7 @@ export default function AccountsPage() {
             </div> : null}
 
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
-            {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : "固定使用简体中文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
+            {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN", "EN_US"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : item === "ZH_CN" ? "固定使用简体中文" : "固定使用英文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
             {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>先在切换模式中确认当前数据源，云端模式还需要后端服务可访问。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">前往 GitHub 提交反馈 <ChevronIcon /></a></div> : null}
             {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星记账</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div></div> : null}

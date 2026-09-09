@@ -7,6 +7,7 @@ import { formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
 import type { Transaction } from "@/lib/stark/models";
+import { translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
 const INCOME_BLUE = "#2a78d6";
 const EXPENSE_ORANGE = "#eb6834";
@@ -18,20 +19,20 @@ const PLATFORM_COLORS: Record<string, string> = {
   "其他": "#4a3aa7",
 };
 
-function TrendLegend() {
+function TrendLegend({ locale }: { locale: AppLocale }) {
   return (
     <div className="trend-legend">
-      <span><i style={{ background: INCOME_BLUE }} />收入</span>
-      <span><i style={{ background: EXPENSE_ORANGE }} />支出</span>
+      <span><i style={{ background: INCOME_BLUE }} />{translateValue("收入", locale)}</span>
+      <span><i style={{ background: EXPENSE_ORANGE }} />{translateValue("支出", locale)}</span>
     </div>
   );
 }
 
-function PlatformLegend({ platforms }: { platforms: string[] }) {
+function PlatformLegend({ platforms, locale }: { platforms: string[]; locale: AppLocale }) {
   return (
     <div className="trend-legend platform-legend">
       {platforms.map((platform) => (
-        <span key={platform}><i style={{ background: PLATFORM_COLORS[platform] || PLATFORM_COLORS["其他"] }} />{platform}</span>
+        <span key={platform}><i style={{ background: PLATFORM_COLORS[platform] || PLATFORM_COLORS["其他"] }} />{translateValue(platform, locale)}</span>
       ))}
     </div>
   );
@@ -39,7 +40,7 @@ function PlatformLegend({ platforms }: { platforms: string[] }) {
 
 /* ────────── 折线图 ────────── */
 
-function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
+function buildTrendOption(trend: HomeTrend, locale: AppLocale): EChartsCoreOption {
   const maxRaw = Math.max(...trend.expense, ...trend.income, 8000);
   const maxValue = Math.ceil(maxRaw / 2000) * 2000;
   type TooltipSize = { contentSize: number[]; viewSize: number[] };
@@ -101,7 +102,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
         data: trend.income,
         lineStyle: { width: 2, color: INCOME_BLUE },
         itemStyle: { color: INCOME_BLUE, borderColor: "#ffffff", borderWidth: 1.2 },
-        name: "收入",
+        name: translateValue("收入", locale),
       },
       {
         type: "line",
@@ -111,7 +112,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
         data: trend.expense,
         lineStyle: { width: 2, color: EXPENSE_ORANGE },
         itemStyle: { color: EXPENSE_ORANGE, borderColor: "#ffffff", borderWidth: 1.2 },
-        name: "支出",
+        name: translateValue("支出", locale),
       },
     ],
   };
@@ -119,7 +120,7 @@ function buildTrendOption(trend: HomeTrend): EChartsCoreOption {
 
 /* ────────── 占比图 ────────── */
 
-function buildRatioOption(ratios: HomeRatio[]): EChartsCoreOption {
+function buildRatioOption(ratios: HomeRatio[], locale: AppLocale): EChartsCoreOption {
   type TooltipSize = { contentSize: number[]; viewSize: number[] };
 
   return {
@@ -155,7 +156,7 @@ function buildRatioOption(ratios: HomeRatio[]): EChartsCoreOption {
         labelLine: { show: false },
         emphasis: { scale: false },
         itemStyle: { borderColor: "#ffffff", borderWidth: 2 },
-        data: ratios.map((item) => ({ name: item.name, value: item.amount, itemStyle: { color: item.color } })),
+        data: ratios.map((item) => ({ name: translateValue(item.name, locale), value: item.amount, itemStyle: { color: item.color } })),
       },
     ],
   };
@@ -199,9 +200,9 @@ function buildCalendarDays(transactions: Transaction[], monthKey: string) {
   return { leading, days, maxAmount };
 }
 
-function CalendarHeatmap({ transactions, monthKey }: { transactions: Transaction[]; monthKey: string }) {
+function CalendarHeatmap({ transactions, monthKey, locale }: { transactions: Transaction[]; monthKey: string; locale: AppLocale }) {
   const { leading, days, maxAmount } = useMemo(() => buildCalendarDays(transactions, monthKey), [monthKey, transactions]);
-  const weekDays = ["一", "二", "三", "四", "五", "六", "日"];
+  const weekDays = locale === "zh-CN" ? ["一", "二", "三", "四", "五", "六", "日"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
     <div className="calendar-grid-card">
@@ -228,7 +229,7 @@ function CalendarHeatmap({ transactions, monthKey }: { transactions: Transaction
 
 /* ────────── 日柱状图 ────────── */
 
-function buildBarOption(transactions: Transaction[], monthKey: string): EChartsCoreOption {
+function buildBarOption(transactions: Transaction[], monthKey: string, locale: AppLocale): EChartsCoreOption {
   const { activePlatforms, days, platformDaily } = buildDailyPlatformData(transactions, reportingMonthDate(monthKey));
 
   type TooltipSize = { contentSize: number[]; viewSize: number[] };
@@ -272,7 +273,7 @@ function buildBarOption(transactions: Transaction[], monthKey: string): EChartsC
       splitLine: { lineStyle: { color: "#eef2f7", type: "dashed" } },
     },
     series: activePlatforms.map((platform) => ({
-        name: platform,
+        name: translateValue(platform, locale),
         type: "bar",
         stack: "total",
         barWidth: 6,
@@ -284,7 +285,7 @@ function buildBarOption(transactions: Transaction[], monthKey: string): EChartsC
 
 /* ────────── 桑基图 ────────── */
 
-function buildSankeyOption(transactions: Transaction[]): EChartsCoreOption {
+function buildSankeyOption(transactions: Transaction[], locale: AppLocale): EChartsCoreOption {
   const expenseFiltered = transactions.filter((t) => t.type === "EXPENSE");
   const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
   const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
@@ -299,16 +300,19 @@ function buildSankeyOption(transactions: Transaction[]): EChartsCoreOption {
     "旅行": "#9254de", "教育": "#40a9ff", "其他": "#bfbfbf",
   };
 
+  const displayPlatform = (value: string) => translateValue(value, locale);
+  const displayCategory = (value: string) => translateValue(value, locale);
+
   allPlatforms.forEach((plat) => {
-    nodes.push({ name: plat, itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] } });
+    nodes.push({ name: displayPlatform(plat), itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] } });
   });
   allCategories.forEach((cat) => {
-    nodes.push({ name: cat, itemStyle: { color: catColors[cat] || "#bfbfbf" } });
+    nodes.push({ name: displayCategory(cat), itemStyle: { color: catColors[cat] || "#bfbfbf" } });
   });
 
   allPlatforms.forEach((plat) => {
     Object.entries(flow[plat] || {}).forEach(([cat, value]) => {
-      links.push({ source: plat, target: cat, value: Math.round(value) });
+       links.push({ source: displayPlatform(plat), target: displayCategory(cat), value: Math.round(value) });
     });
   });
 
@@ -361,13 +365,14 @@ export function ConsumptionCharts({
   monthKey: string;
   showDeepAnalysis?: boolean;
 }) {
+  const locale = useAppLocale();
   const reportingDate = useMemo(() => reportingMonthDate(monthKey), [monthKey]);
-  const trendOption = useMemo(() => buildTrendOption(trend), [trend]);
-  const ratioOption = useMemo(() => buildRatioOption(ratios), [ratios]);
+  const trendOption = useMemo(() => buildTrendOption(trend, locale), [locale, trend]);
+  const ratioOption = useMemo(() => buildRatioOption(ratios, locale), [locale, ratios]);
   const displayRatios = ratios.length ? ratios : [];
-  const barOption = useMemo(() => buildBarOption(transactions, monthKey), [monthKey, transactions]);
+  const barOption = useMemo(() => buildBarOption(transactions, monthKey, locale), [locale, monthKey, transactions]);
   const barPlatforms = useMemo(() => buildDailyPlatformData(transactions, reportingDate).activePlatforms, [reportingDate, transactions]);
-  const sankeyOption = useMemo(() => buildSankeyOption(transactions), [transactions]);
+  const sankeyOption = useMemo(() => buildSankeyOption(transactions, locale), [locale, transactions]);
 
   return (
     <div className="consumption-chart-stack">
@@ -379,7 +384,7 @@ export function ConsumptionCharts({
               <h2>收支趋势</h2>
               <span>按当前筛选范围</span>
             </div>
-            <TrendLegend />
+              <TrendLegend locale={locale} />
           </div>
           <EChartView option={trendOption} className="trend-chart consumption-trend-chart" />
         </div>
@@ -416,7 +421,7 @@ export function ConsumptionCharts({
               <span>每天的支出热度</span>
             </div>
           </div>
-          <CalendarHeatmap transactions={transactions} monthKey={monthKey} />
+          <CalendarHeatmap transactions={transactions} monthKey={monthKey} locale={locale} />
         </div>
       </section>
 
@@ -429,7 +434,7 @@ export function ConsumptionCharts({
                   <h2>每日平台支出</h2>
                   <span>按账户拆分</span>
                 </div>
-                <PlatformLegend platforms={barPlatforms} />
+                <PlatformLegend platforms={barPlatforms} locale={locale} />
               </div>
               <EChartView option={barOption} className="bar-chart" />
             </div>

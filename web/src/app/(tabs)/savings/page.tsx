@@ -8,12 +8,13 @@ import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REPORTING_MONTH_KEY, formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
+import { translateValue, useAppLocale } from "@/lib/stark/i18n";
 
 const repo = new DataModeManager().getRepository();
 
-function dayLabel(value: string) {
+function dayLabel(value: string, locale: "zh-CN" | "en-US") {
   const day = Number(value.slice(8, 10));
-  return Number.isFinite(day) ? `${day}日` : value;
+  return Number.isFinite(day) ? locale === "en-US" ? String(day) : `${day}日` : value;
 }
 
 function shortAmount(amount: number) {
@@ -27,13 +28,13 @@ function clampPercent(value: number) {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function monthLabel(month: string) {
+function monthLabel(month: string, locale: "zh-CN" | "en-US") {
   const value = Number(month.slice(5, 7));
-  return Number.isFinite(value) ? `${value}月` : month;
+  return Number.isFinite(value) ? locale === "en-US" ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(2024, value - 1, 1)) : `${value}月` : month;
 }
 
-function deadlineLabel(value?: string | null) {
-  if (!value) return "未设置期限";
+function deadlineLabel(value: string | null | undefined, locale: "zh-CN" | "en-US") {
+  if (!value) return locale === "en-US" ? "No deadline" : "未设置期限";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -80,6 +81,7 @@ function goalPercent(goal: SavingsGoal) {
 }
 
 export default function SavingsPage() {
+  const locale = useAppLocale();
   const [goals, setGoals] = useState<SavingsGoal[]>([]);
   const [plans, setPlans] = useState<SavingsPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -152,38 +154,38 @@ export default function SavingsPage() {
 
       <section className="home-card savings-vault-hero">
         <div className="savings-vault-copy">
-          <span className="savings-eyebrow">储蓄总览</span>
+          <span className="savings-eyebrow">{translateValue("储蓄总览", locale)}</span>
           <strong>¥ {formatMoney(summary.savedAmount)}</strong>
-          <p>{focusGoal ? `${focusGoal.name} · 还差 ¥ ${formatMoney(Math.max(focusGoal.targetAmount - focusGoal.currentAmount, 0))}` : "还没有储蓄目标"}</p>
+          <p>{focusGoal ? `${focusGoal.name} · ${locale === "en-US" ? "Remaining" : "还差"} ¥ ${formatMoney(Math.max(focusGoal.targetAmount - focusGoal.currentAmount, 0))}` : translateValue("还没有储蓄目标", locale)}</p>
           <div className="savings-hero-track" aria-label={`总进度 ${summary.progress}%`}>
             <i style={{ width: heroProgress }} />
           </div>
           <div className="savings-hero-meta">
-            <span>目标 ¥ {formatMoney(summary.target)}</span>
-            <span>剩余 ¥ {formatMoney(summary.remainingTarget)}</span>
+            <span>{translateValue("目标", locale)} ¥ {formatMoney(summary.target)}</span>
+            <span>{translateValue("剩余", locale)} ¥ {formatMoney(summary.remainingTarget)}</span>
           </div>
         </div>
         <div className="savings-vault-ring" style={{ "--progress": heroProgress } as CSSProperties}>
           <strong>{summary.progress}%</strong>
-          <span>总进度</span>
+          <span>{translateValue("总进度", locale)}</span>
         </div>
       </section>
 
-      <section className="savings-metric-grid" aria-label="储蓄关键指标">
+      <section className="savings-metric-grid" aria-label={locale === "en-US" ? "Key savings metrics" : "储蓄关键指标"}>
         <div className="savings-metric-card primary">
-          <span>本月计划</span>
+          <span>{translateValue("本月计划", locale)}</span>
           <strong>¥ {formatMoney(summary.monthPlanned)}</strong>
-          <small>{REPORTING_MONTH_KEY} 待执行额度</small>
+          <small>{locale === "en-US" ? `${REPORTING_MONTH_KEY} planned amount` : `${REPORTING_MONTH_KEY} 待执行额度`}</small>
         </div>
         <div className="savings-metric-card gap">
-          <span>目标缺口</span>
+          <span>{translateValue("目标缺口", locale)}</span>
           <strong>¥ {formatMoney(summary.remainingTarget)}</strong>
-          <small>离总目标还需补齐</small>
+          <small>{translateValue("离总目标还需补齐", locale)}</small>
         </div>
         <div className="savings-metric-card done">
-          <span>完成率</span>
+          <span>{translateValue("完成率", locale)}</span>
           <strong>{summary.completionRate}%</strong>
-          <small>{summary.completed} 已完成 · {summary.pending} 待处理</small>
+          <small>{locale === "en-US" ? `${summary.completed} completed · ${summary.pending} pending` : `${summary.completed} 已完成 · ${summary.pending} 待处理`}</small>
         </div>
       </section>
 
@@ -191,7 +193,7 @@ export default function SavingsPage() {
         <section className="home-card savings-focus-card">
           <div className="savings-focus-head">
             <div>
-              <span>当前冲刺目标</span>
+              <span>{translateValue("当前冲刺目标", locale)}</span>
               <strong>{focusGoal.name}</strong>
             </div>
             <em>{focusPercent}%</em>
@@ -200,9 +202,9 @@ export default function SavingsPage() {
             <i style={{ width: `${focusPercent}%` }} />
           </div>
           <div className="savings-focus-meta">
-            <span>已存 ¥ {formatMoney(focusGoal.currentAmount)}</span>
-            <span>目标 ¥ {formatMoney(focusGoal.targetAmount)}</span>
-            <span>{deadlineLabel(focusGoal.deadline)}</span>
+            <span>{translateValue("已存", locale)} ¥ {formatMoney(focusGoal.currentAmount)}</span>
+            <span>{translateValue("目标", locale)} ¥ {formatMoney(focusGoal.targetAmount)}</span>
+            <span>{deadlineLabel(focusGoal.deadline, locale)}</span>
           </div>
         </section>
       ) : null}
@@ -210,10 +212,10 @@ export default function SavingsPage() {
       <section className="home-card savings-goal-section">
         <div className="section-head savings-section-head">
           <div>
-            <h2>目标组</h2>
-            <span>活跃目标与存入进度</span>
+            <h2>{translateValue("目标组", locale)}</h2>
+            <span>{translateValue("活跃目标与存入进度", locale)}</span>
           </div>
-          <span className="mini-section-note">{summary.activeCount || goals.length} 个目标</span>
+          <span className="mini-section-note">{locale === "en-US" ? `${summary.activeCount || goals.length} goals` : `${summary.activeCount || goals.length} 个目标`}</span>
         </div>
         <div className="savings-goal-grid">
           {goalCards.length ? goalCards.map((goal) => {
@@ -227,11 +229,11 @@ export default function SavingsPage() {
                 </div>
                 <em>{percent}%</em>
                 <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percent}%`}><i style={{ width: `${percent}%` }} /></div>
-                <p><span>已存 ¥ {formatMoney(goal.currentAmount)}</span><span>还差 ¥ {formatMoney(remaining)}</span></p>
+                <p><span>{translateValue("已存", locale)} ¥ {formatMoney(goal.currentAmount)}</span><span>{locale === "en-US" ? "Remaining" : "还差"} ¥ {formatMoney(remaining)}</span></p>
               </article>
             );
           }) : (
-            <div className="loan-empty">暂无储蓄目标</div>
+            <div className="loan-empty">{translateValue("暂无储蓄目标", locale)}</div>
           )}
         </div>
       </section>
@@ -239,17 +241,17 @@ export default function SavingsPage() {
       <section className="home-card savings-rhythm-card">
         <div className="section-head savings-section-head">
           <div>
-            <h2>月度节奏</h2>
-            <span>计划强度与完成比例</span>
+            <h2>{translateValue("月度节奏", locale)}</h2>
+            <span>{translateValue("计划强度与完成比例", locale)}</span>
           </div>
           <span className="mini-section-note">{REPORTING_MONTH_KEY}</span>
         </div>
         <div className="savings-rhythm-board">
           {visibleRhythm.map((item) => (
             <div key={item.month} className={`savings-rhythm-tile ${item.isCurrent ? "current" : ""}`}>
-              <span>{monthLabel(item.month)}</span>
+              <span>{monthLabel(item.month, locale)}</span>
               <strong>¥ {formatMoney(item.planned)}</strong>
-              <small>{item.pending > 0 ? `待 ${shortAmount(item.pending)}` : "已清"}</small>
+              <small>{item.pending > 0 ? locale === "en-US" ? `${shortAmount(item.pending)} pending` : `待 ${shortAmount(item.pending)}` : translateValue("已清", locale)}</small>
               <div><i style={{ width: `${item.planPercent}%` }} /><b style={{ width: `${item.donePercent}%` }} /></div>
             </div>
           ))}
@@ -259,10 +261,10 @@ export default function SavingsPage() {
       <section className="recent-card savings-recent-card">
         <div className="recent-head savings-section-head">
           <div>
-            <h2>最近计划</h2>
-            <span>最近更新的存入安排</span>
+            <h2>{translateValue("最近计划", locale)}</h2>
+            <span>{translateValue("最近更新的存入安排", locale)}</span>
           </div>
-          <span className="mini-section-note">按更新时间</span>
+          <span className="mini-section-note">{translateValue("按更新时间", locale)}</span>
         </div>
         <div className="recent-list">
           {recentPlans.length ? recentPlans.map((plan) => {
@@ -271,13 +273,13 @@ export default function SavingsPage() {
               <div key={plan.id} className={`savings-recent-row ${plan.status.toLowerCase()}`}>
                 <div className="savings-recent-icon">存</div>
                 <strong>{goal?.name || "储蓄计划"}</strong>
-                <span>{plan.month} · {planStatusLabel(plan.status)}</span>
-                <time>{dayLabel(plan.updatedAt.slice(0, 10))}</time>
+                <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
+                <time>{dayLabel(plan.updatedAt.slice(0, 10), locale)}</time>
                 <em>+¥ {formatMoney(plan.amount)}</em>
               </div>
             );
           }) : (
-            <div className="loan-empty">暂无储蓄记录</div>
+            <div className="loan-empty">{translateValue("暂无储蓄记录", locale)}</div>
           )}
         </div>
       </section>

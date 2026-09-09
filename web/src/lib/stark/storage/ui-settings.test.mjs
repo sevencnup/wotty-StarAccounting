@@ -13,4 +13,5 @@ test("ui settings preserve valid theme, language, and font choices", () => {
     language: "ZH_CN",
     font: "LARGE",
   });
+  assert.equal(parseUiSettings(JSON.stringify({ language: "EN_US" })).language, "EN_US");
 });

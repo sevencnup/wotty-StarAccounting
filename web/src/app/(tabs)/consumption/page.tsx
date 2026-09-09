@@ -13,6 +13,7 @@ import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
 import { getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import { formatMoney, reportingMonthEndDate, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
+import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
 
 const repo = new DataModeManager().getRepository();
 
@@ -50,6 +51,7 @@ function ChevronDownIcon() {
 }
 
 export default function ConsumptionPage() {
+  const locale = useAppLocale();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -211,13 +213,13 @@ export default function ConsumptionPage() {
       <section className="consumption-overview-card">
         <div className="consumption-overview-head">
           <div>
-            <span>{reportingMonthLabel(reportingMonth)} · 现金流概览</span>
-            <h2>本月支出</h2>
+            <span>{reportingMonthLabel(reportingMonth)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
+            <h2>{locale === "en-US" ? "This month’s spending" : "本月支出"}</h2>
           </div>
           <MonthPicker
             value={reportingMonth}
             onChange={handleReportingMonthChange}
-            ariaLabel="选择消费统计月份"
+            ariaLabel={locale === "en-US" ? "Select spending month" : "选择消费统计月份"}
             triggerClassName="consumption-period-button"
           >
             <span>{reportingMonthLabel(reportingMonth)}</span>
@@ -278,14 +280,14 @@ export default function ConsumptionPage() {
       <section className="consumption-detail-card">
         <div className="consumption-detail-head">
           <div>
-            <h2>流水明细</h2>
-            <span>{filteredTransactions.length} 笔筛选结果 · 显示最近 {Math.min(detailMatchedTransactions.length, 5)} 笔</span>
+            <h2>{locale === "en-US" ? "Transaction details" : "流水明细"}</h2>
+            <span>{locale === "en-US" ? `${filteredTransactions.length} filtered results · showing the latest ${Math.min(detailMatchedTransactions.length, 5)}` : `${filteredTransactions.length} 笔筛选结果 · 显示最近 ${Math.min(detailMatchedTransactions.length, 5)} 笔`}</span>
           </div>
-          <span className="consumption-top-category">最高分类 {monthSummary.topCategory} · ¥{formatMoney(monthSummary.topCategoryAmount)}</span>
+          <span className="consumption-top-category">{locale === "en-US" ? "Top category" : "最高分类"} {translateValue(monthSummary.topCategory, locale)} · ¥{formatMoney(monthSummary.topCategoryAmount)}</span>
         </div>
         <label className="detail-search-wrap">
           <SearchIcon />
-          <input value={detailQuery} onChange={(event) => setDetailQuery(event.target.value)} placeholder="在当前筛选结果中搜索" />
+          <input value={detailQuery} onChange={(event) => setDetailQuery(event.target.value)} placeholder={locale === "en-US" ? "Search within filtered results" : "在当前筛选结果中搜索"} />
         </label>
         <div className="recent-list consumption-detail-list">
           {detailTransactions.length ? detailTransactions.map((item) => {

@@ -4,7 +4,7 @@ import { AppPreferences } from "@/components/stark/AppPreferences";
 
 export const metadata: Metadata = {
   title: "wotty stark web",
-  description: "wotty stark 网页版 app 端",
+  description: "wotty stark web app",
 };
 
 export const viewport: Viewport = {

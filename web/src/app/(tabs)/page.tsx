@@ -14,6 +14,7 @@ import {
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { formatMoney, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
+import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
 const manager = new DataModeManager();
 
@@ -198,6 +199,7 @@ function StarkCrystalHero({
   reportingMonth: string;
   onReportingMonthChange: (month: string) => void;
 }) {
+  const locale = useAppLocale();
   const monthLabel = reportingMonthLabel(reportingMonth);
   const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
@@ -225,7 +227,7 @@ function StarkCrystalHero({
         <MonthPicker
           value={reportingMonth}
           onChange={onReportingMonthChange}
-          ariaLabel="选择首页统计月份"
+          ariaLabel={locale === "en-US" ? "Select home reporting month" : "选择首页统计月份"}
           triggerClassName="stark-period-badge"
         >
           <span>{monthLabel}</span>
@@ -238,21 +240,21 @@ function StarkCrystalHero({
             className={activeMetric === "balance" ? "active" : ""}
             onClick={() => onMetricChange("balance")}
           >
-            结余
+            {translateValue("结余", locale)}
           </button>
           <button
             type="button"
             className={activeMetric === "expense" ? "active" : ""}
             onClick={() => onMetricChange("expense")}
           >
-            支出
+            {translateValue("支出", locale)}
           </button>
           <button
             type="button"
             className={activeMetric === "income" ? "active" : ""}
             onClick={() => onMetricChange("income")}
           >
-            收入
+            {translateValue("收入", locale)}
           </button>
         </div>
       </div>
@@ -261,11 +263,11 @@ function StarkCrystalHero({
       <div className="stark-hero-card">
         {/* 背景轻淡月份水印 */}
         <div className="stark-card-watermark">
-          {new Intl.DateTimeFormat("en", { month: "short" }).format(reportingMonthDate(reportingMonth))}
+          {new Intl.DateTimeFormat(locale, { month: "short" }).format(reportingMonthDate(reportingMonth))}
         </div>
 
         <div className="stark-hero-meta-row">
-          <span className="stark-card-label">{displayTitle}</span>
+          <span className="stark-card-label">{translateValue(displayTitle, locale)}</span>
           {activeMetric === "balance" ? (
             <div className="stark-scope-selector">
               <button
@@ -273,14 +275,14 @@ function StarkCrystalHero({
                 className={balanceMode === "month" ? "active" : ""}
                 onClick={() => setBalanceMode("month")}
               >
-                自然月
+                {translateValue("自然月", locale)}
               </button>
               <button
                 type="button"
                 className={balanceMode === "salary" ? "active" : ""}
                 onClick={() => setBalanceMode("salary")}
               >
-                发薪周期
+                {translateValue("发薪周期", locale)}
               </button>
             </div>
           ) : null}
@@ -294,7 +296,7 @@ function StarkCrystalHero({
 
         <div className="stark-hero-footer-row">
           <div className="stark-hero-footer-left">
-            <span className="stark-tx-count">共 {transactionCount} 笔记账</span>
+            <span className="stark-tx-count">{locale === "en-US" ? `${transactionCount} entries` : `共 ${transactionCount} 笔记账`}</span>
             {activeMetric === "balance" && balanceMode === "salary" ? (
               <button
                 type="button"
@@ -305,7 +307,7 @@ function StarkCrystalHero({
               </button>
             ) : (
               <Link href="/consumption" className="stark-detail-arrow">
-                查看明细分析 <ChevronRightIcon size={12} />
+                {translateValue("查看明细分析", locale)} <ChevronRightIcon size={12} />
               </Link>
             )}
           </div>
@@ -313,11 +315,11 @@ function StarkCrystalHero({
           <button
             type="button"
             className="stark-salary-action-btn"
-            aria-label="添加薪资收入"
+            aria-label={locale === "en-US" ? "Add salary income" : "添加薪资收入"}
             onClick={() => window.dispatchEvent(new Event("stark:open-salary-income"))}
           >
             <PlusIcon size={13} strokeWidth={2.2} />
-            <span>添加薪资收入</span>
+            <span>{translateValue("添加薪资收入", locale)}</span>
           </button>
         </div>
 
@@ -336,6 +338,7 @@ function StarkCrystalHero({
 
 // Stark AI 财务诊断条
 function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
+  const locale = useAppLocale();
   const topInsight = summary.insights[0];
   const budget = summary.budgetAlerts[0];
   const hasRisk = budget && (budget.tone === "danger" || budget.tone === "warn");
@@ -346,17 +349,17 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
         <SparklesIcon size={16} strokeWidth={2.2} color={hasRisk ? "#e11d48" : "#0284c7"} />
       </div>
       <div className="diag-content">
-        <strong>{hasRisk ? "预算需关注" : "财务诊断"}</strong>
+        <strong>{translateValue(hasRisk ? "预算需关注" : "财务诊断", locale)}</strong>
         <p>
           {topInsight
-            ? topInsight.detail
+            ? translateText(topInsight.detail, locale)
             : (budget
-              ? `${budget.title}已消耗 ${Math.round(budget.percent)}%，结余处于合理区间`
-              : "本月现金流平稳，无超支或临近违约风险")}
+              ? `${translateValue(budget.title, locale)}${locale === "en-US" ? ` used ${Math.round(budget.percent)}%; the remaining budget is in a healthy range` : `已消耗 ${Math.round(budget.percent)}%，结余处于合理区间`}`
+              : translateValue("本月现金流平稳，无超支或临近违约风险", locale))}
         </p>
       </div>
       <Link href="/consumption" className="diag-link">
-        查看 ›
+        {translateText("查看 ›", locale)}
       </Link>
     </div>
   );
@@ -364,6 +367,7 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
 
 // 四维财务罗盘 (Compass Matrix)
 function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
+  const locale = useAppLocale();
   const budget = summary.budgetAlerts[0];
   const loanTask = summary.tasks.find((task) => task.source === "loan");
   const budgetPercent = budget ? Math.round(budget.percent) : 0;
@@ -380,12 +384,12 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
           <span className="compass-icon-wrapper asset">
             <ShieldCheckIcon size={14} strokeWidth={2.2} color="#059669" />
           </span>
-          <span className="compass-label">净资产</span>
+          <span className="compass-label">{translateValue("净资产", locale)}</span>
         </div>
         <strong className="compass-value">¥ {netWorthStr}</strong>
         <div className="compass-meta">
           <span className={`compass-badge ${summary.netWorth >= 0 ? "healthy" : "attention"}`}>
-            {summary.netWorth >= 0 ? "结构健康" : "负债关注"}
+            {translateValue(summary.netWorth >= 0 ? "结构健康" : "负债关注", locale)}
           </span>
           <ChevronRightIcon size={12} />
         </div>
@@ -396,12 +400,12 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
           <span className="compass-icon-wrapper budget">
             <TargetIcon size={14} strokeWidth={2.2} color="#0284c7" />
           </span>
-          <span className="compass-label">预算余量</span>
+          <span className="compass-label">{translateValue("预算余量", locale)}</span>
         </div>
         <strong className="compass-value">{budget ? `${budgetLeft}%` : "100%"}</strong>
         <div className="compass-meta">
           <span className={`compass-badge ${budget?.tone === "danger" ? "danger" : "normal"}`}>
-            {budget?.tone === "danger" ? "已超支" : `已用 ${budgetPercent}%`}
+            {budget?.tone === "danger" ? translateValue("已超支", locale) : locale === "en-US" ? `${budgetPercent}% used` : `已用 ${budgetPercent}%`}
           </span>
           <ChevronRightIcon size={12} />
         </div>
@@ -412,12 +416,12 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
           <span className="compass-icon-wrapper loan">
             <CreditCardIcon size={14} strokeWidth={2.2} color="#e11d48" />
           </span>
-          <span className="compass-label">待还贷款</span>
+          <span className="compass-label">{translateValue("待还贷款", locale)}</span>
         </div>
-        <strong className="compass-value">{loanTask?.badge || "无待还"}</strong>
+        <strong className="compass-value">{loanTask ? translateText(loanTask.badge, locale) : translateValue("无待还", locale)}</strong>
         <div className="compass-meta">
           <span className="compass-badge loan-badge">
-            {loanTask ? "近期还款" : "状态良好"}
+            {translateValue(loanTask ? "近期还款" : "状态良好", locale)}
           </span>
           <ChevronRightIcon size={12} />
         </div>
@@ -428,12 +432,12 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
           <span className="compass-icon-wrapper saving">
             <PiggyBankIcon size={14} strokeWidth={2.2} color="#d97706" />
           </span>
-          <span className="compass-label">储蓄达成</span>
+          <span className="compass-label">{translateValue("储蓄达成", locale)}</span>
         </div>
         <strong className="compass-value">{Math.round(summary.savingProgress.percent)}%</strong>
         <div className="compass-meta">
           <span className="compass-badge saving-badge">
-            计划进行中
+            {translateValue("计划进行中", locale)}
           </span>
           <ChevronRightIcon size={12} />
         </div>
@@ -444,6 +448,7 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
 
 // 本月支出构成 (替代老旧流水列表)
 function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
+  const locale = useAppLocale();
   const ratios = summary.ratios.slice(0, 4);
   const total = summary.expense || 1;
 
@@ -451,11 +456,11 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
     <SurfaceCard className="stark-category-card">
       <div className="category-card-head">
         <div className="category-title-block">
-          <strong>本月支出结构</strong>
-          <span className="category-sub">共 {summary.ratios.length} 个分类</span>
+          <strong>{translateValue("本月支出结构", locale)}</strong>
+          <span className="category-sub">{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</span>
         </div>
         <Link href="/consumption" className="category-all-link">
-          分类明细 <ChevronRightIcon size={12} />
+          {translateValue("分类明细", locale)} <ChevronRightIcon size={12} />
         </Link>
       </div>
 
@@ -467,7 +472,7 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
               <span
                 key={item.name}
                 style={{ width: `${Math.max(item.percent, 4)}%`, background: item.color }}
-                title={`${item.name} ${item.percent}%`}
+                title={`${translateValue(item.name, locale)} ${item.percent}%`}
               />
             ))}
           </div>
@@ -478,23 +483,23 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
               <Link href="/consumption" key={item.name} className="category-grid-item">
                 <div className="category-item-top">
                   <span className="category-dot" style={{ background: item.color }} />
-                  <span className="category-name">{item.name}</span>
+                  <span className="category-name">{translateValue(item.name, locale)}</span>
                 </div>
                 <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
-                <span className="category-percent">{item.percent}% 占比</span>
+                <span className="category-percent">{locale === "en-US" ? `${item.percent}% share` : `${item.percent}% 占比`}</span>
               </Link>
             ))}
           </div>
         </div>
       ) : (
-        <div className="category-empty">本月暂无支出记录</div>
+        <div className="category-empty">{translateValue("本月暂无支出记录", locale)}</div>
       )}
     </SurfaceCard>
   );
 }
 
 // 智能理财与省钱行动建议
-function SmartAdvisoryCard({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
+function SmartAdvisoryCard({ summary, reportingMonth, locale }: { summary: HomeSummary; reportingMonth: string; locale: AppLocale }) {
   const dailyAvg = (summary.expense / Math.max(reportingMonthEndDate(reportingMonth).getDate(), 1)).toFixed(1);
   const remainingBudget = summary.budgetAlerts[0]
     ? Math.max(0, summary.budgetAlerts[0].budget - summary.budgetAlerts[0].spent)
@@ -506,23 +511,23 @@ function SmartAdvisoryCard({ summary, reportingMonth }: { summary: HomeSummary; 
       <div className="advisory-card-head">
         <div className="advisory-title-block">
           <CompassIcon size={16} strokeWidth={2.2} color="#0284c7" />
-          <strong>财务行动建议</strong>
+          <strong>{translateValue("财务行动建议", locale)}</strong>
         </div>
-        <span className="advisory-status-tag">{isHealthy ? "节律健康" : "需控制支出"}</span>
+        <span className="advisory-status-tag">{translateValue(isHealthy ? "节律健康" : "需控制支出", locale)}</span>
       </div>
 
       <div className="advisory-card-body">
         <div className="advisory-tip-row">
           <span className="tip-bullet">1</span>
           <p>
-            当前日均支出 <b>¥{dailyAvg}</b>，若保持当前速率，预计月底可结余 <b>¥{formatMoney(Math.max(0, summary.forecast.monthBalance))}</b>。
+            {locale === "en-US" ? <>Daily spending is currently <b>¥{dailyAvg}</b>. At this pace, the projected month-end balance is <b>¥{formatMoney(Math.max(0, summary.forecast.monthBalance))}</b>.</> : <>当前日均支出 <b>¥{dailyAvg}</b>，若保持当前速率，预计月底可结余 <b>¥{formatMoney(Math.max(0, summary.forecast.monthBalance))}</b>。</>}
           </p>
         </div>
         <div className="advisory-tip-row">
           <span className="tip-bullet">2</span>
           <p>
-            剩余总预算 <b>¥{formatMoney(remainingBudget)}</b>，建议将富余资金分配至
-            <Link href="/savings" className="advisory-inline-link">储蓄计划 ›</Link>
+            {locale === "en-US" ? <>Remaining total budget <b>¥{formatMoney(remainingBudget)}</b>. Consider directing the surplus to </> : <>剩余总预算 <b>¥{formatMoney(remainingBudget)}</b>，建议将富余资金分配至</>}
+            <Link href="/savings" className="advisory-inline-link">{translateText("储蓄计划 ›", locale)}</Link>
           </p>
         </div>
       </div>
@@ -531,13 +536,13 @@ function SmartAdvisoryCard({ summary, reportingMonth }: { summary: HomeSummary; 
 }
 
 // Stark 原创月度收支走势
-function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Transaction[]; reportingMonth: string }) {
+function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transactions: Transaction[]; reportingMonth: string; locale: AppLocale }) {
   const monthKeys = reportingMonthSequence(reportingMonth, 5);
   const history = monthKeys.map((key) => {
     const monthTransactions = transactions.filter((item) => monthKey(item.date) === key);
     return {
       key,
-      month: `${Number(key.slice(5))}月`,
+      month: locale === "en-US" ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(reportingMonthDate(`${key}-01`.slice(0, 7))) : `${Number(key.slice(5))}月`,
       expense: monthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
       income: monthTransactions.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
       current: key === reportingMonth,
@@ -556,28 +561,28 @@ function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Tr
     <SurfaceCard className="stark-trend-card">
       <div className="stark-trend-head">
         <div className="trend-title-block">
-          <strong>收支动态走势</strong>
-          <span className="trend-sub">近 5 个月对比</span>
+          <strong>{translateValue("收支动态走势", locale)}</strong>
+          <span className="trend-sub">{translateValue("近 5 个月对比", locale)}</span>
         </div>
         <div className="stark-trend-legend">
-          <span className="legend-item income"><i /> 收入</span>
-          <span className="legend-item expense"><i /> 支出</span>
+          <span className="legend-item income"><i /> {translateValue("收入", locale)}</span>
+          <span className="legend-item expense"><i /> {translateValue("支出", locale)}</span>
         </div>
       </div>
 
       <div className="stark-trend-body">
         {selectedMonth ? (
           <div id="stark-trend-detail" className="stark-trend-detail" role="status" aria-live="polite">
-            <span className="stark-trend-detail-month">{selectedMonth.month}收支</span>
+            <span className="stark-trend-detail-month">{selectedMonth.month}{locale === "en-US" ? " cash flow" : "收支"}</span>
             <div className="stark-trend-detail-values">
               <span className="stark-trend-detail-value">
                 <i className="income" aria-hidden="true" />
-                <span>收入</span>
+                <span>{translateValue("收入", locale)}</span>
                 <strong>¥{formatMoney(selectedMonth.income)}</strong>
               </span>
               <span className="stark-trend-detail-value">
                 <i className="expense" aria-hidden="true" />
-                <span>支出</span>
+                <span>{translateValue("支出", locale)}</span>
                 <strong>¥{formatMoney(selectedMonth.expense)}</strong>
               </span>
             </div>
@@ -589,7 +594,9 @@ function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Tr
             const expH = Math.max(8, Math.min(100, Math.round((item.expense / maxVal) * 100)));
             const incH = Math.max(8, Math.min(100, Math.round((item.income / maxVal) * 100)));
             const selected = item.key === selectedMonthKey;
-            const detailLabel = `${item.month}：收入 ¥${formatMoney(item.income)}，支出 ¥${formatMoney(item.expense)}`;
+            const detailLabel = locale === "en-US"
+              ? `${item.month}: ${translateValue("收入", locale)} ¥${formatMoney(item.income)}, ${translateValue("支出", locale)} ¥${formatMoney(item.expense)}`
+              : `${item.month}：收入 ¥${formatMoney(item.income)}，支出 ¥${formatMoney(item.expense)}`;
 
             return (
               <button
@@ -617,6 +624,7 @@ function StarkCashflowTrend({ transactions, reportingMonth }: { transactions: Tr
 }
 
 export default function HomePage() {
+  const locale = useAppLocale();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -771,10 +779,10 @@ export default function HomePage() {
       <TopExpenseStructure summary={summary} />
 
       {/* 财务行动建议 */}
-      <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} />
+      <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />
 
       {/* 收支动态走势 */}
-      <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} />
+      <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
     </div>
   );
 }
