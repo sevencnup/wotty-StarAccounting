@@ -4,6 +4,7 @@ import type { LanguageChoice } from "@/lib/stark/storage/ui-settings";
 export type AppLocale = "zh-CN" | "en-US";
 
 const translations: Record<string, string> = {
+  "上月结余": "Previous balance", "可选": "Optional", "添加上月结余": "Add previous balance", "移除上月结余": "Remove previous balance", "删除月份行": "Delete month row", "至少保留一个月份行": "Keep at least one month row", "上月结余是专用列，请使用专用按钮": "Previous balance is a dedicated column. Use its button.",
   "wotty stark 网页版 app 端": "wotty stark web app",
   首页: "Home", 消费: "Spending", 储蓄: "Savings", 贷款: "Loans", 资产: "Assets", 账户: "Account",
   消费分析: "Spending analysis", 帮助与反馈: "Help and feedback", 关于: "About", 主题: "Theme", 语言: "Language", 字体大小: "Font size", 切换模式: "Data mode",
@@ -100,6 +101,7 @@ function translateDynamic(source: string) {
   value = value.replace(/^已导入 (\d+) 笔，跳过 (\d+) 笔，失败 (\d+) 笔$/, "Imported $1, skipped $2, failed $3");
   value = value.replace(/^已新增(固定支出|临时支出)“(.+?)”列$/, (_m, kind, name) => `Added ${kind === "固定支出" ? "fixed expense" : "temporary expense"} column “${name}”`);
   value = value.replace(/^已保存 (\d+) 个月的储蓄计划$/, "Saved the savings plan for $1 months");
+  value = value.replace(/^已删除(.+?)月份行$/, "Deleted $1 month row");
   value = value.replace(/^共 (\d+) 个分类$/, "$1 categories");
   value = value.replace(/^共 (\d+) 个账户$/, "$1 accounts");
   value = value.replace(/^共 (\d+) 项关联$/, "$1 linked items");

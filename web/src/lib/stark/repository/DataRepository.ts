@@ -47,6 +47,7 @@ export interface DataRepository {
   deleteSavingsGoal(id: string): Promise<void>;
   getSavingsPlans(goalId: string): Promise<SavingsPlan[]>;
   saveSavingsPlan(plan: SavingsPlan): Promise<void>;
+  deleteSavingsPlan(id: string): Promise<void>;
 
   getCategoryRules(accountId: string): Promise<CategoryRule[]>;
   saveCategoryRule(rule: CategoryRule): Promise<void>;

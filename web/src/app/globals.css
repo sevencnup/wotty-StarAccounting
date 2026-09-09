@@ -5815,6 +5815,19 @@ nextjs-portal {
   font-size: calc(12px * var(--user-font-scale));
 }
 
+.savings-column-adder .previous-balance-column-button {
+  border-color: #b7d7d2;
+  color: #176b68;
+  background: #effaf8;
+}
+
+.savings-column-adder .previous-balance-column-button.active {
+  border-color: #4aa39c;
+  color: #ffffff;
+  background: #258b83;
+  box-shadow: 0 3px 10px rgba(37, 139, 131, 0.2);
+}
+
 .savings-column-adder .fixed-expense-column-button {
   color: #334155;
   background: #f1f5f9;
@@ -5833,6 +5846,25 @@ nextjs-portal {
 
 .savings-plan-table th.fixed-expense-column {
   color: #245fae;
+}
+
+.savings-plan-table th.previous-balance-column,
+.savings-plan-table td.previous-balance-column {
+  min-width: 82px;
+  width: 82px;
+  background: #f1fbfa;
+}
+
+.savings-plan-table th.previous-balance-column {
+  color: #176b68;
+}
+
+.savings-plan-table th.previous-balance-column small {
+  display: block;
+  margin-top: 1px;
+  color: #5b9892;
+  font-size: calc(9px * var(--user-font-scale));
+  font-weight: 500;
 }
 
 .savings-plan-table th.temporary-expense-column small {
@@ -5897,6 +5929,40 @@ nextjs-portal {
   vertical-align: middle;
 }
 
+.savings-plan-table .month-column {
+  position: relative;
+  min-width: 72px;
+  width: 72px;
+  padding-right: 22px;
+  white-space: nowrap;
+}
+
+.savings-plan-table .month-remove-button {
+  position: absolute;
+  top: 50%;
+  right: 3px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  color: #a1adbd;
+  background: transparent;
+  font-size: calc(14px * var(--user-font-scale));
+  line-height: 18px;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.savings-plan-table .month-remove-button:hover,
+.savings-plan-table .month-remove-button:focus-visible {
+  color: #c45454;
+  background: #fff1f1;
+  outline: none;
+}
+
 .savings-plan-table tr:last-child th,
 .savings-plan-table tr:last-child td {
   border-bottom: 0;
@@ -5911,14 +5977,12 @@ nextjs-portal {
   position: sticky;
   left: 0;
   z-index: 3;
-  min-width: 48px;
-  width: 48px;
   background: #f8fbff;
 }
 
 .savings-plan-table .salary-column {
   position: sticky;
-  left: 48px;
+  left: 72px;
   z-index: 2;
   min-width: 78px;
   width: 78px;
@@ -6018,6 +6082,20 @@ nextjs-portal {
 
   .savings-plan-toolbar {
     margin-bottom: 10px;
+  }
+
+  .savings-column-adder {
+    flex-wrap: wrap;
+  }
+
+  .savings-column-adder input {
+    flex: 1 1 100%;
+  }
+
+  .savings-column-adder button {
+    flex: 1 1 calc(33.333% - 6px);
+    min-width: 0;
+    padding: 0 8px;
   }
 }
 

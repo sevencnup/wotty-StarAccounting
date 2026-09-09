@@ -169,6 +169,7 @@ export class RemoteRepository implements DataRepository {
     return await this.request<SavingsPlan[]>(savingsPlansPath(goalId));
   }
   async saveSavingsPlan(plan: SavingsPlan) { await this.save("savingsPlans", plan); }
+  async deleteSavingsPlan(id: string) { await this.delete("savingsPlans", id); }
 
   async getCategoryRules(accountId: string) { return await this.list("categoryRules", accountId) as unknown as CategoryRule[]; }
   async saveCategoryRule(rule: CategoryRule) { await this.save("categoryRules", rule); }

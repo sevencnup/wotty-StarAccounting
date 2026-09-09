@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -10,6 +10,10 @@ import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/sta
 
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
+const SAVINGS_PLAN_REMARKS: Record<SavingsFrequency, string> = {
+  MONTHLY: "单月存模式",
+  ALTERNATE: "隔月存模式",
+};
 const DEPOSIT_TYPE_OPTIONS: Array<{ value: SavingsGoalDepositType; label: string }> = [
   { value: "PRIVATE", label: "死期" },
   { value: "CASH", label: "现金" },
@@ -20,6 +24,7 @@ type PlannerRow = {
   id?: string;
   createdAt?: string;
   salary: string;
+  previousBalance: string;
   expected: string;
   expenses: Record<string, string>;
 };
@@ -29,6 +34,9 @@ type PlanConfig = {
   columns?: string[];
   fixedColumns?: string[];
   temporaryColumns?: string[];
+  previousBalance?: boolean;
+  months?: string[];
+  monthsByFrequency?: Partial<Record<SavingsFrequency, string[]>>;
 };
 
 type SavingsDraft = {
@@ -37,7 +45,10 @@ type SavingsDraft = {
   frequency: SavingsFrequency;
   columns: string[];
   temporaryColumns: string[];
-  rows: Record<string, PlannerRow>;
+  previousBalanceEnabled: boolean;
+  monthsByFrequency: Record<SavingsFrequency, string[]>;
+  rows?: Record<string, PlannerRow>;
+  rowsByFrequency?: Partial<Record<SavingsFrequency, Record<string, PlannerRow>>>;
 };
 
 function parseConfig(raw?: string | null): PlanConfig {
@@ -57,6 +68,54 @@ function parseExpenses(raw?: string | null) {
   } catch {
     return {};
   }
+}
+
+function planRemark(frequency: SavingsFrequency) {
+  return SAVINGS_PLAN_REMARKS[frequency];
+}
+
+function belongsToFrequency(plan: SavingsPlan, frequency: SavingsFrequency, legacyFrequency: SavingsFrequency) {
+  if (plan.remark === planRemark(frequency)) return true;
+  if (plan.remark === planRemark(frequency === "MONTHLY" ? "ALTERNATE" : "MONTHLY")) return false;
+  return legacyFrequency === frequency;
+}
+
+function defaultMonthsByFrequency(year: number): Record<SavingsFrequency, string[]> {
+  return {
+    MONTHLY: buildSavingsMonths(year, "MONTHLY"),
+    ALTERNATE: buildSavingsMonths(year, "ALTERNATE"),
+  };
+}
+
+function normalizeMonths(year: number, frequency: SavingsFrequency, value?: string[]) {
+  const generated = buildSavingsMonths(year, frequency);
+  const selected = Array.isArray(value) ? value.filter((month) => generated.includes(month)) : generated;
+  return selected.length ? selected : generated;
+}
+
+function emptyPlannerRow(): PlannerRow {
+  return { salary: "", previousBalance: "", expected: "", expenses: {} };
+}
+
+function normalizePlannerRow(row?: Partial<PlannerRow> | null): PlannerRow {
+  const expenses = row?.expenses ?? {};
+  return {
+    id: row?.id,
+    createdAt: row?.createdAt,
+    salary: String(row?.salary ?? ""),
+    previousBalance: String(row?.previousBalance ?? expenses[PREVIOUS_BALANCE_COLUMN] ?? ""),
+    expected: String(row?.expected ?? ""),
+    expenses: Object.fromEntries(Object.entries(expenses)
+      .filter(([column]) => column !== PREVIOUS_BALANCE_COLUMN)
+      .map(([column, value]) => [column, String(value ?? "")])),
+  };
+}
+
+function defaultMonthsForConfig(year: number, config: PlanConfig): Record<SavingsFrequency, string[]> {
+  return {
+    MONTHLY: normalizeMonths(year, "MONTHLY", config.monthsByFrequency?.MONTHLY ?? (config.frequency === "MONTHLY" ? config.months : undefined)),
+    ALTERNATE: normalizeMonths(year, "ALTERNATE", config.monthsByFrequency?.ALTERNATE ?? (config.frequency === "ALTERNATE" ? config.months : undefined)),
+  };
 }
 
 function monthLabel(month: string) {
@@ -106,7 +165,9 @@ export function SavingsPlanner({
   const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [temporaryColumns, setTemporaryColumns] = useState<string[]>([]);
-  const [rows, setRows] = useState<Record<string, PlannerRow>>({});
+  const [previousBalanceEnabled, setPreviousBalanceEnabled] = useState(false);
+  const [monthsByFrequency, setMonthsByFrequency] = useState<Record<SavingsFrequency, string[]>>(() => defaultMonthsByFrequency(year));
+  const [rowsByFrequency, setRowsByFrequency] = useState<Record<SavingsFrequency, Record<string, PlannerRow>>>({ MONTHLY: {}, ALTERNATE: {} });
   const [newColumn, setNewColumn] = useState("");
   const [hydrating, setHydrating] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,8 +176,9 @@ export function SavingsPlanner({
   const columnInputRef = useRef<HTMLInputElement | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const draftSubmittedRef = useRef(false);
+  const persistedPlansRef = useRef<SavingsPlan[]>([]);
 
-  const months = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
+  const months = monthsByFrequency[frequency];
 
   useEffect(() => {
     if (loadStartedRef.current) return;
@@ -148,36 +210,63 @@ export function SavingsPlanner({
 
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
-      const hydratedRows: Record<string, PlannerRow> = {};
-      const configuredColumns = config.columns?.length ? config.columns : DEFAULT_COLUMNS;
-      const fixedColumns = config.fixedColumns?.length ? config.fixedColumns : configuredColumns;
-      const configuredTemporaryColumns = config.temporaryColumns ?? [];
+      persistedPlansRef.current = plans;
+      const draft = readNewEntryDraft<SavingsDraft>("savings");
+      const legacyFrequency = config.frequency ?? "MONTHLY";
+      const initialFrequency = draft?.frequency ?? legacyFrequency;
+      const hydratedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = { MONTHLY: {}, ALTERNATE: {} };
+      const configuredColumns = (config.columns?.length ? config.columns : DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+      const fixedColumns = (config.fixedColumns?.length ? config.fixedColumns : configuredColumns).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+      const configuredTemporaryColumns = (config.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
       const expenseColumns = new Set([...fixedColumns, ...configuredTemporaryColumns]);
 
-      plans.forEach((plan) => {
-        const expenses = parseExpenses(plan.expenses);
-        Object.keys(expenses).forEach((column) => expenseColumns.add(column));
-        hydratedRows[plan.month] = {
-          id: plan.id,
-          createdAt: plan.createdAt,
-          salary: plan.salary ? String(plan.salary) : "",
-          expected: plan.amount ? String(plan.amount) : "",
-          expenses,
-        };
+      (['MONTHLY', 'ALTERNATE'] as SavingsFrequency[]).forEach((mode) => {
+        plans.filter((plan) => belongsToFrequency(plan, mode, legacyFrequency)).forEach((plan) => {
+          const expenses = parseExpenses(plan.expenses);
+          Object.keys(expenses).filter((column) => column !== PREVIOUS_BALANCE_COLUMN).forEach((column) => expenseColumns.add(column));
+          hydratedRowsByFrequency[mode][plan.month] = {
+            id: plan.id,
+            createdAt: plan.createdAt,
+            salary: plan.salary ? String(plan.salary) : "",
+            previousBalance: expenses[PREVIOUS_BALANCE_COLUMN] ?? "",
+            expected: plan.amount ? String(plan.amount) : "",
+            expenses: Object.fromEntries(Object.entries(expenses).filter(([column]) => column !== PREVIOUS_BALANCE_COLUMN)),
+          };
+        });
       });
 
-      const draft = readNewEntryDraft<SavingsDraft>("savings");
-      const draftColumns = Array.isArray(draft?.columns) && draft.columns.length ? draft.columns : [...expenseColumns];
+      const draftColumns = (Array.isArray(draft?.columns) && draft.columns.length ? draft.columns : [...expenseColumns])
+        .filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
       const draftTemporaryColumns = Array.isArray(draft?.temporaryColumns)
         ? draft.temporaryColumns.filter((column) => draftColumns.includes(column))
         : configuredTemporaryColumns.filter((column) => expenseColumns.has(column));
+      const configuredMonths = defaultMonthsForConfig(year, config);
+      const draftMonths = draft?.monthsByFrequency;
       setGoal(activeGoal);
       setGoalName(draft?.goalName ?? activeGoal.name ?? "");
       setDepositType(normalizeDepositType(draft?.depositType ?? activeGoal.depositType));
-      setFrequency(draft?.frequency ?? config.frequency ?? "MONTHLY");
+      setFrequency(initialFrequency);
       setColumns(draftColumns);
       setTemporaryColumns(draftTemporaryColumns);
-      setRows(draft?.rows ?? hydratedRows);
+      setPreviousBalanceEnabled(draft?.previousBalanceEnabled ?? config.previousBalance ?? plans.some((plan) => PREVIOUS_BALANCE_COLUMN in parseExpenses(plan.expenses)));
+      setMonthsByFrequency({
+        MONTHLY: normalizeMonths(year, "MONTHLY", draftMonths?.MONTHLY ?? configuredMonths.MONTHLY),
+        ALTERNATE: normalizeMonths(year, "ALTERNATE", draftMonths?.ALTERNATE ?? configuredMonths.ALTERNATE),
+      });
+      const hydratedRows = Object.fromEntries((['MONTHLY', 'ALTERNATE'] as SavingsFrequency[]).map((mode) => [
+        mode,
+        Object.fromEntries(Object.entries(hydratedRowsByFrequency[mode]).map(([month, row]) => [month, normalizePlannerRow(row)])),
+      ])) as Record<SavingsFrequency, Record<string, PlannerRow>>;
+      const nextRowsByFrequency = draft?.rowsByFrequency
+        ? Object.fromEntries((['MONTHLY', 'ALTERNATE'] as SavingsFrequency[]).map((mode) => [
+          mode,
+          {
+            ...hydratedRows[mode],
+            ...Object.fromEntries(Object.entries(draft.rowsByFrequency?.[mode] ?? {}).map(([month, row]) => [month, normalizePlannerRow(row)])),
+          },
+        ])) as Record<SavingsFrequency, Record<string, PlannerRow>>
+        : { ...hydratedRows, [initialFrequency]: Object.fromEntries(Object.entries(draft?.rows ?? hydratedRows[initialFrequency]).map(([month, row]) => [month, normalizePlannerRow(row)])) };
+      setRowsByFrequency(nextRowsByFrequency);
     } catch {
       const fallbackGoal = createDefaultGoal(year);
       const draft = readNewEntryDraft<SavingsDraft>("savings");
@@ -185,9 +274,21 @@ export function SavingsPlanner({
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setDepositType(normalizeDepositType(draft?.depositType ?? fallbackGoal.depositType));
       setFrequency(draft?.frequency ?? "MONTHLY");
-      setColumns(draft?.columns?.length ? draft.columns : DEFAULT_COLUMNS);
-      setTemporaryColumns(draft?.temporaryColumns ?? []);
-      setRows(draft?.rows ?? {});
+      setColumns((draft?.columns?.length ? draft.columns : DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
+      setTemporaryColumns((draft?.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
+      setPreviousBalanceEnabled(draft?.previousBalanceEnabled ?? false);
+      setMonthsByFrequency({
+        MONTHLY: normalizeMonths(year, "MONTHLY", draft?.monthsByFrequency?.MONTHLY),
+        ALTERNATE: normalizeMonths(year, "ALTERNATE", draft?.monthsByFrequency?.ALTERNATE),
+      });
+      const legacyRows = Object.fromEntries(Object.entries(draft?.rows ?? {}).map(([month, row]) => [month, normalizePlannerRow(row)]));
+      const nextRowsByFrequency = draft?.rowsByFrequency
+        ? Object.fromEntries((['MONTHLY', 'ALTERNATE'] as SavingsFrequency[]).map((mode) => [
+          mode,
+          Object.fromEntries(Object.entries(draft.rowsByFrequency?.[mode] ?? {}).map(([month, row]) => [month, normalizePlannerRow(row)])),
+        ])) as Record<SavingsFrequency, Record<string, PlannerRow>>
+        : { MONTHLY: {}, ALTERNATE: {}, [draft?.frequency ?? 'MONTHLY']: legacyRows } as Record<SavingsFrequency, Record<string, PlannerRow>>;
+      setRowsByFrequency(nextRowsByFrequency);
       setNotice("储蓄计划已进入本地编辑模式");
     } finally {
       setDraftReady(true);
@@ -203,45 +304,73 @@ export function SavingsPlanner({
       frequency,
       columns,
       temporaryColumns,
-      rows,
+      previousBalanceEnabled,
+      monthsByFrequency,
+      rowsByFrequency,
     });
-  }, [columns, depositType, draftReady, frequency, goalName, rows, temporaryColumns]);
+  }, [columns, depositType, draftReady, frequency, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, temporaryColumns]);
 
   function rowFor(month: string): PlannerRow {
-    return rows[month] ?? { salary: "", expected: "", expenses: {} };
+    return rowsByFrequency[frequency][month] ?? emptyPlannerRow();
   }
 
   function updateRow(month: string, updater: (row: PlannerRow) => PlannerRow) {
-    setRows((current) => ({ ...current, [month]: updater(current[month] ?? { salary: "", expected: "", expenses: {} }) }));
+    setRowsByFrequency((current) => ({
+      ...current,
+      [frequency]: { ...current[frequency], [month]: updater(current[frequency][month] ?? emptyPlannerRow()) },
+    }));
     setNotice("");
   }
 
-  function updateField(month: string, field: "salary" | "expected", value: string) {
-    setRows((current) => {
-      if (month !== months[0]) {
-        const row = current[month] ?? { salary: "", expected: "", expenses: {} };
-        return { ...current, [month]: { ...row, [field]: value } };
+  function updateField(month: string, field: "salary" | "previousBalance" | "expected", value: string) {
+    setRowsByFrequency((current) => {
+      const currentRows = current[frequency];
+      if (field === "previousBalance") {
+        return { ...current, [frequency]: { ...currentRows, [month]: { ...(currentRows[month] ?? emptyPlannerRow()), previousBalance: value } } };
       }
-      return months.reduce((next, item) => {
-        const row = current[item] ?? { salary: "", expected: "", expenses: {} };
+      if (month !== months[0]) {
+        const row = currentRows[month] ?? emptyPlannerRow();
+        return { ...current, [frequency]: { ...currentRows, [month]: { ...row, [field]: value } } };
+      }
+      const nextRows = months.reduce((next, item) => {
+        const row = currentRows[item] ?? emptyPlannerRow();
         next[item] = { ...row, [field]: value };
         return next;
-      }, { ...current } as Record<string, PlannerRow>);
+      }, { ...currentRows });
+      return { ...current, [frequency]: nextRows };
     });
+    setNotice("");
+  }
+
+  function removeMonth(month: string) {
+    setMonthsByFrequency((current) => {
+      const currentMonths = current[frequency];
+      if (currentMonths.length <= 1) {
+        setNotice("至少保留一个月份行");
+        return current;
+      }
+      setNotice(`已删除${monthLabel(month)}月份行`);
+      return { ...current, [frequency]: removeSavingsMonth(currentMonths, month) };
+    });
+  }
+
+  function togglePreviousBalance() {
+    setPreviousBalanceEnabled((current) => !current);
     setNotice("");
   }
 
   function updateExpense(month: string, column: string, value: string) {
-    setRows((current) => {
+    setRowsByFrequency((current) => {
       if (!shouldSyncSavingsExpense(month, months[0], column, temporaryColumns)) {
-        const row = current[month] ?? { salary: "", expected: "", expenses: {} };
-        return { ...current, [month]: { ...row, expenses: { ...row.expenses, [column]: value } } };
+        const row = current[frequency][month] ?? emptyPlannerRow();
+        return { ...current, [frequency]: { ...current[frequency], [month]: { ...row, expenses: { ...row.expenses, [column]: value } } } };
       }
-      return months.reduce((next, item) => {
-        const row = current[item] ?? { salary: "", expected: "", expenses: {} };
+      const nextRows = months.reduce((next, item) => {
+        const row = current[frequency][item] ?? emptyPlannerRow();
         next[item] = { ...row, expenses: { ...row.expenses, [column]: value } };
         return next;
-      }, { ...current } as Record<string, PlannerRow>);
+      }, { ...current[frequency] });
+      return { ...current, [frequency]: nextRows };
     });
     setNotice("");
   }
@@ -263,11 +392,13 @@ export function SavingsPlanner({
   function removeExpenseColumn(name: string) {
     setColumns((current) => current.filter((column) => column !== name));
     setTemporaryColumns((current) => current.filter((column) => column !== name));
-    setRows((current) => Object.fromEntries(Object.entries(current).map(([month, row]) => {
-      const expenses = { ...row.expenses };
-      delete expenses[name];
-      return [month, { ...row, expenses }];
-    })));
+    setRowsByFrequency((current) => Object.fromEntries(
+      Object.entries(current).map(([mode, modeRows]) => [mode, Object.fromEntries(Object.entries(modeRows).map(([month, row]) => {
+        const expenses = { ...row.expenses };
+        delete expenses[name];
+        return [month, { ...row, expenses }];
+      }))]),
+    ) as Record<SavingsFrequency, Record<string, PlannerRow>>);
   }
 
   async function savePlans() {
@@ -284,28 +415,42 @@ export function SavingsPlanner({
           columns,
           fixedColumns: columns.filter((column) => !temporaryColumns.includes(column)),
           temporaryColumns,
+          previousBalance: previousBalanceEnabled,
+          monthsByFrequency,
         }),
         updatedAt: now,
       };
       await saveGoalWithFallback(nextGoal);
 
-      await Promise.all(months.map((month) => {
+      const legacyFrequency = parseConfig(goal.planConfig).frequency ?? "MONTHLY";
+      const currentModePlans = persistedPlansRef.current.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency));
+      const otherModePlans = persistedPlansRef.current.filter((plan) => !belongsToFrequency(plan, frequency, legacyFrequency));
+      const plansToDelete = currentModePlans.filter((plan) => !months.includes(plan.month));
+      await Promise.all(plansToDelete.map((plan) => repo.deleteSavingsPlan(plan.id).catch(() => undefined)));
+
+      const nextPlans = months.map((month) => {
         const row = rowFor(month);
+        const expenses = Object.fromEntries(columns.map((column) => [column, Number(row.expenses[column]) || 0]));
+        if (previousBalanceEnabled) expenses[PREVIOUS_BALANCE_COLUMN] = Number(row.previousBalance) || 0;
+        const previousPlan = currentModePlans.find((plan) => plan.id === row.id)
+          ?? currentModePlans.find((plan) => plan.month === month);
         const plan: SavingsPlan = {
-          id: row.id ?? `plan-${goal.id}-${month}`,
+          id: previousPlan?.id ?? ("plan-" + goal.id + "-" + frequency + "-" + month),
           goalId: goal.id,
           amount: Number(row.expected) || 0,
-          status: "PENDING",
+          status: previousPlan?.status ?? "PENDING",
           month,
           salary: Number(row.salary) || 0,
-          expenses: JSON.stringify(Object.fromEntries(columns.map((column) => [column, Number(row.expenses[column]) || 0]))),
-          remark: frequency === "MONTHLY" ? "单月存模式" : "隔月存模式",
-          proofImage: null,
-          createdAt: row.createdAt ?? now,
+          expenses: JSON.stringify(expenses),
+          remark: planRemark(frequency),
+          proofImage: previousPlan?.proofImage ?? null,
+          createdAt: row.createdAt ?? previousPlan?.createdAt ?? now,
           updatedAt: now,
         };
-        return savePlanWithFallback(plan);
-      }));
+        return plan;
+      });
+      await Promise.all(nextPlans.map((plan) => savePlanWithFallback(plan)));
+      persistedPlansRef.current = [...otherModePlans, ...nextPlans];
 
       setGoal(nextGoal);
       draftSubmittedRef.current = true;
@@ -321,12 +466,17 @@ export function SavingsPlanner({
 
   const totals = useMemo(() => months.reduce((result, month) => {
     const row = rowFor(month);
-    const calculated = calculateSavingsRow({ salary: row.salary, expenses: row.expenses, expected: row.expected });
+    const calculated = calculateSavingsRow({
+      salary: row.salary,
+      previousBalance: previousBalanceEnabled ? row.previousBalance : "",
+      expenses: row.expenses,
+      expected: row.expected,
+    });
     result.salary += Number(row.salary) || 0;
     result.expected += Number(row.expected) || 0;
     result.remaining += calculated.remaining;
     return result;
-  }, { salary: 0, expected: 0, remaining: 0 }), [months, rows]);
+  }, { salary: 0, expected: 0, remaining: 0 }), [months, previousBalanceEnabled, rowsByFrequency]);
 
 
 
@@ -396,6 +546,9 @@ export function SavingsPlanner({
           <input ref={columnInputRef} value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn("FIXED")} placeholder="输入支出名称，如交通 / 临时医疗" />
           <button type="button" className="fixed-expense-column-button" onClick={() => addExpenseColumn("FIXED")}>新增固定支出</button>
           <button type="button" className="temporary-expense-column-button" onClick={() => addExpenseColumn("TEMPORARY")}>新增临时支出</button>
+          <button type="button" className={"previous-balance-column-button" + (previousBalanceEnabled ? " active" : "")} onClick={togglePreviousBalance}>
+            {previousBalanceEnabled ? "移除上月结余" : "添加上月结余"}
+          </button>
         </div>
 
         <div className="savings-table-scroll">
@@ -404,6 +557,7 @@ export function SavingsPlanner({
               <tr>
                 <th className="month-column">月份</th>
                 <th className="salary-column">薪资</th>
+                {previousBalanceEnabled ? <th className="previous-balance-column"><span>{PREVIOUS_BALANCE_COLUMN}</span><small>可选</small></th> : null}
                 {columns.map((column) => (
                   <th key={column} className={temporaryColumns.includes(column) ? "temporary-expense-column" : "fixed-expense-column"}>
                     <span>{column}</span>
@@ -418,11 +572,20 @@ export function SavingsPlanner({
             <tbody>
               {months.map((month) => {
                 const row = rowFor(month);
-                const calculated = calculateSavingsRow({ salary: row.salary, expenses: row.expenses, expected: row.expected });
+                const calculated = calculateSavingsRow({
+                  salary: row.salary,
+                  previousBalance: previousBalanceEnabled ? row.previousBalance : "",
+                  expenses: row.expenses,
+                  expected: row.expected,
+                });
                 return (
                   <tr key={month}>
-                    <th className="month-column">{monthLabel(month)}</th>
+                    <th className="month-column">
+                      <span>{monthLabel(month)}</span>
+                      <button type="button" className="month-remove-button" onClick={() => removeMonth(month)} aria-label="删除月份行" title="删除月份行">×</button>
+                    </th>
                     <td className="salary-column"><input inputMode="decimal" value={row.salary} onChange={(event) => updateField(month, "salary", event.target.value.replace(/[^\d.]/g, ""))} aria-label={`${monthLabel(month)}薪资`} placeholder="0" /></td>
+                    {previousBalanceEnabled ? <td className="previous-balance-column"><input inputMode="decimal" value={row.previousBalance} onChange={(event) => updateField(month, "previousBalance", event.target.value.replace(/[^\d.]/g, ""))} aria-label={`${monthLabel(month)}${PREVIOUS_BALANCE_COLUMN}`} placeholder="0" /></td> : null}
                     {columns.map((column) => (
                       <td key={column}><input inputMode="decimal" value={row.expenses[column] ?? ""} onChange={(event) => updateExpense(month, column, event.target.value.replace(/[^\d.]/g, ""))} aria-label={`${monthLabel(month)}${column}`} placeholder="0" /></td>
                     ))}
