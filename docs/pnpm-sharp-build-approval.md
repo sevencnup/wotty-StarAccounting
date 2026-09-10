@@ -15,6 +15,7 @@
 - [x] 补齐根目录项目清单和开发启动脚本。
 - [x] 在 Linux 上通过 `sh` 调用 Android Unix Gradle 包装器，避免错误执行根目录的 Windows 批处理文件。
 - [x] 为独立 `api-server` 构建补充 settings，并使用 `-p api-server run` 启动 API。
+- [x] 明确 Next.js 输出追踪根目录，消除多 lockfile workspace 警告。
 - [x] 运行依赖安装和类型检查验证。
 - [x] 在配置 Java 运行环境后完成开发启动验证（Web/API 健康端点均已验证）。
 - [x] 补齐首页任务来源类型，恢复类型检查。
