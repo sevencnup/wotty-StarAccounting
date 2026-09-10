@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -71,4 +71,16 @@ test("new expense column validation explains empty and duplicate names", () => {
   assert.equal(validateSavingsExpenseColumn(" 房租 ", ["房租"]), "列已存在，请换一个名称");
   assert.equal(validateSavingsExpenseColumn("临时医疗", ["房租"]), null);
   assert.equal(validateSavingsExpenseColumn(PREVIOUS_BALANCE_COLUMN, ["房租"]), "上月结余是专用列，请使用专用按钮");
+});
+
+test("legacy savings expense arrays do not become numeric columns", () => {
+  assert.deepEqual(parseSavingsExpenses("[0, 0, 0]"), {});
+  assert.deepEqual(parseSavingsExpenses(JSON.stringify({ "0": 100, "1": 200, 房租: 1500, [PREVIOUS_BALANCE_COLUMN]: 500 })), {
+    房租: "1500",
+    [PREVIOUS_BALANCE_COLUMN]: "500",
+  });
+});
+
+test("expense column sanitizing removes legacy array indexes but keeps named columns", () => {
+  assert.deepEqual(sanitizeSavingsExpenseColumns(["0", "1", "106", "房租", " 房租 "]), ["房租"]);
 });

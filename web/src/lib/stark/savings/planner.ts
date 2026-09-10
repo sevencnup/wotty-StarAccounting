@@ -2,6 +2,34 @@ export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
 
+export function isLegacySavingsArrayIndexColumn(column: string) {
+  return /^\d+$/.test(column.trim());
+}
+
+export function sanitizeSavingsExpenseColumns(columns: readonly unknown[]) {
+  return Array.from(new Set(
+    columns
+      .filter((column): column is string => typeof column === "string")
+      .map((column) => column.trim())
+      .filter((column) => column && !isLegacySavingsArrayIndexColumn(column)),
+  ));
+}
+
+export function parseSavingsExpenses(raw?: string | null): Record<string, string> {
+  if (!raw) return {};
+  try {
+    const values = JSON.parse(raw) as unknown;
+    if (!values || typeof values !== "object" || Array.isArray(values)) return {};
+    return Object.fromEntries(
+      Object.entries(values as Record<string, unknown>)
+        .filter(([key]) => !isLegacySavingsArrayIndexColumn(key))
+        .map(([key, value]) => [key.trim(), String(Number(value) || "")]),
+    );
+  } catch {
+    return {};
+  }
+}
+
 export type SavingsRowValues = {
   salary: number | string | null | undefined;
   previousBalance?: number | string | null | undefined;

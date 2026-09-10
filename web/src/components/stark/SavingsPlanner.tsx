@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -60,16 +60,6 @@ function parseConfig(raw?: string | null): PlanConfig {
   }
 }
 
-function parseExpenses(raw?: string | null) {
-  if (!raw) return {};
-  try {
-    const values = JSON.parse(raw) as Record<string, unknown>;
-    return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(Number(value) || "")]));
-  } catch {
-    return {};
-  }
-}
-
 function planRemark(frequency: SavingsFrequency) {
   return SAVINGS_PLAN_REMARKS[frequency];
 }
@@ -98,17 +88,24 @@ function emptyPlannerRow(): PlannerRow {
 }
 
 function normalizePlannerRow(row?: Partial<PlannerRow> | null): PlannerRow {
-  const expenses = row?.expenses ?? {};
+  const expenses = row?.expenses && typeof row.expenses === "object" && !Array.isArray(row.expenses) ? row.expenses : {};
   return {
     id: row?.id,
     createdAt: row?.createdAt,
     salary: String(row?.salary ?? ""),
     previousBalance: String(row?.previousBalance ?? expenses[PREVIOUS_BALANCE_COLUMN] ?? ""),
     expected: String(row?.expected ?? ""),
-    expenses: Object.fromEntries(Object.entries(expenses)
-      .filter(([column]) => column !== PREVIOUS_BALANCE_COLUMN)
-      .map(([column, value]) => [column, String(value ?? "")])),
+    expenses: Object.fromEntries(
+      Object.entries(expenses)
+        .filter(([column]) => column !== PREVIOUS_BALANCE_COLUMN && !/^\d+$/.test(column.trim()))
+        .map(([column, value]) => [column.trim(), String(value ?? "")]),
+    ),
   };
+}
+
+function cleanExpenseColumns(value: readonly unknown[] | undefined, fallback: readonly string[]) {
+  const cleaned = sanitizeSavingsExpenseColumns(value ?? []);
+  return cleaned.length ? cleaned : [...fallback];
 }
 
 function defaultMonthsForConfig(year: number, config: PlanConfig): Record<SavingsFrequency, string[]> {
@@ -215,14 +212,14 @@ export function SavingsPlanner({
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
       const hydratedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = { MONTHLY: {}, ALTERNATE: {} };
-      const configuredColumns = (config.columns?.length ? config.columns : DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
-      const fixedColumns = (config.fixedColumns?.length ? config.fixedColumns : configuredColumns).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
-      const configuredTemporaryColumns = (config.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+      const configuredColumns = cleanExpenseColumns(config.columns, DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+      const fixedColumns = cleanExpenseColumns(config.fixedColumns, configuredColumns).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+      const configuredTemporaryColumns = sanitizeSavingsExpenseColumns(config.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
       const expenseColumns = new Set([...fixedColumns, ...configuredTemporaryColumns]);
 
       (['MONTHLY', 'ALTERNATE'] as SavingsFrequency[]).forEach((mode) => {
         plans.filter((plan) => belongsToFrequency(plan, mode, legacyFrequency)).forEach((plan) => {
-          const expenses = parseExpenses(plan.expenses);
+          const expenses = parseSavingsExpenses(plan.expenses);
           Object.keys(expenses).filter((column) => column !== PREVIOUS_BALANCE_COLUMN).forEach((column) => expenseColumns.add(column));
           hydratedRowsByFrequency[mode][plan.month] = {
             id: plan.id,
@@ -235,8 +232,10 @@ export function SavingsPlanner({
         });
       });
 
-      const draftColumns = (Array.isArray(draft?.columns) && draft.columns.length ? draft.columns : [...expenseColumns])
-        .filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+      const draftColumns = cleanExpenseColumns(
+        Array.isArray(draft?.columns) && draft.columns.length ? draft.columns : [...expenseColumns],
+        DEFAULT_COLUMNS,
+      ).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
       const draftTemporaryColumns = Array.isArray(draft?.temporaryColumns)
         ? draft.temporaryColumns.filter((column) => draftColumns.includes(column))
         : configuredTemporaryColumns.filter((column) => expenseColumns.has(column));
@@ -248,7 +247,7 @@ export function SavingsPlanner({
       setFrequency(initialFrequency);
       setColumns(draftColumns);
       setTemporaryColumns(draftTemporaryColumns);
-      setPreviousBalanceEnabled(draft?.previousBalanceEnabled ?? config.previousBalance ?? plans.some((plan) => PREVIOUS_BALANCE_COLUMN in parseExpenses(plan.expenses)));
+      setPreviousBalanceEnabled(draft?.previousBalanceEnabled ?? config.previousBalance ?? plans.some((plan) => PREVIOUS_BALANCE_COLUMN in parseSavingsExpenses(plan.expenses)));
       setMonthsByFrequency({
         MONTHLY: normalizeMonths(year, "MONTHLY", draftMonths?.MONTHLY ?? configuredMonths.MONTHLY),
         ALTERNATE: normalizeMonths(year, "ALTERNATE", draftMonths?.ALTERNATE ?? configuredMonths.ALTERNATE),
@@ -274,8 +273,8 @@ export function SavingsPlanner({
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setDepositType(normalizeDepositType(draft?.depositType ?? fallbackGoal.depositType));
       setFrequency(draft?.frequency ?? "MONTHLY");
-      setColumns((draft?.columns?.length ? draft.columns : DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
-      setTemporaryColumns((draft?.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
+      setColumns(cleanExpenseColumns(draft?.columns, DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
+      setTemporaryColumns(sanitizeSavingsExpenseColumns(draft?.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
       setPreviousBalanceEnabled(draft?.previousBalanceEnabled ?? false);
       setMonthsByFrequency({
         MONTHLY: normalizeMonths(year, "MONTHLY", draft?.monthsByFrequency?.MONTHLY),
