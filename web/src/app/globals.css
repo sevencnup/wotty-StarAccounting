@@ -4390,11 +4390,27 @@ nextjs-portal {
   }
 
   .savings-metric-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .savings-metric-grid div {
-    min-height: 64px;
+    min-height: 70px;
+    padding: 10px 8px;
+    gap: 5px;
+    border-radius: 15px;
+  }
+
+  .savings-metric-grid span {
+    font-size: calc(10px * var(--user-font-scale));
+  }
+
+  .savings-metric-grid strong {
+    font-size: calc(12px * var(--user-font-scale));
+  }
+
+  .savings-metric-grid small {
+    font-size: calc(8px * var(--user-font-scale));
   }
 
   .savings-rhythm-board {
