@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -83,4 +83,11 @@ test("legacy savings expense arrays do not become numeric columns", () => {
 
 test("expense column sanitizing removes legacy array indexes but keeps named columns", () => {
   assert.deepEqual(sanitizeSavingsExpenseColumns(["0", "1", "106", "房租", " 房租 "]), ["房租"]);
+});
+
+test("savings goal selection uses the requested goal when editing", () => {
+  const goals = [{ id: "goal-a" }, { id: "goal-b" }];
+  assert.deepEqual(selectSavingsGoal(goals, "goal-b"), { id: "goal-b" });
+  assert.equal(selectSavingsGoal(goals, "missing"), null);
+  assert.deepEqual(selectSavingsGoal(goals), { id: "goal-a" });
 });

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
+import Link from "next/link";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
@@ -227,7 +228,16 @@ export default function SavingsPage() {
                   <span>{depositTypeLabel(goal.depositType)}</span>
                   <strong>{goal.name}</strong>
                 </div>
-                <em>{percent}%</em>
+                <div className="savings-goal-card-actions">
+                  <em>{percent}%</em>
+                  <Link
+                    href={`/journal/savings?goalId=${encodeURIComponent(goal.id)}`}
+                    className="savings-goal-edit-button"
+                    aria-label={`${translateValue("编辑目标", locale)} ${goal.name}`}
+                  >
+                    {translateValue("编辑目标", locale)}
+                  </Link>
+                </div>
                 <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percent}%`}><i style={{ width: `${percent}%` }} /></div>
                 <p><span>{translateValue("已存", locale)} ¥ {formatMoney(goal.currentAmount)}</span><span>{locale === "en-US" ? "Remaining" : "还差"} ¥ {formatMoney(remaining)}</span></p>
               </article>

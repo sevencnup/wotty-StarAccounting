@@ -67,15 +67,18 @@ export function JournalPanel({
   mode = "sheet",
   variant = "journal",
   preset,
+  savingsGoalId,
 }: {
   onClose: () => void;
   onSaved?: () => void;
   mode?: "sheet" | "page";
   variant?: "journal" | "savings" | "asset" | "loan";
   preset?: { type: TransactionType; category: string };
+  savingsGoalId?: string;
 }) {
   const isPage = mode === "page";
   const isSavings = variant === "savings";
+  const isEditingSavings = isSavings && Boolean(savingsGoalId);
   const isAsset = variant === "asset";
   const isLoan = variant === "loan";
   const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : preset?.type === "INCOME" && preset.category === "工资" ? "salary" : "journal";
@@ -352,14 +355,14 @@ export function JournalPanel({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="journal-header-title">{isSavings ? "添加储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记一笔"}</span>
+          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记一笔"}</span>
           <button type="button" className="journal-close-btn" onClick={handleClose}>
             ×
           </button>
         </div>
 
         {isSavings ? (
-          <SavingsPlanner embedded onSaved={handleClose} />
+          <SavingsPlanner embedded onSaved={handleClose} savingsGoalId={savingsGoalId} />
         ) : isAsset ? (
           <div className="modern-form-wrapper">
             <div className="modern-form-card">

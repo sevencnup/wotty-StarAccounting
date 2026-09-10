@@ -4070,6 +4070,32 @@ nextjs-portal {
   font-variant-numeric: tabular-nums;
 }
 
+.savings-goal-card-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.savings-goal-edit-button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 7px;
+  border: 1px solid rgba(13, 138, 95, 0.18);
+  border-radius: 7px;
+  color: var(--saving-green);
+  background: #f0fdf4;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.savings-goal-edit-button:hover {
+  background: #dcfce7;
+}
+
 .savings-goal-track {
   position: relative;
   grid-column: 1 / -1;

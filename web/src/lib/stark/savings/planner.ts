@@ -2,6 +2,11 @@ export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
 
+export function selectSavingsGoal<T extends { id: string }>(goals: readonly T[], goalId?: string) {
+  if (goalId) return goals.find((goal) => goal.id === goalId) ?? null;
+  return goals[0] ?? null;
+}
+
 export function isLegacySavingsArrayIndexColumn(column: string) {
   return /^\d+$/.test(column.trim());
 }

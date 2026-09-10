@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -41,6 +41,8 @@ type PlanConfig = {
 
 type SavingsDraft = {
   goalName: string;
+  targetAmount?: string;
+  deadline?: string;
   depositType: SavingsGoalDepositType;
   frequency: SavingsFrequency;
   columns: string[];
@@ -151,13 +153,17 @@ function createDefaultGoal(year: number): SavingsGoal {
 export function SavingsPlanner({
   onSaved,
   embedded = false,
+  savingsGoalId,
 }: {
   onSaved?: () => void;
   embedded?: boolean;
+  savingsGoalId?: string;
 }) {
   const year = new Date().getFullYear();
   const [goal, setGoal] = useState<SavingsGoal>(() => createDefaultGoal(year));
   const [goalName, setGoalName] = useState(() => `${year} 年度储蓄`);
+  const [targetAmount, setTargetAmount] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [depositType, setDepositType] = useState<SavingsGoalDepositType>("CASH");
   const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
@@ -169,6 +175,7 @@ export function SavingsPlanner({
   const [hydrating, setHydrating] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const [goalMissing, setGoalMissing] = useState(false);
   const loadStartedRef = useRef(false);
   const columnInputRef = useRef<HTMLInputElement | null>(null);
   const [draftReady, setDraftReady] = useState(false);
@@ -202,13 +209,19 @@ export function SavingsPlanner({
   async function loadPlanner() {
     try {
       const goals = await repo.getSavingsGoals("default");
-      const activeGoal = goals[0] ?? goal;
+      const storedGoal = selectSavingsGoal(goals, savingsGoalId);
+      if (savingsGoalId && !storedGoal) {
+        setGoalMissing(true);
+        setNotice("未找到该储蓄目标");
+        return;
+      }
+      const activeGoal = storedGoal ?? goal;
       if (!goals.length) void saveGoalWithFallback(activeGoal);
 
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
       persistedPlansRef.current = plans;
-      const draft = readNewEntryDraft<SavingsDraft>("savings");
+      const draft = savingsGoalId ? null : readNewEntryDraft<SavingsDraft>("savings");
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
       const hydratedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = { MONTHLY: {}, ALTERNATE: {} };
@@ -243,6 +256,8 @@ export function SavingsPlanner({
       const draftMonths = draft?.monthsByFrequency;
       setGoal(activeGoal);
       setGoalName(draft?.goalName ?? activeGoal.name ?? "");
+      setTargetAmount(draft?.targetAmount ?? (activeGoal.targetAmount ? String(activeGoal.targetAmount) : ""));
+      setDeadline(draft?.deadline ?? activeGoal.deadline ?? "");
       setDepositType(normalizeDepositType(draft?.depositType ?? activeGoal.depositType));
       setFrequency(initialFrequency);
       setColumns(draftColumns);
@@ -267,10 +282,17 @@ export function SavingsPlanner({
         : { ...hydratedRows, [initialFrequency]: Object.fromEntries(Object.entries(draft?.rows ?? hydratedRows[initialFrequency]).map(([month, row]) => [month, normalizePlannerRow(row)])) };
       setRowsByFrequency(nextRowsByFrequency);
     } catch {
+      if (savingsGoalId) {
+        setGoalMissing(true);
+        setNotice("无法读取该储蓄目标");
+        return;
+      }
       const fallbackGoal = createDefaultGoal(year);
-      const draft = readNewEntryDraft<SavingsDraft>("savings");
+      const draft = savingsGoalId ? null : readNewEntryDraft<SavingsDraft>("savings");
       setGoal(fallbackGoal);
       setGoalName(draft?.goalName ?? fallbackGoal.name);
+      setTargetAmount(draft?.targetAmount ?? "");
+      setDeadline(draft?.deadline ?? fallbackGoal.deadline ?? "");
       setDepositType(normalizeDepositType(draft?.depositType ?? fallbackGoal.depositType));
       setFrequency(draft?.frequency ?? "MONTHLY");
       setColumns(cleanExpenseColumns(draft?.columns, DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
@@ -296,9 +318,11 @@ export function SavingsPlanner({
   }
 
   useEffect(() => {
-    if (!draftReady || draftSubmittedRef.current) return;
+    if (savingsGoalId || !draftReady || draftSubmittedRef.current) return;
     saveNewEntryDraft<SavingsDraft>("savings", {
       goalName,
+      targetAmount,
+      deadline,
       depositType,
       frequency,
       columns,
@@ -307,7 +331,7 @@ export function SavingsPlanner({
       monthsByFrequency,
       rowsByFrequency,
     });
-  }, [columns, depositType, draftReady, frequency, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, temporaryColumns]);
+  }, [columns, deadline, depositType, draftReady, frequency, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, savingsGoalId, targetAmount, temporaryColumns]);
 
   function rowFor(month: string): PlannerRow {
     return rowsByFrequency[frequency][month] ?? emptyPlannerRow();
@@ -401,13 +425,15 @@ export function SavingsPlanner({
   }
 
   async function savePlans() {
-    if (saving) return;
+    if (saving || goalMissing) return;
     setSaving(true);
     try {
       const now = nowText();
       const nextGoal = {
         ...goal,
         name: goalName.trim() || `${year} 年度储蓄`,
+        targetAmount: Number(targetAmount) || 0,
+        deadline: deadline || null,
         depositType: normalizeDepositType(depositType),
         planConfig: JSON.stringify({
           frequency,
@@ -517,6 +543,24 @@ export function SavingsPlanner({
               maxLength={24}
             />
           </label>
+          <label className="savings-goal-field">
+            <span>目标金额</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={targetAmount}
+              onChange={(event) => setTargetAmount(event.target.value.replace(/[^\d.]/g, ""))}
+              placeholder="如 30000"
+            />
+          </label>
+          <label className="savings-goal-field">
+            <span>截止日期</span>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(event) => setDeadline(event.target.value)}
+            />
+          </label>
           <div className="savings-goal-field">
             <span>存储类型</span>
             <div className="savings-deposit-switch" role="tablist" aria-label="存储类型">
@@ -599,7 +643,7 @@ export function SavingsPlanner({
 
         <div className="savings-plan-footer">
           <span style={notice === "请先输入支出名称" || notice === "列已存在，请换一个名称" ? { fontSize: 9 } : undefined}>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
-          <button type="button" className="primary-button" disabled={saving} onClick={() => void savePlans()}>{saving ? "保存中" : "保存计划"}</button>
+          <button type="button" className="primary-button" disabled={saving || goalMissing} onClick={() => void savePlans()}>{saving ? "保存中" : savingsGoalId ? "保存修改" : "保存计划"}</button>
         </div>
       </section>
     </div>
