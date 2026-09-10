@@ -81,16 +81,13 @@ function startApi() {
     );
   }
 
-  const gradleWrappers = [
-    path.join(repositoryDirectory, "gradlew"),
-    path.join(webDirectory, "android", "gradlew"),
-  ];
+  const gradleWrappers = [path.join(webDirectory, "android", "gradlew")];
   const gradleWrapper = gradleWrappers.find((candidate) => existsSync(candidate));
   if (!gradleWrapper) {
     throw new Error(`Gradle wrapper not found: ${gradleWrappers.join(", ")}`);
   }
 
-  return spawn(gradleWrapper, ["-p", "api-server", "run", "--no-daemon"], {
+  return spawn("sh", [gradleWrapper, "-p", "api-server", "run", "--no-daemon"], {
     cwd: repositoryDirectory,
     stdio: ["inherit", "pipe", "pipe"],
   });

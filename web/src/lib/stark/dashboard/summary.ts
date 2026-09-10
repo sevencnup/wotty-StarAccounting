@@ -50,6 +50,7 @@ export interface HomeBudgetAlert {
 
 export interface HomeTaskItem {
   id: string;
+  source: "loan" | "saving";
   title: string;
   subtitle: string;
   badge: string;
@@ -331,6 +332,7 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
       const inDays = daysUntil(due);
       return {
         id: `loan-${loan.id}`,
+        source: "loan",
         title: `${loan.platform || "贷款"}还款`,
         subtitle: `${formatMonthDay(due)} 前还款 ¥ ${Math.round(loan.monthlyPayment)}`,
         badge: inDays <= 0 ? "今天" : `${inDays}天后`,
@@ -345,6 +347,7 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
       const inDays = due ? daysUntil(due) : 7;
       return {
         id: `saving-${goal.id}`,
+        source: "saving",
         title: `${goal.name}储蓄`,
         subtitle: due ? `${formatMonthDay(due)} 前补足 ¥ ${Math.max(goal.targetAmount - goal.currentAmount, 0)}` : `继续累计 ¥ ${Math.max(goal.targetAmount - goal.currentAmount, 0)}`,
         badge: due ? (inDays <= 0 ? "已到期" : `${inDays}天后`) : "进行中",
