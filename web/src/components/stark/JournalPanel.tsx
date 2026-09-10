@@ -6,7 +6,8 @@ import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft, type NewEntryDraftKind } from "@/lib/stark/storage/new-entry-drafts";
-import type { AssetType, TransactionType } from "@/lib/stark/models";
+import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
+import type { AssetType, SavingsGoal, SavingsPlan, TransactionType } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
 
@@ -68,16 +69,21 @@ export function JournalPanel({
   variant = "journal",
   preset,
   savingsGoalId,
+  savingsPlan,
+  savingsGoal,
 }: {
   onClose: () => void;
   onSaved?: () => void;
   mode?: "sheet" | "page";
-  variant?: "journal" | "savings" | "asset" | "loan";
+  variant?: "journal" | "savings" | "savings-record" | "asset" | "loan";
   preset?: { type: TransactionType; category: string };
   savingsGoalId?: string;
+  savingsPlan?: SavingsPlan;
+  savingsGoal?: SavingsGoal;
 }) {
   const isPage = mode === "page";
   const isSavings = variant === "savings";
+  const isSavingsRecord = variant === "savings-record";
   const isEditingSavings = isSavings && Boolean(savingsGoalId);
   const isAsset = variant === "asset";
   const isLoan = variant === "loan";
@@ -99,6 +105,11 @@ export function JournalPanel({
   const [loanMonthlyPayment, setLoanMonthlyPayment] = useState("");
   const [loanPeriods, setLoanPeriods] = useState("12");
   const [loanDueDay, setLoanDueDay] = useState("20");
+  const [recordedAmount, setRecordedAmount] = useState("");
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const [recordSaving, setRecordSaving] = useState(false);
+  const [recordNotice, setRecordNotice] = useState("");
+  const proofImageInputRef = useRef<HTMLInputElement | null>(null);
   const closingRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draftReady, setDraftReady] = useState(false);
@@ -159,7 +170,14 @@ export function JournalPanel({
   }, [draftKind]);
 
   useEffect(() => {
-    if (!draftReady || isSavings || draftSubmittedRef.current) return;
+    if (!isSavingsRecord || !savingsPlan) return;
+    setRecordedAmount(String(savingsPlan.actualAmount ?? savingsPlan.amount ?? ""));
+    setProofImage(savingsPlan.proofImage ?? null);
+    setRecordNotice("");
+  }, [isSavingsRecord, savingsPlan]);
+
+  useEffect(() => {
+    if (!draftReady || isSavings || isSavingsRecord || draftSubmittedRef.current) return;
     if (draftKind === "asset") {
       saveNewEntryDraft(draftKind, { assetName, assetBalance, assetType } satisfies AssetDraft);
     } else if (draftKind === "loan") {
@@ -335,6 +353,55 @@ export function JournalPanel({
     handleClose();
   }
 
+  async function compressProofImage(file: File) {
+    if (!file.type.startsWith("image/")) throw new Error("请选择图片文件");
+    if (file.size > 12 * 1024 * 1024) throw new Error("图片不能超过 12MB");
+    const source = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(new Error("图片读取失败"));
+      reader.readAsDataURL(file);
+    });
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("图片读取失败"));
+      element.src = source;
+    });
+    const maxWidth = 720;
+    const scale = Math.min(1, maxWidth / image.width);
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("图片处理失败");
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/jpeg", 0.62);
+  }
+
+  async function saveSavingsRecord() {
+    if (!savingsPlan || !savingsGoal || recordSaving) return;
+    const value = Number(recordedAmount);
+    if (!Number.isFinite(value) || value <= 0) {
+      setRecordNotice("实际存入金额必须大于 0");
+      return;
+    }
+    setRecordSaving(true);
+    setRecordNotice("");
+    try {
+      const now = nowText();
+      const result = recordSavingsPlanDeposit(savingsPlan, savingsGoal, value, proofImage, now);
+      await repo.saveSavingsGoal(result.goal);
+      await repo.saveSavingsPlan(result.plan);
+      onSaved?.();
+      handleClose();
+    } catch (error) {
+      setRecordNotice(error instanceof Error ? error.message : "保存失败，请稍后重试");
+    } finally {
+      setRecordSaving(false);
+    }
+  }
+
   return (
     <div
       className={`journal-overlay ${isPage ? "page" : ""} ${visible ? "visible" : ""}`}
@@ -345,7 +412,7 @@ export function JournalPanel({
     >
       <div
         ref={panelRef}
-        className={`journal-panel modern-journal-shell ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${isAsset ? "asset" : ""} ${isLoan ? "loan" : ""} ${visible ? "visible" : ""}`}
+        className={`journal-panel modern-journal-shell ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${isSavingsRecord ? "savings-record" : ""} ${isAsset ? "asset" : ""} ${isLoan ? "loan" : ""} ${visible ? "visible" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 顶部标题栏 */}
@@ -355,7 +422,7 @@ export function JournalPanel({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记一笔"}</span>
+          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isSavingsRecord ? "记录储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记一笔"}</span>
           <button type="button" className="journal-close-btn" onClick={handleClose}>
             ×
           </button>
@@ -363,6 +430,57 @@ export function JournalPanel({
 
         {isSavings ? (
           <SavingsPlanner embedded onSaved={handleClose} savingsGoalId={savingsGoalId} />
+        ) : isSavingsRecord ? (
+          <div className="savings-record-form">
+            <div className="savings-record-context">
+              <span>{savingsGoal?.name || "储蓄目标"}</span>
+              <strong>{savingsPlan?.month || ""}</strong>
+              <small>计划存入 ¥ {savingsPlan?.amount ?? 0}</small>
+            </div>
+            <label className="modern-form-group">
+              <span>实际存入</span>
+              <div className="modern-amount-box">
+                <span className="cur-sym">¥</span>
+                <input
+                  className="modern-amount-field"
+                  inputMode="decimal"
+                  value={recordedAmount}
+                  onChange={(event) => setRecordedAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder="0.00"
+                />
+              </div>
+            </label>
+            <div className="modern-form-group">
+              <span>图片凭证</span>
+              <input
+                ref={proofImageInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  void compressProofImage(file).then(setProofImage).catch((error: unknown) => setRecordNotice(error instanceof Error ? error.message : "图片处理失败"));
+                  event.target.value = "";
+                }}
+              />
+              {proofImage ? (
+                <div className="savings-proof-preview">
+                  <img src={proofImage} alt="图片凭证预览" />
+                  <button type="button" onClick={() => setProofImage(null)}>清除图片</button>
+                </div>
+              ) : (
+                <button type="button" className="savings-proof-picker" onClick={() => proofImageInputRef.current?.click()}>
+                  <span>＋</span>
+                  添加图片
+                </button>
+              )}
+            </div>
+            {recordNotice ? <p className="savings-record-notice">{recordNotice}</p> : null}
+            <button type="button" className="modern-primary-submit" disabled={recordSaving} onClick={() => void saveSavingsRecord()}>
+              {recordSaving ? "保存中…" : "保存记录"}
+            </button>
+          </div>
         ) : isAsset ? (
           <div className="modern-form-wrapper">
             <div className="modern-form-card">

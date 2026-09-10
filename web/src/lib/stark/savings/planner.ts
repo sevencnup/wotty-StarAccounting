@@ -1,3 +1,5 @@
+import type { SavingsGoal, SavingsPlan } from "../models/types";
+
 export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
@@ -85,5 +87,40 @@ export function calculateSavingsRow(values: SavingsRowValues) {
     expenseTotal,
     available: salary + previousBalance - expenseTotal,
     remaining: salary + previousBalance - expenseTotal - expected,
+  };
+}
+
+export function savingsPlanRecordedAmount(plan: Pick<SavingsPlan, "amount" | "status" | "actualAmount">) {
+  if (plan.status !== "COMPLETED") return 0;
+  const actualAmount = Number(plan.actualAmount);
+  return plan.actualAmount !== null && plan.actualAmount !== undefined && Number.isFinite(actualAmount) && actualAmount >= 0
+    ? actualAmount
+    : plan.amount;
+}
+
+export function recordSavingsPlanDeposit(
+  plan: SavingsPlan,
+  goal: SavingsGoal,
+  actualAmount: number,
+  proofImage: string | null,
+  updatedAt: string,
+) {
+  if (!Number.isFinite(actualAmount) || actualAmount <= 0) {
+    throw new Error("实际存入金额必须大于 0");
+  }
+  const previousRecordedAmount = savingsPlanRecordedAmount(plan);
+  return {
+    plan: {
+      ...plan,
+      status: "COMPLETED",
+      actualAmount,
+      proofImage,
+      updatedAt,
+    } satisfies SavingsPlan,
+    goal: {
+      ...goal,
+      currentAmount: Math.max(0, goal.currentAmount - previousRecordedAmount + actualAmount),
+      updatedAt,
+    } satisfies SavingsGoal,
   };
 }

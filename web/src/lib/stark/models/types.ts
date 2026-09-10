@@ -98,6 +98,7 @@ export interface SavingsPlan {
   id: string;
   goalId: string;
   amount: number;
+  actualAmount?: number | null;
   status: SavingsPlanStatus;
   month: string;
   createdAt: string;

@@ -468,6 +468,7 @@ export function SavingsPlanner({
           expenses: JSON.stringify(expenses),
           remark: planRemark(frequency),
           proofImage: previousPlan?.proofImage ?? null,
+          actualAmount: previousPlan?.actualAmount ?? null,
           createdAt: row.createdAt ?? previousPlan?.createdAt ?? now,
           updatedAt: now,
         };

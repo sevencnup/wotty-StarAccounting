@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -90,4 +90,63 @@ test("savings goal selection uses the requested goal when editing", () => {
   assert.deepEqual(selectSavingsGoal(goals, "goal-b"), { id: "goal-b" });
   assert.equal(selectSavingsGoal(goals, "missing"), null);
   assert.deepEqual(selectSavingsGoal(goals), { id: "goal-a" });
+});
+
+function savingsPlan(overrides = {}) {
+  return {
+    id: "plan-1",
+    goalId: "goal-1",
+    amount: 1000,
+    status: "PENDING",
+    month: "2026-01",
+    createdAt: "2026-01-01 00:00:00",
+    updatedAt: "2026-01-01 00:00:00",
+    proofImage: null,
+    ...overrides,
+  };
+}
+
+function savingsGoal(overrides = {}) {
+  return {
+    id: "goal-1",
+    userId: "local-user",
+    accountId: "default",
+    name: "旅行基金",
+    targetAmount: 10000,
+    currentAmount: 500,
+    type: "YEARLY",
+    status: "ACTIVE",
+    depositType: "CASH",
+    createdAt: "2026-01-01 00:00:00",
+    updatedAt: "2026-01-01 00:00:00",
+    ...overrides,
+  };
+}
+
+test("recording a savings plan keeps its planned amount and records the actual amount", () => {
+  const result = recordSavingsPlanDeposit(savingsPlan(), savingsGoal(), 860, "data:image/jpeg;base64,proof", "2026-01-10 12:00:00");
+  assert.equal(result.plan.amount, 1000);
+  assert.equal(result.plan.actualAmount, 860);
+  assert.equal(result.plan.status, "COMPLETED");
+  assert.equal(result.plan.proofImage, "data:image/jpeg;base64,proof");
+  assert.equal(result.goal.currentAmount, 1360);
+});
+
+test("editing a completed plan changes the goal by the difference only", () => {
+  const result = recordSavingsPlanDeposit(
+    savingsPlan({ status: "COMPLETED", actualAmount: 860, proofImage: "old-proof" }),
+    savingsGoal({ currentAmount: 1360 }),
+    900,
+    "new-proof",
+    "2026-01-11 12:00:00",
+  );
+  assert.equal(result.goal.currentAmount, 1400);
+  assert.equal(savingsPlanRecordedAmount(result.plan), 900);
+});
+
+test("completed legacy plans fall back to their planned amount", () => {
+  const plan = savingsPlan({ status: "COMPLETED" });
+  assert.equal(savingsPlanRecordedAmount(plan), 1000);
+  const result = recordSavingsPlanDeposit(plan, savingsGoal({ currentAmount: 1500 }), 700, null, "2026-01-12 12:00:00");
+  assert.equal(result.goal.currentAmount, 1200);
 });
