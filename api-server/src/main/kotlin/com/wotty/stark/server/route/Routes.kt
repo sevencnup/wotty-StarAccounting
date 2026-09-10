@@ -278,13 +278,6 @@ fun Routing.syncRoutes() {
                 userId = "local-user",
                 payload = """{"id":"loan-home","userId":"local-user","accountId":"default","platform":"房贷","totalAmount":480000,"remainingAmount":352000,"periods":240,"paidPeriods":64,"monthlyPayment":3200,"dueDate":20,"status":"ACTIVE","matchKeywords":null,"createdAt":"$now","updatedAt":"$now"}""",
             ),
-            DemoSeedRecord(
-                id = "goal-travel",
-                entityType = "savingsGoals",
-                accountId = "default",
-                userId = "local-user",
-                payload = """{"id":"goal-travel","userId":"local-user","accountId":"default","name":"旅行基金","targetAmount":30000,"currentAmount":9200,"deadline":"2026-12-31","type":"LONG_TERM","status":"ACTIVE","depositType":"CASH","planConfig":null,"createdAt":"$now","updatedAt":"$now"}""",
-            ),
         )
 
         demoRecords.forEach { item ->

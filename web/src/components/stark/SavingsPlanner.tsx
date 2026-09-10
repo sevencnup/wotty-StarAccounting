@@ -216,7 +216,6 @@ export function SavingsPlanner({
         return;
       }
       const activeGoal = storedGoal ?? goal;
-      if (!goals.length) void saveGoalWithFallback(activeGoal);
 
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);

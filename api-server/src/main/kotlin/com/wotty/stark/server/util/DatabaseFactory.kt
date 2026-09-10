@@ -311,7 +311,14 @@ object DatabaseFactory {
                 Transactions,
                 TransactionCategoryRules,
             )
+            removeLegacySavingsDemoRecords()
         }
+    }
+
+    private fun removeLegacySavingsDemoRecords() {
+        val legacyGoalIds = listOf("goal-travel", "goal-emergency", "goal-demo-travel", "goal-demo-emergency")
+        SavingsPlans.deleteWhere { SavingsPlans.goalId inList legacyGoalIds }
+        SavingsGoals.deleteWhere { SavingsGoals.id inList legacyGoalIds }
     }
 
     /** 数据库是否已连接并可用（供健康检查诊断，未配 DATABASE_URL 时为 false） */

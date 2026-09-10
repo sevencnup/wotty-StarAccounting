@@ -72,7 +72,20 @@ export class LocalRepository implements DataRepository {
     const now = nowText();
     await putRecord("users", defaultUser());
     await putRecord("accounts", defaultAccount());
+    await this.removeLegacySavingsDemoRecords();
     await this.seedDemoRecordsIfEmpty(now);
+  }
+
+  private async removeLegacySavingsDemoRecords() {
+    await Promise.all([
+      deleteRecord("savingsGoals", "goal-travel"),
+      deleteRecord("savingsGoals", "goal-emergency"),
+      deleteRecord("savingsGoals", "goal-demo-travel"),
+      deleteRecord("savingsGoals", "goal-demo-emergency"),
+      deleteRecord("savingsPlans", "plan-travel-2026-07"),
+      deleteRecord("savingsPlans", "plan-emergency-2026-08"),
+      deleteRecord("savingsPlans", "plan-demo-travel-1"),
+    ]);
   }
 
   /** 首次使用且没有任何业务数据时，种入一套当月演示数据 */
@@ -106,13 +119,6 @@ export class LocalRepository implements DataRepository {
     await putManyRecords("loans", [
       { id: "loan-demo-home", userId: "local-user", accountId: "default", platform: "房贷", totalAmount: 480000, remainingAmount: 352000, periods: 240, paidPeriods: 64, monthlyPayment: 3200, dueDate: 20, status: "ACTIVE", matchKeywords: null, createdAt: now, updatedAt: now },
       { id: "loan-demo-car", userId: "local-user", accountId: "default", platform: "车贷", totalAmount: 80000, remainingAmount: 27000, periods: 36, paidPeriods: 18, monthlyPayment: 2200, dueDate: 10, status: "ACTIVE", matchKeywords: null, createdAt: now, updatedAt: now },
-    ]);
-    await putManyRecords("savingsGoals", [
-      { id: "goal-demo-travel", userId: "local-user", accountId: "default", name: "旅行基金", targetAmount: 30000, currentAmount: 9200, deadline: "2026-12-31", type: "LONG_TERM", status: "ACTIVE", depositType: "CASH", planConfig: null, createdAt: now, updatedAt: now },
-      { id: "goal-demo-emergency", userId: "local-user", accountId: "default", name: "应急储备", targetAmount: 20000, currentAmount: 6800, deadline: "2027-06-30", type: "LONG_TERM", status: "ACTIVE", depositType: "CASH", planConfig: null, createdAt: now, updatedAt: now },
-    ]);
-    await putManyRecords("savingsPlans", [
-      { id: "plan-demo-travel-1", goalId: "goal-demo-travel", amount: 2000, status: "PENDING", month, createdAt: now, updatedAt: now },
     ]);
   }
 
