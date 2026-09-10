@@ -34,13 +34,6 @@ function monthLabel(month: string, locale: "zh-CN" | "en-US") {
   return Number.isFinite(value) ? locale === "en-US" ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(2024, value - 1, 1)) : `${value}月` : month;
 }
 
-function deadlineLabel(value: string | null | undefined, locale: "zh-CN" | "en-US") {
-  if (!value) return locale === "en-US" ? "No deadline" : "未设置期限";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-
 function planStatusLabel(status: SavingsPlan["status"]) {
   if (status === "COMPLETED") return "已完成";
   if (status === "SKIPPED") return "已跳过";
@@ -134,7 +127,6 @@ export default function SavingsPage() {
     [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
   ), [plans]);
   const activeGoals = useMemo(() => goals.filter((goal) => goal.status === "ACTIVE"), [goals]);
-  const focusGoal = activeGoals[0] ?? goals[0] ?? null;
   const goalCards = useMemo(() => (
     activeGoals.length ? activeGoals : goals
   ).slice(0, 4), [activeGoals, goals]);
@@ -144,7 +136,6 @@ export default function SavingsPage() {
     return active.length ? active : rhythm.slice(0, 6);
   }, [rhythm]);
   const heroProgress = `${summary.progress}%`;
-  const focusPercent = focusGoal ? goalPercent(focusGoal) : 0;
 
   if (loading) return <PageSkeleton title="储蓄" cards={3} />;
   if (loadError) return <PageDataError title="储蓄" onRetry={() => setLoadVersion((version) => version + 1)} />;
@@ -157,7 +148,7 @@ export default function SavingsPage() {
         <div className="savings-vault-copy">
           <span className="savings-eyebrow">{translateValue("储蓄总览", locale)}</span>
           <strong>¥ {formatMoney(summary.savedAmount)}</strong>
-          <p>{focusGoal ? `${focusGoal.name} · ${locale === "en-US" ? "Remaining" : "还差"} ¥ ${formatMoney(Math.max(focusGoal.targetAmount - focusGoal.currentAmount, 0))}` : translateValue("还没有储蓄目标", locale)}</p>
+          <p>{goals.length ? `${goals.length} ${locale === "en-US" ? "savings goals" : "个储蓄目标"}` : translateValue("还没有储蓄目标", locale)}</p>
           <div className="savings-hero-track" aria-label={`总进度 ${summary.progress}%`}>
             <i style={{ width: heroProgress }} />
           </div>
@@ -189,26 +180,6 @@ export default function SavingsPage() {
           <small>{locale === "en-US" ? `${summary.completed} completed · ${summary.pending} pending` : `${summary.completed} 已完成 · ${summary.pending} 待处理`}</small>
         </div>
       </section>
-
-      {focusGoal ? (
-        <section className="home-card savings-focus-card">
-          <div className="savings-focus-head">
-            <div>
-              <span>{translateValue("当前冲刺目标", locale)}</span>
-              <strong>{focusGoal.name}</strong>
-            </div>
-            <em>{focusPercent}%</em>
-          </div>
-          <div className="savings-focus-bar" aria-label={`${focusGoal.name} 进度 ${focusPercent}%`}>
-            <i style={{ width: `${focusPercent}%` }} />
-          </div>
-          <div className="savings-focus-meta">
-            <span>{translateValue("已存", locale)} ¥ {formatMoney(focusGoal.currentAmount)}</span>
-            <span>{translateValue("目标", locale)} ¥ {formatMoney(focusGoal.targetAmount)}</span>
-            <span>{deadlineLabel(focusGoal.deadline, locale)}</span>
-          </div>
-        </section>
-      ) : null}
 
       <section className="home-card savings-goal-section">
         <div className="section-head savings-section-head">
