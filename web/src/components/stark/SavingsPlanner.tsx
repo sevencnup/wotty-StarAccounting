@@ -186,6 +186,7 @@ export function SavingsPlanner({
   const [draftReady, setDraftReady] = useState(false);
   const draftSubmittedRef = useRef(false);
   const persistedPlansRef = useRef<SavingsPlan[]>([]);
+  const draftScope = savingsGoalId ?? undefined;
 
   const months = monthsByFrequency[frequency];
 
@@ -225,7 +226,7 @@ export function SavingsPlanner({
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
       persistedPlansRef.current = plans;
-      const draft = savingsGoalId ? null : readNewEntryDraft<SavingsDraft>("savings");
+      const draft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
       const hydratedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = { MONTHLY: {}, ALTERNATE: {} };
@@ -292,7 +293,7 @@ export function SavingsPlanner({
         return;
       }
       const fallbackGoal = createDefaultGoal(year);
-      const draft = savingsGoalId ? null : readNewEntryDraft<SavingsDraft>("savings");
+      const draft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
       setGoal(fallbackGoal);
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setTargetAmount(draft?.targetAmount ?? "");
@@ -322,7 +323,7 @@ export function SavingsPlanner({
   }
 
   useEffect(() => {
-    if (savingsGoalId || !draftReady || draftSubmittedRef.current) return;
+    if (!draftReady || draftSubmittedRef.current || goalMissing) return;
     saveNewEntryDraft<SavingsDraft>("savings", {
       goalName,
       targetAmount,
@@ -334,8 +335,8 @@ export function SavingsPlanner({
       previousBalanceEnabled,
       monthsByFrequency,
       rowsByFrequency,
-    });
-  }, [columns, deadline, depositType, draftReady, frequency, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, savingsGoalId, targetAmount, temporaryColumns]);
+    }, draftScope);
+  }, [columns, deadline, depositType, draftReady, draftScope, frequency, goalMissing, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, targetAmount, temporaryColumns]);
 
   function rowFor(month: string): PlannerRow {
     return rowsByFrequency[frequency][month] ?? emptyPlannerRow();
@@ -505,7 +506,7 @@ export function SavingsPlanner({
 
       setGoal(nextGoal);
       draftSubmittedRef.current = true;
-      clearNewEntryDraft("savings");
+      clearNewEntryDraft("savings", draftScope);
       setNotice(`已保存 ${months.length} 个月的储蓄计划`);
       onSaved?.();
     } catch {
