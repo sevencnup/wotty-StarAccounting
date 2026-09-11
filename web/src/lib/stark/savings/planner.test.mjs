@@ -16,8 +16,8 @@ test("editing a legacy goal restores its months from saved plans", () => {
   assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", undefined, ["2026-12", "2026-09", "2026-10", "2026-11"]), [
     "2026-09", "2026-10", "2026-11", "2026-12",
   ]);
-  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", ["2026-03", "2026-04"], ["2026-09", "2026-10"]), [
-    "2026-03", "2026-04",
+  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", buildSavingsMonths(2026, "MONTHLY"), ["2026-09", "2026-10", "2026-11", "2026-12"]), [
+    "2026-09", "2026-10", "2026-11", "2026-12",
   ]);
 });
 

@@ -73,11 +73,11 @@ export function resolveSavingsMonths(
     return generated.filter((month) => selectedMonths.has(month));
   };
 
-  const configured = selectSupportedMonths(configuredMonths);
-  if (configured.length) return configured;
-
   const persisted = selectSupportedMonths(persistedMonths);
-  return persisted.length ? persisted : generated;
+  if (persisted.length) return persisted;
+
+  const configured = selectSupportedMonths(configuredMonths);
+  return configured.length ? configured : generated;
 }
 
 export function shouldSyncSavingsExpense(
