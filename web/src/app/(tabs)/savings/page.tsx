@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
-import Link from "next/link";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { JournalPanel } from "@/components/stark/JournalPanel";
@@ -93,6 +92,7 @@ export default function SavingsPage() {
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [recordingPlan, setRecordingPlan] = useState<SavingsPlan | null>(null);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -215,13 +215,14 @@ export default function SavingsPage() {
                 </div>
                 <div className="savings-goal-card-actions">
                   <em>{percent}%</em>
-                  <Link
-                    href={`/journal/savings?goalId=${encodeURIComponent(goal.id)}`}
+                  <button
+                    type="button"
                     className="savings-goal-edit-button"
                     aria-label={`${translateValue("编辑目标", locale)} ${goal.name}`}
+                    onClick={() => setEditingGoalId(goal.id)}
                   >
                     {translateValue("编辑目标", locale)}
-                  </Link>
+                  </button>
                 </div>
                 <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percent}%`}><i style={{ width: `${percent}%` }} /></div>
                 <p><span>{translateValue("已存", locale)} ¥ {formatMoney(goal.currentAmount)}</span><span>{locale === "en-US" ? "Remaining" : "还差"} ¥ {formatMoney(remaining)}</span></p>
@@ -302,6 +303,19 @@ export default function SavingsPage() {
           onClose={() => setRecordingPlan(null)}
           onSaved={() => {
             setRecordingPlan(null);
+            setLoadVersion((version) => version + 1);
+          }}
+        />
+      ) : null}
+
+      {editingGoalId ? (
+        <JournalPanel
+          mode="page"
+          variant="savings"
+          savingsGoalId={editingGoalId}
+          onClose={() => setEditingGoalId(null)}
+          onSaved={() => {
+            setEditingGoalId(null);
             setLoadVersion((version) => version + 1);
           }}
         />

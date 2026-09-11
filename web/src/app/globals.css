@@ -4031,6 +4031,8 @@ nextjs-portal {
   border-radius: 7px;
   color: var(--saving-green);
   background: #f0fdf4;
+  cursor: pointer;
+  font-family: inherit;
   font-size: calc(10px * var(--user-font-scale));
   line-height: 1;
   text-decoration: none;
