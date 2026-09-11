@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
@@ -52,6 +53,11 @@ type LoanDraft = {
   loanMonthlyPayment: string;
   loanPeriods: string;
   loanDueDay: string;
+};
+
+type KeyboardViewport = {
+  height: number;
+  offsetTop: number;
 };
 
 const categoryIcons: Record<string, string> = {
@@ -114,6 +120,7 @@ export function JournalPanel({
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const draftSubmittedRef = useRef(false);
+  const [keyboardViewport, setKeyboardViewport] = useState<KeyboardViewport | null>(null);
 
   const categories = useMemo((): string[] => {
     if (type === "INCOME") return incomeCategories;
@@ -193,6 +200,24 @@ export function JournalPanel({
   }, []);
 
   useEffect(() => {
+    if (!isPage || !isSavings || !window.visualViewport) return;
+    const viewport = window.visualViewport;
+    const updateKeyboardViewport = () => {
+      const keyboardOpen = viewport.height < window.innerHeight - 120;
+      setKeyboardViewport(keyboardOpen
+        ? { height: Math.round(viewport.height), offsetTop: Math.round(viewport.offsetTop) }
+        : null);
+    };
+    updateKeyboardViewport();
+    viewport.addEventListener("resize", updateKeyboardViewport);
+    viewport.addEventListener("scroll", updateKeyboardViewport);
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardViewport);
+      viewport.removeEventListener("scroll", updateKeyboardViewport);
+    };
+  }, [isPage, isSavings]);
+
+  useEffect(() => {
     if (!isPage) return;
     const scrollY = window.scrollY;
     const body = document.body;
@@ -226,6 +251,10 @@ export function JournalPanel({
     setVisible(false);
     closeTimerRef.current = setTimeout(onClose, 220);
   }
+
+  const keyboardViewportStyle: CSSProperties | undefined = keyboardViewport
+    ? { height: `${keyboardViewport.height}px`, top: `${keyboardViewport.offsetTop}px`, bottom: "auto" }
+    : undefined;
 
   const touchStart = useRef({ x: 0, y: 0, allowClose: false, outsidePanel: false, leftEdge: false });
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -404,7 +433,8 @@ export function JournalPanel({
 
   return (
     <div
-      className={`journal-overlay ${isPage ? "page" : ""} ${visible ? "visible" : ""}`}
+      className={`journal-overlay ${isPage ? "page" : ""} ${keyboardViewport ? "keyboard-open" : ""} ${visible ? "visible" : ""}`}
+      style={keyboardViewportStyle}
       onClick={handleClose}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

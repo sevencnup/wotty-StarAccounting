@@ -414,7 +414,27 @@ export function SavingsPlanner({
     if (mode === "TEMPORARY") setTemporaryColumns((current) => [...current, name]);
     setNewColumn("");
     setNotice(`已新增${mode === "TEMPORARY" ? "临时支出" : "固定支出"}“${name}”列`);
-    requestAnimationFrame(() => columnInputRef.current?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => {
+      columnInputRef.current?.focus({ preventScroll: true });
+      keepColumnAdderVisible();
+    });
+  }
+
+  function keepColumnAdderVisible() {
+    const scrollIntoView = () => {
+      const input = columnInputRef.current;
+      const adder = input?.closest(".savings-column-adder");
+      const panel = input?.closest(".journal-panel");
+      if (!(adder instanceof HTMLElement) || !(panel instanceof HTMLElement)) return;
+      const adderBounds = adder.getBoundingClientRect();
+      const panelBounds = panel.getBoundingClientRect();
+      panel.scrollBy({
+        top: adderBounds.top - (panelBounds.top + panelBounds.height * 0.32),
+        behavior: "smooth",
+      });
+    };
+    requestAnimationFrame(scrollIntoView);
+    window.setTimeout(scrollIntoView, 280);
   }
 
   function removeExpenseColumn(name: string) {
@@ -592,7 +612,7 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-column-adder">
-          <input ref={columnInputRef} value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn("FIXED")} placeholder="输入支出名称，如交通 / 临时医疗" />
+          <input ref={columnInputRef} value={newColumn} onChange={(event) => setNewColumn(event.target.value)} onFocus={keepColumnAdderVisible} onKeyDown={(event) => event.key === "Enter" && addExpenseColumn("FIXED")} placeholder="输入支出名称，如交通 / 临时医疗" />
           <button type="button" className="fixed-expense-column-button" onPointerDown={(event) => event.preventDefault()} onClick={() => addExpenseColumn("FIXED")}>新增固定支出</button>
           <button type="button" className="temporary-expense-column-button" onPointerDown={(event) => event.preventDefault()} onClick={() => addExpenseColumn("TEMPORARY")}>新增临时支出</button>
           <button type="button" className={"previous-balance-column-button" + (previousBalanceEnabled ? " active" : "")} onClick={togglePreviousBalance}>

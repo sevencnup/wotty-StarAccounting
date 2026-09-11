@@ -4744,6 +4744,12 @@ nextjs-portal {
   overflow-x: hidden;
 }
 
+.journal-overlay.page.keyboard-open .journal-panel.page {
+  min-height: 0;
+  height: calc(100% - 12px);
+  max-height: calc(100% - 12px);
+}
+
 .journal-panel.savings {
   gap: 8px;
   background: #ffffff;
