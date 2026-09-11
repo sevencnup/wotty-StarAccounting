@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -80,9 +80,7 @@ function defaultMonthsByFrequency(year: number): Record<SavingsFrequency, string
 }
 
 function normalizeMonths(year: number, frequency: SavingsFrequency, value?: string[]) {
-  const generated = buildSavingsMonths(year, frequency);
-  const selected = Array.isArray(value) ? value.filter((month) => generated.includes(month)) : generated;
-  return selected.length ? selected : generated;
+  return resolveSavingsMonths(year, frequency, value);
 }
 
 function emptyPlannerRow(): PlannerRow {
@@ -110,10 +108,17 @@ function cleanExpenseColumns(value: readonly unknown[] | undefined, fallback: re
   return cleaned.length ? cleaned : [...fallback];
 }
 
-function defaultMonthsForConfig(year: number, config: PlanConfig): Record<SavingsFrequency, string[]> {
+function defaultMonthsForConfig(year: number, config: PlanConfig, plans: SavingsPlan[]): Record<SavingsFrequency, string[]> {
+  const legacyFrequency = config.frequency ?? "MONTHLY";
+  const configuredMonths = (frequency: SavingsFrequency) => (
+    config.monthsByFrequency?.[frequency] ?? (config.frequency === frequency ? config.months : undefined)
+  );
+  const persistedMonths = (frequency: SavingsFrequency) => (
+    plans.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency)).map((plan) => plan.month)
+  );
   return {
-    MONTHLY: normalizeMonths(year, "MONTHLY", config.monthsByFrequency?.MONTHLY ?? (config.frequency === "MONTHLY" ? config.months : undefined)),
-    ALTERNATE: normalizeMonths(year, "ALTERNATE", config.monthsByFrequency?.ALTERNATE ?? (config.frequency === "ALTERNATE" ? config.months : undefined)),
+    MONTHLY: resolveSavingsMonths(year, "MONTHLY", configuredMonths("MONTHLY"), persistedMonths("MONTHLY")),
+    ALTERNATE: resolveSavingsMonths(year, "ALTERNATE", configuredMonths("ALTERNATE"), persistedMonths("ALTERNATE")),
   };
 }
 
@@ -251,7 +256,7 @@ export function SavingsPlanner({
       const draftTemporaryColumns = Array.isArray(draft?.temporaryColumns)
         ? draft.temporaryColumns.filter((column) => draftColumns.includes(column))
         : configuredTemporaryColumns.filter((column) => expenseColumns.has(column));
-      const configuredMonths = defaultMonthsForConfig(year, config);
+      const configuredMonths = defaultMonthsForConfig(year, config, plans);
       const draftMonths = draft?.monthsByFrequency;
       setGoal(activeGoal);
       setGoalName(draft?.goalName ?? activeGoal.name ?? "");

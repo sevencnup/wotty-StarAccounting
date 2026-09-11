@@ -60,6 +60,26 @@ export function removeSavingsMonth(months: readonly string[], month: string) {
   return months.filter((item) => item !== month);
 }
 
+export function resolveSavingsMonths(
+  year: number,
+  frequency: SavingsFrequency,
+  configuredMonths?: readonly string[],
+  persistedMonths?: readonly string[],
+) {
+  const generated = buildSavingsMonths(year, frequency);
+  const supportedMonths = new Set(generated);
+  const selectSupportedMonths = (months?: readonly string[]) => {
+    const selectedMonths = new Set((months ?? []).filter((month) => supportedMonths.has(month)));
+    return generated.filter((month) => selectedMonths.has(month));
+  };
+
+  const configured = selectSupportedMonths(configuredMonths);
+  if (configured.length) return configured;
+
+  const persisted = selectSupportedMonths(persistedMonths);
+  return persisted.length ? persisted : generated;
+}
+
 export function shouldSyncSavingsExpense(
   month: string,
   firstMonth: string | undefined,

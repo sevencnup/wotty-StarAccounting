@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -9,6 +9,15 @@ test("monthly mode contains all twelve months", () => {
 test("alternate mode contains six every-other-month rows", () => {
   assert.deepEqual(buildSavingsMonths(2026, "ALTERNATE"), [
     "2026-01", "2026-03", "2026-05", "2026-07", "2026-09", "2026-11",
+  ]);
+});
+
+test("editing a legacy goal restores its months from saved plans", () => {
+  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", undefined, ["2026-12", "2026-09", "2026-10", "2026-11"]), [
+    "2026-09", "2026-10", "2026-11", "2026-12",
+  ]);
+  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", ["2026-03", "2026-04"], ["2026-09", "2026-10"]), [
+    "2026-03", "2026-04",
   ]);
 });
 
