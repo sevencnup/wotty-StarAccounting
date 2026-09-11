@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 
 export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "asset" | "loan" }) {
-  const router = useRouter();
   const [resolvedVariant, setResolvedVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(variant ?? null);
   const [preset, setPreset] = useState<{ type: "INCOME"; category: "工资" } | undefined>(() => (
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("preset") === "salary"
@@ -35,10 +33,10 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
 
   function closePanel() {
     if (resolvedVariant === "savings") {
-      router.replace("/savings");
+      window.location.replace("/savings/");
       return;
     }
-    router.back();
+    window.history.back();
   }
 
   return <JournalPanel mode="page" variant={resolvedVariant} preset={preset} savingsGoalId={savingsGoalId} onClose={closePanel} onSaved={closePanel} />;
