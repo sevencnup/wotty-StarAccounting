@@ -114,7 +114,7 @@ function defaultMonthsForConfig(year: number, config: PlanConfig, plans: Savings
     config.monthsByFrequency?.[frequency] ?? (config.frequency === frequency ? config.months : undefined)
   );
   const persistedMonths = (frequency: SavingsFrequency) => (
-    plans.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency)).map((plan) => plan.month)
+    plans.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency))
   );
   return {
     MONTHLY: resolveSavingsMonths(year, "MONTHLY", configuredMonths("MONTHLY"), persistedMonths("MONTHLY")),

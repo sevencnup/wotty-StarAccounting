@@ -55,6 +55,11 @@ export function buildSavingsMonths(year: number, frequency: SavingsFrequency) {
     .map((month) => `${year}-${String(month).padStart(2, "0")}`);
 }
 
+function currentSavingsMonthKey() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function removeSavingsMonth(months: readonly string[], month: string) {
   if (months.length <= 1) return [...months];
   return months.filter((item) => item !== month);
@@ -64,7 +69,8 @@ export function resolveSavingsMonths(
   year: number,
   frequency: SavingsFrequency,
   configuredMonths?: readonly string[],
-  persistedMonths?: readonly string[],
+  persistedPlans?: readonly Pick<SavingsPlan, "month" | "amount" | "salary" | "actualAmount" | "status" | "expenses" | "proofImage">[],
+  currentMonth = currentSavingsMonthKey(),
 ) {
   const generated = buildSavingsMonths(year, frequency);
   const supportedMonths = new Set(generated);
@@ -73,7 +79,20 @@ export function resolveSavingsMonths(
     return generated.filter((month) => selectedMonths.has(month));
   };
 
-  const persisted = selectSupportedMonths(persistedMonths);
+  const hasContent = (plan: Pick<SavingsPlan, "amount" | "salary" | "actualAmount" | "status" | "expenses" | "proofImage">) => (
+    Number(plan.amount) !== 0
+    || Number(plan.salary) !== 0
+    || Number(plan.actualAmount) !== 0
+    || plan.status === "COMPLETED"
+    || Boolean(plan.proofImage)
+    || Object.values(parseSavingsExpenses(plan.expenses)).some((value) => Number(value) !== 0)
+  );
+
+  const persisted = selectSupportedMonths(
+    persistedPlans
+      ?.filter((plan) => plan.month >= currentMonth || hasContent(plan))
+      .map((plan) => plan.month),
+  );
   if (persisted.length) return persisted;
 
   const configured = selectSupportedMonths(configuredMonths);

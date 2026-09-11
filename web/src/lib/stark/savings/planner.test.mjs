@@ -12,11 +12,16 @@ test("alternate mode contains six every-other-month rows", () => {
   ]);
 });
 
-test("editing a legacy goal restores its months from saved plans", () => {
-  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", undefined, ["2026-12", "2026-09", "2026-10", "2026-11"]), [
-    "2026-09", "2026-10", "2026-11", "2026-12",
-  ]);
-  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", buildSavingsMonths(2026, "MONTHLY"), ["2026-09", "2026-10", "2026-11", "2026-12"]), [
+test("editing a goal hides empty history but keeps current and future plan months", () => {
+  const plans = buildSavingsMonths(2026, "MONTHLY").map((month) => ({
+    month,
+    amount: ["2026-09", "2026-10", "2026-11"].includes(month) ? 6900 : 0,
+    salary: 0,
+    actualAmount: null,
+    status: "PENDING",
+    expenses: "{}",
+  }));
+  assert.deepEqual(resolveSavingsMonths(2026, "MONTHLY", buildSavingsMonths(2026, "MONTHLY"), plans, "2026-09"), [
     "2026-09", "2026-10", "2026-11", "2026-12",
   ]);
 });
