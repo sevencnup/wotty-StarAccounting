@@ -22,19 +22,25 @@ export function sanitizeSavingsExpenseColumns(columns: readonly unknown[]) {
   ));
 }
 
-export function parseSavingsExpenses(raw?: string | null): Record<string, string> {
+export function parseSavingsJsonObject(raw?: string | null): Record<string, unknown> {
   if (!raw) return {};
-  try {
-    const values = JSON.parse(raw) as unknown;
-    if (!values || typeof values !== "object" || Array.isArray(values)) return {};
-    return Object.fromEntries(
-      Object.entries(values as Record<string, unknown>)
-        .filter(([key]) => !isLegacySavingsArrayIndexColumn(key))
-        .map(([key, value]) => [key.trim(), String(Number(value) || "")]),
-    );
-  } catch {
-    return {};
+  let value: unknown = raw;
+  for (let depth = 0; depth < 2 && typeof value === "string"; depth += 1) {
+    try {
+      value = JSON.parse(value);
+    } catch {
+      return {};
+    }
   }
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+export function parseSavingsExpenses(raw?: string | null): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(parseSavingsJsonObject(raw))
+      .filter(([key]) => !isLegacySavingsArrayIndexColumn(key))
+      .map(([key, value]) => [key.trim(), String(Number(value) || "")]),
+  );
 }
 
 export type SavingsRowValues = {

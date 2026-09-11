@@ -920,7 +920,11 @@ private fun JsonObject.getInt(key: String) = getValue(key).jsonPrimitive.int
 private fun JsonObject.getDecimal(key: String) = getValue(key).jsonPrimitive.content.toBigDecimal()
 private fun JsonObject.getNullableDecimal(key: String) = this[key]?.jsonPrimitive?.contentOrNull?.toBigDecimalOrNull()
 private fun JsonObject.getNullableDouble(key: String) = this[key]?.jsonPrimitive?.doubleOrNull
-private fun JsonObject.getRawNullable(key: String) = this[key]?.takeUnless { it is JsonNull }?.toString()
+internal fun rawJsonStorageValue(value: JsonElement?): String? = value
+    ?.takeUnless { it is JsonNull }
+    ?.let { element -> (element as? JsonPrimitive)?.contentOrNull ?: element.toString() }
+
+private fun JsonObject.getRawNullable(key: String) = rawJsonStorageValue(this[key])
 private fun JsonObject.getDateTime(key: String) = parseDateTime(getString(key))
 private fun JsonObject.getNullableDateTime(key: String) = getNullableString(key)?.let { parseDateTime(it) }
 

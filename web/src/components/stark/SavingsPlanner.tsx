@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -54,12 +54,7 @@ type SavingsDraft = {
 };
 
 function parseConfig(raw?: string | null): PlanConfig {
-  if (!raw) return {};
-  try {
-    return JSON.parse(raw) as PlanConfig;
-  } catch {
-    return {};
-  }
+  return parseSavingsJsonObject(raw) as PlanConfig;
 }
 
 function planRemark(frequency: SavingsFrequency) {
@@ -195,22 +190,6 @@ export function SavingsPlanner({
     loadStartedRef.current = true;
     void loadPlanner();
   }, []);
-
-  async function saveGoalWithFallback(nextGoal: SavingsGoal) {
-    try {
-      await repo.saveSavingsGoal(nextGoal);
-    } catch {
-      // The planner should stay usable even when both cloud and IndexedDB writes fail.
-    }
-  }
-
-  async function savePlanWithFallback(plan: SavingsPlan) {
-    try {
-      await repo.saveSavingsPlan(plan);
-    } catch {
-      // Saving the rest of the batch should continue if one target is unavailable.
-    }
-  }
 
   async function loadPlanner() {
     try {
@@ -471,13 +450,13 @@ export function SavingsPlanner({
         }),
         updatedAt: now,
       };
-      await saveGoalWithFallback(nextGoal);
+      await repo.saveSavingsGoal(nextGoal);
 
       const legacyFrequency = parseConfig(goal.planConfig).frequency ?? "MONTHLY";
       const currentModePlans = persistedPlansRef.current.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency));
       const otherModePlans = persistedPlansRef.current.filter((plan) => !belongsToFrequency(plan, frequency, legacyFrequency));
       const plansToDelete = currentModePlans.filter((plan) => !months.includes(plan.month));
-      await Promise.all(plansToDelete.map((plan) => repo.deleteSavingsPlan(plan.id).catch(() => undefined)));
+      await Promise.all(plansToDelete.map((plan) => repo.deleteSavingsPlan(plan.id)));
 
       const nextPlans = months.map((month) => {
         const row = rowFor(month);
@@ -501,7 +480,7 @@ export function SavingsPlanner({
         };
         return plan;
       });
-      await Promise.all(nextPlans.map((plan) => savePlanWithFallback(plan)));
+      await Promise.all(nextPlans.map((plan) => repo.saveSavingsPlan(plan)));
       persistedPlansRef.current = [...otherModePlans, ...nextPlans];
 
       setGoal(nextGoal);

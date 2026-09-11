@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -93,6 +93,16 @@ test("legacy savings expense arrays do not become numeric columns", () => {
     房租: "1500",
     [PREVIOUS_BALANCE_COLUMN]: "500",
   });
+});
+
+test("legacy double-encoded savings configuration and expenses are restored", () => {
+  const config = {
+    frequency: "MONTHLY",
+    columns: ["房租", "水电"],
+    monthsByFrequency: { MONTHLY: ["2026-09", "2026-10"] },
+  };
+  assert.deepEqual(parseSavingsJsonObject(JSON.stringify(JSON.stringify(config))), config);
+  assert.deepEqual(parseSavingsExpenses(JSON.stringify(JSON.stringify({ 房租: 1400, 水电: 350 }))), { 房租: "1400", 水电: "350" });
 });
 
 test("expense column sanitizing removes legacy array indexes but keeps named columns", () => {
