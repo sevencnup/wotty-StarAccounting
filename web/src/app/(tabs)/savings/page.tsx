@@ -5,8 +5,8 @@ import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { JournalPanel } from "@/components/stark/JournalPanel";
-import { depositTypeLabel } from "@/components/stark/SavingsPlanner";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { savingsDepositTypeLabel } from "@/lib/stark/savings/deposit-type";
 import { REPORTING_MONTH_KEY, formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 import { savingsPlanRecordedAmount } from "@/lib/stark/savings/planner";
@@ -209,7 +209,7 @@ export default function SavingsPage() {
             return (
               <article key={goal.id} className="savings-goal-card">
                 <div className="savings-goal-copy">
-                  <span>{depositTypeLabel(goal.depositType)}</span>
+                  <span>{savingsDepositTypeLabel(goal.depositType)}</span>
                   <strong>{goal.name}</strong>
                   <small>{deadlineLabel(goal.deadline, locale)}</small>
                 </div>

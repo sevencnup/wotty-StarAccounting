@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { ConsumptionCharts } from "@/components/stark/ConsumptionCharts";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -14,6 +14,14 @@ import { getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/stor
 import { formatMoney, reportingMonthEndDate, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
+
+const ConsumptionCharts = dynamic(
+  () => import("@/components/stark/ConsumptionCharts").then((module) => module.ConsumptionCharts),
+  {
+    ssr: false,
+    loading: () => <div className="home-card consumption-chart-loading">正在加载消费图表…</div>,
+  },
+);
 
 const repo = new DataModeManager().getRepository();
 

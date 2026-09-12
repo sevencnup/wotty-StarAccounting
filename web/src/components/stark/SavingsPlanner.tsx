@@ -7,6 +7,7 @@ import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
+import { normalizeSavingsDepositType, SAVINGS_DEPOSIT_TYPE_OPTIONS } from "@/lib/stark/savings/deposit-type";
 
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
@@ -14,11 +15,6 @@ const SAVINGS_PLAN_REMARKS: Record<SavingsFrequency, string> = {
   MONTHLY: "单月存模式",
   ALTERNATE: "隔月存模式",
 };
-const DEPOSIT_TYPE_OPTIONS: Array<{ value: SavingsGoalDepositType; label: string }> = [
-  { value: "PRIVATE", label: "死期" },
-  { value: "CASH", label: "现金" },
-  { value: "HELP_DEPOSIT", label: "他人帮存" },
-];
 
 type PlannerRow = {
   id?: string;
@@ -119,16 +115,6 @@ function defaultMonthsForConfig(year: number, config: PlanConfig, plans: Savings
 
 function monthLabel(month: string) {
   return `${Number(month.slice(5, 7))}月`;
-}
-
-function normalizeDepositType(value?: SavingsGoalDepositType | null): SavingsGoalDepositType {
-  if (value === "FIXED_TERM") return "PRIVATE";
-  if (value === "HELP_DEPOSIT" || value === "PRIVATE" || value === "CASH") return value;
-  return "CASH";
-}
-
-function depositTypeLabel(value?: SavingsGoalDepositType | null) {
-  return DEPOSIT_TYPE_OPTIONS.find((item) => item.value === normalizeDepositType(value))?.label ?? "现金";
 }
 
 function createDefaultGoal(year: number): SavingsGoal {
@@ -242,7 +228,7 @@ export function SavingsPlanner({
       setGoalName(draft?.goalName ?? activeGoal.name ?? "");
       setTargetAmount(draft?.targetAmount ?? (activeGoal.targetAmount ? String(activeGoal.targetAmount) : ""));
       setDeadline(draft?.deadline ?? activeGoal.deadline ?? "");
-      setDepositType(normalizeDepositType(draft?.depositType ?? activeGoal.depositType));
+      setDepositType(normalizeSavingsDepositType(draft?.depositType ?? activeGoal.depositType));
       setFrequency(initialFrequency);
       setColumns(draftColumns);
       setTemporaryColumns(draftTemporaryColumns);
@@ -277,7 +263,7 @@ export function SavingsPlanner({
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setTargetAmount(draft?.targetAmount ?? "");
       setDeadline(draft?.deadline ?? fallbackGoal.deadline ?? "");
-      setDepositType(normalizeDepositType(draft?.depositType ?? fallbackGoal.depositType));
+      setDepositType(normalizeSavingsDepositType(draft?.depositType ?? fallbackGoal.depositType));
       setFrequency(draft?.frequency ?? "MONTHLY");
       setColumns(cleanExpenseColumns(draft?.columns, DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
       setTemporaryColumns(sanitizeSavingsExpenseColumns(draft?.temporaryColumns ?? []).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
@@ -439,7 +425,7 @@ export function SavingsPlanner({
         name: goalName.trim() || `${year} 年度储蓄`,
         targetAmount: Number(targetAmount) || 0,
         deadline: deadline || null,
-        depositType: normalizeDepositType(depositType),
+        depositType: normalizeSavingsDepositType(depositType),
         planConfig: JSON.stringify({
           frequency,
           columns,
@@ -570,7 +556,7 @@ export function SavingsPlanner({
           <div className="savings-goal-field">
             <span>存储类型</span>
             <div className="savings-deposit-switch" role="tablist" aria-label="存储类型">
-              {DEPOSIT_TYPE_OPTIONS.map((item) => (
+              {SAVINGS_DEPOSIT_TYPE_OPTIONS.map((item) => (
                 <button
                   key={item.value}
                   type="button"
@@ -655,5 +641,3 @@ export function SavingsPlanner({
     </div>
   );
 }
-
-export { depositTypeLabel };

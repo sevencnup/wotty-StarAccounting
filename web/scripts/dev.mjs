@@ -12,6 +12,9 @@ const children = new Map();
 let shuttingDown = false;
 let shutdownPromise;
 
+const webPort = 12366;
+const tabRoutes = ["/", "/consumption/", "/savings/", "/loans/", "/assets/", "/accounts/"];
+
 function prefixOutput(name, stream) {
   let pending = "";
   stream.on("data", (chunk) => {
@@ -51,10 +54,41 @@ function startWeb() {
     throw new Error("Next.js CLI not found. Run pnpm install from the workspace root.");
   }
 
-  return spawn(process.execPath, [nextCli, "dev", "--turbopack", "-H", "0.0.0.0", "-p", "12366"], {
+  return spawn(process.execPath, [nextCli, "dev", "--turbopack", "-H", "0.0.0.0", "-p", String(webPort)], {
     cwd: webDirectory,
     stdio: ["inherit", "pipe", "pipe"],
   });
+}
+
+async function prewarmTabRoutes() {
+  const baseUrl = `http://127.0.0.1:${webPort}`;
+  const warmRoute = async (route) => {
+    const response = await fetch(`${baseUrl}${route}`);
+    // Fetch resolves when the headers arrive. Consume the full response so the
+    // completion message cannot precede Turbopack's route compilation.
+    await response.arrayBuffer();
+    if (!response.ok) throw new Error(`${route} returned HTTP ${response.status}`);
+  };
+
+  process.stdout.write("[web] Prewarming tab routes in the background...\n");
+  for (let attempt = 0; attempt < 40 && !shuttingDown; attempt += 1) {
+    try {
+      await warmRoute("/");
+      break;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+  }
+
+  if (shuttingDown) return;
+  const results = await Promise.allSettled(tabRoutes.map(warmRoute));
+  if (shuttingDown) return;
+  const failedRoutes = results.filter((result) => result.status === "rejected").length;
+  process.stdout.write(
+    failedRoutes
+      ? `[web] Tab route prewarming finished with ${failedRoutes} failed route(s).\n`
+      : "[web] Tab routes prewarmed.\n",
+  );
 }
 
 function startApi() {
@@ -194,6 +228,7 @@ process.once("SIGBREAK", () => void shutdown(0));
 try {
   registerChild("web", startWeb());
   registerChild("api", startApi());
+  void prewarmTabRoutes();
   process.stdout.write("Web and API development servers are starting.\n");
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
