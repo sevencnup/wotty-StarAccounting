@@ -4970,6 +4970,212 @@ nextjs-portal {
   gap: 14px;
 }
 
+.salary-entry-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #f0f8ff, #f7fcff);
+}
+
+.salary-entry-mode-switch button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #607089;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.salary-entry-mode-switch button.active {
+  background: #fff;
+  color: #0060c0;
+  box-shadow: 0 2px 8px rgba(0, 96, 192, 0.12);
+}
+
+.salary-batch-workbench {
+  display: grid;
+  gap: 14px;
+  padding: 2px 1px;
+}
+
+.salary-batch-intro {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid #bfe4ef;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #effaff, #edf9f4);
+}
+
+.salary-batch-intro span {
+  color: #0060c0;
+  font-size: calc(14px * var(--user-font-scale));
+  font-weight: 700;
+}
+
+.salary-batch-intro p {
+  margin: 0;
+  color: #527082;
+  font-size: calc(11px * var(--user-font-scale));
+  line-height: 1.55;
+}
+
+.salary-batch-year-field,
+.salary-batch-merchant-field,
+.salary-batch-fields > label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  color: #64748b;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.salary-batch-year-field input,
+.salary-batch-merchant-field input,
+.salary-batch-fields input {
+  width: 100%;
+  height: 40px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 12px;
+  border: 1px solid #d7e1ed;
+  border-radius: 11px;
+  outline: none;
+  background: #fff;
+  color: #0f172a;
+  font-size: calc(14px * var(--user-font-scale));
+}
+
+.salary-batch-year-field input:focus,
+.salary-batch-merchant-field input:focus,
+.salary-batch-fields input:focus {
+  border-color: #5da9e9;
+  box-shadow: 0 0 0 3px rgba(0, 96, 192, 0.1);
+}
+
+.salary-batch-months-section {
+  display: grid;
+  gap: 9px;
+}
+
+.salary-batch-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #475569;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.salary-batch-section-head div {
+  display: flex;
+  gap: 10px;
+}
+
+.salary-batch-section-head button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #0071cf;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.salary-batch-month-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.salary-batch-month-grid button {
+  height: 36px;
+  border: 1px solid #dce6f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #52637a;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.salary-batch-month-grid button.active {
+  border-color: #0071cf;
+  background: #0071cf;
+  color: #fff;
+  box-shadow: 0 3px 9px rgba(0, 113, 207, 0.2);
+}
+
+.salary-batch-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 104px;
+  gap: 10px;
+}
+
+.salary-batch-fields .modern-amount-box {
+  height: 40px;
+  box-sizing: border-box;
+}
+
+.salary-batch-fields .modern-amount-box input {
+  height: 32px;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.salary-batch-payday {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+}
+
+.salary-batch-payday em {
+  color: #64748b;
+  font-size: calc(13px * var(--user-font-scale));
+  font-style: normal;
+}
+
+.salary-batch-notice {
+  min-height: 20px;
+  margin: 0;
+  padding: 10px 11px;
+  border: 1px solid #dce7ef;
+  border-radius: 11px;
+  background: #f8fafc;
+  color: #607089;
+  font-size: calc(11px * var(--user-font-scale));
+  line-height: 1.5;
+}
+
+.salary-batch-notice.success {
+  border-color: #b9dfd0;
+  background: #edf8f4;
+  color: #247557;
+}
+
+.salary-batch-submit {
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #0060c0, #0088d4);
+  color: #fff;
+  font-size: calc(14px * var(--user-font-scale));
+  font-weight: 700;
+  box-shadow: 0 5px 15px rgba(0, 96, 192, 0.22);
+}
+
+.salary-batch-submit:disabled {
+  opacity: 0.52;
+  box-shadow: none;
+}
+
 /* Type Switch Tabs */
 .modern-type-switch {
   display: grid;

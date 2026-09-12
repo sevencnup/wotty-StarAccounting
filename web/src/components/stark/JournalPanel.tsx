@@ -8,7 +8,8 @@ import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft, type NewEntryDraftKind } from "@/lib/stark/storage/new-entry-drafts";
 import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
-import type { AssetType, SavingsGoal, SavingsPlan, TransactionType } from "@/lib/stark/models";
+import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
+import type { AssetType, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
 
 const repo = new DataModeManager().getRepository();
 
@@ -93,7 +94,8 @@ export function JournalPanel({
   const isEditingSavings = isSavings && Boolean(savingsGoalId);
   const isAsset = variant === "asset";
   const isLoan = variant === "loan";
-  const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : preset?.type === "INCOME" && preset.category === "工资" ? "salary" : "journal";
+  const isSalaryPreset = variant === "journal" && preset?.type === "INCOME" && preset.category === "工资";
+  const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : isSalaryPreset ? "salary" : "journal";
   const [visible, setVisible] = useState(false);
   const [type, setType] = useState<TransactionType>("EXPENSE");
   const [amount, setAmount] = useState("");
@@ -115,6 +117,14 @@ export function JournalPanel({
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
   const [recordNotice, setRecordNotice] = useState("");
+  const [salaryEntryMode, setSalaryEntryMode] = useState<"single" | "batch">("single");
+  const [batchYear, setBatchYear] = useState(String(new Date().getFullYear()));
+  const [batchMonths, setBatchMonths] = useState<number[]>([]);
+  const [batchAmount, setBatchAmount] = useState("");
+  const [batchPayday, setBatchPayday] = useState("15");
+  const [batchMerchant, setBatchMerchant] = useState("");
+  const [batchSaving, setBatchSaving] = useState(false);
+  const [batchNotice, setBatchNotice] = useState("");
   const proofImageInputRef = useRef<HTMLInputElement | null>(null);
   const closingRef = useRef(false);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -321,8 +331,65 @@ export function JournalPanel({
     setDescription("");
     setDate(nowText().slice(0, 16));
     if (type !== "TRANSFER") setCategory(type === "INCOME" ? "工资" : "餐饮");
+    window.dispatchEvent(new Event("stark:transaction-saved"));
     onSaved?.();
     handleClose();
+  }
+
+  function toggleBatchMonth(month: number) {
+    setBatchMonths((current) => current.includes(month)
+      ? current.filter((item) => item !== month)
+      : [...current, month].sort((left, right) => left - right));
+  }
+
+  async function saveSalaryBatch() {
+    if (batchSaving) return;
+    const amountValue = Number(batchAmount);
+    const monthKeys = salaryBatchMonthKeys(Number(batchYear), batchMonths);
+    if (!monthKeys.length) {
+      setBatchNotice("请至少选择一个补录月份");
+      return;
+    }
+    if (!Number.isFinite(amountValue) || amountValue <= 0) {
+      setBatchNotice("请输入大于 0 的每月工资金额");
+      return;
+    }
+
+    setBatchSaving(true);
+    setBatchNotice("正在检查已导入的工资记录...");
+    try {
+      const monthTransactions = await Promise.all(
+        monthKeys.map((monthKey) => repo.getTransactionsByMonth("default", monthKey)),
+      );
+      const { pendingMonthKeys, skippedMonthKeys } = selectSalaryBatchMonths(
+        monthKeys,
+        monthTransactions.flat() as Transaction[],
+      );
+      if (!pendingMonthKeys.length) {
+        setBatchNotice(`所选 ${monthKeys.length} 个月都已有工资收入，未重复新增。`);
+        return;
+      }
+
+      const now = nowText();
+      const transactions = buildSalaryBatchTransactions({
+        monthKeys: pendingMonthKeys,
+        amount: amountValue,
+        platform,
+        payday: Number(batchPayday),
+        merchant: batchMerchant,
+        now,
+        createTransactionId: () => createId("salary-batch"),
+      });
+      setBatchNotice(`正在补录 ${transactions.length} 笔工资收入...`);
+      const result = await repo.importTransactions(transactions);
+      const skipped = skippedMonthKeys.length + result.skipped;
+      setBatchNotice(`已补录 ${result.imported} 笔${skipped ? `，跳过 ${skipped} 个已有工资月份` : ""}${result.errors ? `，失败 ${result.errors} 笔` : ""}。`);
+      if (result.imported) window.dispatchEvent(new Event("stark:transaction-saved"));
+    } catch (error) {
+      setBatchNotice(`批量补录失败${error instanceof Error && error.message ? `：${error.message}` : "，请稍后重试"}`);
+    } finally {
+      setBatchSaving(false);
+    }
   }
 
   async function saveAsset() {
@@ -631,6 +698,14 @@ export function JournalPanel({
           </div>
         ) : (
           <div className="modern-journal-flow">
+            {isSalaryPreset ? (
+              <div className="salary-entry-mode-switch" aria-label="薪资录入方式">
+                <button type="button" className={salaryEntryMode === "single" ? "active" : ""} onClick={() => setSalaryEntryMode("single")}>单月录入</button>
+                <button type="button" className={salaryEntryMode === "batch" ? "active" : ""} onClick={() => setSalaryEntryMode("batch")}>批量补录</button>
+              </div>
+            ) : null}
+
+            {!isSalaryPreset || salaryEntryMode === "single" ? <>
             {/* 顶栏类型切换 */}
             <div className="modern-type-switch">
               {[
@@ -753,6 +828,74 @@ export function JournalPanel({
                 保存记账
               </button>
             </div>
+            </> : (
+              <div className="salary-batch-workbench">
+                <div className="salary-batch-intro">
+                  <span>历史工资补录</span>
+                  <p>选择年份和月份后，将按同一金额生成工资收入；已存在工资的月份会自动跳过。</p>
+                </div>
+
+                <label className="salary-batch-year-field">
+                  <span>补录年份</span>
+                  <input type="number" min={2000} max={9999} inputMode="numeric" value={batchYear} onChange={(event) => setBatchYear(event.target.value.replace(/\D/g, "").slice(0, 4))} />
+                </label>
+
+                <div className="salary-batch-months-section">
+                  <div className="salary-batch-section-head">
+                    <span>选择月份</span>
+                    <div>
+                      <button type="button" onClick={() => setBatchMonths(SALARY_BATCH_MONTHS)}>全选</button>
+                      <button type="button" onClick={() => setBatchMonths([])}>清空</button>
+                    </div>
+                  </div>
+                  <div className="salary-batch-month-grid">
+                    {SALARY_BATCH_MONTHS.map((month) => (
+                      <button key={month} type="button" className={batchMonths.includes(month) ? "active" : ""} onClick={() => toggleBatchMonth(month)} aria-pressed={batchMonths.includes(month)}>
+                        {month}月
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="salary-batch-fields">
+                  <label>
+                    <span>每月工资（元）</span>
+                    <div className="modern-amount-box">
+                      <span className="cur-sym">¥</span>
+                      <input inputMode="decimal" value={batchAmount} onChange={(event) => setBatchAmount(event.target.value.replace(/[^0-9.]/g, ""))} placeholder="0.00" />
+                    </div>
+                  </label>
+                  <label>
+                    <span>发薪日</span>
+                    <div className="salary-batch-payday">
+                      <input type="number" min={1} max={28} inputMode="numeric" value={batchPayday} onChange={(event) => setBatchPayday(event.target.value.replace(/\D/g, "").slice(0, 2))} />
+                      <em>日</em>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="modern-section-block">
+                  <span className="section-mini-title">入账账户</span>
+                  <div className="modern-pill-row">
+                    {platforms.map((item) => (
+                      <button key={item} type="button" onClick={() => setPlatform(item)} className={`account-pill ${platform === item ? "active" : ""}`}>{item}</button>
+                    ))}
+                  </div>
+                </div>
+
+                <label className="salary-batch-merchant-field">
+                  <span>发薪单位（选填）</span>
+                  <input value={batchMerchant} onChange={(event) => setBatchMerchant(event.target.value)} placeholder="未填写则标记为工资补录" />
+                </label>
+
+                <p className={`salary-batch-notice ${batchNotice.startsWith("已补录") ? "success" : ""}`} role="status">
+                  {batchNotice || (batchMonths.length ? `已选择 ${batchMonths.length} 个月，确认后将先检查是否已有工资记录。` : "请选择要补录的月份。")}
+                </p>
+                <button type="button" className="salary-batch-submit" disabled={batchSaving || !batchMonths.length || !batchAmount || Number(batchAmount) <= 0} onClick={() => void saveSalaryBatch()}>
+                  {batchSaving ? "补录中..." : `确认补录 ${batchMonths.length} 个月工资`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
