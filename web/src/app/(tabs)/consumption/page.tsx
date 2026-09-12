@@ -5,12 +5,13 @@ import dynamic from "next/dynamic";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
+import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
-import { getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
+import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import { formatMoney, reportingMonthEndDate, reportingMonthLabel } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
@@ -65,6 +66,7 @@ export default function ConsumptionPage() {
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [reportingMonth, setReportingMonth] = useState("2026-01");
+  const [accountId, setAccountId] = useState("default");
   const [monthReady, setMonthReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("expense");
   const [categoryFilter, setCategoryFilter] = useState("全部分类");
@@ -75,6 +77,7 @@ export default function ConsumptionPage() {
 
   useEffect(() => {
     setReportingMonth(getSelectedReportMonth());
+    setAccountId(getCurrentAccountId());
     setMonthReady(true);
   }, []);
 
@@ -83,7 +86,7 @@ export default function ConsumptionPage() {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void repo.getTransactionsByMonth("default", reportingMonth)
+    void repo.getTransactionsByMonth(accountId, reportingMonth)
       .then((data) => {
         if (!active) return;
         setTransactions(data);
@@ -95,13 +98,13 @@ export default function ConsumptionPage() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [loadVersion, monthReady, reportingMonth]);
+  }, [accountId, loadVersion, monthReady, reportingMonth]);
 
   useEffect(() => {
     if (!monthReady) return;
     let active = true;
     const reload = () => {
-      void repo.getTransactionsByMonth("default", reportingMonth)
+      void repo.getTransactionsByMonth(accountId, reportingMonth)
         .then((data) => {
           if (active) setTransactions(data);
         })
@@ -114,7 +117,7 @@ export default function ConsumptionPage() {
       active = false;
       window.removeEventListener("stark:transaction-saved", reload);
     };
-  }, [monthReady, reportingMonth]);
+  }, [accountId, monthReady, reportingMonth]);
 
   const monthTransactions = transactions;
 
@@ -246,6 +249,8 @@ export default function ConsumptionPage() {
         <div><span>微信支出</span><strong>¥ {formatMoney(platformSummary.wechat.expense)}</strong><small>{platformSummary.wechat.count} 笔</small></div>
         <div><span>支付宝支出</span><strong>¥ {formatMoney(platformSummary.alipay.expense)}</strong><small>{platformSummary.alipay.count} 笔</small></div>
       </section>
+      <RemarkedExpenseCard transactions={monthTransactions} locale={locale} />
+
 
       <section className="consumption-filter-card">
         <div className="consumption-mode-tabs" role="tablist" aria-label="收支类型">
