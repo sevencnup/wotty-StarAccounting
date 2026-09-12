@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { appVersionEndpoint, hasNewerAppVersion } from "./app-version.ts";
+import { appVersionEndpoint, APP_UPDATE_BASE_URL, hasNewerAppVersion } from "./app-version.ts";
 
 test("compares APK versions by version code instead of version name text", () => {
   assert.equal(hasNewerAppVersion(84, { versionCode: 85, versionName: "0.0.85" }), true);
@@ -10,4 +10,8 @@ test("compares APK versions by version code instead of version name text", () =>
 
 test("builds the version endpoint without a duplicate slash", () => {
   assert.equal(appVersionEndpoint("http://localhost:12367/"), "http://localhost:12367/api/app/version");
+});
+
+test("uses the fixed StarAccounting update service", () => {
+  assert.equal(appVersionEndpoint(APP_UPDATE_BASE_URL), "https://StarAccounting.wotty.app/api/app/version");
 });

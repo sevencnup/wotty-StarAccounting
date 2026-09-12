@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
-import { appVersionEndpoint, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
+import { appVersionEndpoint, APP_UPDATE_BASE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
 
 type UpdateState = { info: AppVersionInfo; unavailable: boolean } | null;
 type NoticeState = { title: string; message: string } | null;
@@ -30,7 +29,7 @@ export function AppUpdatePrompt() {
         setChecking(true);
       }
       try {
-        const response = await fetch(appVersionEndpoint(getCloudApiUrl()), { signal: controller.signal, cache: "no-store" });
+        const response = await fetch(appVersionEndpoint(APP_UPDATE_BASE_URL), { signal: controller.signal, cache: "no-store" });
         if (!response.ok) {
           if (manual && !cancelled) setNotice({ title: "版本检查失败", message: "暂时无法连接版本服务，请稍后重试。" });
           return;

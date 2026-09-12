@@ -1,34 +1,37 @@
-# Web 套壳 App 版本检测
+# Web-shell App update checks
 
-## 目标
+## Goal
 
-让 Capacitor Android App 启动后检查后端最新 APK 版本；浏览器 Web 端不发起 APK 检测，也不显示更新提示。
+The Capacitor Android app checks for a newer APK after launch. Browser Web builds do not request APK update metadata or show update prompts.
 
-## 实施步骤
+The update service is fixed at StarAccounting.wotty.app/api/app/version and is independent of the user cloud data URL.
 
-- [x] 确认后端提供 /api/app/version 版本信息接口。
-- [x] 新增原生平台版本检测和版本码比较。
-- [x] 新增发现新版本时的更新提示与 APK 下载入口。
-- [x] 在账户设置增加检查更新入口，便于手动验证版本检测。
-- [x] 将版本接口默认值同步到当前 Android 版本 0.0.84 / 84。
-- [x] 运行 Web 测试、类型检查与生产构建。
-- [x] 完成本地 Git 提交。
-- [ ] 按用户指令重新打包 APK。
+## Implementation
 
-## 验收标准
+- [x] Keep the backend /api/app/version endpoint.
+- [x] Compare native app versions by versionCode.
+- [x] Show an update prompt with changelog and APK download action.
+- [x] Add a visible Check for updates entry in account settings.
+- [x] Keep browser Web builds out of the APK update flow.
+- [x] Use current Android version 0.0.84 / 84 as the client baseline.
+- [x] Run Web tests, type checking, and production build.
+- [x] Commit the implementation locally.
+- [ ] Rebuild the APK when explicitly requested.
 
-1. Android App 启动后请求当前云端地址的 /api/app/version。
-2. 服务器 versionCode 大于当前 84 时显示更新提示。
-3. 浏览器 Web 端不请求版本接口、不显示 APK 更新提示。
-4. 后端返回 apkUrl 时可以打开下载地址；未配置下载地址时给出明确提示。
-5. 本次不自动打包 APK，也不覆盖历史安装包。
+## Acceptance criteria
 
-## 版本记录
+1. Android requests the fixed update service endpoint after launch.
+2. An update prompt appears only when the server versionCode is greater than 84.
+3. Browser Web builds do not request the version endpoint.
+4. An apkUrl opens from the update prompt; a missing URL is reported clearly.
+5. Update checks never block normal app usage.
+
+## Version history
 
 ### 0.0.1
 
-建立 APK 版本检测开发记录。
+Created the APK update-check record.
 
 ### 0.0.2
 
-接入原生平台版本检查和更新提示。
+Added native update checking, a manual settings entry, and the fixed StarAccounting update service.
