@@ -8745,10 +8745,10 @@ nextjs-portal {
 /* Categorized bills stay visible outside the filtered latest-transactions list. */
 .remark-consumption-card {
   overflow: hidden;
-  border: 1px solid #d9e9e4;
+  border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: 18px;
   background: #ffffff;
-  box-shadow: 0 2px 10px rgba(15, 94, 74, 0.035);
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
 }
 
 .remark-consumption-head {
@@ -8758,12 +8758,12 @@ nextjs-portal {
   gap: 12px;
   min-height: 60px;
   padding: 10px 14px;
-  background: #f4fbf8;
+  background: #ffffff;
 }
 
 .remark-consumption-head h2 {
   margin: 0;
-  color: #173b31;
+  color: #0f2742;
   font-size: calc(14px * var(--user-font-scale));
   line-height: 1.2;
   font-weight: 700;
@@ -8775,7 +8775,7 @@ nextjs-portal {
 }
 
 .remark-consumption-total strong {
-  color: #0d7051;
+  color: #0f2742;
   font-size: calc(17px * var(--user-font-scale));
   line-height: 1;
   font-weight: 750;
@@ -8787,7 +8787,7 @@ nextjs-portal {
   gap: 6px;
   padding: 9px 14px 10px;
   overflow-x: auto;
-  border-top: 1px solid #e5f1ec;
+  border-top: 1px solid #edf0f4;
   background: #ffffff;
   scrollbar-width: none;
 }
@@ -8801,14 +8801,14 @@ nextjs-portal {
   flex: 0 0 auto;
   padding: 5px 8px;
   border-radius: 999px;
-  color: #2f6555;
-  background: #eff8f4;
+  color: #475569;
+  background: #f6f8fa;
   font-size: calc(10px * var(--user-font-scale));
   font-weight: 650;
 }
 
 .remark-consumption-categories em {
-  color: #0d7051;
+  color: #0f2742;
   font-style: normal;
   font-variant-numeric: tabular-nums;
 }
