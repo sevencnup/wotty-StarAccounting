@@ -81,9 +81,22 @@ async function prewarmTabRoutes() {
   }
 
   if (shuttingDown) return;
-  const results = await Promise.allSettled(tabRoutes.map(warmRoute));
+  let failedRoutes = 0;
+  for (const [index, route] of tabRoutes.entries()) {
+    if (shuttingDown) return;
+    process.stdout.write(`[web] Prewarming ${index + 1}/${tabRoutes.length}: ${route}\n`);
+    try {
+      // Turbopack serializes some route-compilation work internally. Warming in
+      // order prevents later tabs from being left in its background queue when a
+      // user clicks a navigation item during startup.
+      await warmRoute(route);
+    } catch {
+      failedRoutes += 1;
+      process.stdout.write(`[web] Failed to prewarm: ${route}\n`);
+    }
+  }
+
   if (shuttingDown) return;
-  const failedRoutes = results.filter((result) => result.status === "rejected").length;
   process.stdout.write(
     failedRoutes
       ? `[web] Tab route prewarming finished with ${failedRoutes} failed route(s).\n`
