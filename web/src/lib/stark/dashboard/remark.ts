@@ -24,6 +24,8 @@ export const REMARK_SUGGESTIONS = [
   "其他",
 ];
 
+export type RemarkTransactionFilter = "TRANSFER" | "ALL";
+
 export function hasRemark(tx: Transaction): boolean {
   return Boolean(tx.remarkCategory?.trim());
 }
@@ -50,6 +52,21 @@ export function transactionSearchText(tx: Transaction): string {
 export function matchesCategoryKeyword(tx: Transaction, keyword: string): boolean {
   const normalizedKeyword = normalizeKeyword(keyword);
   return tx.type !== "INCOME" && Boolean(normalizedKeyword) && transactionSearchText(tx).includes(normalizedKeyword);
+}
+
+/**
+ * 账单归类面板的可见流水：输入关键词时直接展示所有命中的非收入流水；
+ * 未搜索时才使用「转账 / 全部流水」筛选。
+ */
+export function filterRemarkTransactions(
+  transactions: Transaction[],
+  keyword: string,
+  filter: RemarkTransactionFilter,
+): Transaction[] {
+  if (normalizeKeyword(keyword)) {
+    return transactions.filter((item) => matchesCategoryKeyword(item, keyword));
+  }
+  return transactions.filter((item) => (filter === "ALL" ? item.type !== "INCOME" : item.type === "TRANSFER"));
 }
 
 export function matchesCategoryRule(tx: Transaction, rule: CategoryRule): boolean {

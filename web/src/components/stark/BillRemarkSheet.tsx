@@ -5,15 +5,14 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
-import { applyCategoryRule, hasRemark, matchesCategoryKeyword, REMARK_SUGGESTIONS } from "@/lib/stark/dashboard/remark";
+import { applyCategoryRule, filterRemarkTransactions, hasRemark, REMARK_SUGGESTIONS, type RemarkTransactionFilter } from "@/lib/stark/dashboard/remark";
+import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { CategoryRule, Transaction } from "@/lib/stark/models";
+import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 
-const repo = new DataModeManager().getRepository();
-const ACCOUNT_ID = "default";
-const TRANSACTION_PAGE_SIZE = 200;
 const WRITE_BATCH_SIZE = 50;
 
-type RemarkFilter = "TRANSFER" | "ALL";
+type RemarkFilter = RemarkTransactionFilter;
 
 function timeLabel(dateStr: string) {
   const d = new Date(dateStr);
@@ -35,7 +34,7 @@ function sameKeyword(left: string, right: string) {
   return left.trim().replace(/\s+/g, "").toLowerCase() === right.trim().replace(/\s+/g, "").toLowerCase();
 }
 
-async function saveInBatches(items: Transaction[]) {
+async function saveInBatches(repo: DataRepository, items: Transaction[]) {
   for (let index = 0; index < items.length; index += WRITE_BATCH_SIZE) {
     await Promise.all(items.slice(index, index + WRITE_BATCH_SIZE).map((item) => repo.saveTransaction(item)));
   }
@@ -81,6 +80,8 @@ function RemarkCategoryEditor({
 }
 
 export function BillRemarkSheet() {
+  const [repo] = useState(() => new DataModeManager().getRepository());
+  const [accountId, setAccountId] = useState("default");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [rules, setRules] = useState<CategoryRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +94,9 @@ export function BillRemarkSheet() {
 
   useEffect(() => {
     let cancelled = false;
-    void Promise.all([repo.getTransactions(ACCOUNT_ID, 1, TRANSACTION_PAGE_SIZE), repo.getCategoryRules(ACCOUNT_ID)])
+    const currentAccountId = getCurrentAccountId();
+    setAccountId(currentAccountId);
+    void Promise.all([repo.getTransactions(currentAccountId, 1, Number.MAX_SAFE_INTEGER), repo.getCategoryRules(currentAccountId)])
       .then(([data, savedRules]) => {
         if (cancelled) return;
         setTransactions(data);
@@ -110,8 +113,8 @@ export function BillRemarkSheet() {
   }, []);
 
   const billList = useMemo(
-    () => transactions.filter((item) => (filter === "ALL" ? item.type !== "INCOME" : item.type === "TRANSFER")),
-    [filter, transactions],
+    () => filterRemarkTransactions(transactions, keyword, filter),
+    [filter, keyword, transactions],
   );
   const transferCount = useMemo(() => transactions.filter((item) => item.type === "TRANSFER").length, [transactions]);
   const allCount = useMemo(() => transactions.filter((item) => item.type !== "INCOME").length, [transactions]);
@@ -120,8 +123,8 @@ export function BillRemarkSheet() {
     return [...new Set([...REMARK_SUGGESTIONS, ...present])].slice(0, 24);
   }, [transactions]);
   const previewMatches = useMemo(
-    () => keyword.trim() ? transactions.filter((item) => matchesCategoryKeyword(item, keyword.trim())).length : 0,
-    [keyword, transactions],
+    () => keyword.trim() ? billList.length : 0,
+    [billList, keyword],
   );
 
   function toggleRow(id: string) {
@@ -145,14 +148,14 @@ export function BillRemarkSheet() {
     setSavingRule(true);
     setRuleMessage("正在匹配并应用流水...");
     try {
-      const allTransactions = await repo.getTransactions(ACCOUNT_ID, 1, Number.MAX_SAFE_INTEGER);
+      const allTransactions = await repo.getTransactions(accountId, 1, Number.MAX_SAFE_INTEGER);
 
       const timestamp = nowText();
       const existing = rules.find((rule) => sameKeyword(ruleKeyword(rule), trimmedKeyword));
       const rule: CategoryRule = {
         id: existing?.id ?? createId("category-rule"),
         userId: existing?.userId ?? "local-user",
-        accountId: ACCOUNT_ID,
+        accountId,
         name: trimmedKeyword,
         merchant: trimmedKeyword,
         merchantKey: trimmedKeyword,
@@ -169,7 +172,7 @@ export function BillRemarkSheet() {
       const updatedById = new Map(updatedTransactions.map((item) => [item.id, item]));
 
       await repo.saveCategoryRule(rule);
-      await saveInBatches(changedTransactions);
+      await saveInBatches(repo, changedTransactions);
       setRules((prev) => [rule, ...prev.filter((item) => item.id !== rule.id)].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
       setTransactions((prev) => prev.map((item) => updatedById.get(item.id) ?? item));
       setKeyword("");
@@ -190,7 +193,7 @@ export function BillRemarkSheet() {
 
   async function deleteRule(rule: CategoryRule) {
     if (!window.confirm(`确定删除“${ruleKeyword(rule)}”规则吗？已归类的流水不会被清除。`)) return;
-    await repo.deleteCategoryRule(rule.id, ACCOUNT_ID);
+    await repo.deleteCategoryRule(rule.id, accountId);
     setRules((prev) => prev.filter((item) => item.id !== rule.id));
   }
 
@@ -204,7 +207,7 @@ export function BillRemarkSheet() {
         </div>
         <label className="category-rule-field">
           <span>账单关键词</span>
-          <input value={keyword} onChange={(event) => { setKeyword(event.target.value); setRuleMessage("输入账单里的名称或关键词，例如：房东"); }} placeholder="例如：房东、张三、某某物业" autoComplete="off" />
+          <input value={keyword} onChange={(event) => { setKeyword(event.target.value); setRuleMessage("输入账单里的名称或关键词，可直接查看匹配流水"); }} placeholder="例如：房东、张三、某某物业" autoComplete="off" />
         </label>
         <div className="category-rule-example">会匹配交易对方、商品说明、备注、平台、支付方式和订单号</div>
         <div className="category-rule-field">
@@ -215,7 +218,7 @@ export function BillRemarkSheet() {
           <input value={ruleCategory} onChange={(event) => setRuleCategory(event.target.value)} placeholder="也可以输入自定义分类" />
         </div>
         <div className="category-rule-preview">
-          <span>{keyword.trim() ? `当前已加载流水中匹配 ${previewMatches} 笔` : "示例：输入“房东”后归入“房租水电”"}</span>
+          <span>{keyword.trim() ? `当前账本匹配 ${previewMatches} 笔，已在下方显示` : "示例：输入“房东”后归入“房租水电”"}</span>
           <button type="button" disabled={!keyword.trim() || !ruleCategory.trim() || savingRule} onClick={() => void saveKeywordRule()}>{savingRule ? "应用中..." : "保存并应用"}</button>
         </div>
         <p className={`category-rule-message ${ruleMessage.startsWith("已应用") ? "success" : ""}`}>{ruleMessage}</p>
@@ -272,7 +275,7 @@ export function BillRemarkSheet() {
           })}
         </div>
       ) : (
-        <div className="bill-remark-empty">当前没有可归类的转账账单</div>
+        <div className="bill-remark-empty">{keyword.trim() ? "当前账本没有匹配的非收入流水" : "当前没有可归类的转账账单"}</div>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyCategoryRule, applyCategoryRules, matchesCategoryKeyword, matchesCategoryRule } from "./remark.ts";
+import { applyCategoryRule, applyCategoryRules, filterRemarkTransactions, matchesCategoryKeyword, matchesCategoryRule } from "./remark.ts";
 
 const base = {
   userId: "local-user",
@@ -43,4 +43,27 @@ test("later active rules can refine an earlier rule", () => {
   const first = { merchant: "房东", merchantKey: "房东", category: "住房", isActive: true };
   const second = { merchant: "张三", merchantKey: "张三", category: "房租水电", isActive: true };
   assert.equal(applyCategoryRules([base], [first, second])[0].remarkCategory, "房租水电");
+});
+
+test("keyword search returns every matching non-income transaction instead of only transfers", () => {
+  const expense = { ...base, id: "expense", type: "EXPENSE", merchant: "某某物业", description: "九月水费" };
+  const income = { ...base, id: "income", type: "INCOME", merchant: "某某物业" };
+
+  assert.deepEqual(
+    filterRemarkTransactions([base, expense, income], "物业", "TRANSFER").map((item) => item.id),
+    ["expense"],
+  );
+});
+
+test("remark list keeps the selected type filter only when no keyword is entered", () => {
+  const expense = { ...base, id: "expense", type: "EXPENSE", merchant: "便利店" };
+
+  assert.deepEqual(
+    filterRemarkTransactions([{ ...base, id: "transfer" }, expense], "", "TRANSFER").map((item) => item.id),
+    ["transfer"],
+  );
+  assert.deepEqual(
+    filterRemarkTransactions([{ ...base, id: "transfer" }, expense], "", "ALL").map((item) => item.id),
+    ["transfer", "expense"],
+  );
 });
