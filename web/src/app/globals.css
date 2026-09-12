@@ -8606,8 +8606,6 @@ nextjs-portal {
 
 @media (max-width: 480px) {
   .consumption-category-menu {
-    left: 12px !important;
-    width: min(340px, calc(100vw - 24px)) !important;
     max-height: min(58vh, 360px);
   }
 }
