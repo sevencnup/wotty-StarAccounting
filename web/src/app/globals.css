@@ -7747,6 +7747,7 @@ nextjs-portal {
 
 .settings-test-button:disabled { opacity: 0.55; }
 .settings-confirm-button { border: 0; color: #ffffff; background: var(--primary); }
+.bill-import-confirm { width: 100%; }
 
 .bill-import-platform {
   display: flex;

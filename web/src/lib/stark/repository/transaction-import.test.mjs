@@ -32,3 +32,13 @@ test("cloud import selection skips existing and duplicate order IDs", () => {
   assert.equal(result.skipped, 2);
   assert.deepEqual(result.pending.map((item) => item.id), ["new-record", "no-order"]);
 });
+
+test("local import selection also skips duplicate order IDs within one file", () => {
+  const result = selectTransactionsForImport([
+    transaction("first", "same-order"),
+    transaction("second", "same-order"),
+  ], []);
+
+  assert.deepEqual(result.pending.map((item) => item.id), ["first"]);
+  assert.equal(result.skipped, 1);
+});

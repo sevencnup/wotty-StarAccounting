@@ -241,16 +241,25 @@ function normalizeRows(rows: BillRecord[], platform: BillPlatform): BillImportRo
 
 function recordsFromCsv(content: string): BillRecord[] {
   const records = parseCsvRecords(content.replace(/^﻿/, ""));
+  return recordsFromCells(records);
+}
+
+function recordsFromCells(records: unknown[][]): BillRecord[] {
   const headerIndexInRecords = records.findIndex((record) => {
-    const headers = record.map(normalizeHeader);
+    const headers = record.map((cell) => normalizeHeader(normalizeText(cell)));
     return headers.some((header) => /交易时间|交易日期|交易创建时间/.test(header))
       && headers.some((header) => /金额/.test(header));
   });
   if (headerIndexInRecords < 0) return [];
-  const headers = records[headerIndexInRecords].map((header) => header.replace(/^﻿/, "").trim());
+  const headers = records[headerIndexInRecords].map((header) => normalizeText(header).replace(/^﻿/, "").trim());
   return records.slice(headerIndexInRecords + 1).map((cells) =>
     Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""])),
   );
+}
+
+function recordsFromWorkbook(sheet: XLSX.WorkSheet): BillRecord[] {
+  const cells = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: true });
+  return recordsFromCells(cells);
 }
 
 function hasExactHeaderMarker(source: string, marker: string) {
@@ -300,7 +309,7 @@ export async function detectBillFilePlatform(file: File): Promise<BillPlatform> 
   if (/\.csv$/i.test(file.name)) return detectBillPlatform(decodeCsv(bytes), file.name);
   const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json<BillRecord>(sheet, { defval: "", raw: true });
+  const rows = recordsFromWorkbook(sheet);
   return detectRowsPlatform(rows, file.name);
 }
 
@@ -316,7 +325,7 @@ export async function parseBillFile(file: File, platform?: BillPlatform): Promis
   } else if (/\.(xls|xlsx)$/i.test(file.name)) {
     const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rawRows = XLSX.utils.sheet_to_json<BillRecord>(sheet, { defval: "", raw: true });
+    const rawRows = recordsFromWorkbook(sheet);
     detected = detectRowsPlatform(rawRows, file.name);
     rows = normalizeRows(rawRows, platform ?? detected);
   } else {

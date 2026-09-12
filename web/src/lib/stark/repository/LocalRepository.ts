@@ -18,6 +18,7 @@ import { deleteRecord, getAllRecords, getRecord, putManyRecords, putRecord, type
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { isLocalDemoSavingsGoal, LOCAL_DEMO_RECORD_IDS } from "@/lib/stark/repository/local-demo-data";
+import { selectTransactionsForImport } from "@/lib/stark/repository/transaction-import";
 
 function uuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -155,12 +156,11 @@ export class LocalRepository implements DataRepository {
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
     await this.ensureSeeded();
     const existing = await getAllRecords<Transaction>("transactions");
-    const orderIdSet = new Set(existing.map((item) => item.orderId).filter(Boolean));
-    const next = transactions.filter((item) => !item.orderId || !orderIdSet.has(item.orderId));
-    await putManyRecords("transactions", next);
+    const { pending, skipped } = selectTransactionsForImport(transactions, existing);
+    await putManyRecords("transactions", pending);
     return {
-      imported: next.length,
-      skipped: transactions.length - next.length,
+      imported: pending.length,
+      skipped,
       errors: 0,
     };
   }

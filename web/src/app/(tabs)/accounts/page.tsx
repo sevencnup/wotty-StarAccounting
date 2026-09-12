@@ -21,6 +21,12 @@ const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "�
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
 
+type PendingBillImport = {
+  fileName: string;
+  platform: BillPlatform;
+  transactions: Transaction[];
+};
+
 function SettingIcon({ type }: { type: PanelKey }) {
   const paths: Record<PanelKey, React.ReactNode> = {
     MODE: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
@@ -62,6 +68,8 @@ export default function AccountsPage() {
   const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
   const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单");
   const [importing, setImporting] = useState(false);
+  const [readingBill, setReadingBill] = useState(false);
+  const [pendingBillImport, setPendingBillImport] = useState<PendingBillImport | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -93,6 +101,7 @@ export default function AccountsPage() {
 
   function selectImportPlatform(platform: BillPlatform) {
     setImportPlatform(platform);
+    setPendingBillImport(null);
     setImportMessage(`请选择${platform}官方导出的 CSV / Excel 账单`);
   }
 
@@ -138,16 +147,15 @@ export default function AccountsPage() {
     window.location.reload();
   }
 
-  async function importBill(file: File) {
-    setImporting(true);
+  async function prepareBillImport(file: File) {
+    setReadingBill(true);
+    setPendingBillImport(null);
     setImportMessage("正在读取账单...");
     try {
       const detectedPlatform = await detectBillFilePlatform(file);
-      const rows = await parseBillFile(file, importPlatform);
+      const rows = await parseBillFile(file, detectedPlatform);
       if (!rows.length) {
-        setImportMessage(detectedPlatform !== importPlatform
-          ? `当前选择的是${importPlatform}，但文件看起来是${detectedPlatform}账单`
-          : `没有识别到有效${importPlatform}流水，请检查 CSV/Excel 文件格式`);
+        setImportMessage(`没有识别到有效${detectedPlatform}流水，请确认这是官方导出的 CSV / Excel 账单`);
         return;
       }
 
@@ -159,15 +167,33 @@ export default function AccountsPage() {
         orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
         createdAt: now, updatedAt: now,
       }));
+      setImportPlatform(detectedPlatform);
+      setPendingBillImport({ fileName: file.name, platform: detectedPlatform, transactions });
+      setImportMessage(`已识别 ${file.name}：${detectedPlatform}账单，共 ${transactions.length} 笔。确认后才会导入。`);
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `：${error.message}` : "";
+      setImportMessage(`读取账单失败${detail}。请确认文件未损坏且为 CSV / XLS / XLSX 格式。`);
+    } finally {
+      setReadingBill(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function confirmBillImport() {
+    if (!pendingBillImport || importing) return;
+    setImporting(true);
+    setImportMessage(`正在导入 ${pendingBillImport.transactions.length} 笔${pendingBillImport.platform}账单...`);
+    try {
       const repository = manager.getRepository();
       const rules = await repository.getCategoryRules("default");
-      const result = await repository.importTransactions(applyCategoryRules(transactions, rules));
+      const result = await repository.importTransactions(applyCategoryRules(pendingBillImport.transactions, rules));
       setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔`);
-    } catch {
-      setImportMessage("账单导入失败，请检查文件编码和数据格式");
+      setPendingBillImport(null);
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `：${error.message}` : "";
+      setImportMessage(`账单导入失败${detail}`);
     } finally {
       setImporting(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 
@@ -223,9 +249,10 @@ export default function AccountsPage() {
                 <button type="button" className={importPlatform === "支付宝" ? "active alipay" : "alipay"} onClick={() => selectImportPlatform("支付宝")}><span>支</span><div><strong>支付宝账单</strong><small>支付宝交易记录 CSV / Excel</small></div></button>
               </div>
               <div className={`bill-import-message ${importMessage.startsWith("已导入") ? "success" : ""}`}>{importMessage}</div>
-              <input ref={fileInputRef} type="file" hidden accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { const file = event.target.files?.[0]; if (file) void importBill(file); }} />
-              <button type="button" className="settings-sheet-primary" disabled={importing} onClick={() => fileInputRef.current?.click()}>{importing ? "导入中..." : `选择${importPlatform}账单文件`}</button>
-              <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件，请先选择对应平台。</p>
+              <input ref={fileInputRef} type="file" hidden accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { const file = event.target.files?.[0]; if (file) void prepareBillImport(file); }} />
+              <button type="button" className="settings-sheet-primary" disabled={readingBill || importing} onClick={() => fileInputRef.current?.click()}>{readingBill ? "正在读取..." : pendingBillImport ? "重新选择账单文件" : "选择账单文件"}</button>
+              {pendingBillImport ? <button type="button" className="settings-confirm-button bill-import-confirm" disabled={importing} onClick={() => void confirmBillImport()}>{importing ? "导入中..." : `确认导入 ${pendingBillImport.transactions.length} 笔`}</button> : null}
+              <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件；选择后会自动识别平台，确认导入前不会写入数据。</p>
             </div> : null}
 
             {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">

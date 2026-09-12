@@ -31,6 +31,14 @@ test("rejects an Alipay file selected as a WeChat bill", () => {
   assert.equal(parseAlipayBillCsv(content).length, 1);
 });
 
+test("parses an Alipay file after automatically selecting its detected platform", () => {
+  const content = `支付宝交易记录明细查询\n交易创建时间,交易分类,交易对方,商品说明,收/支,金额（元）\n2026-07-15 09:00:00,工资薪酬,示例公司,工资,收入,6800.00`;
+  const detected = detectBillPlatform(content);
+
+  assert.equal(detected, "支付宝");
+  assert.equal(parseBillCsv(content, detected).length, 1);
+});
+
 test("parses full WeChat fields and preserves the transaction order number", () => {
   const content = `﻿微信支付账单明细\n交易时间,交易类型,交易对方,商品,收/支,金额(元),支付方式,当前状态,交易单号,商户单号,备注\n2026/08/01 08:30,转账,房东,房租,支出,"¥1,234.50",零钱,支付成功,wx-order-1,merchant-1,八月房租`;
   const [row] = parseWechatBillCsv(content);
@@ -94,4 +102,22 @@ test("parses an XLSX workbook through the file entry point", async () => {
   assert.equal(rows.length, 1);
   assert.equal(rows[0].orderId, "xlsx-order-1");
   assert.equal(rows[0].amount, 28.5);
+});
+
+test("parses an XLSX workbook with title rows before the official header", async () => {
+  const workbook = XLSX.utils.book_new();
+  const sheet = XLSX.utils.aoa_to_sheet([
+    ["微信支付账单明细"],
+    ["导出时间：2026-08-31"],
+    ["交易时间", "交易类型", "交易对方", "商品", "收/支", "金额(元)", "交易单号"],
+    ["2026-08-20 12:30:00", "商户消费", "示例餐厅", "午餐", "支出", 35.5, "wechat-xlsx-1"],
+  ]);
+  XLSX.utils.book_append_sheet(workbook, sheet, "账单");
+  const bytes = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const file = new File([bytes], "wechat.xlsx");
+
+  assert.equal(await detectBillFilePlatform(file), "微信");
+  const rows = await parseBillFile(file, "微信");
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].orderId, "wechat-xlsx-1");
 });

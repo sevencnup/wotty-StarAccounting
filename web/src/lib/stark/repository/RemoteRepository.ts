@@ -15,8 +15,7 @@ import type {
 } from "@/lib/stark/models/types";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
-import { selectTransactionsForImport } from "@/lib/stark/repository/transaction-import";
-import { savingsPlansPath } from "@/lib/stark/repository/remote-paths";
+import { savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
 
 type EntityType =
   | "users"
@@ -130,16 +129,11 @@ export class RemoteRepository implements DataRepository {
   async deleteTransaction(id: string) { await this.delete("transactions", id); }
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
     if (!transactions.length) return { imported: 0, skipped: 0, errors: 0 };
-
-    const existing = await this.list("transactions", transactions[0].accountId) as unknown as Transaction[];
-    const { pending, skipped } = selectTransactionsForImport(transactions, existing);
-    const results = await Promise.allSettled(pending.map((transaction) => this.saveTransaction(transaction)));
-
-    return {
-      imported: results.filter((result) => result.status === "fulfilled").length,
-      skipped,
-      errors: results.filter((result) => result.status === "rejected").length,
-    };
+    const accountId = transactions[0].accountId;
+    return this.request<ImportResult>(transactionsImportPath(accountId), {
+      method: "POST",
+      body: JSON.stringify(transactions),
+    });
   }
 
   async getAssets(accountId: string) {
