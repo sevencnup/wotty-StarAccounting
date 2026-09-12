@@ -2,14 +2,19 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
+import dynamic from "next/dynamic";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { SavingsPlanner } from "@/components/stark/SavingsPlanner";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft, type NewEntryDraftKind } from "@/lib/stark/storage/new-entry-drafts";
 import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
 import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
 import type { AssetType, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
+
+const SavingsPlanner = dynamic(
+  () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
+  { ssr: false },
+);
 
 const repo = new DataModeManager().getRepository();
 

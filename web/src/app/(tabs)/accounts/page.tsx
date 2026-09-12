@@ -3,8 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import packageInfo from "../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import { detectBillFilePlatform, parseBillFile } from "@/lib/stark/import/bill-csv";
-import type { BillPlatform } from "@/lib/stark/import/bill-csv";
 import type { DataMode, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCloudApiUrl, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
@@ -13,6 +11,8 @@ import { createId } from "@/lib/stark/utils/id";
 import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
+
+type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
 type PanelKey = "MODE" | "IMPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
@@ -152,6 +152,7 @@ export default function AccountsPage() {
     setPendingBillImport(null);
     setImportMessage("正在读取账单...");
     try {
+      const { detectBillFilePlatform, parseBillFile } = await import("@/lib/stark/import/bill-csv");
       const detectedPlatform = await detectBillFilePlatform(file);
       const rows = await parseBillFile(file, detectedPlatform);
       if (!rows.length) {

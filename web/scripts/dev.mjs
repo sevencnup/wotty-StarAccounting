@@ -51,7 +51,7 @@ function startWeb() {
     throw new Error("Next.js CLI not found. Run pnpm install from the workspace root.");
   }
 
-  return spawn(process.execPath, [nextCli, "dev", "--webpack", "-H", "0.0.0.0", "-p", "12366"], {
+  return spawn(process.execPath, [nextCli, "dev", "--turbopack", "-H", "0.0.0.0", "-p", "12366"], {
     cwd: webDirectory,
     stdio: ["inherit", "pipe", "pipe"],
   });
