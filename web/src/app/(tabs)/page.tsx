@@ -110,14 +110,6 @@ function CompassIcon(props: IconProps) {
   );
 }
 
-function PlusIcon(props: IconProps) {
-  return (
-    <IconBase {...props} size={13}>
-      <path d="M12 5v14M5 12h14" />
-    </IconBase>
-  );
-}
-
 function HeaderAction({ children, label }: PropsWithChildren<{ label: string }>) {
   return (
     <button type="button" className="home-header-action" aria-label={label} title={label}>
@@ -314,15 +306,6 @@ function StarkCrystalHero({
             )}
           </div>
 
-          <button
-            type="button"
-            className="stark-salary-action-btn"
-            aria-label={locale === "en-US" ? "Add salary income" : "添加薪资收入"}
-            onClick={() => window.dispatchEvent(new Event("stark:open-salary-income"))}
-          >
-            <PlusIcon size={13} strokeWidth={2.2} />
-            <span>{translateValue("添加薪资收入", locale)}</span>
-          </button>
         </div>
 
       </div>

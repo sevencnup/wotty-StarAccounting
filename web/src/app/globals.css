@@ -1172,41 +1172,6 @@ nextjs-portal {
   height: 100%;
 }
 
-.stark-salary-action-btn {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 13px;
-  border-radius: 999px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  color: #1e293b;
-  text-decoration: none;
-  font-size: calc(12px * var(--user-font-scale));
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 140ms ease;
-  flex-shrink: 0;
-}
-
-.stark-salary-action-btn:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #0284c7;
-}
-
-.stark-salary-action-btn:active {
-  transform: scale(0.98);
-  background: #e2e8f0;
-}
-
-.stark-salary-link-overlay {
-  display: none;
-}
-
 .stark-card-watermark {
   position: absolute;
   right: 16px;
@@ -1331,13 +1296,6 @@ nextjs-portal {
 .stark-detail-arrow,
 .stark-setting-pill {
   justify-self: start;
-}
-
-@media (max-width: 350px) {
-  .stark-salary-action-btn {
-    padding: 0 10px;
-    font-size: calc(11px * var(--user-font-scale));
-  }
 }
 
 /* Stark AI Diagnostic Banner */
@@ -4988,6 +4946,43 @@ nextjs-portal {
 .modern-journal-flow {
   display: grid;
   gap: 14px;
+}
+
+.journal-entry-kind-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+}
+
+.journal-entry-kind-switch button {
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #64748b;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.journal-entry-kind-switch button.active {
+  background: #ffffff;
+  color: #0060c0;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1);
+}
+
+.journal-salary-entry-trigger {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #bfe4ef;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #effaff, #edf9f4);
+  color: #0060c0;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 700;
 }
 
 .salary-entry-mode-switch {

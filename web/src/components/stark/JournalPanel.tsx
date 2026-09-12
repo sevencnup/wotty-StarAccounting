@@ -123,6 +123,7 @@ export function JournalPanel({
   const [recordSaving, setRecordSaving] = useState(false);
   const [recordNotice, setRecordNotice] = useState("");
   const [salaryEntryMode, setSalaryEntryMode] = useState<"single" | "batch">("single");
+  const [salaryEntryOpen, setSalaryEntryOpen] = useState(isSalaryPreset);
   const [batchYear, setBatchYear] = useState(String(new Date().getFullYear()));
   const [batchMonths, setBatchMonths] = useState<number[]>([]);
   const [batchAmount, setBatchAmount] = useState("");
@@ -703,14 +704,53 @@ export function JournalPanel({
           </div>
         ) : (
           <div className="modern-journal-flow">
-            {isSalaryPreset ? (
+            {!isSalaryPreset || salaryEntryOpen ? (
+              <div className="journal-entry-kind-switch" aria-label="记账类型">
+                <button
+                  type="button"
+                  className={!salaryEntryOpen ? "active" : ""}
+                  onClick={() => {
+                    setSalaryEntryOpen(false);
+                    setType("EXPENSE");
+                    setCategory("餐饮");
+                  }}
+                >
+                  普通记账
+                </button>
+                <button
+                  type="button"
+                  className={salaryEntryOpen ? "active" : ""}
+                  onClick={() => {
+                    setSalaryEntryOpen(true);
+                    setType("INCOME");
+                    setCategory("工资");
+                  }}
+                >
+                  添加薪资收入
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="journal-salary-entry-trigger"
+                onClick={() => {
+                  setSalaryEntryOpen(true);
+                  setType("INCOME");
+                  setCategory("工资");
+                }}
+              >
+                ＋ 添加薪资收入
+              </button>
+            )}
+
+            {salaryEntryOpen ? (
               <div className="salary-entry-mode-switch" aria-label="薪资录入方式">
                 <button type="button" className={salaryEntryMode === "single" ? "active" : ""} onClick={() => setSalaryEntryMode("single")}>单月录入</button>
                 <button type="button" className={salaryEntryMode === "batch" ? "active" : ""} onClick={() => setSalaryEntryMode("batch")}>批量补录</button>
               </div>
             ) : null}
 
-            {!isSalaryPreset || salaryEntryMode === "single" ? <>
+            {!salaryEntryOpen || salaryEntryMode === "single" ? <>
             {/* 顶栏类型切换 */}
             <div className="modern-type-switch">
               {[

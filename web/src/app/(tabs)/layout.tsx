@@ -3,10 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
-import { TabsTransitionSkeleton } from "@/components/stark/Skeleton";
 import { JournalPanel } from "@/components/stark/JournalPanel";
-
-type JournalPreset = { type: "INCOME"; category: "工资" };
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,67 +12,33 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const isAssetsRoute = pathname.startsWith("/assets");
   const isLoansRoute = pathname.startsWith("/loans");
   const isSettingsRoute = pathname.startsWith("/accounts");
-  const [pendingPath, setPendingPath] = useState<string | null>(null);
   const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(null);
-  const [journalPreset, setJournalPreset] = useState<JournalPreset | undefined>();
   const journalHistoryRef = useRef(false);
-
-  useEffect(() => {
-    setPendingPath(null);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (!pendingPath) return;
-    const timer = window.setTimeout(() => setPendingPath(null), 1200);
-    return () => window.clearTimeout(timer);
-  }, [pendingPath]);
 
   useEffect(() => {
     function handlePopState() {
       if (!journalHistoryRef.current) return;
       journalHistoryRef.current = false;
       setJournalVariant(null);
-      setJournalPreset(undefined);
     }
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  useEffect(() => {
-    function handleOpenSalaryIncome() {
-      window.history.pushState({ starkJournal: true }, "", window.location.href);
-      journalHistoryRef.current = true;
-      setJournalVariant("journal");
-      setJournalPreset({ type: "INCOME", category: "工资" });
-    }
-
-    window.addEventListener("stark:open-salary-income", handleOpenSalaryIncome);
-    return () => window.removeEventListener("stark:open-salary-income", handleOpenSalaryIncome);
-  }, []);
-
-  function beginNavigation(target: string) {
-    if (target === pathname || target === "/journal") return;
-    setPendingPath(target);
-  }
-
   function openJournal() {
     const variant = isLoansRoute ? "loan" : isAssetsRoute ? "asset" : isSavingsRoute ? "savings" : "journal";
     window.history.pushState({ starkJournal: true }, "", window.location.href);
     journalHistoryRef.current = true;
     setJournalVariant(variant);
-    setJournalPreset(undefined);
   }
 
   function closeJournal() {
     setJournalVariant(null);
-    setJournalPreset(undefined);
     if (!journalHistoryRef.current) return;
     journalHistoryRef.current = false;
     window.history.back();
   }
-
-  const mainContent = pendingPath ? <TabsTransitionSkeleton /> : children;
 
   return (
     <div
@@ -85,8 +48,8 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         background: "#ffffff",
       }}
     >
-      <main className="tabs-shell tabs-liquid-shell">{mainContent}</main>
-      {!isJournalRoute ? <MobileBottomNav onNavigateStart={beginNavigation} /> : null}
+      <main className="tabs-shell tabs-liquid-shell">{children}</main>
+      {!isJournalRoute ? <MobileBottomNav /> : null}
       {!isJournalRoute && !isSettingsRoute && !journalVariant ? (
         <button type="button" className="global-journal-trigger" onClick={openJournal}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -100,7 +63,6 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         <JournalPanel
           mode="page"
           variant={journalVariant}
-          preset={journalPreset}
           onClose={closeJournal}
           onSaved={closeJournal}
         />
