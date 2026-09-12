@@ -55,7 +55,7 @@ export function AppUpdatePrompt() {
         {info.changelog ? <p className="app-update-changelog">{info.changelog}</p> : null}
         {update.unavailable ? <p className="app-update-unavailable">服务器尚未配置 APK 下载地址，请稍后再试。</p> : null}
         <div className="app-update-actions">
-          <button type="button" className="app-update-later" onClick={() => setUpdate(null)} disabled={info.forceUpdate}>稍后</button>
+          <button type="button" className="app-update-later" onClick={() => setUpdate(null)} disabled={info.forceUpdate && !update.unavailable}>稍后</button>
           <button type="button" className="app-update-primary" onClick={openDownload} disabled={update.unavailable}>下载更新</button>
         </div>
       </section>
