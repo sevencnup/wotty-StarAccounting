@@ -3,7 +3,7 @@ import {
   buildReportingMonthTrendRanges,
   splitReportingMonthTransactions,
 } from "@/lib/stark/dashboard/reporting-month";
-import { REPORTING_MONTH_KEY, clampPercent, reportingMonthDate } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 
 export interface HomeTrend {
   labels: string[];
@@ -50,6 +50,7 @@ export interface HomeBudgetAlert {
 
 export interface HomeTaskItem {
   id: string;
+  source: "loan" | "saving";
   title: string;
   subtitle: string;
   badge: string;
@@ -161,30 +162,41 @@ function nextDueDate(dueDay: number) {
 }
 
 function currentSalaryCycleStart(reportingMonth: string, salaryDay: number) {
-  const monthStart = reportingMonthDate(reportingMonth);
+  const monthStart = reportingPeriodDate(reportingMonth);
+  if (isReportingYearKey(reportingMonth)) return monthStart;
   return new Date(monthStart.getFullYear(), monthStart.getMonth(), salaryDay);
 }
 
 function buildTrend(transactions: Transaction[], reportingMonth: string) {
   const ranges = buildReportingMonthTrendRanges(reportingMonth);
+  const scopedTransactions = transactions.filter((item) => {
+    const date = parseDate(item.date);
+    if (!date) return false;
+    if (isReportingYearKey(reportingMonth)) return date.getFullYear() === Number(reportingMonth);
+    return item.date.slice(0, 7) === reportingMonth;
+  });
 
   return {
     labels: ranges.map((range) => range.label),
     expense: ranges.map(({ start, end }) =>
-      transactions
+      scopedTransactions
         .filter((item) => item.type === "EXPENSE")
         .filter((item) => {
-          const day = parseDate(item.date)?.getDate();
-          return day !== undefined && day >= start && day <= end;
+          const date = parseDate(item.date);
+          if (!date) return false;
+          const value = isReportingYearKey(reportingMonth) ? date.getMonth() + 1 : date.getDate();
+          return value >= start && value <= end;
         })
         .reduce((sum, item) => sum + item.amount, 0),
     ),
     income: ranges.map(({ start, end }) =>
-      transactions
+      scopedTransactions
         .filter((item) => item.type === "INCOME")
         .filter((item) => {
-          const day = parseDate(item.date)?.getDate();
-          return day !== undefined && day >= start && day <= end;
+          const date = parseDate(item.date);
+          if (!date) return false;
+          const value = isReportingYearKey(reportingMonth) ? date.getMonth() + 1 : date.getDate();
+          return value >= start && value <= end;
         })
         .reduce((sum, item) => sum + item.amount, 0),
     ),
@@ -325,12 +337,13 @@ function buildBudgetAlerts(transactions: Transaction[], budgets: Budget[], total
 
 function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] {
   const loanTasks = loans
-    .filter((loan) => loan.status !== "PAID_OFF")
+    .filter((loan) => loan.status !== "PAID_OFF" && loan.remainingAmount > 0)
     .map((loan) => {
       const due = nextDueDate(loan.dueDate);
       const inDays = daysUntil(due);
       return {
         id: `loan-${loan.id}`,
+        source: "loan",
         title: `${loan.platform || "贷款"}还款`,
         subtitle: `${formatMonthDay(due)} 前还款 ¥ ${Math.round(loan.monthlyPayment)}`,
         badge: inDays <= 0 ? "今天" : `${inDays}天后`,
@@ -345,6 +358,7 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
       const inDays = due ? daysUntil(due) : 7;
       return {
         id: `saving-${goal.id}`,
+        source: "saving",
         title: `${goal.name}储蓄`,
         subtitle: due ? `${formatMonthDay(due)} 前补足 ¥ ${Math.max(goal.targetAmount - goal.currentAmount, 0)}` : `继续累计 ¥ ${Math.max(goal.targetAmount - goal.currentAmount, 0)}`,
         badge: due ? (inDays <= 0 ? "已到期" : `${inDays}天后`) : "进行中",

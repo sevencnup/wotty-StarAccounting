@@ -26,7 +26,7 @@ export function MonthPicker({
   children: ReactNode;
 }) {
   const selectedYear = Number(value.slice(0, 4));
-  const selectedMonth = Number(value.slice(5, 7));
+  const selectedMonth = value.length === 7 ? Number(value.slice(5, 7)) : null;
   const [open, setOpen] = useState(false);
   const [visibleYear, setVisibleYear] = useState(selectedYear);
   const visibleYearRef = useRef(selectedYear);
@@ -79,6 +79,12 @@ export function MonthPicker({
   function selectMonth(month: number) {
     setOpen(false);
     onChange(monthKey(visibleYearRef.current, month));
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+
+  function selectYear() {
+    setOpen(false);
+    onChange(String(visibleYearRef.current));
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
@@ -149,6 +155,15 @@ export function MonthPicker({
                     ›
                   </button>
                 </div>
+
+                <button
+                  type="button"
+                  className={selectedMonth === null && visibleYear === selectedYear ? "reporting-year-option selected" : "reporting-year-option"}
+                  aria-pressed={selectedMonth === null && visibleYear === selectedYear}
+                  onClick={selectYear}
+                >
+                  全年
+                </button>
 
                 <div className="reporting-month-grid" role="grid" aria-label={`${visibleYear}年月份`}>
                   {MONTHS.map((month) => {

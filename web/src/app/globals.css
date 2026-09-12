@@ -3859,6 +3859,26 @@ nextjs-portal {
   box-shadow: inset 0 1px 2px rgba(90, 114, 145, 0.14);
 }
 
+.reporting-year-option {
+  width: 100%;
+  height: 42px;
+  margin-top: 10px;
+  border: 1px solid #dce5f0;
+  border-radius: 13px;
+  background: #ffffff;
+  color: #334155;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.reporting-year-option.selected {
+  border-color: #0284c7;
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.2);
+}
+
 .savings-hero-track i {
   display: block;
   height: 100%;
@@ -5853,6 +5873,64 @@ nextjs-portal {
   margin-top: 8px;
 }
 
+.calendar-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-month-total {
+  display: grid;
+  min-height: 58px;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  border: 1px solid rgba(123, 148, 184, 0.08);
+  border-radius: 8px;
+  background: #f4f7fb;
+  color: #11182d;
+  overflow: hidden;
+}
+
+.calendar-month-total em,
+.calendar-month-total strong {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: normal;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.calendar-month-total em {
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 500;
+}
+
+.calendar-month-total strong {
+  font-size: calc(9px * var(--user-font-scale));
+  font-weight: 400;
+}
+
+.calendar-month-total.level-1 {
+  background: #e7f0ff;
+}
+
+.calendar-month-total.level-2 {
+  background: #b9d4ff;
+}
+
+.calendar-month-total.level-3 {
+  background: #3a86d6;
+  color: #ffffff;
+}
+
+.calendar-month-total.level-4 {
+  background: #0060c0;
+  color: #ffffff;
+}
+
 .calendar-week-row,
 .calendar-grid {
   display: grid;
@@ -5934,6 +6012,16 @@ nextjs-portal {
   height: 150px;
   margin-top: 2px;
   overflow: hidden;
+}
+
+@media (max-width: 360px) {
+  .calendar-year-grid {
+    gap: 4px;
+  }
+
+  .calendar-month-total {
+    min-height: 52px;
+  }
 }
 
 .merchant-ranking-chart {

@@ -8,6 +8,8 @@ import {
   reportingMonthEndDate,
   reportingMonthLabel,
   reportingMonthSequence,
+  reportingPeriodMonths,
+  isReportingYearKey,
 } from "./format.ts";
 
 test("keeps January 2026 as the default reporting month", () => {
@@ -21,6 +23,17 @@ test("validates strict reporting month keys", () => {
   assert.equal(isReportingMonthKey("2026-1"), false);
   assert.equal(isReportingMonthKey("2026-13"), false);
   assert.equal(isReportingMonthKey("not-a-month"), false);
+});
+
+test("supports a whole reporting year without requiring a month", () => {
+  assert.equal(isReportingYearKey("2025"), true);
+  assert.equal(reportingMonthLabel("2025"), "2025年全年");
+  assert.equal(reportingMonthEndDate("2024").getDate(), 31);
+  assert.deepEqual(reportingPeriodMonths("2025").slice(0, 2), ["2025-01", "2025-02"]);
+  assert.deepEqual(
+    [reportingMonthDate("2025").getFullYear(), reportingMonthDate("2025").getMonth(), reportingMonthDate("2025").getDate()],
+    [2025, 0, 1],
+  );
 });
 
 test("derives labels and month boundaries from an explicit month", () => {

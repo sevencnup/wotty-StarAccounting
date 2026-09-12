@@ -3,6 +3,7 @@ const DEFAULT_REPORTING_MONTH = "2026-01";
 const DEFAULT_CLOUD_API_PORT = 12367;
 const DEFAULT_CLOUD_API_HOST = "localhost";
 const REPORTING_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
+const REPORTING_YEAR_PATTERN = /^\d{4}$/;
 
 function readValue(key: string) {
   if (typeof window === "undefined") return null;
@@ -62,11 +63,11 @@ export function setCloudApiUrl(url: string) {
 
 export function getSelectedReportMonth() {
   const value = readValue("reporting-month");
-  return value && REPORTING_MONTH_PATTERN.test(value) ? value : DEFAULT_REPORTING_MONTH;
+  return value && (REPORTING_MONTH_PATTERN.test(value) || REPORTING_YEAR_PATTERN.test(value)) ? value : DEFAULT_REPORTING_MONTH;
 }
 
 export function setSelectedReportMonth(month: string) {
-  if (REPORTING_MONTH_PATTERN.test(month)) {
+  if (REPORTING_MONTH_PATTERN.test(month) || REPORTING_YEAR_PATTERN.test(month)) {
     writeValue("reporting-month", month);
   }
 }

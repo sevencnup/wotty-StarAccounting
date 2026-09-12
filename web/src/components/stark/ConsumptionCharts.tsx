@@ -3,9 +3,9 @@
 import { useMemo } from "react";
 import type { EChartsCoreOption } from "echarts/core";
 import { EChartView } from "@/components/stark/EChartView";
-import { formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
+import { formatMoney, isReportingYearKey, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
-import { buildDailyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
+import { buildDailyPlatformData, buildMonthlyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
 import { buildMerchantRanking } from "@/lib/stark/dashboard/merchant-ranking";
 import type { Transaction } from "@/lib/stark/models";
 import { translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
@@ -202,7 +202,37 @@ function buildCalendarDays(transactions: Transaction[], monthKey: string) {
 }
 
 function CalendarHeatmap({ transactions, monthKey, locale }: { transactions: Transaction[]; monthKey: string; locale: AppLocale }) {
-  const { leading, days, maxAmount } = useMemo(() => buildCalendarDays(transactions, monthKey), [monthKey, transactions]);
+  const calendarData = useMemo(() => buildCalendarDays(transactions, isReportingYearKey(monthKey) ? `${monthKey}-01` : monthKey), [monthKey, transactions]);
+
+  if (isReportingYearKey(monthKey)) {
+    const monthlyTotals = Array.from({ length: 12 }, (_, index) => {
+      const prefix = `${monthKey}-${String(index + 1).padStart(2, "0")}`;
+      return {
+        label: `${index + 1}${locale === "en-US" ? "" : "月"}`,
+        amount: transactions
+          .filter((transaction) => transaction.type === "EXPENSE" && transaction.date.startsWith(prefix))
+          .reduce((sum, transaction) => sum + transaction.amount, 0),
+      };
+    });
+    const maxAmount = Math.max(...monthlyTotals.map((item) => item.amount), 1);
+    return (
+      <div className="calendar-grid-card calendar-year-grid-card">
+        <div className="calendar-year-grid">
+          {monthlyTotals.map((item, index) => {
+            const level = item.amount <= 0 ? 0 : Math.max(1, Math.ceil((item.amount / maxAmount) * 4));
+            return (
+              <span key={item.label} className={`calendar-month-total level-${level}`} title={`${monthKey}-${String(index + 1).padStart(2, "0")} ¥ ${formatMoney(item.amount)}`}>
+                <em>{item.label}</em>
+                <strong>¥{shortAmount(item.amount)}</strong>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const { leading, days, maxAmount } = calendarData;
   const weekDays = locale === "zh-CN" ? ["一", "二", "三", "四", "五", "六", "日"] : ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
@@ -231,6 +261,45 @@ function CalendarHeatmap({ transactions, monthKey, locale }: { transactions: Tra
 /* ────────── 日柱状图 ────────── */
 
 function buildBarOption(transactions: Transaction[], monthKey: string, locale: AppLocale): EChartsCoreOption {
+  if (isReportingYearKey(monthKey)) {
+    const { activePlatforms, months, platformMonthly } = buildMonthlyPlatformData(transactions, Number(monthKey));
+    return {
+      tooltip: {
+        trigger: "axis",
+        confine: true,
+        backgroundColor: "rgba(19, 27, 48, 0.92)",
+        borderWidth: 0,
+        padding: [8, 10],
+        textStyle: { color: "#ffffff", fontSize: 12 },
+        axisPointer: { type: "shadow" },
+        valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
+      },
+      grid: { left: 26, right: 8, top: 12, bottom: 20 },
+      xAxis: {
+        type: "category",
+        data: months.map((month) => `${month}${locale === "en-US" ? "" : "月"}`),
+        axisLine: { lineStyle: { color: "#e1e8f2" } },
+        axisTick: { show: false },
+        axisLabel: { color: "#74819a", fontSize: 9 },
+      },
+      yAxis: {
+        type: "value",
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: "#74819a", fontSize: 9, formatter: (v: number) => v === 0 ? "0" : `${Math.round(v / 1000)}K` },
+        splitLine: { lineStyle: { color: "#eef2f7", type: "dashed" } },
+      },
+      series: activePlatforms.map((platform) => ({
+        name: translateValue(platform, locale),
+        type: "bar",
+        stack: "total",
+        barWidth: 14,
+        itemStyle: { color: PLATFORM_COLORS[platform] || PLATFORM_COLORS["其他"], borderRadius: [3, 3, 0, 0] },
+        data: platformMonthly[platform],
+      })),
+    };
+  }
+
   const { activePlatforms, days, platformDaily } = buildDailyPlatformData(transactions, reportingMonthDate(monthKey));
 
   type TooltipSize = { contentSize: number[]; viewSize: number[] };
@@ -422,7 +491,12 @@ export function ConsumptionCharts({
   const ratioOption = useMemo(() => buildRatioOption(ratios, locale), [locale, ratios]);
   const displayRatios = ratios.length ? ratios : [];
   const barOption = useMemo(() => buildBarOption(transactions, monthKey, locale), [locale, monthKey, transactions]);
-  const barPlatforms = useMemo(() => buildDailyPlatformData(transactions, reportingDate).activePlatforms, [reportingDate, transactions]);
+  const barPlatforms = useMemo(
+    () => isReportingYearKey(monthKey)
+      ? buildMonthlyPlatformData(transactions, Number(monthKey)).activePlatforms
+      : buildDailyPlatformData(transactions, reportingDate).activePlatforms,
+    [monthKey, reportingDate, transactions],
+  );
   const merchantRanking = useMemo(() => buildMerchantRanking(transactions), [transactions]);
   const merchantRankingOption = useMemo(() => buildMerchantRankingOption(transactions, locale), [locale, transactions]);
   const sankeyOption = useMemo(() => buildSankeyOption(transactions, locale), [locale, transactions]);
@@ -470,8 +544,8 @@ export function ConsumptionCharts({
         <div className="trend-panel">
           <div className="section-head">
             <div className="consumption-chart-title">
-              <h2>消费节律</h2>
-              <span>每天的支出热度</span>
+                <h2>消费节律</h2>
+                <span>{isReportingYearKey(monthKey) ? "每月的支出热度" : "每天的支出热度"}</span>
             </div>
           </div>
           <CalendarHeatmap transactions={transactions} monthKey={monthKey} locale={locale} />
@@ -500,7 +574,7 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>每日平台支出</h2>
+                  <h2>{isReportingYearKey(monthKey) ? "每月平台支出" : "每日平台支出"}</h2>
                   <span>按账户拆分</span>
                 </div>
                 <PlatformLegend platforms={barPlatforms} locale={locale} />

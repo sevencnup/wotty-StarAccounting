@@ -12,7 +12,7 @@ import {
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
-import { formatMoney, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence } from "@/lib/stark/utils/format";
+import { formatMoney, isReportingYearKey, monthKey, previousMonthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
 import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
@@ -213,10 +213,10 @@ function StarkCrystalHero({
 
   const displayTitle =
     activeMetric === "balance"
-      ? (balanceMode === "month" ? "本月结余" : "薪资周期结余")
+        ? (balanceMode === "month" ? (isReportingYearKey(reportingMonth) ? "全年结余" : "本月结余") : "薪资周期结余")
       : activeMetric === "expense"
-        ? "本月支出"
-        : "本月收入";
+        ? (isReportingYearKey(reportingMonth) ? "全年支出" : "本月支出")
+        : (isReportingYearKey(reportingMonth) ? "全年收入" : "本月收入");
 
   const isNegative = activeMetric === "balance" && displayAmount < 0;
 
@@ -263,7 +263,9 @@ function StarkCrystalHero({
       <div className="stark-hero-card">
         {/* 背景轻淡月份水印 */}
         <div className="stark-card-watermark">
-          {new Intl.DateTimeFormat(locale, { month: "short" }).format(reportingMonthDate(reportingMonth))}
+          {isReportingYearKey(reportingMonth)
+            ? `${reportingMonth}年`
+            : new Intl.DateTimeFormat(locale, { month: "short" }).format(reportingMonthDate(reportingMonth))}
         </div>
 
         <div className="stark-hero-meta-row">
@@ -500,7 +502,11 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
 
 // 智能理财与省钱行动建议
 function SmartAdvisoryCard({ summary, reportingMonth, locale }: { summary: HomeSummary; reportingMonth: string; locale: AppLocale }) {
-  const dailyAvg = (summary.expense / Math.max(reportingMonthEndDate(reportingMonth).getDate(), 1)).toFixed(1);
+  const periodDays = Math.max(
+    Math.round((reportingMonthEndDate(reportingMonth).getTime() - reportingMonthDate(reportingMonth).getTime()) / 86400000) + 1,
+    1,
+  );
+  const dailyAvg = (summary.expense / periodDays).toFixed(1);
   const remainingBudget = summary.budgetAlerts[0]
     ? Math.max(0, summary.budgetAlerts[0].budget - summary.budgetAlerts[0].spent)
     : 0;
@@ -537,15 +543,19 @@ function SmartAdvisoryCard({ summary, reportingMonth, locale }: { summary: HomeS
 
 // Stark 原创月度收支走势
 function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transactions: Transaction[]; reportingMonth: string; locale: AppLocale }) {
-  const monthKeys = reportingMonthSequence(reportingMonth, 5);
+  const monthKeys = isReportingYearKey(reportingMonth)
+    ? reportingPeriodMonths(reportingMonth)
+    : reportingMonthSequence(reportingMonth, 5);
   const history = monthKeys.map((key) => {
     const monthTransactions = transactions.filter((item) => monthKey(item.date) === key);
     return {
       key,
-      month: locale === "en-US" ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(reportingMonthDate(`${key}-01`.slice(0, 7))) : `${Number(key.slice(5))}月`,
+      month: locale === "en-US"
+        ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(reportingMonthDate(key))
+        : `${Number(key.slice(5))}月`,
       expense: monthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
       income: monthTransactions.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
-      current: key === reportingMonth,
+      current: isReportingYearKey(reportingMonth) ? key.startsWith(`${reportingMonth}-`) : key === reportingMonth,
     };
   });
 
@@ -562,7 +572,7 @@ function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transact
       <div className="stark-trend-head">
         <div className="trend-title-block">
           <strong>{translateValue("收支动态走势", locale)}</strong>
-          <span className="trend-sub">{translateValue("近 5 个月对比", locale)}</span>
+          <span className="trend-sub">{translateValue(isReportingYearKey(reportingMonth) ? "全年按月对比" : "近 5 个月对比", locale)}</span>
         </div>
         <div className="stark-trend-legend">
           <span className="legend-item income"><i /> {translateValue("收入", locale)}</span>
@@ -652,7 +662,9 @@ export default function HomePage() {
       setLoading(true);
       setLoadError("");
       try {
-        const monthKeys = reportingMonthSequence(reportingMonth, 5);
+        const monthKeys = isReportingYearKey(reportingMonth)
+          ? [...reportingPeriodMonths(previousMonthKey(reportingMonth)), ...reportingPeriodMonths(reportingMonth)]
+          : reportingMonthSequence(reportingMonth, 5);
         const [monthlyTransactions, a, b, l, s] = await Promise.all([
           Promise.all(monthKeys.map((month) => repo.getTransactionsByMonth("default", month))),
           repo.getAssets("default"),
@@ -683,7 +695,9 @@ export default function HomePage() {
 
   const analysisTransactions = useMemo(() => toAnalysisTransactions(transactions), [transactions]);
   const currentTransactions = useMemo(
-    () => transactions.filter((item) => monthKey(item.date) === reportingMonth),
+    () => transactions.filter((item) => isReportingYearKey(reportingMonth)
+      ? item.date.slice(0, 4) === reportingMonth
+      : monthKey(item.date) === reportingMonth),
     [reportingMonth, transactions],
   );
   const summary = useMemo(

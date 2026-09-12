@@ -62,3 +62,28 @@ export function buildDailyPlatformData(transactions: PlatformTransaction[], now 
     platformDaily,
   };
 }
+
+export function buildMonthlyPlatformData(transactions: PlatformTransaction[], year: number) {
+  const expenses = transactions.filter((transaction) =>
+    transaction.date.slice(0, 4) === String(year) && transaction.type === "EXPENSE",
+  );
+  const platformSet = new Set(expenses.map((transaction) => normalizeConsumptionPlatform(transaction.platform)));
+  const activePlatforms = CONSUMPTION_PLATFORMS.filter((platform) => platformSet.has(platform));
+  if (!activePlatforms.length) activePlatforms.push("其他");
+
+  const platformMonthly: Record<string, number[]> = Object.fromEntries(
+    activePlatforms.map((platform) => [platform, new Array(12).fill(0)]),
+  );
+
+  expenses.forEach((transaction) => {
+    const month = Number.parseInt(transaction.date.slice(5, 7), 10) - 1;
+    if (!Number.isInteger(month) || month < 0 || month >= 12) return;
+    platformMonthly[normalizeConsumptionPlatform(transaction.platform)][month] += transaction.amount;
+  });
+
+  return {
+    activePlatforms,
+    months: Array.from({ length: 12 }, (_, index) => String(index + 1)),
+    platformMonthly,
+  };
+}

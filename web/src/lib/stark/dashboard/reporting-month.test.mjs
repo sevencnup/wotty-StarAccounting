@@ -50,3 +50,32 @@ test("builds trend ranges through the actual month end", () => {
     { label: "30", start: 30, end: 31 },
   );
 });
+
+test("splits a selected year from the previous year", () => {
+  const result = splitReportingMonthTransactions([
+    { id: "current-jan", date: "2025-01-12 10:00:00" },
+    { id: "current-dec", date: "2025-12-31 23:59:59" },
+    { id: "previous", date: "2024-06-01 12:00:00" },
+    { id: "future", date: "2026-01-01 00:00:00" },
+  ], "2025");
+
+  assert.deepEqual(result.current.map((item) => item.id), ["current-jan", "current-dec"]);
+  assert.deepEqual(result.previous.map((item) => item.id), ["previous"]);
+});
+
+test("builds twelve monthly trend ranges for a selected year", () => {
+  assert.deepEqual(buildReportingMonthTrendRanges("2025"), [
+    { label: "1月", start: 1, end: 1 },
+    { label: "2月", start: 2, end: 2 },
+    { label: "3月", start: 3, end: 3 },
+    { label: "4月", start: 4, end: 4 },
+    { label: "5月", start: 5, end: 5 },
+    { label: "6月", start: 6, end: 6 },
+    { label: "7月", start: 7, end: 7 },
+    { label: "8月", start: 8, end: 8 },
+    { label: "9月", start: 9, end: 9 },
+    { label: "10月", start: 10, end: 10 },
+    { label: "11月", start: 11, end: 11 },
+    { label: "12月", start: 12, end: 12 },
+  ]);
+});

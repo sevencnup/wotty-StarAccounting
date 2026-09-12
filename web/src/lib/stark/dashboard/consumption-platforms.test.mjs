@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDailyPlatformData, buildPlatformCategoryFlow, normalizeConsumptionPlatform } from "./consumption-platforms.ts";
+import { buildDailyPlatformData, buildMonthlyPlatformData, buildPlatformCategoryFlow, normalizeConsumptionPlatform } from "./consumption-platforms.ts";
 
 const july = new Date(2026, 6, 31);
 
@@ -50,4 +50,16 @@ test("uses the selected leap month and excludes other months", () => {
   assert.equal(result.days.length, 29);
   assert.equal(result.platformDaily["微信"][28], 29);
   assert.equal(result.platformDaily["微信"].reduce((sum, amount) => sum + amount, 0), 29);
+});
+
+test("builds monthly platform totals for a selected year", () => {
+  const result = buildMonthlyPlatformData([
+    { date: "2025-01-02 10:00:00", amount: 10, platform: "微信", type: "EXPENSE" },
+    { date: "2025-12-02 10:00:00", amount: 20, platform: "微信", type: "EXPENSE" },
+    { date: "2024-12-02 10:00:00", amount: 30, platform: "微信", type: "EXPENSE" },
+  ], 2025);
+
+  assert.deepEqual(result.months, ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]);
+  assert.equal(result.platformMonthly.微信[0], 10);
+  assert.equal(result.platformMonthly.微信[11], 20);
 });

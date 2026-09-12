@@ -13,7 +13,7 @@ import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toA
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
 import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
-import { formatMoney, reportingMonthEndDate, reportingMonthLabel } from "@/lib/stark/utils/format";
+import { formatMoney, reportingMonthEndDate, reportingMonthLabel, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
 
@@ -26,6 +26,12 @@ const ConsumptionCharts = dynamic(
 );
 
 const repo = new DataModeManager().getRepository();
+
+async function getTransactionsForReportingPeriod(accountId: string, period: string) {
+  const months = reportingPeriodMonths(period);
+  const rows = await Promise.all(months.map((month) => repo.getTransactionsByMonth(accountId, month)));
+  return rows.flat();
+}
 
 type ViewMode = "expense" | "income" | "all";
 
@@ -129,7 +135,7 @@ export default function ConsumptionPage() {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void repo.getTransactionsByMonth(accountId, reportingMonth)
+    void getTransactionsForReportingPeriod(accountId, reportingMonth)
       .then((data) => {
         if (!active) return;
         setTransactions(data);
@@ -147,7 +153,7 @@ export default function ConsumptionPage() {
     if (!monthReady) return;
     let active = true;
     const reload = () => {
-      void repo.getTransactionsByMonth(accountId, reportingMonth)
+      void getTransactionsForReportingPeriod(accountId, reportingMonth)
         .then((data) => {
           if (active) setTransactions(data);
         })
@@ -276,7 +282,10 @@ export default function ConsumptionPage() {
       expenseCount: expenses.length,
       topCategory,
       topCategoryAmount,
-      dailyAverage: expense / Math.max(reportingMonthEndDate(reportingMonth).getDate(), 1),
+      dailyAverage: expense / Math.max(
+        Math.round((reportingMonthEndDate(reportingMonth).getTime() - reportingPeriodDate(reportingMonth).getTime()) / 86400000) + 1,
+        1,
+      ),
     };
   }, [monthTransactions, reportingMonth]);
 
@@ -337,7 +346,7 @@ export default function ConsumptionPage() {
         <div className="consumption-overview-head">
           <div>
             <span>{reportingMonthLabel(reportingMonth)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
-            <h2>{locale === "en-US" ? "This month’s spending" : "本月支出"}</h2>
+            <h2>{locale === "en-US" ? "Spending in selected period" : "当前筛选支出"}</h2>
           </div>
           <MonthPicker
             value={reportingMonth}
@@ -352,7 +361,7 @@ export default function ConsumptionPage() {
         <strong className="consumption-overview-total">¥ {formatMoney(monthSummary.expense)}</strong>
         <div className="consumption-overview-stats">
           <div><span>{locale === "en-US" ? "Daily average" : "日均支出"}</span><strong>¥ {formatMoney(monthSummary.dailyAverage)}</strong></div>
-          <div><span>{locale === "en-US" ? "This month’s income" : "本月收入"}</span><strong>¥ {formatMoney(monthSummary.income)}</strong></div>
+          <div><span>{locale === "en-US" ? "Selected-period income" : "筛选期收入"}</span><strong>¥ {formatMoney(monthSummary.income)}</strong></div>
           <div><span>{locale === "en-US" ? "Current balance" : "当前结余"}</span><strong className={monthSummary.balance >= 0 ? "positive" : "negative"}>¥ {formatMoney(Math.abs(monthSummary.balance))}</strong></div>
         </div>
       </section>
