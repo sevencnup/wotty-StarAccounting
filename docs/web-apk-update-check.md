@@ -16,7 +16,7 @@ The update service is fixed at StarAccounting.wotty.app/api/app/version and is i
 - [x] Use current Android version 0.0.84 / 84 as the client baseline.
 - [x] Run Web tests, type checking, and production build.
 - [x] Commit the implementation locally.
-- [ ] Rebuild the APK when explicitly requested.
+- [x] Rebuild and install the APK when explicitly requested.
 
 ## Acceptance criteria
 
@@ -35,3 +35,7 @@ Created the APK update-check record.
 ### 0.0.2
 
 Added native update checking, a manual settings entry, and the fixed StarAccounting update service.
+
+### 0.0.3
+
+Built and installed Android APK version 0.0.84 (versionCode 84).
