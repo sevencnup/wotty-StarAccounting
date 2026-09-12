@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { buildRemarkedExpenseSummary } from "@/lib/stark/dashboard/remark-summary";
 import { formatMoney } from "@/lib/stark/utils/format";
-import type { AppLocale } from "@/lib/stark/i18n";
+import { translateValue, type AppLocale } from "@/lib/stark/i18n";
 import type { Transaction } from "@/lib/stark/models";
 
 export function RemarkedExpenseCard({ transactions, locale }: { transactions: Transaction[]; locale: AppLocale }) {
@@ -20,6 +20,14 @@ export function RemarkedExpenseCard({ transactions, locale }: { transactions: Tr
           <strong>¥ {formatMoney(summary.amount)}</strong>
         </div>
       </header>
+      <div className="remark-consumption-categories" aria-label={locale === "en-US" ? "Categorized spending categories" : "归类消费分类"}>
+        {summary.categories.map((item) => (
+          <span key={item.category}>
+            {translateValue(item.category, locale)}
+            <em>¥ {formatMoney(item.amount)}</em>
+          </span>
+        ))}
+      </div>
     </section>
   );
 }
