@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
-import { applyCategoryRule, filterRemarkTransactions, hasRemark, REMARK_SUGGESTIONS, type RemarkTransactionFilter } from "@/lib/stark/dashboard/remark";
+import { applyCategoryRule, buildRemarkTransactionSearchIndex, filterRemarkTransactionIndex, hasRemark, REMARK_SUGGESTIONS, type RemarkTransactionFilter } from "@/lib/stark/dashboard/remark";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { CategoryRule, Transaction } from "@/lib/stark/models";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 
 const WRITE_BATCH_SIZE = 50;
+const INITIAL_VISIBLE_BILLS = 100;
+const VISIBLE_BILL_STEP = 100;
 
 type RemarkFilter = RemarkTransactionFilter;
 
@@ -91,6 +93,7 @@ export function BillRemarkSheet() {
   const [ruleCategory, setRuleCategory] = useState("房租水电");
   const [filter, setFilter] = useState<RemarkFilter>("TRANSFER");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_BILLS);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,10 +115,14 @@ export function BillRemarkSheet() {
     return () => { cancelled = true; };
   }, []);
 
+  const searchIndex = useMemo(() => buildRemarkTransactionSearchIndex(transactions), [transactions]);
+  const deferredKeyword = useDeferredValue(keyword);
   const billList = useMemo(
-    () => filterRemarkTransactions(transactions, keyword, filter),
-    [filter, keyword, transactions],
+    () => filterRemarkTransactionIndex(searchIndex, deferredKeyword, filter),
+    [deferredKeyword, filter, searchIndex],
   );
+  const visibleBillList = useMemo(() => billList.slice(0, visibleCount), [billList, visibleCount]);
+  const hasMoreBills = visibleBillList.length < billList.length;
   const transferCount = useMemo(() => transactions.filter((item) => item.type === "TRANSFER").length, [transactions]);
   const allCount = useMemo(() => transactions.filter((item) => item.type !== "INCOME").length, [transactions]);
   const suggestions = useMemo(() => {
@@ -123,9 +130,14 @@ export function BillRemarkSheet() {
     return [...new Set([...REMARK_SUGGESTIONS, ...present])].slice(0, 24);
   }, [transactions]);
   const previewMatches = useMemo(
-    () => keyword.trim() ? billList.length : 0,
-    [billList, keyword],
+    () => deferredKeyword.trim() ? billList.length : 0,
+    [billList, deferredKeyword],
   );
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_BILLS);
+    setExpandedId(null);
+  }, [deferredKeyword, filter]);
 
   function toggleRow(id: string) {
     setExpandedId((current) => (current === id ? null : id));
@@ -246,9 +258,9 @@ export function BillRemarkSheet() {
 
       {loading ? (
         <div className="bill-remark-empty">加载中…</div>
-      ) : billList.length ? (
+      ) : billList.length ? (<>
         <div className="bill-remark-list">
-          {billList.map((item) => {
+          {visibleBillList.map((item) => {
             const remark = hasRemark(item);
             const expanded = expandedId === item.id;
             return (
@@ -274,7 +286,12 @@ export function BillRemarkSheet() {
             );
           })}
         </div>
-      ) : (
+        {hasMoreBills ? (
+          <button type="button" className="bill-remark-load-more" onClick={() => setVisibleCount((current) => current + VISIBLE_BILL_STEP)}>
+            加载更多（还有 {billList.length - visibleBillList.length} 笔）
+          </button>
+        ) : null}
+      </>) : (
         <div className="bill-remark-empty">{keyword.trim() ? "当前账本没有匹配的非收入流水" : "当前没有可归类的转账账单"}</div>
       )}
     </div>

@@ -26,6 +26,13 @@ export const REMARK_SUGGESTIONS = [
 
 export type RemarkTransactionFilter = "TRANSFER" | "ALL";
 
+export type RemarkTransactionSearchIndexEntry = {
+  transaction: Transaction;
+  searchText: string;
+  isIncome: boolean;
+  isTransfer: boolean;
+};
+
 export function hasRemark(tx: Transaction): boolean {
   return Boolean(tx.remarkCategory?.trim());
 }
@@ -49,6 +56,16 @@ export function transactionSearchText(tx: Transaction): string {
     .join(" ");
 }
 
+/** 预先规范化账单文本，避免每次输入关键词都重复拼接和清洗全部流水。 */
+export function buildRemarkTransactionSearchIndex(transactions: Transaction[]): RemarkTransactionSearchIndexEntry[] {
+  return transactions.map((transaction) => ({
+    transaction,
+    searchText: transactionSearchText(transaction),
+    isIncome: transaction.type === "INCOME",
+    isTransfer: transaction.type === "TRANSFER",
+  }));
+}
+
 export function matchesCategoryKeyword(tx: Transaction, keyword: string): boolean {
   const normalizedKeyword = normalizeKeyword(keyword);
   return tx.type !== "INCOME" && Boolean(normalizedKeyword) && transactionSearchText(tx).includes(normalizedKeyword);
@@ -63,10 +80,21 @@ export function filterRemarkTransactions(
   keyword: string,
   filter: RemarkTransactionFilter,
 ): Transaction[] {
-  if (normalizeKeyword(keyword)) {
-    return transactions.filter((item) => matchesCategoryKeyword(item, keyword));
-  }
-  return transactions.filter((item) => (filter === "ALL" ? item.type !== "INCOME" : item.type === "TRANSFER"));
+  return filterRemarkTransactionIndex(buildRemarkTransactionSearchIndex(transactions), keyword, filter);
+}
+
+export function filterRemarkTransactionIndex(
+  index: RemarkTransactionSearchIndexEntry[],
+  keyword: string,
+  filter: RemarkTransactionFilter,
+): Transaction[] {
+  const normalizedKeyword = normalizeKeyword(keyword);
+  return index
+    .filter((entry) => {
+      if (normalizedKeyword) return !entry.isIncome && entry.searchText.includes(normalizedKeyword);
+      return filter === "ALL" ? !entry.isIncome : entry.isTransfer;
+    })
+    .map((entry) => entry.transaction);
 }
 
 export function matchesCategoryRule(tx: Transaction, rule: CategoryRule): boolean {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyCategoryRule, applyCategoryRules, filterRemarkTransactions, matchesCategoryKeyword, matchesCategoryRule } from "./remark.ts";
+import { applyCategoryRule, applyCategoryRules, buildRemarkTransactionSearchIndex, filterRemarkTransactionIndex, filterRemarkTransactions, matchesCategoryKeyword, matchesCategoryRule } from "./remark.ts";
 
 const base = {
   userId: "local-user",
@@ -65,5 +65,16 @@ test("remark list keeps the selected type filter only when no keyword is entered
   assert.deepEqual(
     filterRemarkTransactions([{ ...base, id: "transfer" }, expense], "", "ALL").map((item) => item.id),
     ["transfer", "expense"],
+  );
+});
+
+test("indexed remark search reuses normalized bill text while preserving keyword results", () => {
+  const expense = { ...base, id: "expense", type: "EXPENSE", merchant: "鏌愭煇鐗╀笟", description: "涔濇湀姘寸數" };
+  const income = { ...base, id: "income", type: "INCOME", merchant: "鏌愭煇鐗╀笟" };
+  const index = buildRemarkTransactionSearchIndex([base, expense, income]);
+
+  assert.deepEqual(
+    filterRemarkTransactionIndex(index, "鐗╀笟", "TRANSFER").map((item) => item.id),
+    ["expense"],
   );
 });

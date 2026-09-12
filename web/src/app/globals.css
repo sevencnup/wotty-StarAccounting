@@ -7619,6 +7619,21 @@ nextjs-portal {
   background: #ffffff;
 }
 
+.bill-remark-load-more {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid #e3e9f2;
+  border-radius: 10px;
+  color: #2a78d6;
+  background: #ffffff;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.bill-remark-load-more:active {
+  background: #f5f8fc;
+}
+
 .bill-remark-row {
   border-top: 1px solid #f1f4f9;
 }
