@@ -5936,6 +5936,21 @@ nextjs-portal {
   overflow: hidden;
 }
 
+.merchant-ranking-chart {
+  width: 100%;
+  height: 272px;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+.merchant-ranking-empty {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  color: #94a3b8;
+  font-size: calc(11px * var(--user-font-scale));
+}
+
 .sankey-scroll {
   position: relative;
   width: 100%;

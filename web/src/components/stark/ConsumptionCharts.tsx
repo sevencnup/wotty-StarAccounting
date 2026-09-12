@@ -6,6 +6,7 @@ import { EChartView } from "@/components/stark/EChartView";
 import { formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
+import { buildMerchantRanking } from "@/lib/stark/dashboard/merchant-ranking";
 import type { Transaction } from "@/lib/stark/models";
 import { translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
@@ -283,6 +284,56 @@ function buildBarOption(transactions: Transaction[], monthKey: string, locale: A
   };
 }
 
+/* ────────── 商家排行横向条形图 ────────── */
+
+function buildMerchantRankingOption(transactions: Transaction[], locale: AppLocale): EChartsCoreOption {
+  const ranking = buildMerchantRanking(transactions);
+  const displayRows = [...ranking].reverse();
+  const maxAmount = Math.max(...ranking.map((item) => item.amount), 0);
+  const truncateLabel = (value: string) => value.length > 8 ? `${value.slice(0, 8)}…` : value;
+
+  return {
+    animationDuration: 450,
+    grid: { left: 78, right: 16, top: 8, bottom: 8 },
+    tooltip: {
+      trigger: "axis",
+      confine: true,
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      axisPointer: { type: "shadow" },
+      valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
+    },
+    xAxis: {
+      type: "value",
+      min: 0,
+      max: maxAmount > 0 ? undefined : 1,
+      splitNumber: 4,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: "#74819a", fontSize: 9, formatter: (value: number) => value === 0 ? "0" : `${Math.round(value / 1000)}K` },
+      splitLine: { lineStyle: { color: "#eef2f7", type: "dashed" } },
+    },
+    yAxis: {
+      type: "category",
+      data: displayRows.map((item) => item.merchant),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: "#405268", fontSize: 10, formatter: truncateLabel },
+    },
+    series: [
+      {
+        name: locale === "en-US" ? "Merchant spending" : "商家消费",
+        type: "bar",
+        barWidth: 14,
+        itemStyle: { color: "#2a78d6", borderRadius: [0, 7, 7, 0] },
+        data: displayRows.map((item) => item.amount),
+      },
+    ],
+  };
+}
+
 /* ────────── 桑基图 ────────── */
 
 function buildSankeyOption(transactions: Transaction[], locale: AppLocale): EChartsCoreOption {
@@ -372,6 +423,8 @@ export function ConsumptionCharts({
   const displayRatios = ratios.length ? ratios : [];
   const barOption = useMemo(() => buildBarOption(transactions, monthKey, locale), [locale, monthKey, transactions]);
   const barPlatforms = useMemo(() => buildDailyPlatformData(transactions, reportingDate).activePlatforms, [reportingDate, transactions]);
+  const merchantRanking = useMemo(() => buildMerchantRanking(transactions), [transactions]);
+  const merchantRankingOption = useMemo(() => buildMerchantRankingOption(transactions, locale), [locale, transactions]);
   const sankeyOption = useMemo(() => buildSankeyOption(transactions, locale), [locale, transactions]);
 
   return (
@@ -427,6 +480,22 @@ export function ConsumptionCharts({
 
       {showDeepAnalysis ? (
         <>
+          <section className="home-card consumption-chart-card merchant-ranking-card">
+            <div className="trend-panel">
+              <div className="section-head">
+                <div className="consumption-chart-title">
+                  <h2>{locale === "en-US" ? "Top merchant spending" : "商家消费排行"}</h2>
+                  <span>{locale === "en-US" ? "Top 10 by expense amount" : "消费金额前 10 名"}</span>
+                </div>
+              </div>
+              {merchantRanking.length ? (
+                <EChartView option={merchantRankingOption} className="merchant-ranking-chart" />
+              ) : (
+                <div className="merchant-ranking-empty">{locale === "en-US" ? "No merchant spending in the current filters" : "当前筛选下暂无商家支出"}</div>
+              )}
+            </div>
+          </section>
+
           <section className="home-card consumption-chart-card">
             <div className="trend-panel">
               <div className="section-head">
