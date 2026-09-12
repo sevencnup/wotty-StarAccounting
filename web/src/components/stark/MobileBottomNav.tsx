@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const NAV_ITEMS = [
-  { href: "/", label: "首页", icon: "/nav-icons/shouye.png" },
-  { href: "/consumption", label: "消费", icon: "/nav-icons/xiaofei.png" },
-  { href: "/savings", label: "储蓄", icon: "/nav-icons/chuxv.png" },
-  { href: "/loans", label: "贷款", icon: "/nav-icons/daikuan.png" },
-  { href: "/assets", label: "资产", icon: "/nav-icons/zichan.png" },
-  { href: "/accounts", label: "账户", icon: "/nav-icons/zhanghu.png" },
+  { href: "/", label: "首页", icon: "/nav-icons/home.png" },
+  { href: "/consumption", label: "消费", icon: "/nav-icons/Consumption.png" },
+  { href: "/savings", label: "储蓄", icon: "/nav-icons/Savings.png" },
+  { href: "/loans", label: "贷款", icon: "/nav-icons/loan.png" },
+  { href: "/assets", label: "资产", icon: "/nav-icons/assets.png" },
+  { href: "/accounts", label: "账户", icon: "/nav-icons/setup.png" },
 ] as const;
 
 export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target: string) => void }) {
