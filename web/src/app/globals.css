@@ -7519,6 +7519,7 @@ nextjs-portal {
 .settings-center-icon.help { background: #d946ef; }
 .settings-center-icon.about { background: #64748b; }
 .settings-center-icon.remark { background: #f97316; }
+.settings-center-icon.update { background: #0ea5e9; }
 
 /* ── 账单归类（账户设置页） ── */
 .bill-remark-sheet {
@@ -8902,6 +8903,10 @@ nextjs-portal {
   grid-template-columns: 1fr 1.25fr;
   gap: 8px;
   margin-top: 18px;
+}
+
+.app-update-actions.single {
+  grid-template-columns: 1fr;
 }
 
 .app-update-actions button {

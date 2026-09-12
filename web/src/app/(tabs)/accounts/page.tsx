@@ -15,7 +15,7 @@ import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, typ
 type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
-type PanelKey = "MODE" | "IMPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT";
+type PanelKey = "MODE" | "IMPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
@@ -37,6 +37,7 @@ function SettingIcon({ type }: { type: PanelKey }) {
     FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
     HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
     ABOUT: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
+    UPDATE: <><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v6h-6" /><path d="M12 8v4l2.5 1.5" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[type]}</svg>;
 }
@@ -219,6 +220,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="HELP" title="帮助与反馈" onClick={() => setActivePanel("HELP")} />
+        <SettingsRow type="UPDATE" title="检查更新" value="检查 App 版本" onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} />
         <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
 
