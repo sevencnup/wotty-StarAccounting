@@ -7623,6 +7623,7 @@ nextjs-portal {
 .bill-remark-sheet {
   display: grid;
   gap: 10px;
+  font-size: calc(14px * var(--user-font-scale));
 }
 
 .bill-remark-filter {
@@ -7656,6 +7657,11 @@ nextjs-portal {
 .category-rule-field > span { color: #66758d; font-size: calc(10px * var(--user-font-scale)); font-weight: 600; }
 .category-rule-field > input { width: 100%; min-height: 37px; padding: 0 11px; border: 1px solid #d9e3f0; border-radius: 9px; outline: none; color: #20304a; background: #ffffff; font-size: calc(12px * var(--user-font-scale)); }
 .category-rule-field > input:focus { border-color: #2a78d6; box-shadow: 0 0 0 3px rgba(42, 120, 214, 0.1); }
+.category-rule-field > input::placeholder,
+.remark-category-input::placeholder {
+  color: #9aa4b6;
+  opacity: 1;
+}
 .category-rule-example { color: #8792a5; font-size: calc(9px * var(--user-font-scale)); line-height: 1.4; }
 
 .category-rule-chips { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -7680,6 +7686,11 @@ nextjs-portal {
 .category-rule-arrow { color: #9aa4b8; font-size: calc(9px * var(--user-font-scale)); }
 .category-rule-toggle, .category-rule-delete { padding: 4px 6px; border: 0; border-radius: 6px; color: #6e7c91; background: #f3f6fa; font-size: calc(9px * var(--user-font-scale)); white-space: nowrap; }
 .category-rule-delete { color: #c25a51; background: #fff2f0; }
+
+.bill-remark-sheet button,
+.bill-remark-sheet input {
+  font-family: inherit;
+}
 
 .bill-remark-filter button {
   display: inline-flex;
