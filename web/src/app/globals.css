@@ -8245,6 +8245,60 @@ nextjs-portal {
 .settings-about small { margin-top: 14px; color: #66748b; font-size: calc(12px * var(--user-font-scale)); line-height: 1.5; }
 .settings-about div { margin-top: 16px; padding: 9px 14px; border-radius: 999px; color: #62718a; background: #f1f5f9; font-size: calc(11px * var(--user-font-scale)); }
 
+.settings-about-links {
+  display: grid;
+  width: 100%;
+  max-width: 320px;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.settings-about-links a {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  color: #64748b;
+  background: #f8fafc;
+  text-align: left;
+  text-decoration: none;
+  transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.settings-about-links a:hover,
+.settings-about-links a:focus-visible {
+  border-color: #8fc5ee;
+  background: #f0f8ff;
+  color: #0060c0;
+  outline: none;
+}
+
+.settings-about-links a > span {
+  color: #64748b;
+  font-size: calc(11px * var(--user-font-scale));
+  white-space: nowrap;
+}
+
+.settings-about-links a > strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #334155;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-about-links a > svg {
+  width: 15px;
+  height: 15px;
+  color: #94a3b8;
+}
+
 /* Distinct page identities: consumption, loans and assets */
 .consumption-page {
   --consumption-ink: #2c2930;
