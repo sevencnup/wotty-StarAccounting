@@ -6,7 +6,7 @@ import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const isJournalRoute = pathname.startsWith("/journal");
   const isSavingsRoute = pathname.startsWith("/savings");
   const isAssetsRoute = pathname.startsWith("/assets");

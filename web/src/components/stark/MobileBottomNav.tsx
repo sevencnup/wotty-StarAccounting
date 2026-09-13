@@ -14,7 +14,7 @@ export const NAV_ITEMS = [
 ] as const;
 
 export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target: string) => void }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   return (
     <nav className="mobile-bottom-nav" aria-label="主导航">
