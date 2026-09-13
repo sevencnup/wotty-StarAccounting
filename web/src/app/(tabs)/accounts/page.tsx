@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import packageInfo from "../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
@@ -10,6 +11,7 @@ import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
+import { appRoute } from "@/lib/stark/navigation/routes";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 
@@ -59,6 +61,7 @@ function SettingsRow({ type, title, value, onClick }: { type: PanelKey; title: s
 }
 
 export default function AccountsPage() {
+  const router = useRouter();
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [pendingMode, setPendingMode] = useState<DataMode>("CLOUD");
@@ -236,7 +239,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
-        <SettingsRow type="ABOUT" title="预算管理" value="设置月度或年度总预算" onClick={() => { window.location.href = "/budgets"; }} />
+        <SettingsRow type="ABOUT" title="预算管理" value="设置月度或年度总预算" onClick={() => router.push(appRoute("/budgets"))} />
       </section>
 
       <section className="settings-center-group">
