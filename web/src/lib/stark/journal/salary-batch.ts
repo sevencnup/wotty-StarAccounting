@@ -37,6 +37,7 @@ export function buildSalaryBatchTransactions({
   platform,
   payday,
   merchant,
+  accountId,
   now,
   createTransactionId,
 }: {
@@ -45,6 +46,7 @@ export function buildSalaryBatchTransactions({
   platform: string;
   payday: number;
   merchant?: string;
+  accountId?: string;
   now: string;
   createTransactionId: (monthKey: string) => string;
 }): Transaction[] {
@@ -54,7 +56,7 @@ export function buildSalaryBatchTransactions({
   return monthKeys.map((monthKey) => ({
     id: createTransactionId(monthKey),
     userId: "local-user",
-    accountId: "default",
+    accountId: accountId ?? (typeof window !== "undefined" ? window.localStorage.getItem("wotty-stark:current-account-id") ?? "default" : "default"),
     amount: safeAmount,
     type: "INCOME",
     category: "工资",

@@ -83,7 +83,7 @@ function RemarkCategoryEditor({
 
 export function BillRemarkSheet() {
   const [repo] = useState(() => new DataModeManager().getRepository());
-  const [accountId, setAccountId] = useState("default");
+  const [accountId, setAccountId] = useState(() => getCurrentAccountId());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [rules, setRules] = useState<CategoryRule[]>([]);
   const [loading, setLoading] = useState(true);

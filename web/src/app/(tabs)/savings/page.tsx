@@ -7,10 +7,12 @@ import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { savingsDepositTypeLabel } from "@/lib/stark/savings/deposit-type";
-import { REPORTING_MONTH_KEY, formatMoney, reportingMonthDate } from "@/lib/stark/utils/format";
+import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 import { savingsPlanRecordedAmount } from "@/lib/stark/savings/planner";
 import { translateValue, useAppLocale } from "@/lib/stark/i18n";
+import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
+import styles from "./savings-record.module.css";
 
 const repo = new DataModeManager().getRepository();
 
@@ -19,20 +21,14 @@ function dayLabel(value: string, locale: "zh-CN" | "en-US") {
   return Number.isFinite(day) ? locale === "en-US" ? String(day) : `${day}日` : value;
 }
 
-function shortAmount(amount: number) {
-  if (amount >= 10000) return `${(amount / 10000).toFixed(1)}w`;
-  if (amount >= 1000) return `${Math.round(amount / 100) / 10}k`;
-  return String(Math.round(amount));
-}
-
 function clampPercent(value: number) {
   if (!Number.isFinite(value)) return 0;
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function monthLabel(month: string, locale: "zh-CN" | "en-US") {
-  const value = Number(month.slice(5, 7));
-  return Number.isFinite(value) ? locale === "en-US" ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(new Date(2024, value - 1, 1)) : `${value}月` : month;
+function currentMonthKey() {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function deadlineLabel(value: string | null | undefined, locale: "zh-CN" | "en-US") {
@@ -46,38 +42,6 @@ function planStatusLabel(status: SavingsPlan["status"]) {
   if (status === "COMPLETED") return "已完成";
   if (status === "SKIPPED") return "已跳过";
   return "待存入";
-}
-
-function buildMonthRhythm(plans: SavingsPlan[]) {
-  const year = reportingMonthDate().getFullYear();
-  const currentMonth = REPORTING_MONTH_KEY;
-  const months = Array.from({ length: 12 }, (_, index) => {
-    const month = `${year}-${String(index + 1).padStart(2, "0")}`;
-    return {
-      month,
-      planned: 0,
-      completed: 0,
-      pending: 0,
-      plans: [] as SavingsPlan[],
-      isCurrent: month === currentMonth,
-    };
-  });
-
-  plans.forEach((plan) => {
-    const index = Number(plan.month.slice(5, 7)) - 1;
-    if (index < 0 || index > 11) return;
-    months[index].planned += plan.amount;
-    months[index].plans.push(plan);
-    if (plan.status === "COMPLETED") months[index].completed += savingsPlanRecordedAmount(plan);
-    if (plan.status === "PENDING") months[index].pending += plan.amount;
-  });
-
-  const maxPlanned = Math.max(...months.map((item) => item.planned), 1);
-  return months.map((item) => ({
-    ...item,
-    planPercent: clampPercent((item.planned / maxPlanned) * 100),
-    donePercent: item.planned > 0 ? clampPercent((item.completed / item.planned) * 100) : 0,
-  }));
 }
 
 function goalPercent(goal: SavingsGoal) {
@@ -100,8 +64,8 @@ export default function SavingsPage() {
     setLoadError(false);
     async function loadSavingsDashboard() {
       try {
-        const data = await repo.getSavingsGoals("default");
-        const planGroups = await Promise.all(data.map((goal) => repo.getSavingsPlans(goal.id)));
+        const data = await repo.getSavingsGoals(getCurrentAccountId());
+        const planGroups = await repo.getSavingsPlansByGoals(data.map((goal) => goal.id));
         if (!active) return;
         setGoals(data);
         setPlans(planGroups.flat());
@@ -117,8 +81,9 @@ export default function SavingsPage() {
     };
   }, [loadVersion]);
 
+  const currentMonth = currentMonthKey();
   const summary = useMemo(() => {
-    const monthPlans = plans.filter((plan) => plan.month === REPORTING_MONTH_KEY);
+    const monthPlans = plans.filter((plan) => plan.month === currentMonth);
     const monthPlanned = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
     const plannedTotal = plans.reduce((sum, plan) => sum + plan.amount, 0);
     const completedAmount = plans.reduce((sum, plan) => sum + savingsPlanRecordedAmount(plan), 0);
@@ -133,7 +98,7 @@ export default function SavingsPage() {
     const completionRate = plans.length ? clampPercent((completed / plans.length) * 100) : 0;
     const activeCount = goals.filter((goal) => goal.status === "ACTIVE").length;
     return { activeCount, completed, completionRate, monthPlanned, pending, pendingAmount, plannedTotal, progress, remainingTarget, savedAmount, target };
-  }, [goals, plans]);
+  }, [currentMonth, goals, plans]);
 
   const recentPlans = useMemo(() => (
     [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
@@ -142,11 +107,6 @@ export default function SavingsPage() {
   const goalCards = useMemo(() => (
     activeGoals.length ? activeGoals : goals
   ).slice(0, 4), [activeGoals, goals]);
-  const rhythm = useMemo(() => buildMonthRhythm(plans), [plans]);
-  const visibleRhythm = useMemo(() => {
-    const active = rhythm.filter((item) => item.planned > 0 || item.isCurrent);
-    return active.length ? active : rhythm.slice(0, 6);
-  }, [rhythm]);
   const recordingGoal = recordingPlan ? goals.find((goal) => goal.id === recordingPlan.goalId) ?? null : null;
   const heroProgress = `${summary.progress}%`;
 
@@ -180,7 +140,7 @@ export default function SavingsPage() {
         <div className="savings-metric-card primary">
           <span>{translateValue("本月计划", locale)}</span>
           <strong>¥ {formatMoney(summary.monthPlanned)}</strong>
-          <small>{locale === "en-US" ? `${REPORTING_MONTH_KEY} planned amount` : `${REPORTING_MONTH_KEY} 待执行额度`}</small>
+          <small>{locale === "en-US" ? `${currentMonth} planned amount` : `${currentMonth} 待执行额度`}</small>
         </div>
         <div className="savings-metric-card gap">
           <span>{translateValue("目标缺口", locale)}</span>
@@ -234,40 +194,6 @@ export default function SavingsPage() {
         </div>
       </section>
 
-      <section className="home-card savings-rhythm-card">
-        <div className="section-head savings-section-head">
-          <div>
-            <h2>{translateValue("月度节奏", locale)}</h2>
-            <span>{translateValue("每月计划、完成状态与实际存入", locale)}</span>
-          </div>
-          <span className="mini-section-note">{REPORTING_MONTH_KEY}</span>
-        </div>
-        <div className="savings-rhythm-board">
-          {visibleRhythm.map((item) => (
-            <div key={item.month} className={`savings-rhythm-tile ${item.isCurrent ? "current" : ""}`}>
-              <span>{monthLabel(item.month, locale)}</span>
-              <strong>¥ {formatMoney(item.planned)}</strong>
-              <small>{item.pending > 0 ? locale === "en-US" ? `${shortAmount(item.pending)} pending` : `待 ${shortAmount(item.pending)}` : translateValue("已清", locale)}</small>
-              <div><i style={{ width: `${item.planPercent}%` }} /><b style={{ width: `${item.donePercent}%` }} /></div>
-              {item.plans.length ? (
-                <div className="savings-rhythm-actions">
-                  {item.plans.map((plan) => {
-                    const goal = goals.find((candidate) => candidate.id === plan.goalId);
-                    const recorded = plan.status === "COMPLETED";
-                    return (
-                      <button key={plan.id} type="button" className={`savings-record-button ${recorded ? "recorded" : ""}`} onClick={() => setRecordingPlan(plan)}>
-                        <span>{recorded ? "✓" : "＋"}</span>
-                        {goal?.name || translateValue("储蓄计划", locale)} · {recorded ? translateValue("修改记录", locale) : translateValue("记录已存", locale)}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      </section>
-
       <section className="recent-card savings-recent-card">
         <div className="recent-head savings-section-head">
           <div>
@@ -279,13 +205,33 @@ export default function SavingsPage() {
         <div className="recent-list">
           {recentPlans.length ? recentPlans.map((plan) => {
             const goal = goals.find((item) => item.id === plan.goalId);
+            const recorded = plan.status === "COMPLETED";
+            const amount = recorded && plan.actualAmount !== null && plan.actualAmount !== undefined ? plan.actualAmount : plan.amount;
+            const recordedAmount = savingsPlanRecordedAmount(plan);
+            const progress = plan.amount > 0 ? clampPercent((recordedAmount / plan.amount) * 100) : 0;
             return (
               <div key={plan.id} className={`savings-recent-row ${plan.status.toLowerCase()}`}>
                 <div className="savings-recent-icon">存</div>
                 <strong>{goal?.name || "储蓄计划"}</strong>
                 <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
                 <time>{dayLabel(plan.updatedAt.slice(0, 10), locale)}</time>
-                <em>+¥ {formatMoney(plan.status === "COMPLETED" && plan.actualAmount !== null && plan.actualAmount !== undefined ? plan.actualAmount : plan.amount)}</em>
+                <div className={styles.recentActions}>
+                  <div className={styles.progressSummary}>
+                    <div className={styles.progressTrack} aria-label={`${goal?.name || "储蓄计划"} 完成 ${progress}%`}>
+                      <i style={{ width: `${progress}%` }} />
+                    </div>
+                    <small>已存 ¥ {formatMoney(recordedAmount)} / 计划 ¥ {formatMoney(plan.amount)}</small>
+                  </div>
+                  <em>+¥ {formatMoney(amount)}</em>
+                  <button
+                    type="button"
+                    className={`${styles.recordButton} ${recorded ? styles.recorded : ""}`}
+                    onClick={() => setRecordingPlan(plan)}
+                    aria-label={`${goal?.name || "储蓄计划"} · ${recorded ? "修改实际存入记录" : "记录实际存入"}`}
+                  >
+                    {recorded ? "修改记录" : "实际存入"}
+                  </button>
+                </div>
               </div>
             );
           }) : (

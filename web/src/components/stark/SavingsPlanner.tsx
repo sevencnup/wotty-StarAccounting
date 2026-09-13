@@ -6,6 +6,7 @@ import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSav
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
+import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 import { normalizeSavingsDepositType, SAVINGS_DEPOSIT_TYPE_OPTIONS } from "@/lib/stark/savings/deposit-type";
 
@@ -33,9 +34,11 @@ type PlanConfig = {
   previousBalance?: boolean;
   months?: string[];
   monthsByFrequency?: Partial<Record<SavingsFrequency, string[]>>;
+  monthsByYear?: Record<string, Partial<Record<SavingsFrequency, string[]>>>;
 };
 
 type SavingsDraft = {
+  year?: number;
   goalName: string;
   targetAmount?: string;
   deadline?: string;
@@ -101,8 +104,11 @@ function cleanExpenseColumns(value: readonly unknown[] | undefined, fallback: re
 
 function defaultMonthsForConfig(year: number, config: PlanConfig, plans: SavingsPlan[]): Record<SavingsFrequency, string[]> {
   const legacyFrequency = config.frequency ?? "MONTHLY";
+  const yearConfig = config.monthsByYear?.[String(year)];
   const configuredMonths = (frequency: SavingsFrequency) => (
-    config.monthsByFrequency?.[frequency] ?? (config.frequency === frequency ? config.months : undefined)
+    yearConfig?.[frequency]
+      ?? config.monthsByFrequency?.[frequency]
+      ?? (config.frequency === frequency ? config.months : undefined)
   );
   const persistedMonths = (frequency: SavingsFrequency) => (
     plans.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency))
@@ -122,7 +128,7 @@ function createDefaultGoal(year: number): SavingsGoal {
   return {
     id: createId("savings-goal"),
     userId: "local-user",
-    accountId: "default",
+    accountId: getCurrentAccountId(),
     name: `${year} 年度储蓄`,
     targetAmount: 0,
     currentAmount: 0,
@@ -145,7 +151,7 @@ export function SavingsPlanner({
   embedded?: boolean;
   savingsGoalId?: string;
 }) {
-  const year = new Date().getFullYear();
+  const [year, setYear] = useState(() => new Date().getFullYear());
   const [goal, setGoal] = useState<SavingsGoal>(() => createDefaultGoal(year));
   const [goalName, setGoalName] = useState(() => `${year} 年度储蓄`);
   const [targetAmount, setTargetAmount] = useState("");
@@ -175,11 +181,19 @@ export function SavingsPlanner({
     if (loadStartedRef.current) return;
     loadStartedRef.current = true;
     void loadPlanner();
-  }, []);
+  }, [year]);
+
+  function changeYear(nextYear: number) {
+    if (nextYear === year || !Number.isFinite(nextYear)) return;
+    setYear(Math.max(2000, Math.min(9999, Math.round(nextYear))));
+    loadStartedRef.current = false;
+    setDraftReady(false);
+    setHydrating(true);
+  }
 
   async function loadPlanner() {
     try {
-      const goals = await repo.getSavingsGoals("default");
+      const goals = await repo.getSavingsGoals(getCurrentAccountId());
       const storedGoal = selectSavingsGoal(goals, savingsGoalId);
       if (savingsGoalId && !storedGoal) {
         setGoalMissing(true);
@@ -191,7 +205,8 @@ export function SavingsPlanner({
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
       persistedPlansRef.current = plans;
-      const draft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
+      const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
+      const draft = rawDraft?.year === year || rawDraft?.year === undefined ? rawDraft : undefined;
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
       const hydratedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = { MONTHLY: {}, ALTERNATE: {} };
@@ -258,7 +273,8 @@ export function SavingsPlanner({
         return;
       }
       const fallbackGoal = createDefaultGoal(year);
-      const draft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
+      const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
+      const draft = rawDraft?.year === year || rawDraft?.year === undefined ? rawDraft : undefined;
       setGoal(fallbackGoal);
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setTargetAmount(draft?.targetAmount ?? "");
@@ -290,6 +306,7 @@ export function SavingsPlanner({
   useEffect(() => {
     if (!draftReady || draftSubmittedRef.current || goalMissing) return;
     saveNewEntryDraft<SavingsDraft>("savings", {
+      year,
       goalName,
       targetAmount,
       deadline,
@@ -301,7 +318,7 @@ export function SavingsPlanner({
       monthsByFrequency,
       rowsByFrequency,
     }, draftScope);
-  }, [columns, deadline, depositType, draftReady, draftScope, frequency, goalMissing, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, targetAmount, temporaryColumns]);
+  }, [columns, deadline, depositType, draftReady, draftScope, frequency, goalMissing, goalName, monthsByFrequency, previousBalanceEnabled, rowsByFrequency, targetAmount, temporaryColumns, year]);
 
   function rowFor(month: string): PlannerRow {
     return rowsByFrequency[frequency][month] ?? emptyPlannerRow();
@@ -420,6 +437,11 @@ export function SavingsPlanner({
     setSaving(true);
     try {
       const now = nowText();
+      const previousConfig = parseConfig(goal.planConfig);
+      const monthsByYear = {
+        ...(previousConfig.monthsByYear ?? {}),
+        [String(year)]: monthsByFrequency,
+      };
       const nextGoal = {
         ...goal,
         name: goalName.trim() || `${year} 年度储蓄`,
@@ -433,14 +455,16 @@ export function SavingsPlanner({
           temporaryColumns,
           previousBalance: previousBalanceEnabled,
           monthsByFrequency,
+          monthsByYear,
         }),
         updatedAt: now,
       };
       await repo.saveSavingsGoal(nextGoal);
 
       const legacyFrequency = parseConfig(goal.planConfig).frequency ?? "MONTHLY";
-      const currentModePlans = persistedPlansRef.current.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency));
-      const otherModePlans = persistedPlansRef.current.filter((plan) => !belongsToFrequency(plan, frequency, legacyFrequency));
+      const yearPrefix = `${year}-`;
+      const currentModePlans = persistedPlansRef.current.filter((plan) => belongsToFrequency(plan, frequency, legacyFrequency) && plan.month.startsWith(yearPrefix));
+      const otherModePlans = persistedPlansRef.current.filter((plan) => !(belongsToFrequency(plan, frequency, legacyFrequency) && plan.month.startsWith(yearPrefix)));
       const plansToDelete = currentModePlans.filter((plan) => !months.includes(plan.month));
       await Promise.all(plansToDelete.map((plan) => repo.deleteSavingsPlan(plan.id)));
 
@@ -571,6 +595,7 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-plan-toolbar">
+          <label className="savings-year-picker"><span>计划年份</span><select value={year} onChange={(event) => changeYear(Number(event.target.value))}>{Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 3 + index).map((item) => <option key={item} value={item}>{item} 年</option>)}</select></label>
           <div className="savings-mode-switch" role="tablist" aria-label="储蓄频率">
             <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
             <button type="button" className={frequency === "ALTERNATE" ? "active" : ""} onClick={() => setFrequency("ALTERNATE")}>隔月存</button>

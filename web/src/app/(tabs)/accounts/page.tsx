@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import packageInfo from "../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
-import type { DataMode, Transaction } from "@/lib/stark/models";
+import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { getCloudApiUrl, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
+import { getCloudApiUrl, getCurrentAccountId, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
+import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 
@@ -71,6 +72,7 @@ export default function AccountsPage() {
   const [importing, setImporting] = useState(false);
   const [readingBill, setReadingBill] = useState(false);
   const [pendingBillImport, setPendingBillImport] = useState<PendingBillImport | null>(null);
+  const [importErrors, setImportErrors] = useState<ImportErrorLog[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -81,6 +83,7 @@ export default function AccountsPage() {
     setMode(savedMode);
     setPendingMode(savedMode);
     setCloudUrl(getCloudApiUrl());
+    void manager.getRepository().getImportErrorLogs(getCurrentAccountId()).then(setImportErrors).catch(() => setImportErrors([]));
   }, []);
 
   function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
@@ -163,7 +166,7 @@ export default function AccountsPage() {
 
       const now = nowText();
       const transactions: Transaction[] = rows.map((row) => ({
-        id: createId("account"), userId: "local-user", accountId: "default",
+        id: createId("transaction"), userId: "local-user", accountId: getCurrentAccountId(),
         amount: row.amount, type: row.type, category: row.category, platform: row.platform,
         merchant: row.merchant, date: row.date, description: row.description,
         orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
@@ -187,10 +190,33 @@ export default function AccountsPage() {
     setImportMessage(`正在导入 ${pendingBillImport.transactions.length} 笔${pendingBillImport.platform}账单...`);
     try {
       const repository = manager.getRepository();
-      const rules = await repository.getCategoryRules("default");
+      const rules = await repository.getCategoryRules(getCurrentAccountId());
       const result = await repository.importTransactions(applyCategoryRules(pendingBillImport.transactions, rules));
-      setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔`);
-      setPendingBillImport(null);
+      setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔${result.errors ? "，失败行可再次确认导入" : ""}`);
+      if (result.errors > 0) {
+        const now = nowText();
+        const failedRows: ImportFailedRow[] = result.failedRows?.length
+          ? result.failedRows
+          : [{ lineNumber: 0, rawData: `${pendingBillImport.transactions.length} rows`, errorMessage: `${result.errors} rows failed to import`, errorType: "IMPORT" }];
+        const failedLogs: ImportErrorLog[] = buildImportErrorLogs(failedRows, { fileName: pendingBillImport.fileName, accountId: getCurrentAccountId(), createdAt: now });
+        await Promise.all(failedLogs.map((log) => repository.saveImportErrorLog(log)));
+        setImportErrors((current) => [...failedLogs, ...current]);
+        if (result.failedRows?.length) {
+          const failedTransactions = selectFailedImportTransactions(pendingBillImport.transactions, result.failedRows);
+          if (failedTransactions.length) setPendingBillImport({ ...pendingBillImport, transactions: failedTransactions });
+        }
+      }
+      if (!result.errors) {
+        const resolvedLogs = importErrors
+          .filter((item) => item.fileName === pendingBillImport.fileName && !item.resolved)
+          .map((item) => ({ ...item, resolved: true }));
+        if (resolvedLogs.length) {
+          await Promise.all(resolvedLogs.map((log) => repository.saveImportErrorLog(log)));
+          const resolvedIds = new Map(resolvedLogs.map((log) => [log.id, log]));
+          setImportErrors((current) => current.map((item) => resolvedIds.get(item.id) ?? item));
+        }
+        setPendingBillImport(null);
+      }
     } catch (error) {
       const detail = error instanceof Error && error.message ? `：${error.message}` : "";
       setImportMessage(`账单导入失败${detail}`);
@@ -201,7 +227,7 @@ export default function AccountsPage() {
 
   return (
     <div className="page-stack settings-center-page">
-      <PageTopBar title="账户" />
+      <PageTopBar title="设置" />
 
       <section className="settings-center-group">
         <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={openModePanel} />
@@ -210,6 +236,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
+        <SettingsRow type="ABOUT" title="预算管理" value="设置月度或年度总预算" onClick={() => { window.location.href = "/budgets"; }} />
       </section>
 
       <section className="settings-center-group">
@@ -256,6 +283,7 @@ export default function AccountsPage() {
               <button type="button" className="settings-sheet-primary" disabled={readingBill || importing} onClick={() => fileInputRef.current?.click()}>{readingBill ? "正在读取..." : pendingBillImport ? "重新选择账单文件" : "选择账单文件"}</button>
               {pendingBillImport ? <button type="button" className="settings-confirm-button bill-import-confirm" disabled={importing} onClick={() => void confirmBillImport()}>{importing ? "导入中..." : `确认导入 ${pendingBillImport.transactions.length} 笔`}</button> : null}
               <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件；选择后会自动识别平台，确认导入前不会写入数据。</p>
+              {importErrors.length ? <div className="import-error-list"><strong>最近导入问题</strong>{importErrors.slice(0, 5).map((item) => <div key={item.id}><span>{item.fileName}{item.lineNumber > 0 ? ` · 第 ${item.lineNumber} 行` : ""}</span><small>{item.resolved ? "已解决" : item.errorMessage}</small></div>)}</div> : null}
             </div> : null}
 
             {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">

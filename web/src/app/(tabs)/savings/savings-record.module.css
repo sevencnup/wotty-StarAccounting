@@ -1,0 +1,69 @@
+.recentActions {
+  display: grid;
+  grid-column: 3;
+  grid-row: 1 / span 3;
+  align-content: center;
+  justify-items: end;
+  gap: 6px;
+  min-width: 96px;
+}
+
+.progressSummary {
+  display: grid;
+  width: 100%;
+  gap: 3px;
+}
+
+.progressSummary small {
+  overflow: hidden;
+  color: #65718a;
+  font-size: calc(9px * var(--user-font-scale));
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progressTrack {
+  width: 100%;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5edf5;
+}
+
+.progressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0d8a5f;
+  transition: width 180ms ease;
+}
+
+.recentActions em {
+  grid-column: auto !important;
+  grid-row: auto !important;
+  font-size: calc(13px * var(--user-font-scale));
+}
+
+.recordButton {
+  min-height: 26px;
+  padding: 0 8px;
+  border: 1px solid rgba(0, 96, 192, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #0060c0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.recorded {
+  border-color: rgba(13, 138, 95, 0.18);
+  background: rgba(240, 253, 244, 0.9);
+  color: #0d8a5f;
+}
+
+.recordButton:active {
+  transform: scale(0.97);
+}

@@ -25,6 +25,7 @@ export interface DataRepository {
 
   getTransactions(accountId: string, page?: number, pageSize?: number): Promise<Transaction[]>;
   getTransactionsByMonth(accountId: string, month: string): Promise<Transaction[]>;
+  getTransactionsByMonths(accountId: string, months: string[]): Promise<Transaction[]>;
   getTransaction(id: string): Promise<Transaction | null>;
   saveTransaction(transaction: Transaction): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
@@ -46,6 +47,7 @@ export interface DataRepository {
   saveSavingsGoal(goal: SavingsGoal): Promise<void>;
   deleteSavingsGoal(id: string): Promise<void>;
   getSavingsPlans(goalId: string): Promise<SavingsPlan[]>;
+  getSavingsPlansByGoals(goalIds: string[]): Promise<SavingsPlan[]>;
   saveSavingsPlan(plan: SavingsPlan): Promise<void>;
   deleteSavingsPlan(id: string): Promise<void>;
 

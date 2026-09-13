@@ -7,9 +7,10 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft, type NewEntryDraftKind } from "@/lib/stark/storage/new-entry-drafts";
+import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
 import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
-import type { AssetType, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
+import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
 
 const SavingsPlanner = dynamic(
   () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
@@ -83,6 +84,9 @@ export function JournalPanel({
   savingsGoalId,
   savingsPlan,
   savingsGoal,
+  transaction,
+  asset,
+  loan,
 }: {
   onClose: () => void;
   onSaved?: () => void;
@@ -92,6 +96,9 @@ export function JournalPanel({
   savingsGoalId?: string;
   savingsPlan?: SavingsPlan;
   savingsGoal?: SavingsGoal;
+  transaction?: Transaction;
+  asset?: Asset;
+  loan?: Loan;
 }) {
   const isPage = mode === "page";
   const isSavings = variant === "savings";
@@ -99,6 +106,10 @@ export function JournalPanel({
   const isEditingSavings = isSavings && Boolean(savingsGoalId);
   const isAsset = variant === "asset";
   const isLoan = variant === "loan";
+  const isEditingTransaction = Boolean(transaction);
+  const isEditingAsset = isAsset && Boolean(asset);
+  const isEditingLoan = isLoan && Boolean(loan);
+  const isEditingEntity = isEditingTransaction || isEditingAsset || isEditingLoan;
   const isSalaryPreset = variant === "journal" && preset?.type === "INCOME" && preset.category === "工资";
   const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : isSalaryPreset ? "salary" : "journal";
   const [visible, setVisible] = useState(false);
@@ -145,6 +156,31 @@ export function JournalPanel({
   }, [type]);
 
   useEffect(() => {
+    if (transaction) {
+      setType(transaction.type);
+      setAmount(String(transaction.amount));
+      setCategory(transaction.category);
+      setPlatform(transaction.platform);
+      setMerchant(transaction.merchant ?? "");
+      setDescription(transaction.description ?? "");
+      setDate(transaction.date.slice(0, 16));
+    }
+    if (asset) {
+      setAssetName(asset.name);
+      setAssetBalance(String(asset.balance));
+      setAssetType(asset.type);
+    }
+    if (loan) {
+      setLoanPlatform(loan.platform);
+      setLoanTotalAmount(String(loan.totalAmount));
+      setLoanRemainingAmount(String(loan.remainingAmount));
+      setLoanMonthlyPayment(String(loan.monthlyPayment));
+      setLoanPeriods(String(loan.periods));
+      setLoanDueDay(String(loan.dueDate));
+    }
+  }, [asset, loan, transaction]);
+
+  useEffect(() => {
     if (type === "TRANSFER") setCategory("转账");
     if (type !== "TRANSFER" && category === "转账") setCategory(type === "INCOME" ? "工资" : "餐饮");
     if (type === "INCOME" && !incomeCategories.includes(category)) setCategory("工资");
@@ -160,6 +196,10 @@ export function JournalPanel({
   useEffect(() => {
     setDraftReady(false);
     draftSubmittedRef.current = false;
+    if (isEditingEntity) {
+      setDraftReady(true);
+      return;
+    }
     if (draftKind === "asset") {
       const draft = readNewEntryDraft<AssetDraft>(draftKind);
       if (draft) {
@@ -190,7 +230,7 @@ export function JournalPanel({
       }
     }
     setDraftReady(true);
-  }, [draftKind]);
+  }, [draftKind, isEditingEntity]);
 
   useEffect(() => {
     if (!isSavingsRecord || !savingsPlan) return;
@@ -200,7 +240,7 @@ export function JournalPanel({
   }, [isSavingsRecord, savingsPlan]);
 
   useEffect(() => {
-    if (!draftReady || isSavings || isSavingsRecord || draftSubmittedRef.current) return;
+    if (!draftReady || isSavings || isSavingsRecord || isEditingEntity || draftSubmittedRef.current) return;
     if (draftKind === "asset") {
       saveNewEntryDraft(draftKind, { assetName, assetBalance, assetType } satisfies AssetDraft);
     } else if (draftKind === "loan") {
@@ -208,7 +248,7 @@ export function JournalPanel({
     } else {
       saveNewEntryDraft(draftKind, { type, amount, category, platform, merchant, description, date } satisfies JournalDraft);
     }
-  }, [assetBalance, assetName, assetType, date, description, draftKind, draftReady, isSavings, loanDueDay, loanMonthlyPayment, loanPeriods, loanPlatform, loanRemainingAmount, loanTotalAmount, amount, category, merchant, platform, type]);
+  }, [assetBalance, assetName, assetType, date, description, draftKind, draftReady, isEditingEntity, isSavings, loanDueDay, loanMonthlyPayment, loanPeriods, loanPlatform, loanRemainingAmount, loanTotalAmount, amount, category, merchant, platform, type]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setVisible(true));
@@ -313,9 +353,9 @@ export function JournalPanel({
     if (!Number.isFinite(value) || value <= 0) return;
     const now = nowText();
     await repo.saveTransaction({
-      id: createId("transaction"),
-      userId: "local-user",
-      accountId: "default",
+      id: transaction?.id ?? createId("transaction"),
+      userId: transaction?.userId ?? "local-user",
+      accountId: transaction?.accountId ?? getCurrentAccountId(),
       amount: value,
       type,
       category,
@@ -323,11 +363,12 @@ export function JournalPanel({
       merchant: merchant || null,
       date: date.length === 16 ? `${date}:00` : date,
       description: description || null,
-      orderId: null,
-      paymentMethod: null,
-      status: null,
-      loanId: null,
-      createdAt: now,
+      orderId: transaction?.orderId ?? null,
+      paymentMethod: transaction?.paymentMethod ?? null,
+      status: transaction?.status ?? null,
+      loanId: transaction?.loanId ?? null,
+      remarkCategory: transaction?.remarkCategory ?? null,
+      createdAt: transaction?.createdAt ?? now,
       updatedAt: now,
     });
     draftSubmittedRef.current = true;
@@ -364,12 +405,10 @@ export function JournalPanel({
     setBatchSaving(true);
     setBatchNotice("正在检查已导入的工资记录...");
     try {
-      const monthTransactions = await Promise.all(
-        monthKeys.map((monthKey) => repo.getTransactionsByMonth("default", monthKey)),
-      );
+      const monthTransactions = await repo.getTransactionsByMonths(getCurrentAccountId(), monthKeys);
       const { pendingMonthKeys, skippedMonthKeys } = selectSalaryBatchMonths(
         monthKeys,
-        monthTransactions.flat() as Transaction[],
+        monthTransactions as Transaction[],
       );
       if (!pendingMonthKeys.length) {
         setBatchNotice(`所选 ${monthKeys.length} 个月都已有工资收入，未重复新增。`);
@@ -383,6 +422,7 @@ export function JournalPanel({
         platform,
         payday: Number(batchPayday),
         merchant: batchMerchant,
+        accountId: getCurrentAccountId(),
         now,
         createTransactionId: () => createId("salary-batch"),
       });
@@ -403,14 +443,14 @@ export function JournalPanel({
     if (!Number.isFinite(value) || value === 0) return;
     const now = nowText();
     await repo.saveAsset({
-      id: createId("asset"),
-      userId: "local-user",
-      accountId: "default",
+      id: asset?.id ?? createId("asset"),
+      userId: asset?.userId ?? "local-user",
+      accountId: asset?.accountId ?? getCurrentAccountId(),
       name: assetName.trim() || "新资产",
       type: assetType,
       balance: value,
       currency: "CNY",
-      createdAt: now,
+      createdAt: asset?.createdAt ?? now,
       updatedAt: now,
     });
     draftSubmittedRef.current = true;
@@ -427,19 +467,19 @@ export function JournalPanel({
     const now = nowText();
     const total = Number(loanTotalAmount) || 0;
     await repo.saveLoan({
-      id: createId("loan"),
-      userId: "local-user",
-      accountId: "default",
+      id: loan?.id ?? createId("loan"),
+      userId: loan?.userId ?? "local-user",
+      accountId: loan?.accountId ?? getCurrentAccountId(),
       platform: loanPlatform.trim() || "新贷款",
       totalAmount: total,
       remainingAmount: loanRemainingAmount === "" ? total : Number(loanRemainingAmount) || 0,
       periods: Math.max(1, Number(loanPeriods) || 12),
-      paidPeriods: 0,
+      paidPeriods: loan?.paidPeriods ?? 0,
       monthlyPayment: Number(loanMonthlyPayment) || 0,
       dueDate: Math.min(31, Math.max(1, Number(loanDueDay) || 20)),
-      status: "ACTIVE",
-      matchKeywords: null,
-      createdAt: now,
+      status: loan?.status ?? "ACTIVE",
+      matchKeywords: loan?.matchKeywords ?? null,
+      createdAt: loan?.createdAt ?? now,
       updatedAt: now,
     });
     draftSubmittedRef.current = true;
@@ -525,7 +565,7 @@ export function JournalPanel({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isSavingsRecord ? "记录储蓄" : isAsset ? "新增资产" : isLoan ? "新增贷款" : "记一笔"}</span>
+          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isSavingsRecord ? "记录储蓄" : isAsset ? (isEditingAsset ? "编辑资产" : "新增资产") : isLoan ? (isEditingLoan ? "编辑贷款" : "新增贷款") : (isEditingTransaction ? "编辑流水" : "记一笔")}</span>
           <button type="button" className="journal-close-btn" onClick={handleClose}>
             ×
           </button>

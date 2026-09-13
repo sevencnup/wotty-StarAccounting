@@ -1,7 +1,7 @@
 {
   "name": "wotty-stark-web",
   "private": true,
-  "version": "0.0.84",
+  "version": "0.0.85",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "next build",
@@ -14,9 +14,10 @@
     "@capacitor/android": "^6.2.1",
     "@capacitor/core": "^6.2.1",
     "echarts": "^6.1.0",
-    "next": "16.1.6",
+    "next": "16.3.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "three": "^0.185.1",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

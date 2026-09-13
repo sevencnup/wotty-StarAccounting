@@ -7,6 +7,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
+import { JournalPanel } from "@/components/stark/JournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
@@ -29,8 +30,7 @@ const repo = new DataModeManager().getRepository();
 
 async function getTransactionsForReportingPeriod(accountId: string, period: string) {
   const months = reportingPeriodMonths(period);
-  const rows = await Promise.all(months.map((month) => repo.getTransactionsByMonth(accountId, month)));
-  return rows.flat();
+  return repo.getTransactionsByMonths(accountId, months);
 }
 
 type ViewMode = "expense" | "income" | "all";
@@ -108,7 +108,7 @@ export default function ConsumptionPage() {
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [reportingMonth, setReportingMonth] = useState("2026-01");
-  const [accountId, setAccountId] = useState("default");
+  const [accountId, setAccountId] = useState(() => getCurrentAccountId());
   const [monthReady, setMonthReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("expense");
   const [categoryFilter, setCategoryFilter] = useState("全部分类");
@@ -118,6 +118,7 @@ export default function ConsumptionPage() {
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(true);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [filterMenuPosition, setFilterMenuPosition] = useState({ top: 0, left: 0, width: 300 });
   const categoryFilterRef = useRef<HTMLDivElement>(null);
   const categoryMenuRef = useRef<HTMLDivElement>(null);
@@ -328,6 +329,13 @@ export default function ConsumptionPage() {
     setPlatformFilter("全部账户");
     setQuery("");
     setDetailQuery("");
+  }
+
+  async function deleteTransaction(item: Transaction) {
+    if (!window.confirm("确定删除这笔流水吗？")) return;
+    await repo.deleteTransaction(item.id);
+    setEditingTransaction(null);
+    window.dispatchEvent(new Event("stark:transaction-saved"));
   }
 
   if (loading) {
@@ -554,6 +562,7 @@ export default function ConsumptionPage() {
                 <strong className={`recent-amount ${display.type === "INCOME" ? "income" : display.type === "EXPENSE" ? "expense" : "transfer"}`}>
                   {display.type === "INCOME" ? "+¥ " : display.type === "EXPENSE" ? "-¥ " : "±¥ "}{formatMoney(item.amount)}
                 </strong>
+                <div className="finance-item-actions"><button type="button" onClick={() => setEditingTransaction(item)}>编辑</button><button type="button" onClick={() => void deleteTransaction(item)}>删除</button></div>
               </div>
             );
           }) : <div className="consumption-empty-state">{locale === "en-US" ? "No transactions match the current filters" : "当前筛选下暂无流水"}</div>}
@@ -564,6 +573,7 @@ export default function ConsumptionPage() {
         {showDeepAnalysis ? (locale === "en-US" ? "Hide deep analysis" : "收起深入分析") : (locale === "en-US" ? "Show deep analysis" : "展开深入分析")}
         <ChevronDownIcon />
       </button>
+      {editingTransaction ? <JournalPanel mode="sheet" variant="journal" transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={() => { setEditingTransaction(null); }} /> : null}
     </div>
   );
 }

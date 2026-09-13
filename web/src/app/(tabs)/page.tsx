@@ -6,7 +6,7 @@ import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
-import { getCloudApiUrl, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
+import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
   type HomeSummary,
@@ -380,7 +380,7 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
         </div>
       </Link>
 
-      <Link href="/consumption" className="stark-compass-card budget">
+      <Link href="/budgets" className="stark-compass-card budget">
         <div className="compass-header">
           <span className="compass-icon-wrapper budget">
             <TargetIcon size={14} strokeWidth={2.2} color="#0284c7" />
@@ -645,16 +645,22 @@ export default function HomePage() {
       setLoading(true);
       setLoadError("");
       try {
-        const monthKeys = isReportingYearKey(reportingMonth)
-          ? [...reportingPeriodMonths(previousMonthKey(reportingMonth)), ...reportingPeriodMonths(reportingMonth)]
-          : reportingMonthSequence(reportingMonth, 5);
-        const [monthlyTransactions, a, b, l, s] = await Promise.all([
-          Promise.all(monthKeys.map((month) => repo.getTransactionsByMonth("default", month))),
-          repo.getAssets("default"),
-          repo.getBudgets("default"),
-          repo.getLoans("default"),
-          repo.getSavingsGoals("default"),
+        const accountId = getCurrentAccountId();
+        const [a, b, l, s] = await Promise.all([
+          repo.getAssets(accountId),
+          repo.getBudgets(accountId),
+          repo.getLoans(accountId),
+          repo.getSavingsGoals(accountId),
         ]);
+        const selectedYear = isReportingYearKey(reportingMonth) ? reportingMonth : reportingMonth.slice(0, 4);
+        const selectedYearMonths = reportingPeriodMonths(selectedYear);
+        const monthKeys = isReportingYearKey(reportingMonth)
+          ? [...reportingPeriodMonths(previousMonthKey(reportingMonth)), ...selectedYearMonths]
+          : [...new Set([
+            ...reportingMonthSequence(reportingMonth, 5),
+            ...(b.some((budget) => budget.period === "YEARLY") ? selectedYearMonths : []),
+          ])];
+        const monthlyTransactions = await repo.getTransactionsByMonths(accountId, monthKeys);
         if (!active) return;
         setTransactions(monthlyTransactions.flat());
         setAssets(a);

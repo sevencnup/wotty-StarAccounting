@@ -5,8 +5,10 @@ import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
+import { JournalPanel } from "@/components/stark/JournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { REPORTING_MONTH_KEY, clampPercent, formatMoney, monthKey } from "@/lib/stark/utils/format";
+import { REPORTING_MONTH_KEY, clampPercent, formatMoney, isReportingYearKey, monthKey, reportingPeriodMonths } from "@/lib/stark/utils/format";
+import { getCurrentAccountId, getSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import type { Loan, Transaction } from "@/lib/stark/models";
 import type { EChartsCoreOption } from "echarts/core";
 
@@ -73,7 +75,8 @@ function buildForecastChartOption(activeLoans: Loan[]): EChartsCoreOption {
       right: 16,
       top: 24,
       bottom: 24,
-      containLabel: true,
+      outerBoundsMode: "same",
+      outerBoundsContain: "axisLabel",
     },
     tooltip: {
       trigger: "axis",
@@ -166,9 +169,11 @@ export default function LoansPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
+  const [reportingMonth, setReportingMonth] = useState(() => getSelectedReportMonth());
+  const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
 
   const reload = () => {
-    void repo.getLoans("default")
+    void repo.getLoans(getCurrentAccountId())
       .then((loans) => {
         setList(loans);
         setLoadError(false);
@@ -176,13 +181,20 @@ export default function LoansPage() {
       .catch(() => setLoadError(true));
   };
 
+  async function deleteLoan(item: Loan) {
+    if (!window.confirm(`确定删除贷款“${item.platform}”吗？`)) return;
+    await repo.deleteLoan(item.id);
+    setEditingLoan(null);
+    reload();
+  }
+
   useEffect(() => {
     let active = true;
     setLoading(true);
     setLoadError(false);
     void Promise.all([
-      repo.getLoans("default"),
-      repo.getTransactions("default", 1, 200),
+      repo.getLoans(getCurrentAccountId()),
+      repo.getTransactionsByMonths(getCurrentAccountId(), isReportingYearKey(reportingMonth) ? reportingPeriodMonths(reportingMonth) : [reportingMonth]),
     ]).then(([loans, records]) => {
       if (!active) return;
       setList(loans);
@@ -193,7 +205,7 @@ export default function LoansPage() {
       if (active) setLoading(false);
     });
     return () => { active = false; };
-  }, [loadVersion]);
+  }, [loadVersion, reportingMonth]);
 
   useEffect(() => {
     const handleLoanSaved = () => reload();
@@ -210,7 +222,7 @@ export default function LoansPage() {
     const remainingPeriods = activeLoans.reduce((sum, item) => sum + Math.max(0, item.periods - item.paidPeriods), 0);
     const progress = total > 0 ? clampPercent((repaid / total) * 100) : 0;
     const income = transactions
-      .filter((item) => item.type === "INCOME" && monthKey(item.date) === REPORTING_MONTH_KEY)
+      .filter((item) => item.type === "INCOME" && (reportingMonth.length === 7 ? monthKey(item.date) === reportingMonth : item.date.slice(0, 4) === reportingMonth))
       .reduce((sum, item) => sum + item.amount, 0);
     const pressure = income > 0 ? (monthly / income) * 100 : null;
     const maxRemainingMonths = activeLoans.length
@@ -220,7 +232,7 @@ export default function LoansPage() {
       ? new Date().getFullYear() + Math.ceil(maxRemainingMonths / 12)
       : null;
     return { activeLoans, total, remaining, repaid, monthly, remainingPeriods, progress, income, pressure, maxRemainingMonths, estimatedCompletionYear };
-  }, [list, transactions]);
+  }, [list, reportingMonth, transactions]);
 
   const debtStructure = useMemo(() => {
     if (!summary.remaining) return [];
@@ -415,11 +427,13 @@ export default function LoansPage() {
                   <span>已还 ¥ {formatMoney(repaidAmount)} ({Math.round(progress)}%)</span>
                   <strong>月供 ¥ {formatMoney(loan.monthlyPayment)}</strong>
                 </div>
+                <div className="finance-item-actions"><button type="button" onClick={() => setEditingLoan(loan)}>编辑</button><button type="button" onClick={() => void deleteLoan(loan)}>删除</button></div>
               </article>
             );
           }) : <div className="finance-empty bordered">暂无贷款，新增后会显示还款节奏</div>}
         </div>
       </section>
+      {editingLoan ? <JournalPanel mode="sheet" variant="loan" loan={editingLoan} onClose={() => setEditingLoan(null)} onSaved={() => { setEditingLoan(null); reload(); }} /> : null}
     </div>
   );
 }

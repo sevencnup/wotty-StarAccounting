@@ -138,6 +138,17 @@ export class LocalRepository implements DataRepository {
     );
   }
 
+  async getTransactionsByMonths(accountId: string, months: string[]) {
+    await this.ensureSeeded();
+    const targetAccountId = accountId || getCurrentAccountId();
+    const monthSet = new Set(months);
+    return sortByDateDesc(
+      (await getAllRecords<Transaction>("transactions")).filter(
+        (item) => item.accountId === targetAccountId && monthSet.has(item.date.slice(0, 7)),
+      ),
+    );
+  }
+
   async getTransaction(id: string) {
     await this.ensureSeeded();
     return (await getRecord<Transaction>("transactions", id)) ?? null;
@@ -155,7 +166,9 @@ export class LocalRepository implements DataRepository {
 
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
     await this.ensureSeeded();
-    const existing = await getAllRecords<Transaction>("transactions");
+    const accountId = transactions[0]?.accountId ?? getCurrentAccountId();
+    const existing = (await getAllRecords<Transaction>("transactions"))
+      .filter((transaction) => transaction.accountId === accountId);
     const { pending, skipped } = selectTransactionsForImport(transactions, existing);
     await putManyRecords("transactions", pending);
     return {
@@ -232,6 +245,12 @@ export class LocalRepository implements DataRepository {
   async getSavingsPlans(goalId: string) {
     await this.ensureSeeded();
     return (await getAllRecords<SavingsPlan>("savingsPlans")).filter((item) => item.goalId === goalId);
+  }
+
+  async getSavingsPlansByGoals(goalIds: string[]) {
+    await this.ensureSeeded();
+    const goalSet = new Set(goalIds);
+    return (await getAllRecords<SavingsPlan>("savingsPlans")).filter((item) => goalSet.has(item.goalId));
   }
 
   async saveSavingsPlan(plan: SavingsPlan) {

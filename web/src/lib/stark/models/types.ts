@@ -197,4 +197,12 @@ export interface ImportResult {
   imported: number;
   skipped: number;
   errors: number;
+  failedRows?: ImportFailedRow[];
+}
+
+export interface ImportFailedRow {
+  lineNumber: number;
+  rawData: string;
+  errorMessage: string;
+  errorType: string;
 }

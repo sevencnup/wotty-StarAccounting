@@ -4,6 +4,7 @@ import {
   splitReportingMonthTransactions,
 } from "@/lib/stark/dashboard/reporting-month";
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
+import { calculateBudgetSpent } from "./budget-period";
 
 export interface HomeTrend {
   labels: string[];
@@ -302,22 +303,21 @@ function buildRecent(transactions: Transaction[]) {
     });
 }
 
-function buildBudgetAlerts(transactions: Transaction[], budgets: Budget[], totalExpense: number): HomeBudgetAlert[] {
+function buildBudgetAlerts(
+  transactions: Transaction[],
+  budgets: Budget[],
+  totalExpense: number,
+  reportingMonth: string,
+): HomeBudgetAlert[] {
   if (!budgets.length) return [];
 
-  const expenseTransactions = transactions.filter((item) => item.type === "EXPENSE");
+  const expenseTransactions = transactions.filter((item) => item.type === "EXPENSE" && (isReportingYearKey(reportingMonth) ? item.date.slice(0, 4) === reportingMonth : item.date.slice(0, 7) === reportingMonth));
   return budgets
     .map((budget) => {
-      const spent = budget.scopeType === "GLOBAL"
-        ? totalExpense
-        : budget.scopeType === "PLATFORM"
-          ? expenseTransactions.filter((item) => item.platform === budget.platform).reduce((sum, item) => sum + item.amount, 0)
-          : expenseTransactions
-              .filter((item) => normalizeCategory(item.category) === normalizeCategory(budget.category))
-              .reduce((sum, item) => sum + item.amount, 0);
+      const spent = calculateBudgetSpent(transactions, budget, reportingMonth, totalExpense);
       const percent = clampPercent(budget.amount > 0 ? (spent / budget.amount) * 100 : 0);
       const title = budget.scopeType === "GLOBAL"
-        ? "本月总预算"
+        ? budget.period === "YEARLY" ? "年度总预算" : "本月总预算"
         : budget.scopeType === "PLATFORM"
           ? `${budget.platform || "平台"}预算`
           : `${normalizeCategory(budget.category)}预算`;
@@ -488,7 +488,7 @@ export function buildHomeSummary(input: {
   const liabilityTotal = loanTotal;
   const budgetAmount = input.budgets.reduce((sum, item) => sum + item.amount, 0);
 
-  const budgetAlerts = buildBudgetAlerts(currentMonthTransactions, input.budgets, expense);
+  const budgetAlerts = buildBudgetAlerts(input.transactions, input.budgets, expense, currentMonth);
 
   return {
     expense,

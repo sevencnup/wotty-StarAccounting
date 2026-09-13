@@ -1,41 +1,68 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import * as echarts from "echarts/core";
-import { GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent } from "echarts/components";
-import { LineChart, PieChart, BarChart, SankeyChart, HeatmapChart } from "echarts/charts";
-import { CanvasRenderer } from "echarts/renderers";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
-
-echarts.use([GridComponent, TooltipComponent, CalendarComponent, VisualMapComponent, LineChart, PieChart, BarChart, SankeyChart, HeatmapChart, CanvasRenderer]);
 
 export function EChartView({ option, className }: { option: EChartsCoreOption; className?: string }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<EChartsType | null>(null);
+  const optionRef = useRef(option);
+
+  useEffect(() => {
+    optionRef.current = option;
+    instanceRef.current?.setOption(option, true);
+  }, [option]);
 
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
-    const chart = echarts.init(root, undefined, { renderer: "canvas" });
-    instanceRef.current = chart;
-    chart.setOption(option, true);
+    let disposed = false;
+    let resizeObserver: ResizeObserver | null = null;
 
-    const resizeObserver = new ResizeObserver(() => {
-      chart.resize();
-    });
-    resizeObserver.observe(root);
+    async function initializeChart() {
+      // ECharts is intentionally loaded after the page has painted. Keeping this
+      // heavyweight library out of the navigation-critical bundle prevents a tab
+      // change from blocking on chart parsing and initialization.
+      const [echarts, components, charts, renderers] = await Promise.all([
+        import("echarts/core"),
+        import("echarts/components"),
+        import("echarts/charts"),
+        import("echarts/renderers"),
+      ]);
+
+      if (disposed) return;
+
+      echarts.use([
+        components.GridComponent,
+        components.TooltipComponent,
+        components.CalendarComponent,
+        components.VisualMapComponent,
+        charts.LineChart,
+        charts.PieChart,
+        charts.BarChart,
+        charts.SankeyChart,
+        charts.HeatmapChart,
+        renderers.CanvasRenderer,
+      ]);
+
+      const chart = echarts.init(root!, undefined, { renderer: "canvas" });
+      instanceRef.current = chart;
+      chart.setOption(optionRef.current, true);
+
+      resizeObserver = new ResizeObserver(() => chart.resize());
+      resizeObserver.observe(root!);
+    }
+
+    void initializeChart();
 
     return () => {
-      resizeObserver.disconnect();
-      chart.dispose();
+      disposed = true;
+      resizeObserver?.disconnect();
+      instanceRef.current?.dispose();
       instanceRef.current = null;
     };
   }, []);
-
-  useEffect(() => {
-    instanceRef.current?.setOption(option, true);
-  }, [option]);
 
   return <div ref={rootRef} className={className} />;
 }

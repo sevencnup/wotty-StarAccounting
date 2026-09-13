@@ -5,8 +5,10 @@ import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
+import { JournalPanel } from "@/components/stark/JournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { clampPercent, formatMoney } from "@/lib/stark/utils/format";
+import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { Asset, AssetType, Loan, SavingsGoal } from "@/lib/stark/models";
 import type { EChartsCoreOption } from "echarts/core";
 
@@ -58,8 +60,10 @@ export default function AssetsPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
   const reload = () => {
-    void Promise.all([repo.getAssets("default"), repo.getSavingsGoals("default"), repo.getLoans("default")])
+    const accountId = getCurrentAccountId();
+    void Promise.all([repo.getAssets(accountId), repo.getSavingsGoals(accountId), repo.getLoans(accountId)])
       .then(([assets, savings, loanList]) => {
         setList(assets);
         setSavingsGoals(savings);
@@ -69,11 +73,19 @@ export default function AssetsPage() {
       .catch(() => setLoadError(true));
   };
 
+  async function deleteAsset(item: Asset) {
+    if (!window.confirm(`确定删除资产“${item.name}”吗？`)) return;
+    await repo.deleteAsset(item.id);
+    setEditingAsset(null);
+    reload();
+  }
+
   useEffect(() => {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void Promise.all([repo.getAssets("default"), repo.getSavingsGoals("default"), repo.getLoans("default")])
+    const accountId = getCurrentAccountId();
+    void Promise.all([repo.getAssets(accountId), repo.getSavingsGoals(accountId), repo.getLoans(accountId)])
       .then(([assets, savings, loanList]) => {
         if (!active) return;
         setList(assets);
@@ -273,6 +285,7 @@ export default function AssetsPage() {
                     <small>{typeMeta[item.type].label}</small>
                   </div>
                   <strong className="asset-item-val">¥ {formatMoney(item.balance)}</strong>
+                  <div className="finance-item-actions"><button type="button" onClick={() => setEditingAsset(item)}>编辑</button><button type="button" onClick={() => void deleteAsset(item)}>删除</button></div>
                 </div>
               ))}
               {summary.savingsTotal > 0 ? (
@@ -306,6 +319,7 @@ export default function AssetsPage() {
                     <small>{typeMeta[item.type].label}</small>
                   </div>
                   <strong className="asset-item-val liability">¥ {formatMoney(Math.abs(item.balance))}</strong>
+                  <div className="finance-item-actions"><button type="button" onClick={() => setEditingAsset(item)}>编辑</button><button type="button" onClick={() => void deleteAsset(item)}>删除</button></div>
                 </div>
               ))}
               {summary.loanTotal > 0 ? (
@@ -325,6 +339,7 @@ export default function AssetsPage() {
           </div>
         </div>
       </section>
+      {editingAsset ? <JournalPanel mode="sheet" variant="asset" asset={editingAsset} onClose={() => setEditingAsset(null)} onSaved={() => { setEditingAsset(null); reload(); }} /> : null}
     </div>
   );
 }
