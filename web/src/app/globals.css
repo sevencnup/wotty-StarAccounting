@@ -8237,9 +8237,13 @@ nextjs-portal {
   border-bottom: 1px solid #edf1f5;
 }
 
-.help-sheet-body strong { color: #202b41; font-size: calc(11px * var(--user-font-scale)); }
-.help-sheet-body p { margin: 6px 0 0; color: #768297; font-size: calc(9px * var(--user-font-scale)); line-height: 1.55; }
-.help-sheet-body a { display: flex; align-items: center; justify-content: space-between; min-height: 42px; color: var(--primary); font-size: calc(11px * var(--user-font-scale)); text-decoration: none; }
+.help-sheet-body {
+  font-size: calc(14px * var(--user-font-scale));
+}
+
+.help-sheet-body strong { color: #202b41; font-size: calc(13px * var(--user-font-scale)); font-weight: 600; line-height: 1.4; }
+.help-sheet-body p { margin: 6px 0 0; color: #768297; font-size: calc(11px * var(--user-font-scale)); line-height: 1.55; }
+.help-sheet-body a { display: flex; align-items: center; justify-content: space-between; min-height: 42px; color: var(--primary); font-size: calc(12px * var(--user-font-scale)); font-weight: 500; text-decoration: none; }
 .help-sheet-body a svg { width: 15px; height: 15px; }
 
 .settings-about {
