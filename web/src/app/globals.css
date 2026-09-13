@@ -8240,10 +8240,10 @@ nextjs-portal {
 
 .settings-about > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; color: #ffffff; background: #0060c0; }
 .settings-about > span svg { width: 31px; height: 31px; }
-.settings-about > strong { margin-top: 12px; color: #172033; font-size: calc(16px * var(--user-font-scale)); }
-.settings-about p { margin: 6px 0 0; color: #657289; font-size: calc(10px * var(--user-font-scale)); }
-.settings-about small { margin-top: 12px; color: #7d889a; font-size: calc(9px * var(--user-font-scale)); }
-.settings-about div { margin-top: 15px; padding: 8px 12px; border-radius: 999px; color: #748198; background: #f1f5f9; font-size: calc(9px * var(--user-font-scale)); }
+.settings-about > strong { margin-top: 12px; color: #172033; font-size: calc(19px * var(--user-font-scale)); font-weight: 650; }
+.settings-about p { margin: 7px 0 0; color: #657289; font-size: calc(13px * var(--user-font-scale)); }
+.settings-about small { margin-top: 14px; color: #66748b; font-size: calc(12px * var(--user-font-scale)); line-height: 1.5; }
+.settings-about div { margin-top: 16px; padding: 9px 14px; border-radius: 999px; color: #62718a; background: #f1f5f9; font-size: calc(11px * var(--user-font-scale)); }
 
 /* Distinct page identities: consumption, loans and assets */
 .consumption-page {
