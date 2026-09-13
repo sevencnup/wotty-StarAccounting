@@ -7637,6 +7637,19 @@ nextjs-portal {
   background: #f8fafd;
 }
 
+.settings-center-row.disabled {
+  cursor: default;
+  color: #94a3b8;
+}
+
+.settings-center-row.disabled .settings-center-value {
+  color: #94a3b8;
+}
+
+.settings-center-row.disabled .settings-center-chevron {
+  opacity: 0.35;
+}
+
 .settings-center-icon {
   display: grid;
   place-items: center;
