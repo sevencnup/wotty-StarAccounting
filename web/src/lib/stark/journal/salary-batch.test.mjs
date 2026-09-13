@@ -37,7 +37,7 @@ test("creates one stable salary income record for each pending month", () => {
     amount: 9600,
     platform: "银行卡",
     payday: 31,
-    merchant: "星记账科技",
+    merchant: "星会计科技",
     now: "2026-09-12 10:00:00",
     createTransactionId: (month) => `transaction-${month}`,
   });
@@ -45,5 +45,5 @@ test("creates one stable salary income record for each pending month", () => {
   assert.deepEqual(records.map((record) => record.date), ["2025-01-28 09:00:00", "2025-02-28 09:00:00"]);
   assert.deepEqual(records.map((record) => record.orderId), ["salary-batch:2025-01", "salary-batch:2025-02"]);
   assert.equal(records[0].category, "工资");
-  assert.equal(records[0].merchant, "星记账科技");
+  assert.equal(records[0].merchant, "星会计科技");
 });

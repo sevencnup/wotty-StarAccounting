@@ -102,7 +102,7 @@ export function AppUpdatePrompt() {
       <section className="app-update-card">
         <div className="app-update-icon" aria-hidden="true">↗</div>
         <p className="app-update-kicker">发现新版本</p>
-        <h2 id="app-update-title">星记账 {info.versionName}</h2>
+        <h2 id="app-update-title">星会计 {info.versionName}</h2>
         <p className="app-update-copy">当前版本 {CURRENT_APP_VERSION_NAME}，有新的 App 版本可用。</p>
         {info.changelog ? <p className="app-update-changelog">{info.changelog}</p> : null}
         {update.unavailable ? <p className="app-update-unavailable">服务器尚未配置 APK 下载地址，请稍后再试。</p> : null}
