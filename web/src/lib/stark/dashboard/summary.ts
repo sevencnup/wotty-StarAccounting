@@ -5,7 +5,7 @@ import {
 } from "@/lib/stark/dashboard/reporting-month";
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
-import { calculateSalaryCycleCashflow } from "./salary-cycle";
+import { calculateCalendarPeriodCashflow, calculateSalaryCycleCashflow } from "./salary-cycle";
 
 export interface HomeTrend {
   labels: string[];
@@ -73,6 +73,8 @@ export interface HomeForecast {
   cycleExpense: number;
   cycleSavings: number;
   cycleRepayment: number;
+  monthSavings: number;
+  monthRepayment: number;
 }
 
 export interface HomeInsight {
@@ -380,7 +382,8 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
 }
 
 function buildForecast(transactions: Transaction[], savingsPlans: SavingsPlan[], income: number, expense: number, salaryDay: number, reportingMonth: string): HomeForecast {
-  const monthBalance = income - expense;
+  const periodCashflow = calculateCalendarPeriodCashflow(transactions, savingsPlans, reportingMonth);
+  const monthBalance = periodCashflow.balance;
   const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay);
   return {
     projectedIncome: income,
@@ -396,6 +399,8 @@ function buildForecast(transactions: Transaction[], savingsPlans: SavingsPlan[],
     cycleExpense: cashflow.expense,
     cycleSavings: cashflow.savings,
     cycleRepayment: cashflow.repayment,
+    monthSavings: periodCashflow.savings,
+    monthRepayment: periodCashflow.repayment,
   };
 }
 

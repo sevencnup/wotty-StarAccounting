@@ -49,6 +49,24 @@ function formatDate(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
 
+function calendarPeriodRange(reportingPeriod: string): SalaryCycleRange {
+  if (isReportingYearKey(reportingPeriod)) {
+    const year = Number(reportingPeriod);
+    return {
+      start: new Date(year, 0, 1),
+      endExclusive: new Date(year + 1, 0, 1),
+      label: `${reportingPeriod}-01-01 至 ${reportingPeriod}-12-31`,
+    };
+  }
+  const start = reportingMonthDate(reportingPeriod);
+  const endExclusive = new Date(start.getFullYear(), start.getMonth() + 1, 1);
+  return {
+    start,
+    endExclusive,
+    label: `${formatDate(start)} 至 ${formatDate(new Date(endExclusive.getTime() - 86_400_000))}`,
+  };
+}
+
 export function isWithinSalaryCycle(value: string | null | undefined, range: SalaryCycleRange) {
   const date = parseDate(value);
   return Boolean(date && date >= range.start && date < range.endExclusive);
@@ -66,6 +84,22 @@ export function calculateSalaryCycleCashflow(
   salaryDay = 15,
 ) {
   const range = salaryCycleRange(reportingMonth, salaryDay);
+  return calculateCashflowForRange(transactions, savingsPlans, range);
+}
+
+export function calculateCalendarPeriodCashflow(
+  transactions: Transaction[],
+  savingsPlans: SavingsPlan[] = [],
+  reportingPeriod: string,
+) {
+  return calculateCashflowForRange(transactions, savingsPlans, calendarPeriodRange(reportingPeriod));
+}
+
+function calculateCashflowForRange(
+  transactions: Transaction[],
+  savingsPlans: SavingsPlan[],
+  range: SalaryCycleRange,
+) {
   const cycleTransactions = transactions.filter((transaction) => isWithinSalaryCycle(transaction.date, range));
   const income = cycleTransactions
     .filter((transaction) => transaction.type === "INCOME")

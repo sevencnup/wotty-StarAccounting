@@ -287,12 +287,12 @@ function StarkCrystalHero({
             {isNegative ? "-¥ " : "¥ "}{formatMoney(Math.abs(displayAmount))}
           </strong>
         </div>
-        {activeMetric === "balance" && balanceMode === "salary" ? (
+        {activeMetric === "balance" ? (
           <div className="stark-cycle-breakdown" aria-label="发薪周期资金明细">
-            <span>收入 ¥{formatMoney(summary.forecast.cycleIncome)}</span>
-            <span>消费 ¥{formatMoney(summary.forecast.cycleExpense)}</span>
-            <span>储蓄 ¥{formatMoney(summary.forecast.cycleSavings)}</span>
-            <span>还款 ¥{formatMoney(summary.forecast.cycleRepayment)}</span>
+            <span>{balanceMode === "salary" ? "收入" : "月收入"} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
+            <span>{balanceMode === "salary" ? "消费" : "月消费"} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
+            <span>储蓄 ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
+            <span>还款 ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
           </div>
         ) : null}
 
