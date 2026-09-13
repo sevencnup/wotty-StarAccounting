@@ -76,8 +76,11 @@ export default function SavingsPage() {
       }
     }
     void loadSavingsDashboard();
+    const handleSavingsSaved = () => { void loadSavingsDashboard(); };
+    window.addEventListener("stark:savings-saved", handleSavingsSaved);
     return () => {
       active = false;
+      window.removeEventListener("stark:savings-saved", handleSavingsSaved);
     };
   }, [loadVersion]);
 

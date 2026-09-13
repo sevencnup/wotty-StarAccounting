@@ -210,6 +210,7 @@ object SavingsPlans : Table("savingsplan") {
     val salary = decimal("salary", 65, 30).nullable()
     val proofImage = text("proofImage").nullable()
     val actualAmount = decimal("actualAmount", 65, 30).nullable()
+    val actualDate = datetime("actualDate").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -653,6 +654,7 @@ private fun ResultRow.toSavingsPlanRecord() = SyncRecordRow(
         "salary" to this[SavingsPlans.salary]?.toDouble(),
         "proofImage" to this[SavingsPlans.proofImage],
         "actualAmount" to this[SavingsPlans.actualAmount]?.toDouble(),
+        "actualDate" to this[SavingsPlans.actualDate]?.let(::formatDateTime),
     ),
     updatedAt = formatDateTime(this[SavingsPlans.updatedAt]),
 )
@@ -836,6 +838,7 @@ private fun upsertSavingsPlan(payload: JsonObject) = upsertById(SavingsPlans, Sa
         row[SavingsPlans.salary] = payload.getNullableDecimal("salary")
         row[SavingsPlans.proofImage] = payload.getNullableString("proofImage")
         row[SavingsPlans.actualAmount] = payload.getNullableDecimal("actualAmount")
+        row[SavingsPlans.actualDate] = payload.getNullableDateTime("actualDate")
     }
 
 private fun upsertCategoryRule(payload: JsonObject) = upsertById(TransactionCategoryRules, TransactionCategoryRules.id, payload.getString("id")) { row ->

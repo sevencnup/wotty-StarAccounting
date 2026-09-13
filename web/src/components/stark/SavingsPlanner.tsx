@@ -485,12 +485,14 @@ export function SavingsPlanner({
           remark: planRemark(frequency),
           proofImage: previousPlan?.proofImage ?? null,
           actualAmount: previousPlan?.actualAmount ?? null,
+          actualDate: previousPlan?.actualDate ?? null,
           createdAt: row.createdAt ?? previousPlan?.createdAt ?? now,
           updatedAt: now,
         };
         return plan;
       });
       await Promise.all(nextPlans.map((plan) => repo.saveSavingsPlan(plan)));
+      window.dispatchEvent(new Event("stark:savings-saved"));
       persistedPlansRef.current = [...otherModePlans, ...nextPlans];
 
       setGoal(nextGoal);

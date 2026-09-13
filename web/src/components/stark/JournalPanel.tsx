@@ -91,7 +91,7 @@ export function JournalPanel({
   onClose: () => void;
   onSaved?: () => void;
   mode?: "sheet" | "page";
-  variant?: "journal" | "savings" | "savings-record" | "asset" | "loan";
+  variant?: "journal" | "savings" | "savings-record" | "asset" | "loan" | "repayment";
   preset?: { type: TransactionType; category: string };
   savingsGoalId?: string;
   savingsPlan?: SavingsPlan;
@@ -106,10 +106,11 @@ export function JournalPanel({
   const isEditingSavings = isSavings && Boolean(savingsGoalId);
   const isAsset = variant === "asset";
   const isLoan = variant === "loan";
+  const isRepayment = variant === "repayment";
   const isEditingTransaction = Boolean(transaction);
   const isEditingAsset = isAsset && Boolean(asset);
   const isEditingLoan = isLoan && Boolean(loan);
-  const isEditingEntity = isEditingTransaction || isEditingAsset || isEditingLoan;
+  const isEditingEntity = isEditingTransaction || isEditingAsset || isEditingLoan || isRepayment;
   const isSalaryPreset = variant === "journal" && preset?.type === "INCOME" && preset.category === "工资";
   const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : isSalaryPreset ? "salary" : "journal";
   const [visible, setVisible] = useState(false);
@@ -130,6 +131,7 @@ export function JournalPanel({
   const [loanPeriods, setLoanPeriods] = useState("12");
   const [loanDueDay, setLoanDueDay] = useState("20");
   const [recordedAmount, setRecordedAmount] = useState("");
+  const [recordedDate, setRecordedDate] = useState(nowText().slice(0, 16));
   const [proofImage, setProofImage] = useState<string | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
   const [recordNotice, setRecordNotice] = useState("");
@@ -178,7 +180,14 @@ export function JournalPanel({
       setLoanPeriods(String(loan.periods));
       setLoanDueDay(String(loan.dueDate));
     }
-  }, [asset, loan, transaction]);
+    if (isRepayment && loan) {
+      setType("REPAYMENT");
+      setCategory("还款");
+      setPlatform(loan.platform);
+      setAmount(String(loan.monthlyPayment || ""));
+      setDate(nowText().slice(0, 16));
+    }
+  }, [asset, isRepayment, loan, transaction]);
 
   useEffect(() => {
     if (type === "TRANSFER") setCategory("转账");
@@ -235,6 +244,7 @@ export function JournalPanel({
   useEffect(() => {
     if (!isSavingsRecord || !savingsPlan) return;
     setRecordedAmount(String(savingsPlan.actualAmount ?? savingsPlan.amount ?? ""));
+    setRecordedDate((savingsPlan.actualDate ?? savingsPlan.updatedAt ?? nowText()).slice(0, 16));
     setProofImage(savingsPlan.proofImage ?? null);
     setRecordNotice("");
   }, [isSavingsRecord, savingsPlan]);
@@ -379,6 +389,45 @@ export function JournalPanel({
     setDate(nowText().slice(0, 16));
     if (type !== "TRANSFER") setCategory(type === "INCOME" ? "工资" : "餐饮");
     window.dispatchEvent(new Event("stark:transaction-saved"));
+    onSaved?.();
+    handleClose();
+  }
+
+  async function saveRepayment() {
+    if (!loan) return;
+    const value = Number(amount);
+    if (!Number.isFinite(value) || value <= 0 || loan.remainingAmount <= 0) return;
+    const now = nowText();
+    const paidInstallment = loan.monthlyPayment > 0 && value >= loan.monthlyPayment;
+    const remainingAmount = Math.max(0, loan.remainingAmount - value);
+    await repo.saveTransaction({
+      id: createId("repayment"),
+      userId: loan.userId,
+      accountId: loan.accountId,
+      amount: Math.min(value, loan.remainingAmount),
+      type: "REPAYMENT",
+      category: "还款",
+      platform: loan.platform,
+      merchant: loan.platform,
+      date: date.length === 16 ? `${date}:00` : date,
+      description: description || null,
+      orderId: null,
+      paymentMethod: null,
+      status: "COMPLETED",
+      loanId: loan.id,
+      remarkCategory: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+    await repo.saveLoan({
+      ...loan,
+      remainingAmount,
+      paidPeriods: Math.min(loan.periods, loan.paidPeriods + (paidInstallment ? 1 : 0)),
+      status: remainingAmount <= 0 ? "PAID_OFF" : loan.status === "PAID_OFF" ? "ACTIVE" : loan.status,
+      updatedAt: now,
+    });
+    window.dispatchEvent(new Event("stark:transaction-saved"));
+    window.dispatchEvent(new Event("stark:loan-saved"));
     onSaved?.();
     handleClose();
   }
@@ -532,9 +581,10 @@ export function JournalPanel({
     setRecordNotice("");
     try {
       const now = nowText();
-      const result = recordSavingsPlanDeposit(savingsPlan, savingsGoal, value, proofImage, now);
+      const result = recordSavingsPlanDeposit(savingsPlan, savingsGoal, value, proofImage, now, recordedDate.length === 16 ? `${recordedDate}:00` : recordedDate);
       await repo.saveSavingsGoal(result.goal);
       await repo.saveSavingsPlan(result.plan);
+      window.dispatchEvent(new Event("stark:savings-saved"));
       onSaved?.();
       handleClose();
     } catch (error) {
@@ -565,7 +615,7 @@ export function JournalPanel({
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </button>
-          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isSavingsRecord ? "记录储蓄" : isAsset ? (isEditingAsset ? "编辑资产" : "新增资产") : isLoan ? (isEditingLoan ? "编辑贷款" : "新增贷款") : (isEditingTransaction ? "编辑流水" : "记一笔")}</span>
+          <span className="journal-header-title">{isSavings ? isEditingSavings ? "编辑储蓄目标" : "添加储蓄" : isSavingsRecord ? "记录储蓄" : isAsset ? (isEditingAsset ? "编辑资产" : "新增资产") : isLoan ? (isEditingLoan ? "编辑贷款" : "新增贷款") : isRepayment ? "记录贷款还款" : (isEditingTransaction ? "编辑流水" : "记一笔")}</span>
           <button type="button" className="journal-close-btn" onClick={handleClose}>
             ×
           </button>
@@ -592,6 +642,10 @@ export function JournalPanel({
                   placeholder="0.00"
                 />
               </div>
+            </label>
+            <label className="modern-form-group">
+              <span>实际存入日期</span>
+              <input type="datetime-local" className="modern-form-input" value={recordedDate} onChange={(event) => setRecordedDate(event.target.value)} />
             </label>
             <div className="modern-form-group">
               <span>图片凭证</span>
@@ -741,6 +795,15 @@ export function JournalPanel({
             <button type="button" className="modern-primary-submit" onClick={() => void saveLoan()}>
               保存贷款
             </button>
+          </div>
+        ) : isRepayment ? (
+          <div className="modern-form-wrapper">
+            <div className="modern-form-card">
+              <div className="modern-form-group"><label>还款金额 (元)</label><div className="modern-amount-box"><span className="cur-sym">¥</span><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" className="modern-amount-field" /></div></div>
+              <div className="modern-form-group"><label>实际还款日期</label><input type="datetime-local" className="modern-form-input" value={date} onChange={(event) => setDate(event.target.value)} /></div>
+              <div className="modern-form-group"><label>备注</label><input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="可选" className="modern-form-input" /></div>
+            </div>
+            <button type="button" className="modern-primary-submit" disabled={!amount || Number(amount) <= 0} onClick={() => void saveRepayment()}>保存还款</button>
           </div>
         ) : (
           <div className="modern-journal-flow">

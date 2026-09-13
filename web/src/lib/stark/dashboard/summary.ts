@@ -1,10 +1,11 @@
-import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
+import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import {
   buildReportingMonthTrendRanges,
   splitReportingMonthTransactions,
 } from "@/lib/stark/dashboard/reporting-month";
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
+import { calculateSalaryCycleCashflow } from "./salary-cycle";
 
 export interface HomeTrend {
   labels: string[];
@@ -68,6 +69,10 @@ export interface HomeForecast {
   salaryDay: number;
   daysLeft: number;
   statusLabel: string;
+  cycleIncome: number;
+  cycleExpense: number;
+  cycleSavings: number;
+  cycleRepayment: number;
 }
 
 export interface HomeInsight {
@@ -374,30 +379,23 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
   return tasks.slice(0, 4);
 }
 
-function buildForecast(transactions: Transaction[], income: number, expense: number, salaryDay: number, reportingMonth: string): HomeForecast {
+function buildForecast(transactions: Transaction[], savingsPlans: SavingsPlan[], income: number, expense: number, salaryDay: number, reportingMonth: string): HomeForecast {
   const monthBalance = income - expense;
-  const cycleStart = currentSalaryCycleStart(reportingMonth, salaryDay);
-  const salaryCycleTransactions = transactions.filter((item) => {
-    const date = parseDate(item.date);
-    return !!date && date >= cycleStart;
-  });
-  const salaryCycleIncome = salaryCycleTransactions
-    .filter((item) => item.type === "INCOME")
-    .reduce((sum, item) => sum + item.amount, 0);
-  const salaryCycleExpense = salaryCycleTransactions
-    .filter((item) => item.type === "EXPENSE")
-    .reduce((sum, item) => sum + item.amount, 0);
-  const salaryCycleBalance = salaryCycleIncome - salaryCycleExpense;
+  const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay);
   return {
     projectedIncome: income,
     projectedExpense: expense,
     projectedBalance: monthBalance,
     monthBalance,
-    salaryCycleBalance,
-    salaryCycleStartLabel: formatMonthDay(cycleStart),
+    salaryCycleBalance: cashflow.balance,
+    salaryCycleStartLabel: formatMonthDay(cashflow.range.start),
     salaryDay,
     daysLeft: 0,
     statusLabel: monthBalance >= 0 ? "本月当前结余" : "本月当前已超支",
+    cycleIncome: cashflow.income,
+    cycleExpense: cashflow.expense,
+    cycleSavings: cashflow.savings,
+    cycleRepayment: cashflow.repayment,
   };
 }
 
@@ -464,6 +462,7 @@ export function buildHomeSummary(input: {
   budgets: Budget[];
   loans: Loan[];
   savingsGoals: SavingsGoal[];
+  savingsPlans?: SavingsPlan[];
   salaryDay?: number;
   reportingMonth?: string;
 }) {
@@ -518,7 +517,7 @@ export function buildHomeSummary(input: {
     loanDelta: input.loans.reduce((sum, item) => sum + item.monthlyPayment, 0),
     budgetAlerts,
     tasks: buildTasks(input.loans, input.savingsGoals),
-    forecast: buildForecast(currentMonthTransactions, income, expense, salaryDay, currentMonth),
+    forecast: buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth),
     insights: buildInsights(currentMonthTransactions, previousMonthTransactions, expense, budgetAlerts),
     recent: buildRecent(currentMonthTransactions),
   } satisfies HomeSummary;

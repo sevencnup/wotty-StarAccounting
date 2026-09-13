@@ -63,6 +63,13 @@ export function previousMonthKey(month: string) {
   return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}`;
 }
 
+export function nextMonthKey(month: string) {
+  if (isReportingYearKey(month)) return String(Number(month) + 1);
+  const date = reportingMonthDate(month);
+  const next = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
+}
+
 export function reportingMonthSequence(month: string, count: number) {
   if (isReportingYearKey(month)) {
     const safeCount = Math.max(0, Math.floor(count));

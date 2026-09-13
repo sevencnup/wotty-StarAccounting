@@ -107,6 +107,8 @@ export interface SavingsPlan {
   remark?: string | null;
   salary?: number | null;
   proofImage?: string | null;
+  /** 实际存入日期；旧数据为空时由 updatedAt 兼容推断。 */
+  actualDate?: string | null;
 }
 
 export type AccountRole = "OWNER" | "ADMIN" | "MEMBER";

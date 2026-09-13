@@ -12,8 +12,8 @@ import {
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
-import { formatMoney, isReportingYearKey, monthKey, previousMonthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
-import type { Asset, Budget, Loan, SavingsGoal, Transaction } from "@/lib/stark/models";
+import { formatMoney, isReportingYearKey, monthKey, nextMonthKey, previousMonthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
+import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
 const manager = new DataModeManager();
@@ -287,6 +287,14 @@ function StarkCrystalHero({
             {isNegative ? "-¥ " : "¥ "}{formatMoney(Math.abs(displayAmount))}
           </strong>
         </div>
+        {activeMetric === "balance" && balanceMode === "salary" ? (
+          <div className="stark-cycle-breakdown" aria-label="发薪周期资金明细">
+            <span>收入 ¥{formatMoney(summary.forecast.cycleIncome)}</span>
+            <span>消费 ¥{formatMoney(summary.forecast.cycleExpense)}</span>
+            <span>储蓄 ¥{formatMoney(summary.forecast.cycleSavings)}</span>
+            <span>还款 ¥{formatMoney(summary.forecast.cycleRepayment)}</span>
+          </div>
+        ) : null}
 
         <div className="stark-hero-footer-row">
           <div className="stark-hero-footer-left">
@@ -623,6 +631,7 @@ export default function HomePage() {
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [savingsPlans, setSavingsPlans] = useState<SavingsPlan[]>([]);
   const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -652,12 +661,14 @@ export default function HomePage() {
           repo.getLoans(accountId),
           repo.getSavingsGoals(accountId),
         ]);
+        const savingsPlans = await repo.getSavingsPlansByGoals(s.map((goal) => goal.id));
         const selectedYear = isReportingYearKey(reportingMonth) ? reportingMonth : reportingMonth.slice(0, 4);
         const selectedYearMonths = reportingPeriodMonths(selectedYear);
         const monthKeys = isReportingYearKey(reportingMonth)
           ? [...reportingPeriodMonths(previousMonthKey(reportingMonth)), ...selectedYearMonths]
           : [...new Set([
             ...reportingMonthSequence(reportingMonth, 5),
+            nextMonthKey(reportingMonth),
             ...(b.some((budget) => budget.period === "YEARLY") ? selectedYearMonths : []),
           ])];
         const monthlyTransactions = await repo.getTransactionsByMonths(accountId, monthKeys);
@@ -667,6 +678,7 @@ export default function HomePage() {
         setBudgets(b);
         setLoans(l);
         setSavingsGoals(s);
+        setSavingsPlans(savingsPlans);
       } catch {
         if (!active) return;
         setLoadError("云端数据加载失败，请检查后端服务和数据库连接后重试。");
@@ -676,9 +688,11 @@ export default function HomePage() {
     };
     void load();
     window.addEventListener("stark:transaction-saved", load);
+    window.addEventListener("stark:savings-saved", load);
     return () => {
       active = false;
       window.removeEventListener("stark:transaction-saved", load);
+      window.removeEventListener("stark:savings-saved", load);
     };
   }, [loadVersion, monthReady, reportingMonth]);
 
@@ -690,8 +704,8 @@ export default function HomePage() {
     [reportingMonth, transactions],
   );
   const summary = useMemo(
-    () => buildHomeSummary({ transactions: analysisTransactions, assets, budgets, loans, savingsGoals, salaryDay, reportingMonth }),
-    [analysisTransactions, assets, budgets, loans, reportingMonth, savingsGoals, salaryDay],
+    () => buildHomeSummary({ transactions: analysisTransactions, assets, budgets, loans, savingsGoals, savingsPlans, salaryDay, reportingMonth }),
+    [analysisTransactions, assets, budgets, loans, reportingMonth, savingsGoals, savingsPlans, salaryDay],
   );
 
   function handleSalaryDayChange(day: number) {

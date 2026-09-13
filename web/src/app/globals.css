@@ -3817,6 +3817,18 @@ nextjs-portal {
   box-shadow: inset 0 1px 2px rgba(90, 114, 145, 0.14);
 }
 
+.stark-cycle-breakdown {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+  font-variant-numeric: tabular-nums;
+}
+
 .reporting-year-option {
   width: 100%;
   height: 42px;

@@ -149,6 +149,7 @@ export function recordSavingsPlanDeposit(
   actualAmount: number,
   proofImage: string | null,
   updatedAt: string,
+  actualDate = updatedAt,
 ) {
   if (!Number.isFinite(actualAmount) || actualAmount <= 0) {
     throw new Error("实际存入金额必须大于 0");
@@ -160,6 +161,7 @@ export function recordSavingsPlanDeposit(
       status: "COMPLETED",
       actualAmount,
       proofImage,
+      actualDate,
       updatedAt,
     } satisfies SavingsPlan,
     goal: {

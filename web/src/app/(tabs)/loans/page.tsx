@@ -171,6 +171,7 @@ export default function LoansPage() {
   const [loadVersion, setLoadVersion] = useState(0);
   const [reportingMonth, setReportingMonth] = useState(() => getSelectedReportMonth());
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
+  const [repaymentLoan, setRepaymentLoan] = useState<Loan | null>(null);
 
   const reload = () => {
     void repo.getLoans(getCurrentAccountId())
@@ -209,8 +210,13 @@ export default function LoansPage() {
 
   useEffect(() => {
     const handleLoanSaved = () => reload();
+    const handleTransactionSaved = () => setLoadVersion((version) => version + 1);
     window.addEventListener("stark:loan-saved", handleLoanSaved);
-    return () => window.removeEventListener("stark:loan-saved", handleLoanSaved);
+    window.addEventListener("stark:transaction-saved", handleTransactionSaved);
+    return () => {
+      window.removeEventListener("stark:loan-saved", handleLoanSaved);
+      window.removeEventListener("stark:transaction-saved", handleTransactionSaved);
+    };
   }, []);
 
   const summary = useMemo(() => {
@@ -427,13 +433,14 @@ export default function LoansPage() {
                   <span>已还 ¥ {formatMoney(repaidAmount)} ({Math.round(progress)}%)</span>
                   <strong>月供 ¥ {formatMoney(loan.monthlyPayment)}</strong>
                 </div>
-                <div className="finance-item-actions"><button type="button" onClick={() => setEditingLoan(loan)}>编辑</button><button type="button" onClick={() => void deleteLoan(loan)}>删除</button></div>
+                <div className="finance-item-actions"><button type="button" onClick={() => setRepaymentLoan(loan)} disabled={loan.remainingAmount <= 0}>记录还款</button><button type="button" onClick={() => setEditingLoan(loan)}>编辑</button><button type="button" onClick={() => void deleteLoan(loan)}>删除</button></div>
               </article>
             );
           }) : <div className="finance-empty bordered">暂无贷款，新增后会显示还款节奏</div>}
         </div>
       </section>
       {editingLoan ? <JournalPanel mode="sheet" variant="loan" loan={editingLoan} onClose={() => setEditingLoan(null)} onSaved={() => { setEditingLoan(null); reload(); }} /> : null}
+      {repaymentLoan ? <JournalPanel mode="sheet" variant="repayment" loan={repaymentLoan} onClose={() => setRepaymentLoan(null)} onSaved={() => { setRepaymentLoan(null); reload(); }} /> : null}
     </div>
   );
 }
