@@ -7,6 +7,7 @@ import { formatMoney, isReportingYearKey, reportingMonthDate } from "@/lib/stark
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData, buildMonthlyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
 import { buildMerchantRanking } from "@/lib/stark/dashboard/merchant-ranking";
+import { sankeyLayoutOptions } from "@/lib/stark/dashboard/sankey-layout";
 import type { Transaction } from "@/lib/stark/models";
 import { translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
@@ -405,7 +406,8 @@ function buildMerchantRankingOption(transactions: Transaction[], locale: AppLoca
 
 /* ────────── 桑基图 ────────── */
 
-function buildSankeyOption(transactions: Transaction[], locale: AppLocale): EChartsCoreOption {
+export function buildSankeyOption(transactions: Transaction[], locale: AppLocale): EChartsCoreOption {
+  const layout = sankeyLayoutOptions();
   const expenseFiltered = transactions.filter((t) => t.type === "EXPENSE");
   const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
   const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
@@ -454,15 +456,15 @@ function buildSankeyOption(transactions: Transaction[], locale: AppLocale): ECha
       {
         type: "sankey",
         layout: "none",
-        layoutIterations: 0,
+        layoutIterations: layout.layoutIterations,
         left: 22,
         right: 112,
         top: 8,
         bottom: 8,
         nodeWidth: 14,
-        nodeGap: 10,
+        nodeGap: layout.nodeGap,
         lineStyle: { color: "gradient", opacity: 0.35 },
-        label: { color: "#11182d", fontSize: 10, distance: 7 },
+        label: { color: "#11182d", fontSize: 10, distance: layout.labelDistance, lineHeight: 14, overflow: "truncate", width: 58 },
         data: nodes,
         links,
       },
