@@ -7,7 +7,7 @@ import { formatMoney, isReportingYearKey, reportingMonthDate } from "@/lib/stark
 import type { HomeRatio, HomeTrend } from "@/lib/stark/dashboard/summary";
 import { buildDailyPlatformData, buildMonthlyPlatformData, buildPlatformCategoryFlow } from "@/lib/stark/dashboard/consumption-platforms";
 import { buildMerchantRanking } from "@/lib/stark/dashboard/merchant-ranking";
-import { sankeyLayoutOptions } from "@/lib/stark/dashboard/sankey-layout";
+import { sankeyLayoutOptions, sankeySourceNodeLocalY } from "@/lib/stark/dashboard/sankey-layout";
 import type { Transaction } from "@/lib/stark/models";
 import { translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
@@ -412,7 +412,7 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
   const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
 
-  const nodes: { name: string; itemStyle?: { color: string } }[] = [];
+  const nodes: { name: string; localY?: number; itemStyle?: { color: string } }[] = [];
   const links: { source: string; target: string; value: number }[] = [];
 
   const catColors: Record<string, string> = {
@@ -424,9 +424,17 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
 
   const displayPlatform = (value: string) => translateValue(value, locale);
   const displayCategory = (value: string) => translateValue(value, locale);
+  const sourceLocalY = sankeySourceNodeLocalY(
+    allPlatforms.map((platform) => Object.values(flow[platform] || {}).reduce((sum, value) => sum + value, 0)),
+    allCategories.length,
+  );
 
-  allPlatforms.forEach((plat) => {
-    nodes.push({ name: displayPlatform(plat), itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] } });
+  allPlatforms.forEach((plat, index) => {
+    nodes.push({
+      name: displayPlatform(plat),
+      localY: sourceLocalY[index],
+      itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] },
+    });
   });
   allCategories.forEach((cat) => {
     nodes.push({ name: displayCategory(cat), itemStyle: { color: catColors[cat] || "#bfbfbf" } });
