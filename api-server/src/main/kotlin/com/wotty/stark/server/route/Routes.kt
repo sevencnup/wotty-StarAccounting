@@ -55,8 +55,8 @@ fun Routing.appRoutes() {
     get("/api/app/version") {
         call.respond(
             AppVersionResponse(
-                versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 99,
-                versionName = System.getenv("APP_VERSION_NAME") ?: "0.0.99",
+                versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 100,
+                versionName = System.getenv("APP_VERSION_NAME") ?: "0.0.100",
                 apkUrl = System.getenv("APP_APK_URL"),
                 changelog = System.getenv("APP_CHANGELOG"),
                 forceUpdate = System.getenv("APP_FORCE_UPDATE")?.equals("true", ignoreCase = true) == true
