@@ -2,14 +2,14 @@
 // categories. Keep (categoryCount - 1) * gap below that height so ECharts
 // never calculates negative node heights.
 export const SANKEY_NODE_GAP = 10;
-export const SANKEY_LAYOUT_ITERATIONS = 0;
+export const SANKEY_LAYOUT_ITERATIONS = 32;
 export const SANKEY_LABEL_DISTANCE = 8;
 
 /**
  * Shared layout values for the account-to-category Sankey diagram.
- * Account labels live in the card header. The diagram keeps a safe node gap
- * and hides colliding category labels instead of moving any text outside the
- * chart bounds.
+ * Account labels live in the card header. ECharts keeps nodes and flow lines
+ * in one automatic layout pass; colliding category labels are hidden rather
+ * than moved outside the chart bounds.
  */
 export function sankeyLayoutOptions() {
   return {

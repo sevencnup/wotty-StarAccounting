@@ -425,7 +425,7 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
   const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
 
-  const nodes: { name: string; depth?: number; label?: { show: boolean }; itemStyle?: { color: string } }[] = [];
+  const nodes: { name: string; label?: { show: boolean }; itemStyle?: { color: string } }[] = [];
   const links: { source: string; target: string; value: number }[] = [];
 
   const catColors: Record<string, string> = {
@@ -441,13 +441,12 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   allPlatforms.forEach((plat) => {
     nodes.push({
       name: displayPlatform(plat),
-      depth: 0,
       label: { show: false },
       itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] },
     });
   });
   allCategories.forEach((cat) => {
-    nodes.push({ name: displayCategory(cat), depth: 1, itemStyle: { color: catColors[cat] || "#bfbfbf" } });
+    nodes.push({ name: displayCategory(cat), itemStyle: { color: catColors[cat] || "#bfbfbf" } });
   });
 
   allPlatforms.forEach((plat) => {
@@ -475,12 +474,11 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
         type: "sankey",
         layout: "none",
         layoutIterations: layout.layoutIterations,
-        left: 12,
-        right: 96,
+        left: 22,
+        right: 112,
         top: 8,
         bottom: 8,
         nodeWidth: 14,
-        nodeAlign: "left",
         nodeGap: layout.nodeGap,
         lineStyle: { color: "gradient", opacity: 0.35 },
         label: { color: "#11182d", fontSize: 10, distance: layout.labelDistance, lineHeight: 14, overflow: "truncate", width: 58 },
