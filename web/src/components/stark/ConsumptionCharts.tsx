@@ -412,7 +412,7 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
   const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
 
-  const nodes: { name: string; label?: { show: boolean; position?: "right" }; itemStyle?: { color: string } }[] = [];
+  const nodes: { name: string; label?: { show: boolean; position?: "right"; offset?: [number, number] }; itemStyle?: { color: string } }[] = [];
   const links: { source: string; target: string; value: number }[] = [];
 
   const catColors: Record<string, string> = {
@@ -428,7 +428,7 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   allPlatforms.forEach((plat) => {
     nodes.push({
       name: displayPlatform(plat),
-      label: { show: true, position: "right" },
+      label: { show: true, position: "right", offset: [0, -4] },
       itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] },
     });
   });
