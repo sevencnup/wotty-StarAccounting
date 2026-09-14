@@ -7,15 +7,15 @@ export const SANKEY_LABEL_DISTANCE = 8;
 
 /**
  * Shared layout values for the account-to-category Sankey diagram.
- * A real layout pass plus a larger gap prevents tiny source nodes (for example
- * a low-volume WeChat or Alipay node) from placing their labels on top of one
- * another.
+ * Account labels live in the card header. The diagram keeps a safe node gap
+ * and hides colliding category labels instead of moving any text outside the
+ * chart bounds.
  */
 export function sankeyLayoutOptions() {
   return {
     nodeGap: SANKEY_NODE_GAP,
     layoutIterations: SANKEY_LAYOUT_ITERATIONS,
     labelDistance: SANKEY_LABEL_DISTANCE,
-    labelLayout: { moveOverlap: "shiftY" as const },
+    labelLayout: { hideOverlap: true },
   };
 }

@@ -6099,6 +6099,32 @@ nextjs-portal {
   -webkit-overflow-scrolling: touch;
 }
 
+.sankey-account-legend {
+  display: flex;
+  max-width: 56%;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  overflow-x: auto;
+  color: #405268;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sankey-account-legend span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.sankey-account-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
 .sankey-scroll::after {
   content: "";
   position: absolute;

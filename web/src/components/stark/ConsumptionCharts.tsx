@@ -354,6 +354,19 @@ function buildBarOption(transactions: Transaction[], monthKey: string, locale: A
   };
 }
 
+function SankeyAccountLegend({ platforms, locale }: { platforms: string[]; locale: AppLocale }) {
+  return (
+    <div className="sankey-account-legend" aria-label={locale === "en-US" ? "Accounts in the Sankey diagram" : "流向图账户"}>
+      {platforms.map((platform) => (
+        <span key={platform}>
+          <i style={{ background: PLATFORM_COLORS[platform] || PLATFORM_COLORS["其他"] }} />
+          {translateValue(platform, locale)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ────────── 商家排行横向条形图 ────────── */
 
 function buildMerchantRankingOption(transactions: Transaction[], locale: AppLocale): EChartsCoreOption {
@@ -412,7 +425,7 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   const { activePlatforms: allPlatforms, flow } = buildPlatformCategoryFlow(expenseFiltered);
   const allCategories = [...new Set(Object.values(flow).flatMap((categories) => Object.keys(categories)))];
 
-  const nodes: { name: string; localY?: number; itemStyle?: { color: string } }[] = [];
+  const nodes: { name: string; depth?: number; label?: { show: boolean }; itemStyle?: { color: string } }[] = [];
   const links: { source: string; target: string; value: number }[] = [];
 
   const catColors: Record<string, string> = {
@@ -428,11 +441,13 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
   allPlatforms.forEach((plat) => {
     nodes.push({
       name: displayPlatform(plat),
+      depth: 0,
+      label: { show: false },
       itemStyle: { color: PLATFORM_COLORS[plat] || PLATFORM_COLORS["其他"] },
     });
   });
   allCategories.forEach((cat) => {
-    nodes.push({ name: displayCategory(cat), itemStyle: { color: catColors[cat] || "#bfbfbf" } });
+    nodes.push({ name: displayCategory(cat), depth: 1, itemStyle: { color: catColors[cat] || "#bfbfbf" } });
   });
 
   allPlatforms.forEach((plat) => {
@@ -460,11 +475,12 @@ export function buildSankeyOption(transactions: Transaction[], locale: AppLocale
         type: "sankey",
         layout: "none",
         layoutIterations: layout.layoutIterations,
-        left: 22,
-        right: 112,
+        left: 12,
+        right: 96,
         top: 8,
         bottom: 8,
         nodeWidth: 14,
+        nodeAlign: "left",
         nodeGap: layout.nodeGap,
         lineStyle: { color: "gradient", opacity: 0.35 },
         label: { color: "#11182d", fontSize: 10, distance: layout.labelDistance, lineHeight: 14, overflow: "truncate", width: 58 },
@@ -596,6 +612,7 @@ export function ConsumptionCharts({
                   <h2>消费流向图</h2>
                   <span>账户到分类</span>
                 </div>
+                <SankeyAccountLegend platforms={buildPlatformCategoryFlow(transactions.filter((transaction) => transaction.type === "EXPENSE")).activePlatforms} locale={locale} />
               </div>
               <div className="sankey-scroll">
                 <EChartView option={sankeyOption} className="sankey-chart" />
