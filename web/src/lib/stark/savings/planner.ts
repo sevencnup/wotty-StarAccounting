@@ -105,10 +105,9 @@ export function resolveSavingsMonths(
       ?.filter((plan) => plan.month >= currentMonth || hasContent(plan))
       .map((plan) => plan.month),
   );
-  if (persisted.length) return persisted;
-
   const configured = selectSupportedMonths(configuredMonths);
-  return configured.length ? configured : generated;
+  if (configuredMonths !== undefined) return configured.length ? configured : generated;
+  return persisted.length ? persisted : generated;
 }
 
 export function shouldSyncSavingsExpense(
