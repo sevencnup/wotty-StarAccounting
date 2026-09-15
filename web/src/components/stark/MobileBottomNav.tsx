@@ -26,10 +26,10 @@ export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target
               key={item.href}
               href={item.href}
               className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}
+              aria-label={item.label}
               onClick={() => onNavigateStart?.(item.href)}
             >
               <Image src={item.icon} alt="" width={24} height={24} className={active ? "mobile-bottom-nav-icon active" : "mobile-bottom-nav-icon"} />
-              <span>{item.label}</span>
             </Link>
           );
         })}
