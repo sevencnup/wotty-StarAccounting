@@ -609,6 +609,7 @@ export function JournalPanel({
         onClick={(e) => e.stopPropagation()}
       >
         {/* 顶部标题栏 */}
+        <div className="journal-sheet-handle" aria-hidden="true" />
         <div className="journal-header modern-journal-header">
           <button type="button" className="journal-back-btn" onClick={handleClose}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

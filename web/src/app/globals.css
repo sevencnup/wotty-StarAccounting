@@ -4927,6 +4927,14 @@ nextjs-portal {
   overflow-x: hidden;
 }
 
+.journal-sheet-handle {
+  width: 64px;
+  height: 4px;
+  margin: -7px auto -3px;
+  border-radius: 999px;
+  background: #d9dee7;
+}
+
 .modern-journal-header {
   display: flex;
   align-items: center;
