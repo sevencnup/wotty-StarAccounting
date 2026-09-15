@@ -12301,6 +12301,9 @@ nextjs-portal {
 /* Journal sheets reuse the page background while every interactive module
    remains a clean white surface. */
 .journal-panel .modern-type-switch,
+.journal-panel .journal-entry-kind-switch,
+.journal-panel .journal-entry-kind-switch button,
+.journal-panel .type-tab,
 .journal-panel .modern-amount-hero,
 .journal-panel .category-tile,
 .journal-panel .meta-input,
