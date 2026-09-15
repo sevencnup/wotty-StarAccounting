@@ -45,10 +45,12 @@ html {
   font-size: calc(15px * var(--user-font-scale));
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-x: none;
+  min-height: 100%;
 }
 
 body {
   margin: 0;
+  min-height: 100%;
   background: var(--background);
   color: var(--foreground);
   font-family: "Microsoft YaHei UI", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;

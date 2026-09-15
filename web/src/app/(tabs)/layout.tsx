@@ -45,7 +45,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       style={{
         minHeight: "100dvh",
         paddingTop: "env(safe-area-inset-top)",
-        background: "#ffffff",
+        background: "var(--background)",
       }}
     >
       <main className="tabs-shell tabs-liquid-shell">{children}</main>
