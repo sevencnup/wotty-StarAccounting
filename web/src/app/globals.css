@@ -12294,6 +12294,10 @@ nextjs-portal {
 
 /* Borderless surface language: neutral divider lines are replaced by spacing,
    surface colour and elevation. Semantic status colours remain available. */
+:is(.journal-panel, .journal-panel.page, .journal-panel.savings, .journal-panel.asset, .modern-journal-shell) {
+  background: var(--background);
+}
+
 :root {
   --border: transparent;
   --border-soft: transparent;
