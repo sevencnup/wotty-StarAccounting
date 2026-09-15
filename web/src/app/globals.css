@@ -121,6 +121,7 @@ nextjs-portal {
   isolation: isolate;
   gap: 6px;
   padding: 2px 0;
+  background: var(--background);
 }
 
 .home-liquid-screen::before {
