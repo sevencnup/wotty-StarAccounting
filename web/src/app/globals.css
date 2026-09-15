@@ -2,6 +2,7 @@
 
 :root {
   --background: #f5f7fb;
+  --sheet-background: #e9eff7;
   --foreground: #1f2937;
   --card: #ffffff;
   --muted: #6b7280;
@@ -12295,7 +12296,32 @@ nextjs-portal {
 /* Borderless surface language: neutral divider lines are replaced by spacing,
    surface colour and elevation. Semantic status colours remain available. */
 :is(.journal-panel, .journal-panel.page, .journal-panel.savings, .journal-panel.asset, .modern-journal-shell) {
-  background: var(--background);
+  background: var(--sheet-background);
+}
+
+/* The journal sheet uses a darker base layer so its white controls remain
+   clearly distinct without restoring neutral divider lines. */
+.journal-panel .modern-amount-hero,
+.journal-panel .category-tile,
+.journal-panel .meta-input,
+.journal-panel .action-sub-btn {
+  background: #ffffff;
+}
+
+.journal-panel .modern-amount-hero {
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
+}
+
+.journal-panel .category-tile {
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.045);
+}
+
+.journal-panel .tile-icon-box {
+  background: #f4f7fb;
+}
+
+.journal-panel .modern-type-switch {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 :root {
