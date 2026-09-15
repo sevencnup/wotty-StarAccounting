@@ -12290,3 +12290,55 @@ nextjs-portal {
     font-size: 10px;
   }
 }
+
+/* Borderless surface language: neutral divider lines are replaced by spacing,
+   surface colour and elevation. Semantic status colours remain available. */
+:root {
+  --border: transparent;
+  --border-soft: transparent;
+  --border-faint: transparent;
+}
+
+body :where(
+  button,
+  input,
+  select,
+  textarea,
+  table,
+  th,
+  td,
+  [class*="card"],
+  [class*="panel"],
+  [class*="sheet"],
+  [class*="list"],
+  [class*="row"],
+  [class*="item"],
+  [class*="field"],
+  [class*="picker"],
+  [class*="filter"],
+  [class*="switch"],
+  [class*="table"],
+  [class*="cell"],
+  [class*="section"],
+  [class*="form"],
+  [class*="toolbar"],
+  [class*="editor"],
+  [class*="option"],
+  [class*="group"]
+):not([class*="error"]):not([class*="danger"]):not([class*="warning"]):not([class*="success"]) {
+  border-color: transparent !important;
+}
+
+body :where(div, section, article, form, label, fieldset):not([class]) {
+  border-color: transparent !important;
+}
+
+body :where(input, select, textarea):focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent) !important;
+}
+
+body :where(button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
