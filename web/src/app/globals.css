@@ -4850,14 +4850,14 @@ nextjs-portal {
 
 .journal-panel.savings .savings-deposit-switch,
 .journal-panel.savings .savings-mode-switch {
-  border-radius: 10px;
+  border-radius: 9px;
   background: #f1f5f9;
-  padding: 3px;
+  padding: 2px;
 }
 
 .journal-panel.savings .savings-deposit-switch button,
 .journal-panel.savings .savings-mode-switch button {
-  border-radius: 8px;
+  border-radius: 7px;
 }
 
 .journal-panel.savings .savings-deposit-switch button.active,
@@ -6243,19 +6243,21 @@ nextjs-portal {
 }
 
 .savings-deposit-switch {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  display: inline-grid;
+  grid-template-columns: repeat(3, 86px);
+  width: fit-content;
+  max-width: 100%;
+  gap: 4px;
 }
 
 .savings-deposit-switch button {
-  height: 34px;
-  padding: 0 8px;
+  height: 30px;
+  padding: 0 7px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   color: #64748b;
   background: #ffffff;
-  font-size: calc(12px * var(--user-font-scale));
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-deposit-switch button.active {
@@ -6274,21 +6276,21 @@ nextjs-portal {
 .savings-mode-switch {
   display: inline-grid;
   grid-template-columns: repeat(2, 1fr);
-  padding: 3px;
+  padding: 2px;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #f1f5f9;
 }
 
 .savings-mode-switch button {
-  min-width: 74px;
-  height: 30px;
-  padding: 0 12px;
+  min-width: 64px;
+  height: 28px;
+  padding: 0 9px;
   border: 0;
   border-radius: 7px;
   color: #64748b;
   background: transparent;
-  font-size: calc(12px * var(--user-font-scale));
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-mode-switch button.active {
