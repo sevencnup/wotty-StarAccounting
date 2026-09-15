@@ -6269,8 +6269,36 @@ nextjs-portal {
 .savings-plan-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 4px;
   margin-bottom: 12px;
+}
+
+.savings-plan-toolbar .savings-year-picker {
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+  gap: 0;
+  white-space: nowrap;
+}
+
+.savings-plan-toolbar .savings-year-picker > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.savings-plan-toolbar .savings-year-picker select {
+  width: 74px;
+  height: 34px;
+  padding: 0 20px 0 8px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-mode-switch {
@@ -6283,7 +6311,7 @@ nextjs-portal {
 }
 
 .savings-mode-switch button {
-  min-width: 64px;
+  min-width: 56px;
   height: 28px;
   padding: 0 9px;
   border: 0;
@@ -6337,7 +6365,9 @@ nextjs-portal {
 .savings-month-restorer {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  flex: 0 0 auto;
+  gap: 4px;
+  min-width: 0;
 }
 
 .savings-month-restorer select,
@@ -6351,12 +6381,17 @@ nextjs-portal {
 }
 
 .savings-month-restorer select {
-  min-width: 86px;
-  padding: 0 28px 0 10px;
+  width: 62px;
+  min-width: 62px;
+  padding: 0 20px 0 8px;
+  font-size: calc(11px * var(--user-font-scale));
 }
 
 .savings-month-restorer button {
-  padding: 0 12px;
+  min-width: 60px;
+  padding: 0 5px;
+  font-size: calc(11px * var(--user-font-scale));
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -6632,60 +6667,7 @@ nextjs-portal {
   }
 
   .savings-plan-toolbar {
-    flex-wrap: nowrap;
-    gap: 4px;
     margin-bottom: 10px;
-  }
-
-  .savings-year-picker {
-    flex: 0 0 auto;
-    width: auto;
-    margin: 0;
-    gap: 0;
-    white-space: nowrap;
-  }
-
-  .savings-year-picker > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .savings-year-picker select {
-    width: 82px;
-    height: 34px;
-    padding: 0 20px 0 8px;
-    font-size: calc(11px * var(--user-font-scale));
-  }
-
-  .savings-mode-switch {
-    flex: 0 0 auto;
-  }
-
-  .savings-month-restorer {
-    flex: 0 0 auto;
-    gap: 4px;
-    min-width: 0;
-  }
-
-  .savings-month-restorer select {
-    width: 72px;
-    min-width: 72px;
-    padding: 0 20px 0 8px;
-    font-size: calc(11px * var(--user-font-scale));
-  }
-
-  .savings-month-restorer button {
-    min-width: 58px;
-    padding: 0 7px;
-    font-size: calc(11px * var(--user-font-scale));
-    white-space: nowrap;
   }
 
   .savings-column-adder {
