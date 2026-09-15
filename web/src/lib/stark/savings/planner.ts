@@ -2,11 +2,23 @@ import type { SavingsGoal, SavingsPlan } from "../models/types";
 
 export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 
+export type TimestampedSavingsDraft = {
+  savedAt?: string;
+};
+
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
 
 export function selectSavingsGoal<T extends { id: string }>(goals: readonly T[], goalId?: string) {
   if (!goalId) return null;
   return goals.find((goal) => goal.id === goalId) ?? null;
+}
+
+export function selectSavingsDraft<T extends TimestampedSavingsDraft>(draft: T | null, goalUpdatedAt?: string, isEditing = false) {
+  if (!draft) return null;
+  if (!isEditing) return draft;
+  if (!draft.savedAt) return null;
+  if (!goalUpdatedAt) return draft;
+  return draft.savedAt > goalUpdatedAt ? draft : null;
 }
 
 export function isLegacySavingsArrayIndexColumn(column: string) {

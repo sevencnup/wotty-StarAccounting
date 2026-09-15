@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -135,6 +135,16 @@ test("savings goal selection uses the requested goal when editing", () => {
   assert.deepEqual(selectSavingsGoal(goals, "goal-b"), { id: "goal-b" });
   assert.equal(selectSavingsGoal(goals, "missing"), null);
   assert.equal(selectSavingsGoal(goals), null);
+});
+
+test("editing ignores legacy or older drafts but restores a newer draft", () => {
+  assert.equal(selectSavingsDraft({ goalName: "旧草稿" }, "2026-09-15 08:00:00", true), null);
+  assert.equal(selectSavingsDraft({ goalName: "较旧", savedAt: "2026-09-15 07:00:00" }, "2026-09-15 08:00:00", true), null);
+  assert.deepEqual(selectSavingsDraft({ goalName: "未保存修改", savedAt: "2026-09-15 09:00:00" }, "2026-09-15 08:00:00", true), {
+    goalName: "未保存修改",
+    savedAt: "2026-09-15 09:00:00",
+  });
+  assert.deepEqual(selectSavingsDraft({ goalName: "新增草稿" }, undefined, false), { goalName: "新增草稿" });
 });
 
 function savingsPlan(overrides = {}) {

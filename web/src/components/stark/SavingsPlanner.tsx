@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -38,6 +38,7 @@ type PlanConfig = {
 };
 
 type SavingsDraft = {
+  savedAt?: string;
   year?: number;
   goalName: string;
   targetAmount?: string;
@@ -213,7 +214,9 @@ export function SavingsPlanner({
       const plans = await repo.getSavingsPlans(activeGoal.id);
       persistedPlansRef.current = plans;
       const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
-      const draft = rawDraft?.year === year || rawDraft?.year === undefined ? rawDraft : undefined;
+      const selectedDraft = selectSavingsDraft(rawDraft, activeGoal.updatedAt, Boolean(savingsGoalId));
+      const draft = selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined;
+      if (savingsGoalId && rawDraft && !selectedDraft) clearNewEntryDraft("savings", draftScope);
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
       const hydratedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = { MONTHLY: {}, ALTERNATE: {} };
@@ -281,7 +284,9 @@ export function SavingsPlanner({
       }
       const fallbackGoal = createDefaultGoal(year);
       const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
-      const draft = rawDraft?.year === year || rawDraft?.year === undefined ? rawDraft : undefined;
+      const selectedDraft = selectSavingsDraft(rawDraft, fallbackGoal.updatedAt, Boolean(savingsGoalId));
+      const draft = selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined;
+      if (savingsGoalId && rawDraft && !selectedDraft) clearNewEntryDraft("savings", draftScope);
       setGoal(fallbackGoal);
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setTargetAmount(draft?.targetAmount ?? "");
@@ -313,6 +318,7 @@ export function SavingsPlanner({
   useEffect(() => {
     if (!draftReady || draftSubmittedRef.current || goalMissing) return;
     saveNewEntryDraft<SavingsDraft>("savings", {
+      savedAt: nowText(),
       year,
       goalName,
       targetAmount,
