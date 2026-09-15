@@ -4696,8 +4696,8 @@ nextjs-portal {
 
 .journal-overlay.visible {
   pointer-events: auto;
-  background: rgba(247, 250, 255, 0.32);
-  backdrop-filter: blur(12px);
+  background: rgba(15, 23, 42, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .journal-panel {
