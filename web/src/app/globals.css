@@ -12301,7 +12301,6 @@ nextjs-portal {
 /* Journal sheets reuse the page background while every interactive module
    remains a clean white surface. */
 .journal-panel .modern-type-switch,
-.journal-panel .journal-entry-kind-switch,
 .journal-panel .journal-entry-kind-switch button,
 .journal-panel .type-tab,
 .journal-panel .modern-amount-hero,
@@ -12309,6 +12308,21 @@ nextjs-portal {
 .journal-panel .meta-input,
 .journal-panel .action-sub-btn {
   background: #ffffff;
+}
+
+/* Keep the two switches as one level of buttons rather than a white button
+   nested inside another white surface. */
+.journal-panel .journal-entry-kind-switch,
+.journal-panel .modern-type-switch {
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.journal-panel .journal-entry-kind-switch button,
+.journal-panel .type-tab {
+  border-radius: 12px;
 }
 
 .journal-panel .modern-amount-hero {
