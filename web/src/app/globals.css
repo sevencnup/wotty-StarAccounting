@@ -3311,14 +3311,14 @@ nextjs-portal {
   grid-template-columns: repeat(6, minmax(0, 1fr));
   width: min(100%, 430px);
   margin: 0 auto;
-  padding: 9px 6px;
+  padding: 12px 6px;
 }
 
 .mobile-bottom-nav-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 30px;
+  min-height: 31px;
   min-width: 0;
   color: #9aa5b5;
   text-decoration: none;
