@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -29,6 +29,13 @@ test("editing a goal hides empty history but keeps current and future plan month
 test("removes a month while keeping one editable row", () => {
   assert.deepEqual(removeSavingsMonth(["2026-01", "2026-02", "2026-03"], "2026-02"), ["2026-01", "2026-03"]);
   assert.deepEqual(removeSavingsMonth(["2026-01"], "2026-01"), ["2026-01"]);
+});
+
+test("adds a removed month back in natural order without duplicates", () => {
+  const supported = buildSavingsMonths(2026, "MONTHLY");
+  assert.deepEqual(addSavingsMonth(["2026-01", "2026-03"], "2026-02", supported), ["2026-01", "2026-02", "2026-03"]);
+  assert.deepEqual(addSavingsMonth(["2026-01", "2026-02"], "2026-02", supported), ["2026-01", "2026-02"]);
+  assert.deepEqual(addSavingsMonth(["2026-01"], "2025-12", supported), ["2026-01"]);
 });
 
 test("remaining uses the full balance when expected savings is empty", () => {
@@ -113,7 +120,7 @@ test("savings goal selection uses the requested goal when editing", () => {
   const goals = [{ id: "goal-a" }, { id: "goal-b" }];
   assert.deepEqual(selectSavingsGoal(goals, "goal-b"), { id: "goal-b" });
   assert.equal(selectSavingsGoal(goals, "missing"), null);
-  assert.deepEqual(selectSavingsGoal(goals), { id: "goal-a" });
+  assert.equal(selectSavingsGoal(goals), null);
 });
 
 function savingsPlan(overrides = {}) {

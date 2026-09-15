@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -164,6 +164,7 @@ export function SavingsPlanner({
   const [monthsByFrequency, setMonthsByFrequency] = useState<Record<SavingsFrequency, string[]>>(() => defaultMonthsByFrequency(year));
   const [rowsByFrequency, setRowsByFrequency] = useState<Record<SavingsFrequency, Record<string, PlannerRow>>>({ MONTHLY: {}, ALTERNATE: {} });
   const [newColumn, setNewColumn] = useState("");
+  const [monthToAdd, setMonthToAdd] = useState("");
   const [hydrating, setHydrating] = useState(true);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
@@ -176,6 +177,12 @@ export function SavingsPlanner({
   const draftScope = savingsGoalId ?? undefined;
 
   const months = monthsByFrequency[frequency];
+  const supportedMonths = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
+  const removedMonths = useMemo(() => supportedMonths.filter((month) => !months.includes(month)), [months, supportedMonths]);
+
+  useEffect(() => {
+    setMonthToAdd((current) => removedMonths.includes(current) ? current : (removedMonths[0] ?? ""));
+  }, [removedMonths]);
 
   useEffect(() => {
     if (loadStartedRef.current) return;
@@ -364,6 +371,15 @@ export function SavingsPlanner({
     });
   }
 
+  function restoreMonth() {
+    if (!monthToAdd) return;
+    setMonthsByFrequency((current) => ({
+      ...current,
+      [frequency]: addSavingsMonth(current[frequency], monthToAdd, supportedMonths),
+    }));
+    setNotice("已添加" + monthLabel(monthToAdd) + "月份行");
+  }
+
   function togglePreviousBalance() {
     setPreviousBalanceEnabled((current) => !current);
     setNotice("");
@@ -498,6 +514,7 @@ export function SavingsPlanner({
       setGoal(nextGoal);
       draftSubmittedRef.current = true;
       clearNewEntryDraft("savings", draftScope);
+      setDraftReady(false);
       setNotice(`已保存 ${months.length} 个月的储蓄计划`);
       onSaved?.();
     } catch {
@@ -601,6 +618,12 @@ export function SavingsPlanner({
           <div className="savings-mode-switch" role="tablist" aria-label="储蓄频率">
             <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
             <button type="button" className={frequency === "ALTERNATE" ? "active" : ""} onClick={() => setFrequency("ALTERNATE")}>隔月存</button>
+          </div>
+          <div className="savings-month-restorer">
+            <select value={monthToAdd} onChange={(event) => setMonthToAdd(event.target.value)} disabled={!removedMonths.length} aria-label="选择要添加的月份">
+              {removedMonths.length ? removedMonths.map((month) => <option key={month} value={month}>{monthLabel(month)}</option>) : <option value="">月份已完整</option>}
+            </select>
+            <button type="button" onClick={restoreMonth} disabled={!monthToAdd}>添加月份</button>
           </div>
         </div>
 

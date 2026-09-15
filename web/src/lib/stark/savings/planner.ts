@@ -5,8 +5,8 @@ export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
 
 export function selectSavingsGoal<T extends { id: string }>(goals: readonly T[], goalId?: string) {
-  if (goalId) return goals.find((goal) => goal.id === goalId) ?? null;
-  return goals[0] ?? null;
+  if (!goalId) return null;
+  return goals.find((goal) => goal.id === goalId) ?? null;
 }
 
 export function isLegacySavingsArrayIndexColumn(column: string) {
@@ -69,6 +69,12 @@ function currentSavingsMonthKey() {
 export function removeSavingsMonth(months: readonly string[], month: string) {
   if (months.length <= 1) return [...months];
   return months.filter((item) => item !== month);
+}
+
+export function addSavingsMonth(months: readonly string[], month: string, supportedMonths: readonly string[]) {
+  if (!supportedMonths.includes(month) || months.includes(month)) return [...months];
+  const selected = new Set([...months, month]);
+  return supportedMonths.filter((item) => selected.has(item));
 }
 
 export function resolveSavingsMonths(

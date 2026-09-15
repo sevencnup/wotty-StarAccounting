@@ -6332,6 +6332,38 @@ nextjs-portal {
   font-size: calc(12px * var(--user-font-scale));
 }
 
+.savings-month-restorer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.savings-month-restorer select,
+.savings-month-restorer button {
+  min-height: 34px;
+  border: 1px solid #dce5f1;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #405268;
+  font: inherit;
+}
+
+.savings-month-restorer select {
+  min-width: 86px;
+  padding: 0 28px 0 10px;
+}
+
+.savings-month-restorer button {
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+.savings-month-restorer button:disabled,
+.savings-month-restorer select:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
 .savings-column-adder .previous-balance-column-button {
   border-color: #b7d7d2;
   color: #176b68;
