@@ -625,16 +625,18 @@ export function SavingsPlanner({
         </div>
 
         <div className="savings-plan-toolbar">
-          <label className="savings-year-picker"><span>计划年份</span><select aria-label="计划年份" value={year} onChange={(event) => changeYear(Number(event.target.value))}>{Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 3 + index).map((item) => <option key={item} value={item}>{item} 年</option>)}</select></label>
+          <div className="savings-plan-actions">
+            <label className="savings-year-picker"><span>计划年份</span><select aria-label="计划年份" value={year} onChange={(event) => changeYear(Number(event.target.value))}>{Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 3 + index).map((item) => <option key={item} value={item}>{item} 年</option>)}</select></label>
+            <div className="savings-month-restorer">
+              <select value={monthToAdd} onChange={(event) => setMonthToAdd(event.target.value)} disabled={!removedMonths.length} aria-label="选择要添加的月份">
+                {removedMonths.length ? removedMonths.map((month) => <option key={month} value={month}>{monthLabel(month)}</option>) : <option value="">月份已完整</option>}
+              </select>
+              <button type="button" onClick={restoreMonth} disabled={!monthToAdd}>添加月份</button>
+            </div>
+          </div>
           <div className="savings-mode-switch" role="tablist" aria-label="储蓄频率">
             <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
             <button type="button" className={frequency === "ALTERNATE" ? "active" : ""} onClick={() => setFrequency("ALTERNATE")}>隔月存</button>
-          </div>
-          <div className="savings-month-restorer">
-            <select value={monthToAdd} onChange={(event) => setMonthToAdd(event.target.value)} disabled={!removedMonths.length} aria-label="选择要添加的月份">
-              {removedMonths.length ? removedMonths.map((month) => <option key={month} value={month}>{monthLabel(month)}</option>) : <option value="">月份已完整</option>}
-            </select>
-            <button type="button" onClick={restoreMonth} disabled={!monthToAdd}>添加月份</button>
           </div>
         </div>
 

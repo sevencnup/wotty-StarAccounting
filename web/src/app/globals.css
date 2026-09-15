@@ -6267,11 +6267,16 @@ nextjs-portal {
 }
 
 .savings-plan-toolbar {
+  display: grid;
+  justify-items: start;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+.savings-plan-actions {
   display: flex;
   align-items: center;
-  flex-wrap: nowrap;
-  gap: 4px;
-  margin-bottom: 12px;
+  gap: 6px;
 }
 
 .savings-plan-toolbar .savings-year-picker {
