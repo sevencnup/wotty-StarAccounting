@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -252,7 +252,7 @@ export function SavingsPlanner({
       setGoal(activeGoal);
       setGoalName(draft?.goalName ?? activeGoal.name ?? "");
       setTargetAmount(draft?.targetAmount ?? (activeGoal.targetAmount ? String(activeGoal.targetAmount) : ""));
-      setDeadline(draft?.deadline ?? activeGoal.deadline ?? "");
+      setDeadline(normalizeSavingsDeadline(draft?.deadline ?? activeGoal.deadline));
       setDepositType(normalizeSavingsDepositType(draft?.depositType ?? activeGoal.depositType));
       setFrequency(initialFrequency);
       setColumns(draftColumns);
@@ -290,7 +290,7 @@ export function SavingsPlanner({
       setGoal(fallbackGoal);
       setGoalName(draft?.goalName ?? fallbackGoal.name);
       setTargetAmount(draft?.targetAmount ?? "");
-      setDeadline(draft?.deadline ?? fallbackGoal.deadline ?? "");
+      setDeadline(normalizeSavingsDeadline(draft?.deadline ?? fallbackGoal.deadline));
       setDepositType(normalizeSavingsDepositType(draft?.depositType ?? fallbackGoal.depositType));
       setFrequency(draft?.frequency ?? "MONTHLY");
       setColumns(cleanExpenseColumns(draft?.columns, DEFAULT_COLUMNS).filter((column) => column !== PREVIOUS_BALANCE_COLUMN));
@@ -543,8 +543,13 @@ export function SavingsPlanner({
     result.remaining += calculated.remaining;
     return result;
   }, { salary: 0, expected: 0, remaining: 0 }), [months, previousBalanceEnabled, rowsByFrequency]);
+  if (shouldShowSavingsPlannerLoading(hydrating, savingsGoalId)) {
+    return <div className="savings-planner-loading" role="status" aria-live="polite">正在加载储蓄目标...</div>;
+  }
 
-
+  if (goalMissing) {
+    return <div className="savings-planner-loading" role="alert">{notice || "未找到该储蓄目标"}</div>;
+  }
 
   return (
     <div className={`savings-planner-shell ${embedded ? "embedded" : ""}`}>

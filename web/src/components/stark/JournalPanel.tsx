@@ -622,7 +622,7 @@ export function JournalPanel({
         </div>
 
         {isSavings ? (
-          <SavingsPlanner embedded onSaved={onSaved ?? handleClose} savingsGoalId={savingsGoalId} />
+          <SavingsPlanner key={savingsGoalId ?? "new-savings-goal"} embedded onSaved={onSaved ?? handleClose} savingsGoalId={savingsGoalId} />
         ) : isSavingsRecord ? (
           <div className="savings-record-form">
             <div className="savings-record-context">

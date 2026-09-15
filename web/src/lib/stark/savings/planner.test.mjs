@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -145,6 +145,18 @@ test("editing ignores legacy or older drafts but restores a newer draft", () => 
     savedAt: "2026-09-15 09:00:00",
   });
   assert.deepEqual(selectSavingsDraft({ goalName: "新增草稿" }, undefined, false), { goalName: "新增草稿" });
+});
+
+test("editing hides the default planner until the requested goal is hydrated", () => {
+  assert.equal(shouldShowSavingsPlannerLoading(true, "goal-1"), true);
+  assert.equal(shouldShowSavingsPlannerLoading(false, "goal-1"), false);
+  assert.equal(shouldShowSavingsPlannerLoading(true), false);
+});
+
+test("savings deadlines are normalized for date inputs", () => {
+  assert.equal(normalizeSavingsDeadline("2026-12-31 00:00:00"), "2026-12-31");
+  assert.equal(normalizeSavingsDeadline("2026-12-31"), "2026-12-31");
+  assert.equal(normalizeSavingsDeadline(null), "");
 });
 
 function savingsPlan(overrides = {}) {

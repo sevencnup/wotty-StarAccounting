@@ -16,7 +16,7 @@ import type {
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
-import { savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
+import { savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
 
 type EntityType =
   | "users"
@@ -173,7 +173,7 @@ export class RemoteRepository implements DataRepository {
   async deleteLoan(id: string) { await this.delete("loans", id); }
 
   async getSavingsGoals(accountId: string) {
-    return await this.list("savingsGoals", accountId) as unknown as SavingsGoal[];
+    return await this.request<SavingsGoal[]>(savingsGoalsPath(accountId));
   }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
   async deleteSavingsGoal(id: string) { await this.delete("savingsGoals", id); }
@@ -182,8 +182,7 @@ export class RemoteRepository implements DataRepository {
   }
   async getSavingsPlansByGoals(goalIds: string[]) {
     if (!goalIds.length) return [];
-    const goalSet = new Set(goalIds);
-    return (await this.list("savingsPlans") as unknown as SavingsPlan[]).filter((plan) => goalSet.has(plan.goalId));
+    return (await Promise.all(goalIds.map((goalId) => this.getSavingsPlans(goalId)))).flat();
   }
   async saveSavingsPlan(plan: SavingsPlan) { await this.save("savingsPlans", plan); }
   async deleteSavingsPlan(id: string) {

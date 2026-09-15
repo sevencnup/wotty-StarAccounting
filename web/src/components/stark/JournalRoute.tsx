@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 
 export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "asset" | "loan" }) {
+  const [routeReady, setRouteReady] = useState(false);
   const [resolvedVariant, setResolvedVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(variant ?? null);
   const [preset, setPreset] = useState<{ type: "INCOME"; category: "工资" } | undefined>(() => (
     typeof window !== "undefined" && new URLSearchParams(window.location.search).get("preset") === "salary"
@@ -20,6 +21,7 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
       setResolvedVariant(variant);
       setPreset(undefined);
       setSavingsGoalId(variant === "savings" ? new URLSearchParams(window.location.search).get("goalId") || undefined : undefined);
+      setRouteReady(true);
       return;
     }
     setResolvedVariant(window.sessionStorage.getItem("stark:journal-variant") === "savings" ? "savings" : "journal");
@@ -27,9 +29,10 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
       ? { type: "INCOME", category: "工资" }
       : undefined);
     setSavingsGoalId(undefined);
+    setRouteReady(true);
   }, [variant]);
 
-  if (!resolvedVariant) return null;
+  if (!routeReady || !resolvedVariant) return null;
 
   function closePanel() {
     if (resolvedVariant === "savings") {
