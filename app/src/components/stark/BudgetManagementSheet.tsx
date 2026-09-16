@@ -6,6 +6,7 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
+import { BottomSheet } from "@/components/stark/BottomSheet";
 
 const manager = new DataModeManager();
 
@@ -28,14 +29,6 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
   useEffect(() => {
     setBudgets(initialBudgets);
   }, [initialBudgets]);
-
-  useEffect(() => {
-    function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKeydown);
-    return () => window.removeEventListener("keydown", handleKeydown);
-  }, [onClose]);
 
   function closeEditor() {
     setEditing(null);
@@ -115,16 +108,7 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
   }
 
   return (
-    <div className="budget-management-sheet-overlay" onClick={onClose}>
-      <section className="budget-management-sheet" role="dialog" aria-modal="true" aria-labelledby="budget-management-sheet-title" onClick={(event) => event.stopPropagation()}>
-        <div className="budget-management-sheet-handle" aria-hidden="true" />
-        <header className="budget-management-sheet-header">
-          <span aria-hidden="true" />
-          <strong id="budget-management-sheet-title">预算管理</strong>
-          <button type="button" aria-label="关闭预算管理" onClick={onClose}>×</button>
-        </header>
-
-        <div className="budget-management-sheet-body">
+    <BottomSheet title="预算管理" onClose={onClose} className="budget-management-sheet">
           <section className="budget-management-overview">
             <div className="budget-management-overview-head">
               <div><strong>总预算</strong><span>先从一个月度或年度总额开始管理</span></div>
@@ -157,8 +141,6 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
               <button type="button" className="settings-confirm-button budget-management-save" disabled={saving} onClick={() => void save()}>{saving ? "保存中…" : "保存预算"}</button>
             </section>
           ) : message ? <p className="budget-management-message" role="alert">{message}</p> : null}
-        </div>
-      </section>
-    </div>
+    </BottomSheet>
   );
 }

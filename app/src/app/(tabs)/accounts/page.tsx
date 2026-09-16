@@ -13,6 +13,7 @@ import { serializeTransactionsToCsv } from "@/lib/stark/export/transaction-csv";
 import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 import { AccountReconciliationSheet } from "@/components/stark/AccountReconciliationSheet";
+import { BottomSheet } from "@/components/stark/BottomSheet";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 
 type BillPlatform = "微信" | "支付宝";
@@ -293,10 +294,12 @@ export default function AccountsPage() {
       </section>
 
       {activePanel ? (
-        <div className="settings-sheet-overlay visible" onClick={() => setActivePanel(null)}>
-          <section className="settings-sheet" onClick={(event) => event.stopPropagation()}>
-            <div className="settings-sheet-handle" />
-            <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
+        <BottomSheet
+          title={activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          className="settings-sheet"
+          overlayClassName="settings-sheet-overlay"
+          onClose={() => setActivePanel(null)}
+        >
 
             {activePanel === "MODE" ? <div className="settings-sheet-body">
               <p className="settings-sheet-note">本地模式将数据保存在当前设备；云端模式只读取后端数据库，连接失败时不会混用本地数据。</p>
@@ -347,8 +350,7 @@ export default function AccountsPage() {
             {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
             {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>先在切换模式中确认当前数据源，云端模式还需要后端服务可访问。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件。</p></div><div><strong>Web 端和 App 有何不同？</strong><p>目前暂时只开发安卓客户端，Web 端适用于 PC、iOS、鸿蒙等设备。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">国际站点端反馈 <ChevronIcon /></a><a href="https://sevencn.com/software/staraccounting" target="_blank" rel="noreferrer">国内站点端反馈 <ChevronIcon /></a></div> : null}
             {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星会计</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div><nav className="settings-about-links" aria-label="相关网站"><a href="https://sevencn.com" target="_blank" rel="noreferrer"><span>博客</span><strong>sevencn.com</strong><ChevronIcon /></a><a href="https://s.wotty.app" target="_blank" rel="noreferrer"><span>项目网站</span><strong>s.wotty.app</strong><ChevronIcon /></a><a href="https://github.com/sevencnup/wotty-StarAccounting" target="_blank" rel="noreferrer"><span>开源地址</span><strong>github.com/sevencnup/wotty-StarAccounting</strong><ChevronIcon /></a></nav></div> : null}
-          </section>
-        </div>
+        </BottomSheet>
       ) : null}
     </div>
   );
