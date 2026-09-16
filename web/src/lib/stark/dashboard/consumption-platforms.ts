@@ -1,7 +1,7 @@
 export const CONSUMPTION_PLATFORMS = ["微信", "支付宝", "银行卡", "现金", "其他"] as const;
 const DEFAULT_REPORTING_MONTH_DATE = new Date(2026, 0, 1);
 
-type PlatformTransaction = {
+export type PlatformTransaction = {
   amount: number;
   category?: string | null;
   date: string;
@@ -13,6 +13,8 @@ export function normalizeConsumptionPlatform(platform?: string | null) {
   const value = platform?.trim() || "其他";
   if (value === "微信" || value.includes("微信")) return "微信";
   if (value === "支付宝" || value.includes("支付宝")) return "支付宝";
+  if (value === "银行卡" || /银行|信用卡|储蓄卡/.test(value)) return "银行卡";
+  if (value === "现金" || value.includes("现金")) return "现金";
   return CONSUMPTION_PLATFORMS.includes(value as (typeof CONSUMPTION_PLATFORMS)[number])
     ? value
     : "其他";

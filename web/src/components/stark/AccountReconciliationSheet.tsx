@@ -6,22 +6,22 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
+import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
 
 const repository = new DataModeManager().getRepository();
 const platforms = ["支付宝", "微信", "银行卡", "现金", "其他"] as const;
-type ReconciliationPlatform = (typeof platforms)[number];
-
-function currentMonthText() {
-  return new Date().toISOString().slice(0, 7);
-}
+const reconciliationScopes = ["全部", ...platforms] as const;
+type ReconciliationScope = (typeof reconciliationScopes)[number];
 
 function monthEndDate(month: string) {
   const [year, monthNumber] = month.split("-").map(Number);
   return `${year}-${String(monthNumber).padStart(2, "0")}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, "0")}`;
 }
 
-function summarizeMonthlyCashflow(transactions: Transaction[], platform: string, month: string) {
-  const monthlyTransactions = transactions.filter((item) => item.platform.trim() === platform && item.date.slice(0, 7) === month);
+function summarizeMonthlyCashflow(transactions: Transaction[], scope: ReconciliationScope, month: string) {
+  const monthlyTransactions = transactions.filter((item) => (
+    (scope === "全部" || normalizeConsumptionPlatform(item.platform) === scope) && item.date.slice(0, 7) === month
+  ));
   const income = monthlyTransactions
     .filter((item) => item.type === "INCOME")
     .reduce((total, item) => total + item.amount, 0);
@@ -41,6 +41,13 @@ function summarizeMonthlyCashflow(transactions: Transaction[], platform: string,
   };
 }
 
+function latestTransactionMonth(transactions: Transaction[]) {
+  return transactions.reduce((latest, transaction) => {
+    const month = transaction.date.slice(0, 7);
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(month) && month > latest ? month : latest;
+  }, "");
+}
+
 async function loadAllTransactions(accountId: string) {
   const all: Transaction[] = [];
   const pageSize = 500;
@@ -53,8 +60,8 @@ async function loadAllTransactions(accountId: string) {
 }
 
 export function AccountReconciliationSheet({ onTransactionSaved }: { onTransactionSaved?: () => void }) {
-  const [platform, setPlatform] = useState<ReconciliationPlatform>("支付宝");
-  const [reconciliationMonth, setReconciliationMonth] = useState(currentMonthText);
+  const [scope, setScope] = useState<ReconciliationScope>("全部");
+  const [reconciliationMonth, setReconciliationMonth] = useState("");
   const [actualBalance, setActualBalance] = useState("");
   const [reason, setReason] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -70,6 +77,7 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
       .then((items) => {
         if (!active) return;
         setTransactions(items);
+        setReconciliationMonth((current) => current || latestTransactionMonth(items));
         setLoadError(false);
       })
       .catch(() => {
@@ -84,8 +92,8 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
   const actual = Number(actualBalance);
   const hasActual = actualBalance.trim() !== "" && Number.isFinite(actual);
   const monthlyCashflow = useMemo(
-    () => summarizeMonthlyCashflow(transactions, platform, reconciliationMonth),
-    [transactions, platform, reconciliationMonth],
+    () => summarizeMonthlyCashflow(transactions, scope, reconciliationMonth),
+    [transactions, scope, reconciliationMonth],
   );
   const difference = hasActual ? actual - monthlyCashflow.balance : 0;
   const needsCorrection = hasActual && Math.abs(difference) >= 0.005;
@@ -103,10 +111,10 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
       amount: Math.abs(difference),
       type: difference > 0 ? "INCOME" : "EXPENSE",
       category: "余额校正",
-      platform,
-      merchant: "余额校正",
+      platform: scope === "全部" ? "其他" : scope,
+      merchant: scope === "全部" ? "账本总额校正" : "余额校正",
       date: `${monthEndDate(reconciliationMonth)}T23:59:59`,
-      description: reason.trim() ? `余额对账：${reason.trim()}` : "余额对账校正",
+      description: reason.trim() ? `余额对账（${scope}）：${reason.trim()}` : `余额对账（${scope}）校正`,
       orderId: null,
       paymentMethod: null,
       status: "COMPLETED",
@@ -131,16 +139,16 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
 
   return (
     <div className="account-reconciliation-sheet">
-      <p className="settings-sheet-note">选择月份后，先查看该账户的收入、支出和账单结余，再输入现有实际余额进行校正。差额会生成一笔可追溯的“余额校正”流水，不会修改原账单。</p>
+      <p className="settings-sheet-note">选择月份后，先查看该账户的收入、支出和账单结余，再输入现有实际余额进行校正。会自动选中账单中最近有记录的月份。</p>
 
       <section className="reconciliation-section">
         <div className="reconciliation-section-heading">
-          <div><strong>选择资金账户</strong><small>按账单中的支付账户统计</small></div>
+          <div><strong>选择对账范围</strong><small>默认汇总本月全部收支，也可按支付账户查看</small></div>
           <span>{loading ? "读取中" : `${monthlyCashflow.count} 笔纳入计算`}</span>
         </div>
         <div className="reconciliation-platforms">
-          {platforms.map((item) => (
-            <button key={item} type="button" className={platform === item ? "active" : ""} onClick={() => { setPlatform(item); setMessage(""); }}>
+          {reconciliationScopes.map((item) => (
+            <button key={item} type="button" className={scope === item ? "active" : ""} onClick={() => { setScope(item); setMessage(""); }}>
               {item}
             </button>
           ))}
@@ -176,7 +184,7 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
       <button type="button" className="settings-sheet-primary reconciliation-submit" disabled={!needsCorrection || saving || loading || loadError} onClick={() => void createCorrection()}>
         {saving ? "生成中..." : needsCorrection ? "生成余额校正流水" : hasActual ? "无需校正" : "输入实际余额后校正"}
       </button>
-      <p className="settings-sheet-tip">校正流水会记在本月最后一天。转账暂不计入本月收支，避免同一笔资金在账户之间重复计算。</p>
+      <p className="settings-sheet-tip">校正流水会记在本月最后一天。选择“全部”时，校正会归入“其他”；转账暂不计入本月收支，避免重复计算。</p>
     </div>
   );
 }

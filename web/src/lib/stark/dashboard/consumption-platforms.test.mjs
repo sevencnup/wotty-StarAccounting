@@ -10,6 +10,11 @@ test("normalizes WeChat payment aliases to the WeChat platform", () => {
   assert.equal(normalizeConsumptionPlatform("支付宝余额"), "支付宝");
 });
 
+test("normalizes bank card and cash aliases for account reconciliation", () => {
+  assert.equal(normalizeConsumptionPlatform("中国银行储蓄卡"), "银行卡");
+  assert.equal(normalizeConsumptionPlatform("现金支付"), "现金");
+});
+
 test("keeps aliased WeChat transactions in the Sankey flow", () => {
   const result = buildPlatformCategoryFlow([
     { amount: 2120, category: "房租", platform: "微信支付", type: "EXPENSE" },
