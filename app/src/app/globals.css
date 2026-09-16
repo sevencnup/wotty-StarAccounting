@@ -13037,3 +13037,38 @@ body .budget-management-sheet input[type=range]:focus-visible {
   box-shadow: none !important;
   background: transparent !important;
 }
+
+/* Budget editor controls sit below the app-wide borderless surface reset.
+   Restore their affordances locally so labels, fields and actions remain
+   legible on the white sheet. */
+body .budget-management-sheet .budget-management-editor-head > button {
+  border: 1px solid #c7d7e8 !important;
+  border-radius: 8px;
+  color: #24557f !important;
+  background: #eef6fd !important;
+  font-weight: 600;
+}
+
+body .budget-management-sheet .budget-editor-grid label > span {
+  color: #3f5872 !important;
+  font-weight: 600;
+}
+
+body .budget-management-sheet .budget-editor-grid input:not([type=range]),
+body .budget-management-sheet .budget-editor-grid select {
+  border: 1px solid #b9cde0 !important;
+  color: #142036 !important;
+  background: #ffffff !important;
+}
+
+body .budget-management-sheet .budget-editor-grid input:not([type=range]):focus,
+body .budget-management-sheet .budget-editor-grid select:focus {
+  border-color: #1479d1 !important;
+  box-shadow: 0 0 0 3px rgba(20, 121, 209, 0.14) !important;
+}
+
+body .budget-management-sheet .budget-management-save {
+  border: 0 !important;
+  color: #ffffff !important;
+  background: #0068c9 !important;
+}
