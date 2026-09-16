@@ -1370,26 +1370,18 @@ nextjs-portal {
   overflow: hidden;
   padding: 15px 16px 12px;
   border-radius: 18px;
-  background: linear-gradient(135deg, #f1faff 0%, #ffffff 62%, #f1fbf7 100%);
-  border: 1px solid rgba(125, 211, 252, 0.34);
-  box-shadow: 0 8px 22px rgba(37, 99, 140, 0.07);
+  background: #ffffff;
+  border: 1px solid #e7edf3;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
 }
 
 .stark-budget-allocation-card::after {
-  content: "";
-  position: absolute;
-  right: -40px;
-  top: -52px;
-  width: 138px;
-  height: 138px;
-  border-radius: 50%;
-  background: rgba(16, 185, 129, 0.08);
-  pointer-events: none;
+  display: none;
 }
 
 .stark-budget-allocation-card.has-overrun {
-  background: linear-gradient(135deg, #fffaf0 0%, #ffffff 68%, #f1fbf7 100%);
-  border-color: rgba(245, 158, 11, 0.3);
+  background: #ffffff;
+  border-color: #f3d7a3;
 }
 
 .stark-budget-allocation-link {
