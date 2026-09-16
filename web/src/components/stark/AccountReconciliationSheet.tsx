@@ -20,19 +20,25 @@ function monthEndDate(month: string) {
   return `${year}-${String(monthNumber).padStart(2, "0")}-${String(new Date(year, monthNumber, 0).getDate()).padStart(2, "0")}`;
 }
 
-function moneyValue(value: string) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
+function summarizeMonthlyCashflow(transactions: Transaction[], platform: string, month: string) {
+  const monthlyTransactions = transactions.filter((item) => item.platform.trim() === platform && item.date.slice(0, 7) === month);
+  const income = monthlyTransactions
+    .filter((item) => item.type === "INCOME")
+    .reduce((total, item) => total + item.amount, 0);
+  const expense = monthlyTransactions
+    .filter((item) => item.type === "EXPENSE")
+    .reduce((total, item) => total + item.amount, 0);
+  const repayment = monthlyTransactions
+    .filter((item) => item.type === "REPAYMENT")
+    .reduce((total, item) => total + item.amount, 0);
 
-function calculateLedgerBalance(transactions: Transaction[], platform: string, month: string, openingBalance: number) {
-  return transactions
-    .filter((item) => item.platform.trim() === platform && item.date.slice(0, 7) === month)
-    .reduce((balance, item) => {
-      if (item.type === "INCOME") return balance + item.amount;
-      if (item.type === "EXPENSE" || item.type === "REPAYMENT") return balance - item.amount;
-      return balance;
-    }, openingBalance);
+  return {
+    income,
+    expense,
+    repayment,
+    balance: income - expense - repayment,
+    count: monthlyTransactions.length,
+  };
 }
 
 async function loadAllTransactions(accountId: string) {
@@ -49,7 +55,6 @@ async function loadAllTransactions(accountId: string) {
 export function AccountReconciliationSheet({ onTransactionSaved }: { onTransactionSaved?: () => void }) {
   const [platform, setPlatform] = useState<ReconciliationPlatform>("支付宝");
   const [reconciliationMonth, setReconciliationMonth] = useState(currentMonthText);
-  const [openingBalance, setOpeningBalance] = useState("0");
   const [actualBalance, setActualBalance] = useState("");
   const [reason, setReason] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -76,18 +81,13 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
     return () => { active = false; };
   }, []);
 
-  const opening = moneyValue(openingBalance);
   const actual = Number(actualBalance);
   const hasActual = actualBalance.trim() !== "" && Number.isFinite(actual);
-  const ledgerBalance = useMemo(
-    () => calculateLedgerBalance(transactions, platform, reconciliationMonth, opening),
-    [transactions, platform, reconciliationMonth, opening],
-  );
-  const difference = hasActual ? actual - ledgerBalance : 0;
-  const matchedTransactions = useMemo(
-    () => transactions.filter((item) => item.platform.trim() === platform && item.date.slice(0, 7) === reconciliationMonth),
+  const monthlyCashflow = useMemo(
+    () => summarizeMonthlyCashflow(transactions, platform, reconciliationMonth),
     [transactions, platform, reconciliationMonth],
   );
+  const difference = hasActual ? actual - monthlyCashflow.balance : 0;
   const needsCorrection = hasActual && Math.abs(difference) >= 0.005;
 
   async function createCorrection() {
@@ -131,12 +131,12 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
 
   return (
     <div className="account-reconciliation-sheet">
-      <p className="settings-sheet-note">按月核对指定资金账户：月初余额加上本月流水，和月末实际余额比较。差额只会生成一笔可追溯的“余额校正”流水，不会修改原账单。</p>
+      <p className="settings-sheet-note">选择月份后，先查看该账户的收入、支出和账单结余，再输入现有实际余额进行校正。差额会生成一笔可追溯的“余额校正”流水，不会修改原账单。</p>
 
       <section className="reconciliation-section">
         <div className="reconciliation-section-heading">
           <div><strong>选择资金账户</strong><small>按账单中的支付账户统计</small></div>
-          <span>{loading ? "读取中" : `${matchedTransactions.length} 笔纳入计算`}</span>
+          <span>{loading ? "读取中" : `${monthlyCashflow.count} 笔纳入计算`}</span>
         </div>
         <div className="reconciliation-platforms">
           {platforms.map((item) => (
@@ -149,26 +149,34 @@ export function AccountReconciliationSheet({ onTransactionSaved }: { onTransacti
 
       <section className="reconciliation-section reconciliation-fields">
         <label><span>对账月份</span><input type="month" value={reconciliationMonth} onChange={(event) => { setReconciliationMonth(event.target.value); setMessage(""); }} /></label>
-        <label><span>本月月初余额</span><div className="reconciliation-money-input"><b>¥</b><input inputMode="decimal" value={openingBalance} onChange={(event) => setOpeningBalance(event.target.value.replace(/[^0-9.-]/g, ""))} placeholder="上月月末实际余额" /></div></label>
-        <label><span>本月月末实际余额</span><div className="reconciliation-money-input actual"><b>¥</b><input inputMode="decimal" value={actualBalance} onChange={(event) => { setActualBalance(event.target.value.replace(/[^0-9.-]/g, "")); setMessage(""); }} placeholder="输入银行卡 / 钱包中的月末余额" /></div></label>
+      </section>
+
+      <section className="reconciliation-cashflow" aria-label="本月收入支出">
+        <div><span>本月收入</span><strong>+¥ {monthlyCashflow.income.toFixed(2)}</strong></div>
+        <div><span>本月支出</span><strong>-¥ {monthlyCashflow.expense.toFixed(2)}</strong></div>
+        <div><span>本月还款</span><strong>-¥ {monthlyCashflow.repayment.toFixed(2)}</strong></div>
+      </section>
+
+      <section className="reconciliation-section reconciliation-fields">
+        <label><span>现有实际余额</span><div className="reconciliation-money-input actual"><b>¥</b><input inputMode="decimal" value={actualBalance} onChange={(event) => { setActualBalance(event.target.value.replace(/[^0-9.-]/g, "")); setMessage(""); }} placeholder="输入当前银行卡 / 钱包余额" /></div></label>
         <label><span>校正原因（可选）</span><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="例如：遗漏一笔现金消费、手续费" /></label>
       </section>
 
       <section className="reconciliation-result">
         <div className="reconciliation-result-heading"><strong>对账结果</strong><span className={hasActual ? (Math.abs(difference) < 0.005 ? "matched" : "unmatched") : "pending"}>{!hasActual ? "等待输入实际余额" : Math.abs(difference) < 0.005 ? "账目一致" : "存在差异"}</span></div>
         <div className="reconciliation-result-grid">
-          <div><span>月末账面余额</span><strong>¥ {ledgerBalance.toFixed(2)}</strong></div>
-          <div><span>月末实际余额</span><strong>{hasActual ? `¥ ${actual.toFixed(2)}` : "—"}</strong></div>
+          <div><span>本月账单结余</span><strong>¥ {monthlyCashflow.balance.toFixed(2)}</strong></div>
+          <div><span>现有实际余额</span><strong>{hasActual ? `¥ ${actual.toFixed(2)}` : "—"}</strong></div>
           <div className={hasActual && Math.abs(difference) >= 0.005 ? (difference > 0 ? "positive" : "negative") : ""}><span>差异</span><strong>{hasActual ? `${difference > 0 ? "+" : ""}¥ ${difference.toFixed(2)}` : "—"}</strong></div>
         </div>
-        <p>{loadError ? "账单读取失败，请关闭后重试。" : hasActual && Math.abs(difference) < 0.005 ? "本月流水与月末实际余额一致，不需要生成校正。" : hasActual ? `月末实际余额比账面${difference > 0 ? "多" : "少"} ¥ ${Math.abs(difference).toFixed(2)}。` : "先输入本月月末实际余额，系统会自动计算差异。"}</p>
+        <p>{loadError ? "账单读取失败，请关闭后重试。" : hasActual && Math.abs(difference) < 0.005 ? "本月账单结余与现有实际余额一致，不需要生成校正。" : hasActual ? `现有实际余额比本月账单结余${difference > 0 ? "多" : "少"} ¥ ${Math.abs(difference).toFixed(2)}。` : "先输入现有实际余额，系统会自动计算差异。"}</p>
       </section>
 
       {message ? <div className={`reconciliation-message${message.startsWith("已生成") ? " success" : ""}`}>{message}</div> : null}
       <button type="button" className="settings-sheet-primary reconciliation-submit" disabled={!needsCorrection || saving || loading || loadError} onClick={() => void createCorrection()}>
         {saving ? "生成中..." : needsCorrection ? "生成余额校正流水" : hasActual ? "无需校正" : "输入实际余额后校正"}
       </button>
-      <p className="settings-sheet-tip">校正流水会记在本月最后一天。转账暂不计入余额，避免同一笔资金在账户之间重复计算。</p>
+      <p className="settings-sheet-tip">校正流水会记在本月最后一天。转账暂不计入本月收支，避免同一笔资金在账户之间重复计算。</p>
     </div>
   );
 }
