@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, type PropsWithChildren } from "react";
+import { useEffect, useId, useState, type PropsWithChildren } from "react";
+import { createPortal } from "react-dom";
 
 type BottomSheetProps = PropsWithChildren<{
   title: string;
@@ -12,6 +13,11 @@ type BottomSheetProps = PropsWithChildren<{
 
 export function BottomSheet({ children, title, onClose, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -21,7 +27,9 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
     return () => window.removeEventListener("keydown", handleKeydown);
   }, [onClose]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className={`bottom-sheet-overlay ${overlayClassName}`.trim()} onClick={onClose}>
       <section className={`bottom-sheet ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
         <div className="bottom-sheet-handle" aria-hidden="true" />
@@ -33,5 +41,6 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
         <div className={`bottom-sheet-body ${bodyClassName}`.trim()}>{children}</div>
       </section>
     </div>
+    , document.body,
   );
 }
