@@ -6,6 +6,7 @@ import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
+import { BudgetManagementSheet } from "@/components/stark/BudgetManagementSheet";
 import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
@@ -358,7 +359,7 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
   );
 }
 
-function StarkBudgetAllocationCard({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
+function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: { summary: HomeSummary; reportingMonth: string; onManageBudget: () => void }) {
   const locale = useAppLocale();
   const allocation = summary.budgetAllocation;
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
@@ -374,7 +375,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth }: { summary: HomeS
 
   return (
     <section className={cardClassName}>
-      <Link href="/budgets" className="stark-budget-allocation-link">
+      <button type="button" className="stark-budget-allocation-link" onClick={onManageBudget}>
         <div className="stark-budget-allocation-head">
           <div className="stark-budget-allocation-title">
             <span className="stark-budget-allocation-icon"><TargetIcon size={15} strokeWidth={2.2} color="#0284c7" /></span>
@@ -419,7 +420,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth }: { summary: HomeS
             <strong className={allocation.available < 0 ? "negative" : "available"}>¥ {formatMoney(Math.abs(allocation.available))}</strong>
           </div>
         </div>
-      </Link>
+      </button>
       <div className="stark-budget-allocation-assets">
         <span>{translateValue("资产存量", locale)}</span>
         <strong>¥ {formatMoney(allocation.assetTotal)}</strong>
@@ -430,7 +431,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth }: { summary: HomeS
 }
 
 // 四维财务罗盘 (Compass Matrix)
-function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
+function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary; onManageBudget: () => void }) {
   const locale = useAppLocale();
   const budget = summary.budgetAlerts[0];
   const loanTask = summary.tasks.find((task) => task.source === "loan");
@@ -459,7 +460,7 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
         </div>
       </Link>
 
-      <Link href="/budgets" className="stark-compass-card budget">
+      <button type="button" className="stark-compass-card budget" onClick={onManageBudget}>
         <div className="compass-header">
           <span className="compass-icon-wrapper budget">
             <TargetIcon size={14} strokeWidth={2.2} color="#0284c7" />
@@ -473,7 +474,7 @@ function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
           </span>
           <ChevronRightIcon size={12} />
         </div>
-      </Link>
+      </button>
 
       <Link href="/loans" className="stark-compass-card loan">
         <div className="compass-header">
@@ -710,6 +711,7 @@ export default function HomePage() {
   const [reportingMonth, setReportingMonth] = useState("2026-01");
   const [monthReady, setMonthReady] = useState(false);
   const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
+  const [budgetManagementOpen, setBudgetManagementOpen] = useState(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -858,13 +860,13 @@ export default function HomePage() {
       />
 
       {/* 本月资金分配 */}
-      <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} />
+      <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => setBudgetManagementOpen(true)} />
 
       {/* AI 财务诊断条 */}
       <StarkDiagnosticBanner summary={summary} />
 
       {/* 四维财务罗盘 */}
-      <StarkCompassMatrix summary={summary} />
+      <StarkCompassMatrix summary={summary} onManageBudget={() => setBudgetManagementOpen(true)} />
 
       {/* 本月支出构成 (替代老旧流水) */}
       <TopExpenseStructure summary={summary} />
@@ -874,6 +876,14 @@ export default function HomePage() {
 
       {/* 收支动态走势 */}
       <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
+
+      {budgetManagementOpen ? (
+        <BudgetManagementSheet
+          budgets={budgets}
+          onBudgetsChange={setBudgets}
+          onClose={() => setBudgetManagementOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
