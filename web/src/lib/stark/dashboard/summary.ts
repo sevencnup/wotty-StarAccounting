@@ -5,6 +5,7 @@ import {
 } from "@/lib/stark/dashboard/reporting-month";
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
+import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
 import { calculateCalendarPeriodCashflow, calculateSalaryCycleCashflow } from "./salary-cycle";
 
 export interface HomeTrend {
@@ -77,6 +78,8 @@ export interface HomeForecast {
   monthRepayment: number;
 }
 
+export type HomeBudgetAllocation = BudgetAllocation;
+
 export interface HomeInsight {
   id: string;
   title: string;
@@ -101,6 +104,7 @@ export interface HomeSummary {
   loanTotal: number;
   loanDelta: number;
   budgetAlerts: HomeBudgetAlert[];
+  budgetAllocation: HomeBudgetAllocation;
   tasks: HomeTaskItem[];
   forecast: HomeForecast;
   insights: HomeInsight[];
@@ -490,9 +494,15 @@ export function buildHomeSummary(input: {
   const loanRepaid = Math.max(loanAll - loanTotal, 0);
   const assetTotal = input.assets.reduce((sum, item) => sum + item.balance, 0) + totalSavings;
   const liabilityTotal = loanTotal;
-  const budgetAmount = input.budgets.reduce((sum, item) => sum + item.amount, 0);
-
   const budgetAlerts = buildBudgetAlerts(input.transactions, input.budgets, expense, currentMonth);
+  const forecast = buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth);
+  const budgetAllocation = calculateBudgetAllocation({
+    income,
+    expense,
+    repayment: forecast.monthRepayment,
+    savings: forecast.monthSavings,
+    assetTotal,
+  });
 
   return {
     expense,
@@ -521,8 +531,9 @@ export function buildHomeSummary(input: {
     loanTotal,
     loanDelta: input.loans.reduce((sum, item) => sum + item.monthlyPayment, 0),
     budgetAlerts,
+    budgetAllocation,
     tasks: buildTasks(input.loans, input.savingsGoals),
-    forecast: buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth),
+    forecast,
     insights: buildInsights(currentMonthTransactions, previousMonthTransactions, expense, budgetAlerts),
     recent: buildRecent(currentMonthTransactions),
   } satisfies HomeSummary;

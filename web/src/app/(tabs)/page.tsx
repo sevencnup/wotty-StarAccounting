@@ -358,6 +358,77 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
   );
 }
 
+function StarkBudgetAllocationCard({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
+  const locale = useAppLocale();
+  const allocation = summary.budgetAllocation;
+  const allocated = allocation.expense + allocation.repayment + allocation.savings;
+  const allocationBase = Math.max(allocation.income, allocated, 1);
+  const segments = [
+    { key: "expense", label: "消费", amount: allocation.expense, color: "#fb7185" },
+    { key: "repayment", label: "还款", amount: allocation.repayment, color: "#f59e0b" },
+    { key: "savings", label: "储蓄", amount: allocation.savings, color: "#10b981" },
+  ];
+  const periodLabel = isReportingYearKey(reportingMonth) ? "全年资金分配" : "本月资金分配";
+  const availableLabel = allocation.available >= 0 ? "可继续安排" : "已超出收入";
+  const cardClassName = "stark-budget-allocation-card" + (allocation.available < 0 ? " has-overrun" : "");
+
+  return (
+    <section className={cardClassName}>
+      <Link href="/budgets" className="stark-budget-allocation-link">
+        <div className="stark-budget-allocation-head">
+          <div className="stark-budget-allocation-title">
+            <span className="stark-budget-allocation-icon"><TargetIcon size={15} strokeWidth={2.2} color="#0284c7" /></span>
+            <span>
+              <strong>{translateValue(periodLabel, locale)}</strong>
+              <small>{translateValue("收入扣除实际消费、还款和储蓄后的安排金额", locale)}</small>
+            </span>
+          </div>
+          <span className="stark-budget-allocation-entry">{translateValue("预算管理", locale)} <ChevronRightIcon size={12} /></span>
+        </div>
+
+        <div className="stark-budget-allocation-main">
+          <div>
+            <span>{translateValue("可支配预算", locale)}</span>
+            <strong className={allocation.available < 0 ? "negative" : ""}>
+              {allocation.available < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(allocation.available))}
+            </strong>
+            <small>{locale === "en-US" ? availableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : availableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
+          </div>
+          <div className="stark-budget-allocation-income">
+            <span>{translateValue("收入", locale)}</span>
+            <strong>¥ {formatMoney(allocation.income)}</strong>
+            <small>{locale === "en-US" ? "Allocated ¥" + formatMoney(allocated) : "已分配 ¥ " + formatMoney(allocated)}</small>
+          </div>
+        </div>
+
+        <div className="stark-budget-allocation-track" aria-label={locale === "en-US" ? "Budget allocation breakdown" : "预算分配构成"}>
+          {segments.map((segment) => (
+            <i key={segment.key} style={{ width: String(Math.min(100, Math.max(0, (segment.amount / allocationBase) * 100))) + "%", background: segment.color }} />
+          ))}
+        </div>
+
+        <div className="stark-budget-allocation-grid">
+          {segments.map((segment) => (
+            <div key={segment.key}>
+              <span><i style={{ background: segment.color }} />{translateValue(segment.label, locale)}</span>
+              <strong>¥ {formatMoney(segment.amount)}</strong>
+            </div>
+          ))}
+          <div>
+            <span><i className="available" />{translateValue("剩余", locale)}</span>
+            <strong className={allocation.available < 0 ? "negative" : "available"}>¥ {formatMoney(Math.abs(allocation.available))}</strong>
+          </div>
+        </div>
+      </Link>
+      <div className="stark-budget-allocation-assets">
+        <span>{translateValue("资产存量", locale)}</span>
+        <strong>¥ {formatMoney(allocation.assetTotal)}</strong>
+        <small>{translateValue("余额单独展示，不重复计入本月扣减", locale)}</small>
+      </div>
+    </section>
+  );
+}
+
 // 四维财务罗盘 (Compass Matrix)
 function StarkCompassMatrix({ summary }: { summary: HomeSummary }) {
   const locale = useAppLocale();
@@ -785,6 +856,9 @@ export default function HomePage() {
         reportingMonth={reportingMonth}
         onReportingMonthChange={handleReportingMonthChange}
       />
+
+      {/* 本月资金分配 */}
+      <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} />
 
       {/* AI 财务诊断条 */}
       <StarkDiagnosticBanner summary={summary} />

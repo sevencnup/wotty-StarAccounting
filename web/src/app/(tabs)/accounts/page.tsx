@@ -278,7 +278,6 @@ export default function AccountsPage() {
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
         <SettingsRow type="RECONCILIATION" title="账户对账" value="核对实际余额与账面余额" onClick={() => setActivePanel("RECONCILIATION")} />
-        <SettingsRow type="ABOUT" title="预算管理" value="待开发" onClick={() => undefined} disabled />
       </section>
 
       <section className="settings-center-group">
