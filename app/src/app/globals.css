@@ -13056,9 +13056,10 @@ body .budget-management-sheet .budget-editor-grid label > span {
 
 body .budget-management-sheet .budget-editor-grid input:not([type=range]),
 body .budget-management-sheet .budget-editor-grid select {
-  border: 1px solid #b9cde0 !important;
+  border: 1px solid #8ea9c2 !important;
   color: #142036 !important;
-  background: #ffffff !important;
+  background: #f3f7fb !important;
+  box-shadow: inset 0 0 0 1px rgba(142, 169, 194, 0.12) !important;
 }
 
 body .budget-management-sheet .budget-editor-grid input:not([type=range]):focus,
