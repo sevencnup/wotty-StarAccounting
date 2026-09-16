@@ -1734,7 +1734,28 @@ nextjs-portal {
 }
 
 .budget-management-sheet .budget-editor-grid {
+  grid-template-columns: minmax(0, 1fr) 132px;
+  gap: 12px;
   margin: 14px 0 10px;
+}
+
+.budget-management-sheet .budget-editor-grid label {
+  min-width: 0;
+}
+
+.budget-management-sheet .budget-editor-grid input:not([type=range]),
+.budget-management-sheet .budget-editor-grid select {
+  width: 100%;
+  min-width: 0;
+}
+
+.budget-management-sheet .budget-editor-grid .budget-editor-alert {
+  grid-column: 1 / -1;
+}
+
+.budget-management-sheet .budget-editor-grid input[type=range] {
+  width: 100%;
+  min-width: 0;
 }
 
 .budget-management-save {
