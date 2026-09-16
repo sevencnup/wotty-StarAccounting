@@ -8397,11 +8397,23 @@ nextjs-portal {
   background: #f9fbfe;
   font-size: calc(11px * var(--user-font-scale));
 }
-.reconciliation-fields input:focus { border-color: var(--primary); background: #ffffff; }
+.reconciliation-fields input:focus,
+.reconciliation-fields input:focus-visible {
+  border-color: transparent !important;
+  outline: 0;
+  box-shadow: none !important;
+  background: #f3f5f8;
+}
 .reconciliation-money-input { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; border: 1px solid #dce5f0; border-radius: 9px; background: #f9fbfe; }
-.reconciliation-money-input:focus-within { border-color: var(--primary); background: #ffffff; }
+.reconciliation-money-input:focus-within {
+  border-color: transparent !important;
+  background: #f3f5f8;
+  box-shadow: none !important;
+}
 .reconciliation-money-input b { color: #8490a2; font-size: calc(13px * var(--user-font-scale)); text-align: center; }
-.reconciliation-money-input input { height: 36px; padding-left: 0; border: 0; background: transparent; }
+.reconciliation-money-input input,
+.reconciliation-money-input input:focus,
+.reconciliation-money-input input:focus-visible { height: 36px; padding-left: 0; border: 0 !important; outline: 0; background: transparent; box-shadow: none !important; }
 
 .reconciliation-result {
   display: grid;
