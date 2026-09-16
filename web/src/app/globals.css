@@ -7768,6 +7768,7 @@ nextjs-portal {
 .settings-center-icon.help { background: #d946ef; }
 .settings-center-icon.about { background: #64748b; }
 .settings-center-icon.remark { background: #f97316; }
+.settings-center-icon.reconciliation { background: #0d8a5f; }
 .settings-center-icon.update { background: #0ea5e9; }
 
 /* ── 账单归类（账户设置页） ── */
@@ -8326,6 +8327,120 @@ nextjs-portal {
 }
 
 .settings-sheet-primary:disabled { opacity: 0.55; }
+
+/* ── 账户对账 ── */
+.account-reconciliation-sheet {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.reconciliation-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #e1e8f1;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.reconciliation-section-heading,
+.reconciliation-result-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.reconciliation-section-heading > div { display: grid; gap: 3px; }
+.reconciliation-section-heading strong,
+.reconciliation-result-heading strong { color: #1d2a43; font-size: calc(13px * var(--user-font-scale)); }
+.reconciliation-section-heading small { color: #8994a7; font-size: calc(9px * var(--user-font-scale)); }
+.reconciliation-section-heading > span { color: #8994a7; font-size: calc(9px * var(--user-font-scale)); white-space: nowrap; }
+
+.reconciliation-platforms {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.reconciliation-platforms button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 4px;
+  border: 1px solid #dfe6ef;
+  border-radius: 9px;
+  color: #617087;
+  background: #f9fbfe;
+  font-size: calc(10px * var(--user-font-scale));
+  white-space: nowrap;
+}
+
+.reconciliation-platforms button.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-weight: 600;
+}
+
+.reconciliation-fields { gap: 9px; }
+.reconciliation-fields label { display: grid; gap: 5px; }
+.reconciliation-fields label > span { color: #6f7c90; font-size: calc(10px * var(--user-font-scale)); font-weight: 600; }
+.reconciliation-fields input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid #dce5f0;
+  border-radius: 9px;
+  color: #26344c;
+  background: #f9fbfe;
+  font-size: calc(11px * var(--user-font-scale));
+}
+.reconciliation-fields input:focus { border-color: var(--primary); background: #ffffff; }
+.reconciliation-money-input { display: grid; grid-template-columns: 26px minmax(0, 1fr); align-items: center; border: 1px solid #dce5f0; border-radius: 9px; background: #f9fbfe; }
+.reconciliation-money-input:focus-within { border-color: var(--primary); background: #ffffff; }
+.reconciliation-money-input b { color: #8490a2; font-size: calc(13px * var(--user-font-scale)); text-align: center; }
+.reconciliation-money-input input { height: 36px; padding-left: 0; border: 0; background: transparent; }
+
+.reconciliation-result {
+  display: grid;
+  gap: 9px;
+  padding: 13px 12px;
+  border: 1px solid #dfe6ef;
+  border-radius: 14px;
+  background: #f9fbfe;
+}
+
+.reconciliation-result-heading > span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #7e899b;
+  background: #eef2f7;
+  font-size: calc(9px * var(--user-font-scale));
+  white-space: nowrap;
+}
+.reconciliation-result-heading > span.matched { color: #26785c; background: #e9f7f0; }
+.reconciliation-result-heading > span.unmatched { color: #a34d44; background: #fff0ed; }
+
+.reconciliation-result-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.reconciliation-result-grid > div { display: grid; gap: 4px; min-width: 0; }
+.reconciliation-result-grid span { color: #7c8799; font-size: calc(9px * var(--user-font-scale)); }
+.reconciliation-result-grid strong { overflow: hidden; color: #1c2a41; font-size: calc(13px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }
+.reconciliation-result-grid > div.positive strong { color: #0d8a5f; }
+.reconciliation-result-grid > div.negative strong { color: #d05a4c; }
+.reconciliation-result p { margin: 0; color: #718097; font-size: calc(10px * var(--user-font-scale)); line-height: 1.45; }
+
+.reconciliation-message {
+  padding: 9px 10px;
+  border-radius: 9px;
+  color: #a34d44;
+  background: #fff0ed;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.45;
+}
+.reconciliation-message.success { color: #26785c; background: #e9f7f0; }
+.reconciliation-submit { margin-top: 1px; }
 
 .settings-option-list {
   display: grid;

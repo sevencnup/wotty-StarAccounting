@@ -12,12 +12,13 @@ import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { serializeTransactionsToCsv } from "@/lib/stark/export/transaction-csv";
 import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
+import { AccountReconciliationSheet } from "@/components/stark/AccountReconciliationSheet";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 
 type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
-type PanelKey = "MODE" | "IMPORT" | "EXPORT" | "REMARK" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
+type PanelKey = "MODE" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
@@ -35,6 +36,7 @@ function SettingIcon({ type }: { type: PanelKey }) {
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
     REMARK: <><path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4-7 4V3a1 1 0 0 1 1-1Z" /><path d="M9 8h6" /><path d="M9 12h4" /></>,
+    RECONCILIATION: <><path d="M4 6h16M4 12h10M4 18h16" /><circle cx="17" cy="12" r="3" /></>,
     THEME: <><path d="M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12Z" /><circle cx="7.5" cy="10" r=".7" /><circle cx="9" cy="6.5" r=".7" /><circle cx="14" cy="6" r=".7" /></>,
     LANGUAGE: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" /></>,
     FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
@@ -275,6 +277,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
+        <SettingsRow type="RECONCILIATION" title="账户对账" value="核对实际余额与账面余额" onClick={() => setActivePanel("RECONCILIATION")} />
         <SettingsRow type="ABOUT" title="预算管理" value="待开发" onClick={() => undefined} disabled />
       </section>
 
@@ -294,7 +297,7 @@ export default function AccountsPage() {
         <div className="settings-sheet-overlay visible" onClick={() => setActivePanel(null)}>
           <section className="settings-sheet" onClick={(event) => event.stopPropagation()}>
             <div className="settings-sheet-handle" />
-            <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
+            <header><strong>{activePanel === "MODE" ? "切换模式" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}</strong><button type="button" onClick={() => setActivePanel(null)}>×</button></header>
 
             {activePanel === "MODE" ? <div className="settings-sheet-body">
               <p className="settings-sheet-note">本地模式将数据保存在当前设备；云端模式只读取后端数据库，连接失败时不会混用本地数据。</p>
@@ -334,6 +337,10 @@ export default function AccountsPage() {
 
             {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">
               <BillRemarkSheet />
+            </div> : null}
+
+            {activePanel === "RECONCILIATION" ? <div className="settings-sheet-body reconciliation-sheet-body">
+              <AccountReconciliationSheet onTransactionSaved={() => window.dispatchEvent(new Event("stark:transaction-saved"))} />
             </div> : null}
 
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
