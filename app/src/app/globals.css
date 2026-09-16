@@ -928,12 +928,12 @@ nextjs-portal {
 .home-data-error-actions button {
   border: 0;
   color: #ffffff;
-  background: #0284c7;
+  background: #0060c0;
 }
 
 .home-data-error-actions a {
-  border: 1px solid #0284c7;
-  color: #0284c7;
+  border: 1px solid #0060c0;
+  color: #0060c0;
   background: #ffffff;
 }
 
@@ -966,7 +966,7 @@ nextjs-portal {
 
 .stark-period-badge:focus-visible {
   border-radius: 6px;
-  outline: 2px solid rgba(2, 132, 199, 0.4);
+  outline: 2px solid rgba(0, 96, 192, 0.4);
   outline-offset: 3px;
 }
 
@@ -1082,10 +1082,10 @@ nextjs-portal {
 }
 
 .reporting-month-grid button.selected {
-  border-color: #0284c7;
-  background: #0284c7;
+  border-color: #0060c0;
+  background: #0060c0;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.2);
+  box-shadow: 0 8px 18px rgba(0, 96, 192, 0.2);
 }
 
 .reporting-month-picker-cancel {
@@ -1103,7 +1103,7 @@ nextjs-portal {
 
 .reporting-month-picker-dialog button:focus-visible,
 .reporting-month-picker-dialog select:focus-visible {
-  outline: 2px solid rgba(2, 132, 199, 0.5);
+  outline: 2px solid rgba(0, 96, 192, 0.5);
   outline-offset: 2px;
 }
 
@@ -1138,9 +1138,9 @@ nextjs-portal {
 
 .stark-metric-switcher button.active {
   background: #ffffff;
-  color: #0284c7;
+  color: #0060c0;
   font-weight: 600;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.14);
+  box-shadow: 0 2px 6px rgba(0, 96, 192, 0.14);
 }
 
 /* Stark Clean White Hero Card (Pure Minimal Surface) */
@@ -1184,7 +1184,7 @@ nextjs-portal {
   font-weight: 800;
   font-style: italic;
   letter-spacing: -2px;
-  color: rgba(2, 132, 199, 0.065);
+  color: rgba(0, 96, 192, 0.065);
   pointer-events: none;
   user-select: none;
   line-height: 1;
@@ -1228,7 +1228,7 @@ nextjs-portal {
 
 .stark-scope-selector button.active {
   background: #ffffff;
-  color: #0284c7;
+  color: #0060c0;
   font-weight: 600;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -1289,7 +1289,7 @@ nextjs-portal {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #0284c7;
+  color: #0060c0;
   text-decoration: none;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
@@ -1357,7 +1357,7 @@ nextjs-portal {
 }
 
 .diag-link {
-  color: #0284c7;
+  color: #0060c0;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
   text-decoration: none;
@@ -1456,7 +1456,7 @@ nextjs-portal {
 
 .stark-budget-allocation-entry {
   gap: 2px;
-  color: #0284c7;
+  color: #0060c0;
   font-size: calc(10px * var(--user-font-scale));
   font-weight: 600;
   white-space: nowrap;
@@ -1546,7 +1546,7 @@ nextjs-portal {
 }
 
 .stark-budget-allocation-grid span i.available {
-  background: #0284c7;
+  background: #0060c0;
 }
 
 .stark-budget-allocation-grid strong {
@@ -1560,7 +1560,7 @@ nextjs-portal {
 }
 
 .stark-budget-allocation-grid strong.available {
-  color: #0284c7;
+  color: #0060c0;
 }
 
 .stark-budget-allocation-assets {
@@ -1906,7 +1906,7 @@ button.stark-compass-card {
 .compass-badge.normal,
 .compass-badge.loan-badge,
 .compass-badge.saving-badge {
-  color: #0284c7;
+  color: #0060c0;
 }
 
 /* Stark Original Cash Flow Trend */
@@ -2053,20 +2053,20 @@ button.stark-compass-card {
 }
 
 .stark-trend-col:focus-visible {
-  outline: 2px solid #0284c7;
+  outline: 2px solid #0060c0;
   outline-offset: 3px;
 }
 
 .stark-trend-col.is-selected .dual-bars {
   transform: translateY(-1px);
-  filter: drop-shadow(0 3px 4px rgba(2, 132, 199, 0.16));
+  filter: drop-shadow(0 3px 4px rgba(0, 96, 192, 0.16));
 }
 
 .stark-trend-col.is-selected .month-tag {
   padding: 3px 5px;
   border-radius: 6px;
   background: rgba(186, 230, 253, 0.58);
-  color: #0284c7;
+  color: #0060c0;
   font-weight: 600;
 }
 
@@ -2094,8 +2094,8 @@ button.stark-compass-card {
 }
 
 .stark-trend-col.is-current .bar-inc {
-  background: #0284c7;
-  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
+  background: #0060c0;
+  box-shadow: 0 2px 6px rgba(0, 96, 192, 0.25);
 }
 
 .stark-trend-col.is-current .bar-exp {
@@ -2142,7 +2142,7 @@ button.stark-compass-card {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  color: #0284c7;
+  color: #0060c0;
   text-decoration: none;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
@@ -2263,7 +2263,7 @@ button.stark-compass-card {
   padding: 0 7px;
   border-radius: 999px;
   background: #e0f2fe;
-  color: #0284c7;
+  color: #0060c0;
   font-size: calc(10px * var(--user-font-scale));
   font-weight: 600;
 }
@@ -2286,7 +2286,7 @@ button.stark-compass-card {
   width: 16px;
   height: 16px;
   border-radius: 999px;
-  background: #0284c7;
+  background: #0060c0;
   color: #ffffff;
   font-size: calc(10px * var(--user-font-scale));
   font-weight: 600;
@@ -2312,7 +2312,7 @@ button.stark-compass-card {
   align-items: center;
   gap: 2px;
   margin-left: 4px;
-  color: #0284c7;
+  color: #0060c0;
   font-weight: 600;
   text-decoration: none;
 }
@@ -4282,10 +4282,10 @@ button.stark-compass-card {
 }
 
 .reporting-year-option.selected {
-  border-color: #0284c7;
-  background: #0284c7;
+  border-color: #0060c0;
+  background: #0060c0;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(2, 132, 199, 0.2);
+  box-shadow: 0 8px 18px rgba(0, 96, 192, 0.2);
 }
 
 .savings-hero-track i {
@@ -6275,7 +6275,7 @@ button.stark-compass-card {
   border-radius: 15px;
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
-  color: #0284c7;
+  color: #0060c0;
   font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
   cursor: pointer;
@@ -6292,7 +6292,7 @@ button.stark-compass-card {
   width: 19px;
   height: 19px;
   border-radius: 7px;
-  background: #0284c7;
+  background: #0060c0;
   color: #ffffff;
   font-size: calc(17px * var(--user-font-scale));
   font-weight: 400;
@@ -6305,7 +6305,7 @@ button.stark-compass-card {
 
 .global-journal-trigger:active {
   transform: translateX(-50%) scale(0.96);
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+  box-shadow: 0 4px 12px rgba(0, 96, 192, 0.12);
 }
 
 @media (max-width: 360px) {
@@ -9152,7 +9152,7 @@ button.stark-compass-card {
 }
 
 .consumption-period-button:focus-visible {
-  outline: 2px solid rgba(2, 132, 199, 0.4);
+  outline: 2px solid rgba(0, 96, 192, 0.4);
   outline-offset: 2px;
 }
 
@@ -9239,9 +9239,9 @@ button.stark-compass-card {
 
 .consumption-mode-tabs button.active {
   background: #ffffff;
-  color: #0284c7;
+  color: #0060c0;
   font-weight: 600;
-  box-shadow: 0 2px 7px rgba(2, 132, 199, 0.1);
+  box-shadow: 0 2px 7px rgba(0, 96, 192, 0.1);
 }
 
 .consumption-filter-row {
@@ -9610,7 +9610,7 @@ button.stark-compass-card {
 
 .consumption-top-category {
   max-width: 48%;
-  color: #0284c7 !important;
+  color: #0060c0 !important;
   text-align: right;
   line-height: 1.35;
 }
@@ -9640,7 +9640,7 @@ button.stark-compass-card {
   gap: 4px;
   height: 34px;
   border: 0;
-  color: #0284c7;
+  color: #0060c0;
   background: transparent;
   font-size: calc(11px * var(--user-font-scale));
   cursor: pointer;
@@ -11252,7 +11252,7 @@ button.stark-compass-card {
 .loans-page .loan-metric-card.positive strong { color: #0d8a5f; }
 .loans-page .loan-metric-card.warning strong { color: #d97706; }
 .loans-page .loan-metric-card.danger strong { color: #dc2626; }
-.loans-page .loan-metric-card.node strong { color: #0284c7; }
+.loans-page .loan-metric-card.node strong { color: #0060c0; }
 
 /* 图表与负债分析卡片 */
 .loans-page .loan-charts-card,

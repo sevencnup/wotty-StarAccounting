@@ -340,7 +340,7 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
   return (
     <div className={`stark-diagnostic-banner ${hasRisk ? "has-risk" : "normal"}`}>
       <div className="diag-icon-box">
-        <SparklesIcon size={16} strokeWidth={2.2} color={hasRisk ? "#e11d48" : "#0284c7"} />
+        <SparklesIcon size={16} strokeWidth={2.2} color={hasRisk ? "#e11d48" : "#0060c0"} />
       </div>
       <div className="diag-content">
         <strong>{translateValue(hasRisk ? "预算需关注" : "财务诊断", locale)}</strong>
@@ -378,7 +378,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
       <button type="button" className="stark-budget-allocation-link" onClick={onManageBudget}>
         <div className="stark-budget-allocation-head">
           <div className="stark-budget-allocation-title">
-            <span className="stark-budget-allocation-icon"><TargetIcon size={15} strokeWidth={2.2} color="#0284c7" /></span>
+            <span className="stark-budget-allocation-icon"><TargetIcon size={15} strokeWidth={2.2} color="#0060c0" /></span>
             <span>
               <strong>{translateValue(periodLabel, locale)}</strong>
               <small>{translateValue("收入扣除实际消费、还款和储蓄后的安排金额", locale)}</small>
@@ -463,7 +463,7 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
       <button type="button" className="stark-compass-card budget" onClick={onManageBudget}>
         <div className="compass-header">
           <span className="compass-icon-wrapper budget">
-            <TargetIcon size={14} strokeWidth={2.2} color="#0284c7" />
+            <TargetIcon size={14} strokeWidth={2.2} color="#0060c0" />
           </span>
           <span className="compass-label">{translateValue("预算余量", locale)}</span>
         </div>
@@ -579,7 +579,7 @@ function SmartAdvisoryCard({ summary, reportingMonth, locale }: { summary: HomeS
     <SurfaceCard className="stark-advisory-card">
       <div className="advisory-card-head">
         <div className="advisory-title-block">
-          <CompassIcon size={16} strokeWidth={2.2} color="#0284c7" />
+          <CompassIcon size={16} strokeWidth={2.2} color="#0060c0" />
           <strong>{translateValue("财务行动建议", locale)}</strong>
         </div>
         <span className="advisory-status-tag">{translateValue(isHealthy ? "节律健康" : "需控制支出", locale)}</span>
