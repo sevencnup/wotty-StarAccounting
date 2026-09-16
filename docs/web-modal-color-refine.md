@@ -13,7 +13,7 @@
 ## 2. 影响范围
 
 - `docs/web-modal-remove-cyan-style.md` / `docs/web-modal-color-refine.md`
-- `web/src/app/globals.css`
+- `app/src/app/globals.css`
 
 ## 3. 实施步骤
 

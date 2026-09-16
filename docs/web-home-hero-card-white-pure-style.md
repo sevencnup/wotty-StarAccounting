@@ -10,9 +10,9 @@
 ## 2. 影响范围
 
 - `docs/web-home-hero-card-white-pure-style.md`：新增开发文档。
-- `web/src/app/(tabs)/page.tsx`：调整总览卡组件结构，移除/替换 `SalaryHeroSurface` 依赖，重构“添加薪资收入”入口。
-- `web/src/app/globals.css`：更新 `.stark-hero-card` 样式为纯白、优化边框与阴影，调整 `.stark-card-watermark` 水印颜色深度，调整“添加薪资收入”按钮样式。
-- `web/src/components/stark/SalaryHeroSurface.tsx`：如不再使用或已精简，做适当清理或解耦。
+- `app/src/app/(tabs)/page.tsx`：调整总览卡组件结构，移除/替换 `SalaryHeroSurface` 依赖，重构“添加薪资收入”入口。
+- `app/src/app/globals.css`：更新 `.stark-hero-card` 样式为纯白、优化边框与阴影，调整 `.stark-card-watermark` 水印颜色深度，调整“添加薪资收入”按钮样式。
+- `app/src/components/stark/SalaryHeroSurface.tsx`：如不再使用或已精简，做适当清理或解耦。
 
 ## 3. 实施步骤
 

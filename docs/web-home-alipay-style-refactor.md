@@ -20,12 +20,12 @@
 
 ## 2. 实施计划与步骤
 
-- [x] **步骤 1：重构 `web/src/app/(tabs)/page.tsx`**
+- [x] **步骤 1：重构 `app/src/app/(tabs)/page.tsx`**
   - 重构顶部控制器与 LightHeroCard。
   - 构建 NaturalSummaryCard（智能月度小结）。
   - 构建 MetricsGrid4（4格微指标快捷入口）。
   - 集成简易清爽的月度柱状对比趋势与近期记账。
-- [x] **步骤 2：优化 `web/src/app/globals.css`**
+- [x] **步骤 2：优化 `app/src/app/globals.css`**
   - 编写微光渐变卡片、月份背景暗印、4格胶囊卡片、柱状图样式。
 - [x] **步骤 3：构建与类型检查**
   - 执行 `next build` 确保无报错。

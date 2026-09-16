@@ -18,9 +18,9 @@
 
 ## 2. 实施步骤
 
-- [x] **步骤 1：重构 `web/src/app/(tabs)/page.tsx` 页面组件**
+- [x] **步骤 1：重构 `app/src/app/(tabs)/page.tsx` 页面组件**
   - 构建 `StarkCrystalHero`、`StarkDiagnosticBanner`、`StarkCompassMatrix`、`StarkCashflowTrend`、`RecentFeed`。
-- [x] **步骤 2：更新 `web/src/app/globals.css` 样式**
+- [x] **步骤 2：更新 `app/src/app/globals.css` 样式**
   - 移除 `alipay-` 命名的同质化样式，构建 Stark 专属晶透浮岛、四象限罗盘等专属 CSS。
 - [x] **步骤 3：构建与类型校验**
   - 运行 `next build` 确保 TypeScript 类型与静态导出正常。

@@ -16,7 +16,7 @@
 - [x] **步骤 1：修复 `JournalPanel.tsx`**
   - 移除 `amount-huge-input` 的 `autoFocus`。
   - 优化贷款表单的网格结构，避免小屏幕溢出。
-- [x] **步骤 2：更新 `web/src/app/globals.css`**
+- [x] **步骤 2：更新 `app/src/app/globals.css`**
   - 升级 `.global-journal-trigger` 悬浮按钮样式（高质感渐变、圆角高光、晶透立体感）。
   - 修复 `.modern-form-grid-3` 在移动端的自适应排版，杜绝右边溢出。
   - 升级储蓄计划表单在弹窗中的现代卡片样式。

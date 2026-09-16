@@ -24,7 +24,7 @@
    - 紧凑玻璃卡片排版，解决移动端拥挤与溢出问题。
 
 ## 3. 执行步骤
-1. 修改 `web/src/app/(tabs)/assets/page.tsx` 引入 ECharts 环形图与现代驾驶舱结构。
-2. 修改 `web/src/app/globals.css` 补充资产页面专属液态玻璃样式与移动端适配。
+1. 修改 `app/src/app/(tabs)/assets/page.tsx` 引入 ECharts 环形图与现代驾驶舱结构。
+2. 修改 `app/src/app/globals.css` 补充资产页面专属液态玻璃样式与移动端适配。
 3. 执行 `pnpm --filter wotty-stark-web build` 验证编译与类型安全。
 4. 执行本地 git commit。

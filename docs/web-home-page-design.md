@@ -49,9 +49,9 @@
 
 ## 涉及文件
 
-- `web/src/app/(tabs)/page.tsx`：Hero 改为紧凑结构（`.overview-hero-balance` + `.overview-hero-flow`）；新增 `FinanceOverviewCard` 瘦身条、`ProgressCard` 进度卡、`ReminderCard` 预算预警卡（已删本周待办）；移除首页趋势图（`TrendCard`/`TrendChart`/`buildTrendOption`/`TrendLegend` 及 `EChartsCoreOption`/`EChartView`/`HomeTrend` 引用）；删除 `DeltaLine`/`hero-asset`。
-- `web/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.budget-alert-top` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。最近记账复用共享 `.recent-row`，删除 `.home-recent-row`/`.home-recent-main`。（`trend-*`/`budget-alert-*` 样式为消费页及本页共享，保留；`task-*` 样式随本周待办删除不再使用。）
-- `web/package.json`：版本 0.0.55 → 0.0.63。
+- `app/src/app/(tabs)/page.tsx`：Hero 改为紧凑结构（`.overview-hero-balance` + `.overview-hero-flow`）；新增 `FinanceOverviewCard` 瘦身条、`ProgressCard` 进度卡、`ReminderCard` 预算预警卡（已删本周待办）；移除首页趋势图（`TrendCard`/`TrendChart`/`buildTrendOption`/`TrendLegend` 及 `EChartsCoreOption`/`EChartView`/`HomeTrend` 引用）；删除 `DeltaLine`/`hero-asset`。
+- `app/src/app/globals.css`：新增 `.overview-hero-balance`/`.balance-label`/`.overview-hero-flow` 紧凑 Hero 样式；`.finance-overview-card`/`.fo-*` 速览条样式；`.progress-card`/`.progress-item*` 进度卡与 `.reminder-card`/`.budget-alert-top` 样式；以上卡片接入 `.home-liquid-screen` 玻璃选择器组；`.overview-hero` 内边距由 `14px` 收紧到 `12px`。最近记账复用共享 `.recent-row`，删除 `.home-recent-row`/`.home-recent-main`。（`trend-*`/`budget-alert-*` 样式为消费页及本页共享，保留；`task-*` 样式随本周待办删除不再使用。）
+- `app/package.json`：版本 0.0.55 → 0.0.63。
 - `docs/web-home-page-design.md`：本文档。
 
 ## 验证

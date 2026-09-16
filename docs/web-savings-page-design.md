@@ -15,16 +15,16 @@
 
 ## 不改
 
-- `web/src/app/(tabs)/savings/page.tsx` 的数据和 JSX。
+- `app/src/app/(tabs)/savings/page.tsx` 的数据和 JSX。
 - 储蓄计划编辑、浮动记账面板、底部导航。
 - Android 与其他页面业务逻辑。
 
 ## 涉及文件
 
-- `web/src/app/globals.css`
-- `web/package.json`（版本 0.0.69 → 0.0.70）
-- `web/android/app/build.gradle`（Web APK 版本 0.0.3/c3 → 0.0.4/c4）
-- `web/android/app/src/main/java/com/wotty/stark/web/MainActivity.java`
+- `app/src/app/globals.css`
+- `app/package.json`（版本 0.0.69 → 0.0.70）
+- `app/android/app/build.gradle`（Web APK 版本 0.0.3/c3 → 0.0.4/c4）
+- `app/android/app/src/main/java/com/wotty/stark/web/MainActivity.java`
 - `docs/web-savings-page-design.md`
 - `docs/web-home-page-design.md` 计划文件已同步本次背景与验证方案。
 

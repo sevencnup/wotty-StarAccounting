@@ -386,9 +386,9 @@ App
 
 ### `0.0.5`
 
-1. `web/package.json` 新增 `apk` 一键打包命令。
+1. `app/package.json` 新增 `apk` 一键打包命令。
 2. 命令会串行执行 Web 静态构建、Capacitor Android 同步与 Debug APK 打包。
-3. 升级 `web/android` 的 AGP 与 Gradle Wrapper，修复 `Unsupported class file major version 65` 导致的打包失败。
+3. 升级 `app/android` 的 AGP 与 Gradle Wrapper，修复 `Unsupported class file major version 65` 导致的打包失败。
 
 ### `0.0.4`
 
