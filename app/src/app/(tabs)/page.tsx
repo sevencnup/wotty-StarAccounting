@@ -364,7 +364,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth }: { summary: HomeS
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
   const allocationBase = Math.max(allocation.income, allocated, 1);
   const segments = [
-    { key: "expense", label: "消费", amount: allocation.expense, color: "#fb7185" },
+    { key: "expense", label: "消费", amount: allocation.expense, color: "#0ea5e9" },
     { key: "repayment", label: "还款", amount: allocation.repayment, color: "#f59e0b" },
     { key: "savings", label: "储蓄", amount: allocation.savings, color: "#10b981" },
   ];

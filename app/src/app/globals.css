@@ -1388,8 +1388,8 @@ nextjs-portal {
 }
 
 .stark-budget-allocation-card.has-overrun {
-  background: linear-gradient(135deg, #fff7f8 0%, #ffffff 68%, #fffaf0 100%);
-  border-color: rgba(251, 113, 133, 0.28);
+  background: linear-gradient(135deg, #fffaf0 0%, #ffffff 68%, #f1fbf7 100%);
+  border-color: rgba(245, 158, 11, 0.3);
 }
 
 .stark-budget-allocation-link {
@@ -1494,7 +1494,7 @@ nextjs-portal {
 
 .stark-budget-allocation-main strong.negative,
 .stark-budget-allocation-grid strong.negative {
-  color: #e11d48;
+  color: #b45309;
 }
 
 .stark-budget-allocation-income strong {
