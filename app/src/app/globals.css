@@ -1756,6 +1756,14 @@ nextjs-portal {
 .budget-management-sheet .budget-editor-grid input[type=range] {
   width: 100%;
   min-width: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.budget-management-sheet .budget-editor-grid input[type=range]:focus,
+.budget-management-sheet .budget-editor-grid input[type=range]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .budget-management-save {
@@ -6499,8 +6507,56 @@ button.stark-compass-card {
 .budget-management-actions { display: inline-flex; gap: 4px; }
 .budget-editor-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin: 16px 0; }
 .budget-editor-grid label { display: grid; gap: 7px; color: #64748b; font-size: 12px; }
-.budget-editor-grid input, .budget-editor-grid select { min-height: 40px; border: 1px solid #dce5ec; border-radius: 10px; padding: 0 10px; background: #fff; color: #142036; }
-.budget-editor-grid input[type=range] { padding: 0; }
+.budget-editor-grid input:not([type=range]), .budget-editor-grid select { min-height: 40px; border: 1px solid #dce5ec; border-radius: 10px; padding: 0 10px; background: #fff; color: #142036; }
+.budget-editor-grid input[type=range] {
+  width: 100%;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.budget-editor-grid input[type=range]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0d7ff2 var(--budget-progress, 80%), #dfe4eb var(--budget-progress, 80%));
+}
+
+.budget-editor-grid input[type=range]::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: #0d7ff2;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.budget-editor-grid input[type=range]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: #dfe4eb;
+}
+
+.budget-editor-grid input[type=range]::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #0d7ff2;
+}
+
+.budget-editor-grid input[type=range]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: #0d7ff2;
+}
 .savings-year-picker { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; color: #64748b; font-size: 12px; }
 .savings-year-picker select { border: 1px solid #dce5ec; border-radius: 8px; padding: 6px 8px; background: #fff; }
 .import-error-list { display: grid; gap: 7px; margin-top: 14px; color: #9f1239; font-size: 12px; }
@@ -12969,4 +13025,15 @@ body :where(input, select, textarea):focus {
 body :where(button, input, select, textarea):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* Range controls use the track itself as their focus affordance; do not draw
+   the generic form-control focus frame around the slider. */
+body .budget-management-sheet input[type=range],
+body .budget-management-sheet input[type=range]:focus,
+body .budget-management-sheet input[type=range]:focus-visible {
+  border: 0 !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
 }

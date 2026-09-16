@@ -135,7 +135,7 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
               <div className="budget-editor-grid">
                 <label><span>预算金额</span><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" autoFocus /></label>
                 <label><span>周期</span><select value={period} onChange={(event) => setPeriod(event.target.value as Budget["period"])}><option value="MONTHLY">每月</option><option value="YEARLY">每年</option></select></label>
-                <label className="budget-editor-alert"><span>提醒比例 {alertPercent}%</span><input type="range" min="1" max="100" value={alertPercent} onChange={(event) => setAlertPercent(Number(event.target.value))} /></label>
+                <label className="budget-editor-alert"><span>提醒比例 {alertPercent}%</span><input type="range" min="1" max="100" value={alertPercent} style={{ "--budget-progress": `${alertPercent}%` } as React.CSSProperties} onChange={(event) => setAlertPercent(Number(event.target.value))} /></label>
               </div>
               {message ? <p className="budget-management-message" role="alert">{message}</p> : null}
               <button type="button" className="settings-confirm-button budget-management-save" disabled={saving} onClick={() => void save()}>{saving ? "保存中…" : "保存预算"}</button>
