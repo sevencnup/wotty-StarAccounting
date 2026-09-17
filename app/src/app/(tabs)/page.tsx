@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
-import { BudgetManagementSheet } from "@/components/stark/BudgetManagementSheet";
 import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
@@ -696,8 +696,9 @@ function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transact
   );
 }
 
-export default function HomePage() {
+export function HomeDashboard() {
   const locale = useAppLocale();
+  const router = useRouter();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -711,7 +712,6 @@ export default function HomePage() {
   const [reportingMonth, setReportingMonth] = useState("2026-01");
   const [monthReady, setMonthReady] = useState(false);
   const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
-  const [budgetManagementOpen, setBudgetManagementOpen] = useState(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -860,13 +860,13 @@ export default function HomePage() {
       />
 
       {/* 本月资金分配 */}
-      <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => setBudgetManagementOpen(true)} />
+      <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => router.push("/budgets/")} />
 
       {/* AI 财务诊断条 */}
       <StarkDiagnosticBanner summary={summary} />
 
       {/* 四维财务罗盘 */}
-      <StarkCompassMatrix summary={summary} onManageBudget={() => setBudgetManagementOpen(true)} />
+      <StarkCompassMatrix summary={summary} onManageBudget={() => router.push("/budgets/")} />
 
       {/* 本月支出构成 (替代老旧流水) */}
       <TopExpenseStructure summary={summary} />
@@ -877,13 +877,8 @@ export default function HomePage() {
       {/* 收支动态走势 */}
       <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
 
-      {budgetManagementOpen ? (
-        <BudgetManagementSheet
-          budgets={budgets}
-          onBudgetsChange={setBudgets}
-          onClose={() => setBudgetManagementOpen(false)}
-        />
-      ) : null}
     </div>
   );
 }
+
+export default HomeDashboard;

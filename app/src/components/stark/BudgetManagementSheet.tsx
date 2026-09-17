@@ -14,9 +14,10 @@ type BudgetManagementSheetProps = {
   budgets: Budget[];
   onBudgetsChange: (budgets: Budget[]) => void;
   onClose: () => void;
+  historyMode?: "marker" | "route";
 };
 
-export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange, onClose }: BudgetManagementSheetProps) {
+export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange, onClose, historyMode = "marker" }: BudgetManagementSheetProps) {
   const [budgets, setBudgets] = useState(initialBudgets);
   const [editing, setEditing] = useState<Budget | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -108,7 +109,7 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
   }
 
   return (
-    <BottomSheet title="预算管理" onClose={onClose} className="budget-management-sheet">
+    <BottomSheet title="预算管理" onClose={onClose} historyMode={historyMode} className="budget-management-sheet">
           <section className="budget-management-overview">
             <div className="budget-management-overview-head">
               <div><strong>总预算</strong><span>先从一个月度或年度总额开始管理</span></div>

@@ -20,7 +20,7 @@ export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target
     <nav className="mobile-bottom-nav" aria-label="主导航">
       <div className="mobile-bottom-nav-inner">
         {NAV_ITEMS.map((item) => {
-          const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+          const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/budgets") : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}

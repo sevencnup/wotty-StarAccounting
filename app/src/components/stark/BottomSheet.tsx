@@ -8,12 +8,13 @@ const CLOSE_SETTLE_MS = 240;
 type BottomSheetProps = PropsWithChildren<{
   title: string;
   onClose: () => void;
+  historyMode?: "marker" | "route";
   className?: string;
   overlayClassName?: string;
   bodyClassName?: string;
 }>;
 
-export function BottomSheet({ children, title, onClose, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
+export function BottomSheet({ children, title, onClose, historyMode = "marker", className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -46,14 +47,14 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
 
   const requestClose = useCallback(() => {
     if (closingRef.current) return;
-    const ownsHistoryEntry = historyEntryRef.current !== null;
+    const ownsHistoryEntry = historyMode === "marker" && historyEntryRef.current !== null;
     historyEntryRef.current = null;
     beginClose();
     if (ownsHistoryEntry) window.history.back();
-  }, [beginClose]);
+  }, [beginClose, historyMode]);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || historyMode !== "marker") return;
 
     // Give the sheet a distinct hash entry. Some WebViews coalesce same-URL
     // state entries, while a hash entry is retained and consumed first by an
@@ -81,7 +82,7 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
       window.removeEventListener("popstate", closeFromHistory);
       window.removeEventListener("hashchange", closeFromHistory);
     };
-  }, [beginClose, mounted]);
+  }, [beginClose, historyMode, mounted]);
 
   useEffect(() => () => {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
