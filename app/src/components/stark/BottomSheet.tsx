@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useId, useRef, useState, type PropsWithChildren } from "react";
 import { createPortal } from "react-dom";
 
+const CLOSE_SETTLE_MS = 240;
+
 type BottomSheetProps = PropsWithChildren<{
   title: string;
   onClose: () => void;
@@ -14,8 +16,10 @@ type BottomSheetProps = PropsWithChildren<{
 export function BottomSheet({ children, title, onClose, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
+  const [closing, setClosing] = useState(false);
   const historyEntryRef = useRef<{ markerUrl: string } | null>(null);
   const closingRef = useRef(false);
+  const closeTimerRef = useRef<number | null>(null);
   const onCloseRef = useRef(onClose);
 
   useEffect(() => {
@@ -26,14 +30,27 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
     setMounted(true);
   }, []);
 
-  const requestClose = useCallback(() => {
+  const beginClose = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
+    setClosing(true);
+
+    // A browser or Android edge-back gesture can dispatch its final pointer
+    // event after `popstate`. Keep the modal shield mounted through the close
+    // animation so that event cannot click a bottom-nav item underneath.
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      onCloseRef.current();
+    }, CLOSE_SETTLE_MS);
+  }, []);
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return;
     const ownsHistoryEntry = historyEntryRef.current !== null;
     historyEntryRef.current = null;
-    onCloseRef.current();
+    beginClose();
     if (ownsHistoryEntry) window.history.back();
-  }, []);
+  }, [beginClose]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -55,9 +72,7 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
     const closeFromHistory = () => {
       if (!historyEntryRef.current) return;
       historyEntryRef.current = null;
-      if (closingRef.current) return;
-      closingRef.current = true;
-      onCloseRef.current();
+      beginClose();
     };
 
     window.addEventListener("popstate", closeFromHistory);
@@ -66,7 +81,11 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
       window.removeEventListener("popstate", closeFromHistory);
       window.removeEventListener("hashchange", closeFromHistory);
     };
-  }, [mounted]);
+  }, [beginClose, mounted]);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+  }, []);
 
   useEffect(() => {
     const scrollY = window.scrollY;
@@ -113,8 +132,8 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
   if (!mounted) return null;
 
   return createPortal(
-    <div className={`bottom-sheet-overlay ${overlayClassName}`.trim()} onClick={requestClose}>
-      <section className={`bottom-sheet ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
+    <div className={`bottom-sheet-overlay ${closing ? "is-closing" : ""} ${overlayClassName}`.trim()} onClick={requestClose}>
+      <section className={`bottom-sheet ${closing ? "is-closing" : ""} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
         <div className="bottom-sheet-handle" aria-hidden="true" />
         <header className="bottom-sheet-header">
           <span aria-hidden="true" />

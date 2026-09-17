@@ -1605,6 +1605,11 @@ nextjs-portal {
   touch-action: pan-y;
 }
 
+.bottom-sheet-overlay.is-closing {
+  background: rgba(15, 23, 42, 0);
+  backdrop-filter: none;
+}
+
 .bottom-sheet {
   width: min(100%, 430px);
   max-width: 100vw;
@@ -1624,9 +1629,18 @@ nextjs-portal {
   animation: bottom-sheet-in 220ms ease both;
 }
 
+.bottom-sheet.is-closing {
+  animation: bottom-sheet-out 220ms ease both;
+}
+
 @keyframes bottom-sheet-in {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes bottom-sheet-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
 }
 
 .bottom-sheet-handle {
