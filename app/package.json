@@ -4,6 +4,7 @@
   "version": "0.0.108",
   "scripts": {
     "dev": "node scripts/dev.mjs",
+    "dev:mobile": "node scripts/mobile-dev.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 12366",
     "typecheck": "tsc --noEmit",
