@@ -20,6 +20,40 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
   }, []);
 
   useEffect(() => {
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+    const original = {
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyWidth: body.style.width,
+      bodyOverflow: body.style.overflow,
+      bodyOverscrollBehavior: body.style.overscrollBehavior,
+      htmlOverflow: html.style.overflow,
+      htmlOverscrollBehavior: html.style.overscrollBehavior,
+    };
+
+    body.style.position = "fixed";
+    body.style.top = "-" + scrollY + "px";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+
+    return () => {
+      body.style.position = original.bodyPosition;
+      body.style.top = original.bodyTop;
+      body.style.width = original.bodyWidth;
+      body.style.overflow = original.bodyOverflow;
+      body.style.overscrollBehavior = original.bodyOverscrollBehavior;
+      html.style.overflow = original.htmlOverflow;
+      html.style.overscrollBehavior = original.htmlOverscrollBehavior;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
     }

@@ -1601,6 +1601,7 @@ nextjs-portal {
   justify-content: center;
   background: rgba(15, 23, 42, 0.2);
   backdrop-filter: blur(5px);
+  overscroll-behavior: contain;
 }
 
 .bottom-sheet {
@@ -1616,6 +1617,7 @@ nextjs-portal {
   border-radius: 18px 18px 0 0;
   background: var(--background);
   box-shadow: none;
+  overscroll-behavior: contain;
   animation: bottom-sheet-in 220ms ease both;
 }
 
