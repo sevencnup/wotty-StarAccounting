@@ -16,10 +16,10 @@
 
 ## 2. 实施计划
 
-- [x] **步骤 1：重构 `web/src/components/stark/JournalPanel.tsx`**
+- [x] **步骤 1：重构 `app/src/components/stark/JournalPanel.tsx`**
   - 升级 `JournalPanel` 结构：大字号金额输入看板、精致分类网格、胶囊账户选择。
   - 美化 `asset-journal-form` 与 `loan-journal-form`。
-- [x] **步骤 2：更新 `web/src/app/globals.css`**
+- [x] **步骤 2：更新 `app/src/app/globals.css`**
   - 编写全新 `journal-modern-hero`、`journal-category-pill`、`journal-field-group` 等现代样式。
 - [x] **步骤 3：构建检查**
   - 运行 `next build` 确保无报错。

@@ -15,7 +15,7 @@
 ## 2. 影响范围
 
 - `docs/web-type-switch-alignment-fix.md`
-- `web/src/app/globals.css` (`.modern-type-switch`, `.type-tab`, `.type-tab.active`)
+- `app/src/app/globals.css` (`.modern-type-switch`, `.type-tab`, `.type-tab.active`)
 
 ## 3. 实施步骤
 

@@ -27,7 +27,7 @@
    - 移动端（<=430px）友好排版，杜绝文字挤压与溢出，进度条具备完整 `aria-label`。
 
 ## 3. 实施步骤
-1. 修改 `web/src/app/(tabs)/loans/page.tsx` 补充负债结构分布与强化排版。
-2. 修改 `web/src/app/globals.css` 编写配套的液态玻璃与图表样式。
+1. 修改 `app/src/app/(tabs)/loans/page.tsx` 补充负债结构分布与强化排版。
+2. 修改 `app/src/app/globals.css` 编写配套的液态玻璃与图表样式。
 3. 运行 `pnpm --filter wotty-stark-web build` 验证编译与类型安全。
 4. 执行本地 git commit。

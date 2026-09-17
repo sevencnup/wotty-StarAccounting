@@ -20,7 +20,7 @@
 ## 2. 影响范围
 
 - `docs/web-journal-tab-height-consistency.md`
-- `web/src/app/globals.css` (`.modern-category-matrix`, `.modern-journal-flow`, `.journal-panel.page`)
+- `app/src/app/globals.css` (`.modern-category-matrix`, `.modern-journal-flow`, `.journal-panel.page`)
 
 ## 3. 实施步骤
 

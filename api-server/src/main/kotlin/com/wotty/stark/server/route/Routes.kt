@@ -31,6 +31,22 @@ data class AppVersionResponse(
 @Serializable
 data class HealthResponse(val status: String, val db: Boolean)
 
+@Serializable
+data class ImportFailedRow(
+    val lineNumber: Int,
+    val rawData: String,
+    val errorMessage: String,
+    val errorType: String,
+)
+
+@Serializable
+data class ImportTransactionsResponse(
+    val imported: Int,
+    val skipped: Int,
+    val errors: Int,
+    val failedRows: List<ImportFailedRow> = emptyList(),
+)
+
 fun Routing.appRoutes() {
     get("/api/health") {
         call.respond(HealthResponse(status = "ok", db = DatabaseFactory.isReady()))
@@ -39,8 +55,8 @@ fun Routing.appRoutes() {
     get("/api/app/version") {
         call.respond(
             AppVersionResponse(
-                versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 1,
-                versionName = System.getenv("APP_VERSION_NAME") ?: "0.0.1",
+                versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 107,
+                versionName = System.getenv("APP_VERSION_NAME") ?: "0.0.107",
                 apkUrl = System.getenv("APP_APK_URL"),
                 changelog = System.getenv("APP_CHANGELOG"),
                 forceUpdate = System.getenv("APP_FORCE_UPDATE")?.equals("true", ignoreCase = true) == true
@@ -122,7 +138,8 @@ fun Routing.transactionRoutes() {
         var imported = 0
         var skipped = 0
         var errors = 0
-        items.forEach { element ->
+        val failedRows = mutableListOf<ImportFailedRow>()
+        items.forEachIndexed { index, element ->
             runCatching {
                 val payload = element.jsonObject
                 val orderId = payload.jsonText("orderId")
@@ -133,9 +150,17 @@ fun Routing.transactionRoutes() {
                     if (!orderId.isNullOrBlank()) existing.add(orderId)
                     imported++
                 }
-            }.onFailure { errors++ }
+            }.onFailure { cause ->
+                errors++
+                failedRows += ImportFailedRow(
+                    lineNumber = index + 1,
+                    rawData = element.toString(),
+                    errorMessage = cause.message ?: "无法保存该行",
+                    errorType = "IMPORT",
+                )
+            }
         }
-        call.respond(mapOf("imported" to imported, "skipped" to skipped, "errors" to errors))
+        call.respond(ImportTransactionsResponse(imported, skipped, errors, failedRows))
     }
 
     // DELETE /api/transactions/{id} - 删除交易
@@ -278,13 +303,6 @@ fun Routing.syncRoutes() {
                 userId = "local-user",
                 payload = """{"id":"loan-home","userId":"local-user","accountId":"default","platform":"房贷","totalAmount":480000,"remainingAmount":352000,"periods":240,"paidPeriods":64,"monthlyPayment":3200,"dueDate":20,"status":"ACTIVE","matchKeywords":null,"createdAt":"$now","updatedAt":"$now"}""",
             ),
-            DemoSeedRecord(
-                id = "goal-travel",
-                entityType = "savingsGoals",
-                accountId = "default",
-                userId = "local-user",
-                payload = """{"id":"goal-travel","userId":"local-user","accountId":"default","name":"旅行基金","targetAmount":30000,"currentAmount":9200,"deadline":"2026-12-31","type":"LONG_TERM","status":"ACTIVE","depositType":"CASH","planConfig":null,"createdAt":"$now","updatedAt":"$now"}""",
-            ),
         )
 
         demoRecords.forEach { item ->
@@ -372,6 +390,10 @@ fun Routing.savingsRoutes() {
     post("/api/savings-plans") {
         val payload = call.receive<JsonElement>().jsonObject
         DatabaseFactory.upsertEntityPayload("savingsPlans", payload)
+        call.respond(HttpStatusCode.NoContent)
+    }
+    delete("/api/savings-plans/{id}") {
+        DatabaseFactory.deleteEntity("savingsPlans", call.parameters["id"] ?: "")
         call.respond(HttpStatusCode.NoContent)
     }
 }

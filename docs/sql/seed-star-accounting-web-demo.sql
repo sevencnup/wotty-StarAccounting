@@ -96,36 +96,6 @@ ON DUPLICATE KEY UPDATE
   `matchKeywords` = VALUES(`matchKeywords`),
   `updatedAt` = VALUES(`updatedAt`);
 
-INSERT INTO `savingsgoal` (`id`, `userId`, `accountId`, `name`, `targetAmount`, `currentAmount`, `deadline`, `type`, `status`, `createdAt`, `updatedAt`, `depositType`, `planConfig`)
-VALUES
-  ('goal-travel', 'local-user', 'default', '旅行基金', 30000, 9200, '2026-12-31 00:00:00', 'LONG_TERM', 'ACTIVE', '2026-07-31 15:10:00', '2026-07-31 15:10:00', 'CASH', NULL),
-  ('goal-emergency', 'local-user', 'default', '应急储备', 50000, 18600, '2027-06-30 00:00:00', 'LONG_TERM', 'ACTIVE', '2026-07-31 15:10:00', '2026-07-31 15:10:00', 'CASH', NULL)
-ON DUPLICATE KEY UPDATE
-  `name` = VALUES(`name`),
-  `targetAmount` = VALUES(`targetAmount`),
-  `currentAmount` = VALUES(`currentAmount`),
-  `deadline` = VALUES(`deadline`),
-  `type` = VALUES(`type`),
-  `status` = VALUES(`status`),
-  `updatedAt` = VALUES(`updatedAt`),
-  `depositType` = VALUES(`depositType`),
-  `planConfig` = VALUES(`planConfig`);
-
-INSERT INTO `savingsplan` (`id`, `goalId`, `amount`, `status`, `month`, `createdAt`, `updatedAt`, `expenses`, `remark`, `salary`, `proofImage`)
-VALUES
-  ('plan-travel-2026-07', 'goal-travel', 2000, 'COMPLETED', '2026-07', '2026-07-31 15:10:00', '2026-07-31 15:10:00', NULL, '七月已补充旅行基金', 12800, NULL),
-  ('plan-emergency-2026-08', 'goal-emergency', 3000, 'PENDING', '2026-08', '2026-07-31 15:10:00', '2026-07-31 15:10:00', NULL, '八月发薪后补入', 12800, NULL)
-ON DUPLICATE KEY UPDATE
-  `goalId` = VALUES(`goalId`),
-  `amount` = VALUES(`amount`),
-  `status` = VALUES(`status`),
-  `month` = VALUES(`month`),
-  `updatedAt` = VALUES(`updatedAt`),
-  `expenses` = VALUES(`expenses`),
-  `remark` = VALUES(`remark`),
-  `salary` = VALUES(`salary`),
-  `proofImage` = VALUES(`proofImage`);
-
 INSERT INTO `transactioncategoryrule` (`id`, `userId`, `accountId`, `name`, `merchant`, `merchantKey`, `category`, `description`, `isActive`, `createdAt`, `updatedAt`)
 VALUES
   ('rule-starbucks', 'local-user', 'default', '咖啡店归类', '星巴克', 'starbucks', '餐饮美食', '咖啡饮品自动归类到餐饮', TRUE, '2026-07-31 15:10:00', '2026-07-31 15:10:00'),

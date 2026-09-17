@@ -19,14 +19,14 @@
 
 ## 约束
 
-1. 不修改 `web/src/app/(tabs)/assets/page.tsx` 的 JSX 与逻辑。
+1. 不修改 `app/src/app/(tabs)/assets/page.tsx` 的 JSX 与逻辑。
 2. 不改变数据仓库、统计口径与保存流程。
 3. 保持 420px / 370px 窄屏无横向滚动与文字溢出。
 
 ## 实施步骤
 
-- [x] 在 `web/src/app/globals.css` 的 `.assets-page` 区块统一字号与模块尺寸。
+- [x] 在 `app/src/app/globals.css` 的 `.assets-page` 区块统一字号与模块尺寸。
 - [x] 同步 370px 窄屏适配。
-- [x] 更新 `web/package.json` 版本号。
+- [x] 更新 `app/package.json` 版本号。
 - [x] 运行类型检查、测试与生产构建。
 - [x] 移动端浏览器截图核验后推送 GitHub。

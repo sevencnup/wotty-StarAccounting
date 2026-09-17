@@ -13,11 +13,11 @@
 
 ## 2. 实施步骤
 
-- [x] **步骤 1：重构 `web/src/app/(tabs)/page.tsx`**
+- [x] **步骤 1：重构 `app/src/app/(tabs)/page.tsx`**
   - 移除 `RecentFeed` 相关逻辑与组件。
   - 构建 `TopExpenseStructure`（支出结构雷达卡片）。
   - 构建 `SmartAdvisoryCard`（理财与预算建议卡片）。
-- [x] **步骤 2：更新 `web/src/app/globals.css`**
+- [x] **步骤 2：更新 `app/src/app/globals.css`**
   - 编写多段进度条、分类小徽标、建议卡片等专属样式。
 - [x] **步骤 3：构建与类型校验**
   - 执行 `next build` 确保无报错。

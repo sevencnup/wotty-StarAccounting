@@ -209,6 +209,8 @@ object SavingsPlans : Table("savingsplan") {
     val remark = varchar("remark", 191).nullable()
     val salary = decimal("salary", 65, 30).nullable()
     val proofImage = text("proofImage").nullable()
+    val actualAmount = decimal("actualAmount", 65, 30).nullable()
+    val actualDate = datetime("actualDate").nullable()
 
     override val primaryKey = PrimaryKey(id)
 }
@@ -311,7 +313,14 @@ object DatabaseFactory {
                 Transactions,
                 TransactionCategoryRules,
             )
+            removeLegacySavingsDemoRecords()
         }
+    }
+
+    private fun removeLegacySavingsDemoRecords() {
+        val legacyGoalIds = listOf("goal-travel", "goal-emergency", "goal-demo-travel", "goal-demo-emergency")
+        SavingsPlans.deleteWhere { SavingsPlans.goalId inList legacyGoalIds }
+        SavingsGoals.deleteWhere { SavingsGoals.id inList legacyGoalIds }
     }
 
     /** 数据库是否已连接并可用（供健康检查诊断，未配 DATABASE_URL 时为 false） */
@@ -644,6 +653,8 @@ private fun ResultRow.toSavingsPlanRecord() = SyncRecordRow(
         "remark" to this[SavingsPlans.remark],
         "salary" to this[SavingsPlans.salary]?.toDouble(),
         "proofImage" to this[SavingsPlans.proofImage],
+        "actualAmount" to this[SavingsPlans.actualAmount]?.toDouble(),
+        "actualDate" to this[SavingsPlans.actualDate]?.let(::formatDateTime),
     ),
     updatedAt = formatDateTime(this[SavingsPlans.updatedAt]),
 )
@@ -826,6 +837,8 @@ private fun upsertSavingsPlan(payload: JsonObject) = upsertById(SavingsPlans, Sa
         row[SavingsPlans.remark] = payload.getNullableString("remark")
         row[SavingsPlans.salary] = payload.getNullableDecimal("salary")
         row[SavingsPlans.proofImage] = payload.getNullableString("proofImage")
+        row[SavingsPlans.actualAmount] = payload.getNullableDecimal("actualAmount")
+        row[SavingsPlans.actualDate] = payload.getNullableDateTime("actualDate")
     }
 
 private fun upsertCategoryRule(payload: JsonObject) = upsertById(TransactionCategoryRules, TransactionCategoryRules.id, payload.getString("id")) { row ->
@@ -910,7 +923,11 @@ private fun JsonObject.getInt(key: String) = getValue(key).jsonPrimitive.int
 private fun JsonObject.getDecimal(key: String) = getValue(key).jsonPrimitive.content.toBigDecimal()
 private fun JsonObject.getNullableDecimal(key: String) = this[key]?.jsonPrimitive?.contentOrNull?.toBigDecimalOrNull()
 private fun JsonObject.getNullableDouble(key: String) = this[key]?.jsonPrimitive?.doubleOrNull
-private fun JsonObject.getRawNullable(key: String) = this[key]?.takeUnless { it is JsonNull }?.toString()
+internal fun rawJsonStorageValue(value: JsonElement?): String? = value
+    ?.takeUnless { it is JsonNull }
+    ?.let { element -> (element as? JsonPrimitive)?.contentOrNull ?: element.toString() }
+
+private fun JsonObject.getRawNullable(key: String) = rawJsonStorageValue(this[key])
 private fun JsonObject.getDateTime(key: String) = parseDateTime(getString(key))
 private fun JsonObject.getNullableDateTime(key: String) = getNullableString(key)?.let { parseDateTime(it) }
 

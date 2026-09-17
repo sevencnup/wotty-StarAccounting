@@ -6,7 +6,7 @@
 
 ## 2. 影响范围
 
-- `web/src/app/globals.css`
+- `app/src/app/globals.css`
   - `.journal-panel` 弹窗底色（由 `#f5f8fe` 调整为 `#ffffff`）。
   - `.modern-amount-hero` 金额展示主区域（由青底 `#f0f9ff`、青边框 `#bae6fd` 调整为白底 `#ffffff`、灰边框 `#e2e8f0`，符号统一为深色文本）。
   - `.category-tile.active` 分类选中状态（由青底 `#e0f2fe`、青边框 `#7dd3fc` 调整为现代中性浅灰底 `#f1f5f9`、边框 `#cbd5e1`，深色文本）。
