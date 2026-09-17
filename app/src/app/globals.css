@@ -12967,6 +12967,17 @@ button.stark-compass-card {
   box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
 }
 
+/* The amount field is already contained by the amount surface. Keep the
+   global form focus rule from drawing a second blue ring inside it. */
+.journal-panel .amount-huge-input:focus,
+.journal-panel .amount-huge-input:focus-visible {
+  border: 0 !important;
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 .journal-panel .category-tile {
   gap: 2px;
   padding: 2px;
