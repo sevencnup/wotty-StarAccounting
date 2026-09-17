@@ -1,5 +1,21 @@
 # 版本记录
 
+## 0.0.20
+
+- 修复 Android Live Reload 重启时开发缓存损坏和 Windows 进程残留
+
+## 0.0.19
+
+- 修复 Android Live Reload 使用标准 APK 输出文件名
+
+## 0.0.18
+
+- 修复 Android Live Reload 部署时自定义 APK 文件名不兼容
+
+## 0.0.17
+
+- 修复 Windows 下 Android Live Reload 命令无法启动
+
 ## 0.0.16
 
 - 增加 Android Live Reload 开发模式

@@ -11,7 +11,11 @@
 - [x] 自动识别 ADB 设备和与手机同网段的电脑 IPv4 地址。
 - [x] 保留环境变量覆盖设备、主机和端口的能力。
 - [x] 增加统一的 `dev:mobile` 开发命令。
-- [ ] 在已连接的 Android 设备上启动并验证热更新。
+- [x] 兼容 Windows 下通过 `cmd.exe` 启动 pnpm 子命令。
+- [x] 兼容项目版本化 APK 文件名与 Capacitor CLI 的部署约定。
+- [x] 保留 `app-debug.apk` 作为 Capacitor CLI 部署输入，并单独归档版本化 APK。
+- [x] 重启前清理 Next.js 开发缓存，退出时清理 Windows 子进程树。
+- [x] 在已连接的 Android 设备上启动并验证热更新。
 
 ## 使用方式
 

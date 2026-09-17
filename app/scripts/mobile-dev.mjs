@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -9,7 +10,8 @@ const webDirectory = path.resolve(scriptDirectory, "..");
 const port = Number.parseInt(getOption("--port") ?? process.env.CAP_LIVE_RELOAD_PORT ?? "12366", 10);
 const target = getOption("--target") ?? process.env.CAP_LIVE_RELOAD_TARGET ?? detectAdbTarget();
 const host = getOption("--host") ?? process.env.CAP_LIVE_RELOAD_HOST ?? detectHost(target);
-const pnpmCommand = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
+const pnpmCommand = process.platform === "win32" ? (process.env.ComSpec || "cmd.exe") : "pnpm";
+const pnpmPrefixArgs = process.platform === "win32" ? ["/d", "/c", "pnpm.cmd"] : [];
 
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
   throw new Error(`Invalid live reload port: ${port}`);
@@ -100,8 +102,34 @@ function runCommand(command, args) {
   });
 }
 
+function killWindowsProcess(pid) {
+  return new Promise((resolve) => {
+    const killer = spawn(
+      "taskkill.exe",
+      ["/PID", String(pid), "/T", "/F"],
+      { stdio: "ignore", windowsHide: true },
+    );
+    killer.once("error", resolve);
+    killer.once("close", resolve);
+  });
+}
+
+function killWindowsProcessSync(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return;
+  spawnSync("taskkill.exe", ["/PID", String(pid), "/T", "/F"], {
+    stdio: "ignore",
+    windowsHide: true,
+  });
+}
+
 function stopProcessTree(child) {
-  if (!child || child.exitCode !== null || child.signalCode !== null || !child.pid) return Promise.resolve();
+  if (!child?.pid) return Promise.resolve();
+
+  if (process.platform === "win32") {
+    return killWindowsProcess(child.pid);
+  }
+
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
 
   return new Promise((resolve) => {
     let settled = false;
@@ -110,19 +138,12 @@ function stopProcessTree(child) {
       settled = true;
       resolve();
     };
-    const timer = setTimeout(() => {
-      if (process.platform === "win32") {
-        spawnSync("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
-      } else {
-        child.kill("SIGTERM");
-      }
-      finish();
-    }, 4000);
+    const timer = setTimeout(finish, 5000);
     child.once("close", () => {
       clearTimeout(timer);
       finish();
     });
-    child.kill("SIGINT");
+    child.kill("SIGTERM");
   });
 }
 
@@ -133,6 +154,12 @@ async function shutdown(code) {
   await stopProcessTree(webProcess);
   process.exitCode = code;
 }
+
+process.once("exit", () => {
+  if (process.platform !== "win32") return;
+  killWindowsProcessSync(capacitorProcess?.pid);
+  killWindowsProcessSync(webProcess?.pid);
+});
 
 function handleChildExit(name, code, signal) {
   if (shuttingDown) return;
@@ -148,8 +175,9 @@ process.once("SIGBREAK", () => void shutdown(0));
 process.stdout.write(`Live Reload target: ${target}\n`);
 process.stdout.write(`Live Reload URL: http://${host}:${port}\n`);
 process.stdout.write("Preparing the initial Web build for Capacitor sync...\n");
+rmSync(path.join(webDirectory, ".next", "dev"), { recursive: true, force: true });
 try {
-  await runCommand(pnpmCommand, ["build"]);
+  await runCommand(pnpmCommand, [...pnpmPrefixArgs, "build"]);
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   process.exitCode = 1;
@@ -172,7 +200,7 @@ try {
   await waitForPort(port);
   if (shuttingDown) process.exit(0);
   process.stdout.write("Starting Capacitor Android Live Reload...\n");
-  capacitorProcess = spawn(pnpmCommand, ["exec", "cap", "run", "android", "--live-reload", "--host", host, "--port", String(port), "--target", target], {
+  capacitorProcess = spawn(pnpmCommand, [...pnpmPrefixArgs, "exec", "cap", "run", "android", "--live-reload", "--host", host, "--port", String(port), "--target", target], {
     cwd: webDirectory,
     stdio: "inherit",
     windowsHide: false,

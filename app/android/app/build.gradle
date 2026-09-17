@@ -22,11 +22,6 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    applicationVariants.all { variant ->
-        variant.outputs.all { output ->
-            outputFileName = "wotty-stark-web-${variant.name}-v${variant.versionName}-c${variant.versionCode}.apk"
-        }
-    }
 }
 
 def debugApkBaseName = "wotty-stark-web-debug-v${android.defaultConfig.versionName}-c${android.defaultConfig.versionCode}.apk"
@@ -34,7 +29,7 @@ def archivedDebugApkName = debugApkBaseName.replace(".apk", "-${new Date().forma
 
 tasks.register("archiveDebugApk", Copy) {
     from(layout.buildDirectory.dir("outputs/apk/debug")) {
-        include debugApkBaseName
+        include "app-debug.apk"
         rename { archivedDebugApkName }
     }
     into(new File(rootProject.projectDir.parentFile.parentFile, "releases"))
