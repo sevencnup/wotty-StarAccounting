@@ -14,7 +14,7 @@ type BottomSheetProps = PropsWithChildren<{
 export function BottomSheet({ children, title, onClose, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
-  const historyEntryRef = useRef(false);
+  const historyEntryRef = useRef<{ markerUrl: string } | null>(null);
   const closingRef = useRef(false);
   const onCloseRef = useRef(onClose);
 
@@ -29,8 +29,8 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
   const requestClose = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
-    const ownsHistoryEntry = historyEntryRef.current;
-    historyEntryRef.current = false;
+    const ownsHistoryEntry = historyEntryRef.current !== null;
+    historyEntryRef.current = null;
     onCloseRef.current();
     if (ownsHistoryEntry) window.history.back();
   }, []);
@@ -38,28 +38,34 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
   useEffect(() => {
     if (!mounted) return;
 
-    // Reserve a same-URL history entry for this sheet. Browser edge-swipe
-    // back gestures consume this entry first and therefore only close the
-    // sheet instead of navigating the underlying tab.
+    // Give the sheet a distinct hash entry. Some WebViews coalesce same-URL
+    // state entries, while a hash entry is retained and consumed first by an
+    // edge-back gesture before the underlying page can be reached.
     if (!historyEntryRef.current) {
       const currentState = window.history.state;
       const nextState = currentState && typeof currentState === "object"
         ? { ...currentState, starkBottomSheet: true }
         : { starkBottomSheet: true };
-      window.history.pushState(nextState, "", window.location.href);
-      historyEntryRef.current = true;
+      const markerUrl = new URL(window.location.href);
+      markerUrl.hash = "stark-bottom-sheet=" + encodeURIComponent(titleId) + "-" + Date.now();
+      window.history.pushState(nextState, "", markerUrl.href);
+      historyEntryRef.current = { markerUrl: markerUrl.href };
     }
 
-    const handlePopState = () => {
+    const closeFromHistory = () => {
       if (!historyEntryRef.current) return;
-      historyEntryRef.current = false;
+      historyEntryRef.current = null;
       if (closingRef.current) return;
       closingRef.current = true;
       onCloseRef.current();
     };
 
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
+    window.addEventListener("popstate", closeFromHistory);
+    window.addEventListener("hashchange", closeFromHistory);
+    return () => {
+      window.removeEventListener("popstate", closeFromHistory);
+      window.removeEventListener("hashchange", closeFromHistory);
+    };
   }, [mounted]);
 
   useEffect(() => {

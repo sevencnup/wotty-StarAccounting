@@ -1619,6 +1619,8 @@ nextjs-portal {
   background: var(--background);
   box-shadow: none;
   overscroll-behavior: contain;
+  overscroll-behavior-x: none;
+  touch-action: pan-y;
   animation: bottom-sheet-in 220ms ease both;
 }
 
