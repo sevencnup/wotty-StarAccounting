@@ -72,7 +72,7 @@ const categoryIcons: Record<string, string> = {
   "娱乐": "yule", "医疗": "yiliao", "日用": "riyong", "服装": "fuzhuang",
   "美容": "meirong", "宠物": "chongwu", "通讯": "tongxun", "运动": "yundong",
   "旅行": "lvxing", "教育": "jiaoyu", "其他": "qita",
-  "工资": "jiaoyi", "奖金": "jiaoyi", "理财": "jiaoyi",
+  "工资": "gongzi", "奖金": "jiangjin", "理财": "licai",
 };
 
 export function JournalPanel({

@@ -54,9 +54,12 @@ function categoryIconForFilter(category: string) {
     [/宠/, "chongwu.png"],
     [/服/, "fuzhuang.png"],
     [/通|信用卡/, "tongxun.png"],
-    [/运|投资/, "yundong.png"],
+    [/运/, "yundong.png"],
+    [/工|薪资|薪酬/, "gongzi.png"],
+    [/奖|红利|分红/, "jiangjin.png"],
+    [/理财|投资/, "licai.png"],
     [/教|培训/, "jiaoyu.png"],
-    [/转|退款|奖金|收入/, "jiaoyi.png"],
+    [/转|退款|收入/, "qita.png"],
   ];
   const matched = rules.find(([matcher]) => matcher.test(category));
   return "/category-icons/" + (matched?.[1] ?? "qita.png");
