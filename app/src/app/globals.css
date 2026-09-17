@@ -1550,13 +1550,15 @@ nextjs-portal {
 }
 
 .stark-budget-allocation-grid strong {
-  overflow: hidden;
+  display: block;
+  min-width: 0;
   color: #1e293b;
   font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .stark-budget-allocation-grid strong.available {
