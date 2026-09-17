@@ -5941,7 +5941,9 @@ button.stark-compass-card {
 }
 
 .action-main-btn:disabled {
-  opacity: 0.5;
+  opacity: 1;
+  background: #0060c0 !important;
+  background-color: #0060c0 !important;
   cursor: not-allowed;
 }
 
