@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState, type PropsWithChildren } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type PropsWithChildren } from "react";
 import { createPortal } from "react-dom";
 
 type BottomSheetProps = PropsWithChildren<{
@@ -14,10 +14,53 @@ type BottomSheetProps = PropsWithChildren<{
 export function BottomSheet({ children, title, onClose, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
+  const historyEntryRef = useRef(false);
+  const closingRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const requestClose = useCallback(() => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    const ownsHistoryEntry = historyEntryRef.current;
+    historyEntryRef.current = false;
+    onCloseRef.current();
+    if (ownsHistoryEntry) window.history.back();
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    // Reserve a same-URL history entry for this sheet. Browser edge-swipe
+    // back gestures consume this entry first and therefore only close the
+    // sheet instead of navigating the underlying tab.
+    if (!historyEntryRef.current) {
+      const currentState = window.history.state;
+      const nextState = currentState && typeof currentState === "object"
+        ? { ...currentState, starkBottomSheet: true }
+        : { starkBottomSheet: true };
+      window.history.pushState(nextState, "", window.location.href);
+      historyEntryRef.current = true;
+    }
+
+    const handlePopState = () => {
+      if (!historyEntryRef.current) return;
+      historyEntryRef.current = false;
+      if (closingRef.current) return;
+      closingRef.current = true;
+      onCloseRef.current();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [mounted]);
 
   useEffect(() => {
     const scrollY = window.scrollY;
@@ -55,22 +98,22 @@ export function BottomSheet({ children, title, onClose, className = "", overlayC
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") requestClose();
     }
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
-  }, [onClose]);
+  }, [requestClose]);
 
   if (!mounted) return null;
 
   return createPortal(
-    <div className={`bottom-sheet-overlay ${overlayClassName}`.trim()} onClick={onClose}>
+    <div className={`bottom-sheet-overlay ${overlayClassName}`.trim()} onClick={requestClose}>
       <section className={`bottom-sheet ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
         <div className="bottom-sheet-handle" aria-hidden="true" />
         <header className="bottom-sheet-header">
           <span aria-hidden="true" />
           <strong id={titleId}>{title}</strong>
-          <button type="button" aria-label={`关闭${title}`} onClick={onClose}>×</button>
+          <button type="button" aria-label={`关闭${title}`} onClick={requestClose}>×</button>
         </header>
         <div className={`bottom-sheet-body ${bodyClassName}`.trim()}>{children}</div>
       </section>
