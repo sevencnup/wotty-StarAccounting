@@ -5930,7 +5930,8 @@ button.stark-compass-card {
   height: 42px;
   border: 0;
   border-radius: 12px;
-  background: #0060c0;
+  background: #0060c0 !important;
+  background-color: #0060c0 !important;
   color: #ffffff;
   font-size: calc(14px * var(--user-font-scale));
   font-weight: 600;
