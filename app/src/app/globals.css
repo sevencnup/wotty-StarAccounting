@@ -5725,8 +5725,8 @@ button.stark-compass-card {
 }
 
 .modern-amount-hero:focus-within {
-  border-color: #0060c0;
-  box-shadow: 0 0 0 3px rgba(0, 96, 192, 0.12);
+  border-color: #e2e8f0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
 }
 
 .currency-label {
@@ -12959,6 +12959,11 @@ button.stark-compass-card {
 }
 
 .journal-panel .modern-amount-hero {
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
+}
+
+.journal-panel .modern-amount-hero:focus-within {
+  border-color: #e2e8f0;
   box-shadow: 0 3px 12px rgba(15, 23, 42, 0.07);
 }
 
