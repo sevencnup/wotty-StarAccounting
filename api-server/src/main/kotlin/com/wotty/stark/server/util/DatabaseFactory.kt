@@ -346,16 +346,7 @@ object DatabaseFactory {
         }
         val now = LocalDateTime.now()
         val id = "user-${UUID.randomUUID()}"
-        val legacy = Users.selectAll().where { Users.id eq "local-user" }.firstOrNull()
-        val legacyCanMigrate = legacy != null && (
-            legacy[Users.password].isBlank() || legacy[Users.email] == "cloud@wotty.stark"
-        )
-        val existingDefault = if (legacyCanMigrate) {
-            Accounts.selectAll().where { Accounts.id eq (legacy?.get(Users.defaultAccountId) ?: "default") }.firstOrNull()
-        } else {
-            null
-        }
-        val accountId = existingDefault?.get(Accounts.id) ?: "account-${UUID.randomUUID()}"
+        val accountId = "account-${UUID.randomUUID()}"
 
         Users.insert {
             it[Users.id] = id
@@ -368,31 +359,12 @@ object DatabaseFactory {
             it[Users.updatedAt] = now
         }
 
-        if (legacyCanMigrate) {
-            migrateLegacyUser("local-user", id)
-            if (existingDefault != null) {
-                Accounts.update({ Accounts.id eq accountId }) {
-                    it[Accounts.ownerId] = id
-                    it[Accounts.updatedAt] = now
-                }
-            } else {
-                Accounts.insert {
-                    it[Accounts.id] = accountId
-                    it[Accounts.name] = "默认账本"
-                    it[Accounts.ownerId] = id
-                    it[Accounts.createdAt] = now
-                    it[Accounts.updatedAt] = now
-                }
-            }
-            Users.deleteWhere { Users.id eq "local-user" }
-        } else {
-            Accounts.insert {
-                it[Accounts.id] = accountId
-                it[Accounts.name] = "默认账本"
-                it[Accounts.ownerId] = id
-                it[Accounts.createdAt] = now
-                it[Accounts.updatedAt] = now
-            }
+        Accounts.insert {
+            it[Accounts.id] = accountId
+            it[Accounts.name] = "默认账本"
+            it[Accounts.ownerId] = id
+            it[Accounts.createdAt] = now
+            it[Accounts.updatedAt] = now
         }
         findUserByIdInTransaction(id) ?: error("Failed to create user")
     }
@@ -492,18 +464,6 @@ object DatabaseFactory {
         "importErrorLogs" -> ImportErrorLogs.selectAll().where { ImportErrorLogs.id eq id }.count() > 0
         "themeConfigs" -> ThemeConfigs.selectAll().where { ThemeConfigs.id eq id }.count() > 0
         else -> false
-    }
-
-    private fun migrateLegacyUser(fromId: String, toId: String) {
-        Accounts.update({ Accounts.ownerId eq fromId }) { it[Accounts.ownerId] = toId }
-        Assets.update({ Assets.userId eq fromId }) { it[Assets.userId] = toId }
-        Budgets.update({ Budgets.userId eq fromId }) { it[Budgets.userId] = toId }
-        ImportErrorLogs.update({ ImportErrorLogs.userId eq fromId }) { it[ImportErrorLogs.userId] = toId }
-        Loans.update({ Loans.userId eq fromId }) { it[Loans.userId] = toId }
-        SavingsGoals.update({ SavingsGoals.userId eq fromId }) { it[SavingsGoals.userId] = toId }
-        Transactions.update({ Transactions.userId eq fromId }) { it[Transactions.userId] = toId }
-        TransactionCategoryRules.update({ TransactionCategoryRules.userId eq fromId }) { it[TransactionCategoryRules.userId] = toId }
-        ThemeConfigs.update({ ThemeConfigs.userId eq fromId }) { it[ThemeConfigs.userId] = toId }
     }
 
     private fun findUserByIdInTransaction(id: String): AuthUser? = Users.selectAll()
