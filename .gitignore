@@ -13,3 +13,4 @@ build/
 local.properties
 *.log
 .env
+node_modules/
