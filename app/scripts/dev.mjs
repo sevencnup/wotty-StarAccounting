@@ -146,7 +146,7 @@ function startApi() {
 
     return spawn(
       process.env.ComSpec || "cmd.exe",
-      ["/d", "/c", gradleWrapper, "-p", "api-server", "run", "--no-daemon"],
+      ["/d", "/c", gradleWrapper, "-p", "api-server", "run", "--no-daemon", "--configuration-cache"],
       {
         cwd: repositoryDirectory,
         stdio: ["inherit", "pipe", "pipe"],
@@ -161,7 +161,7 @@ function startApi() {
     throw new Error(`Gradle wrapper not found: ${gradleWrappers.join(", ")}`);
   }
 
-  return spawn("sh", [gradleWrapper, "-p", "api-server", "run", "--no-daemon"], {
+  return spawn("sh", [gradleWrapper, "-p", "api-server", "run", "--no-daemon", "--configuration-cache"], {
     cwd: repositoryDirectory,
     stdio: ["inherit", "pipe", "pipe"],
   });

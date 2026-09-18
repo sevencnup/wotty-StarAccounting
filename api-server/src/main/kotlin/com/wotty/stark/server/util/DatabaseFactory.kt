@@ -303,7 +303,8 @@ object DatabaseFactory {
             // 统一 UTF-8，避免中文/emoji 写入被错编成乱码
             jdbcUrl = jdbcUrl.let { url -> if (url.contains("?")) url else "$url?useUnicode=true&characterEncoding=UTF-8" }
             maximumPoolSize = 10
-            minimumIdle = 5
+            // API 启动时只需一个连接；Hikari 会按请求逐步扩容，避免一次性建立空闲连接。
+            minimumIdle = 1
             idleTimeout = 30000
             maxLifetime = 600000
             connectionTimeout = 30000
