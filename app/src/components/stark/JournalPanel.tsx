@@ -11,6 +11,7 @@ import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
 import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
 import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
+import { categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
 
 const SavingsPlanner = dynamic(
   () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
@@ -65,14 +66,6 @@ type LoanDraft = {
 type KeyboardViewport = {
   height: number;
   offsetTop: number;
-};
-
-const categoryIcons: Record<string, string> = {
-  "餐饮": "canyin", "购物": "gouwu", "交通": "jiaotong", "住房": "zhufang",
-  "娱乐": "yule", "医疗": "yiliao", "日用": "riyong", "服装": "fuzhuang",
-  "美容": "meirong", "宠物": "chongwu", "通讯": "tongxun", "运动": "yundong",
-  "旅行": "lvxing", "教育": "jiaoyu", "其他": "qita",
-  "工资": "gongzi", "奖金": "jiangjin", "理财": "licai",
 };
 
 export function JournalPanel({
@@ -903,7 +896,7 @@ export function JournalPanel({
                     className={`category-tile ${category === item ? "active" : ""}`}
                   >
                     <div className="tile-icon-box">
-                      <img src={`/category-icons/${categoryIcons[item] || "qita"}.png`} alt="" className="tile-icon" />
+                      <img src={categoryIconSrcForCategory(item, type)} alt="" className="tile-icon" />
                     </div>
                     <span className="tile-label">{item}</span>
                   </button>

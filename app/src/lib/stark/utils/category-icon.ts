@@ -1,5 +1,28 @@
 import type { Transaction } from "@/lib/stark/models";
 
+const categoryIconFiles: Record<string, string> = {
+  餐饮: "canyin.png",
+  购物: "gouwu.png",
+  交通: "jiaotong.png",
+  住房: "zhufang.png",
+  娱乐: "yule.png",
+  医疗: "yiliao.png",
+  日用: "riyong.png",
+  服装: "fuzhuang.png",
+  美容: "meirong.png",
+  宠物: "chongwu.png",
+  通讯: "tongxun.png",
+  运动: "yundong.png",
+  旅行: "lvxing.png",
+  教育: "jiaoyu.png",
+  工资: "gongzi.png",
+  奖金: "jiangjin.png",
+  理财: "licai.png",
+  转账: "jiaoyi.png",
+  还款: "jiaoyi.png",
+  其他: "qita.png",
+};
+
 const incomeCategoryIcons: Record<string, string> = {
   工资: "gongzi.png",
   奖金: "jiangjin.png",
@@ -15,12 +38,18 @@ function incomeIconFile(category: string): string | null {
   return null;
 }
 
+export function categoryIconSrcForCategory(category: string, type?: Transaction["type"]): string {
+  if (type === "TRANSFER" || type === "REPAYMENT") return "/category-icons/jiaoyi.png";
+  const normalized = category.trim();
+  if (categoryIconFiles[normalized]) return `/category-icons/${categoryIconFiles[normalized]}`;
+  if (type === "INCOME") return `/category-icons/${incomeIconFile(normalized) || "qita.png"}`;
+  return "/category-icons/qita.png";
+}
+
 export function categoryIconSrc(item: Transaction): string {
   const text = `${item.merchant || ""}${item.description || ""}${item.category}`;
-  if (item.type === "INCOME") {
-    const iconFile = incomeIconFile(item.category);
-    return `/category-icons/${iconFile || "qita.png"}`;
-  }
+  const directIcon = categoryIconSrcForCategory(item.category, item.type);
+  if (directIcon !== "/category-icons/qita.png" || item.type === "INCOME") return directIcon;
   if (text.includes("餐") || text.includes("咖啡")) return "/category-icons/canyin.png";
   if (text.includes("交") || text.includes("地铁")) return "/category-icons/jiaotong.png";
   if (text.includes("购") || text.includes("超市")) return "/category-icons/gouwu.png";
