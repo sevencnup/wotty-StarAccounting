@@ -93,3 +93,36 @@ curl http://127.0.0.1:12367/api/health
 ```
 
 若返回 `db:false`，检查 MySQL 是否可访问、数据库是否已创建、账号权限、JDBC 地址以及密码，并查看后端启动日志。
+
+## 5. Docker Compose 首次部署
+
+项目根目录提供了 `docker-compose.yml`、`Dockerfile.api` 和 `Dockerfile.web`，可以同时启动 MySQL、API 和 Web：
+
+```bash
+cp .env.example .env
+# 编辑 .env，替换两个密码
+docker compose up -d --build
+```
+
+Compose 的首次启动顺序如下：
+
+1. MySQL 在空数据卷中创建 `MYSQL_DATABASE`、`DB_USER` 和 `DB_PASSWORD` 指定的数据库账号。
+2. MySQL 健康检查通过后，API 容器才会启动。
+3. API 连接 MySQL，并自动创建业务表和缺失字段。
+4. Web 容器监听 `12366`，API 容器监听 `12367`。
+
+访问地址：
+
+- Web：`http://127.0.0.1:12366`
+- API 健康检查：`http://127.0.0.1:12367/api/health`
+
+MySQL 数据保存在 `mysql-data` 数据卷中。`MYSQL_DATABASE`、`MYSQL_USER` 和 `MYSQL_PASSWORD` 只会在该数据卷首次为空时初始化；普通重启不会删除数据或重新初始化账号。
+
+如果确实要重置整个数据库，确认已备份后再执行：
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+`down -v` 会删除 Compose 管理的 MySQL 数据卷，请勿在保留数据时执行。

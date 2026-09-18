@@ -98,6 +98,20 @@ curl http://127.0.0.1:12367/api/health
 
 首次连接成功时，API 会自动创建缺失的业务表和字段，但不会创建 MySQL 数据库本身。
 
+### Docker Compose 一键部署
+
+项目根目录已提供 Compose 部署文件。首次部署时执行：
+
+```bash
+cp .env.example .env
+# 编辑 .env，设置强密码
+docker compose up -d --build
+```
+
+MySQL 容器会在空数据卷中自动创建数据库和应用账号，API 容器会在数据库健康后启动并自动创建业务表。Web、API 和数据库分别由 `12366`、`12367` 以及内部 MySQL 服务提供。
+
+数据保存在 `mysql-data` 数据卷中。只有确认要清空全部数据时，才执行 `docker compose down -v`。
+
 ## 使用 Web 应用
 
 1. 打开 `http://127.0.0.1:12366`。

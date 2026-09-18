@@ -1,0 +1,13 @@
+FROM gradle:8.14.3-jdk17 AS build
+
+WORKDIR /workspace
+COPY api-server ./api-server
+RUN gradle --no-daemon -p api-server installDist
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+COPY --from=build /workspace/api-server/build/install/wotty-stark-api/ ./
+
+EXPOSE 12367
+ENTRYPOINT ["/app/bin/wotty-stark-api"]
