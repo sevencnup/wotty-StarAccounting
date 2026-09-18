@@ -12,3 +12,4 @@ build/
 # Misc
 local.properties
 *.log
+.env
