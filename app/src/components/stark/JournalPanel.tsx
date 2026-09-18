@@ -11,7 +11,7 @@ import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
 import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
 import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
-import { categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
+import { categoryIconSrcForCategory, expenseCategoryOptions } from "@/lib/stark/utils/category-icon";
 
 const SavingsPlanner = dynamic(
   () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
@@ -20,11 +20,7 @@ const SavingsPlanner = dynamic(
 
 const repo = new DataModeManager().getRepository();
 
-const expenseCategories = [
-  "餐饮", "购物", "交通", "住房", "娱乐", "医疗",
-  "日用", "服装", "美容", "宠物", "通讯", "运动",
-  "旅行", "教育", "其他",
-];
+const expenseCategories = expenseCategoryOptions;
 const incomeCategories = ["工资", "奖金", "理财", "其他"];
 const transferCategories = ["转账"];
 const platforms = ["支付宝", "微信", "银行卡", "现金", "其他"];
