@@ -45,7 +45,9 @@ pnpm install
 在项目根目录执行：
 
 ```bash
-pnpm --dir app dev
+cp .env.example .env
+# 修改 .env 中的本机 MySQL 连接信息
+pnpm dev
 ```
 
 启动后：
@@ -54,7 +56,7 @@ pnpm --dir app dev
 - API 后端：`http://127.0.0.1:12367`
 - API 健康检查：`http://127.0.0.1:12367/api/health`
 
-`app/scripts/dev.mjs` 会同时启动前端和 API；退出命令时会一并停止两个服务。
+`app/scripts/dev.mjs` 会自动读取项目根目录 `.env`，同时启动前端和 API；退出命令时会一并停止两个服务。
 
 ### 只启动前端
 

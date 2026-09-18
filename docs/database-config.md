@@ -10,7 +10,7 @@
 
 1. 准备可访问的 MySQL 服务。
 2. 创建业务数据库、连接用户并授予权限。
-3. 通过环境变量或用户目录下的配置文件注入连接信息。
+3. 本地开发使用项目根目录 `.env`，部署使用 Compose 的 `.env` 或环境变量。
 4. 启动 `api-server`，由应用自动创建缺失的业务表和字段。
 5. 请求 `/api/health`，确认返回 `db: true`。
 
@@ -32,9 +32,27 @@ FLUSH PRIVILEGES;
 
 ## 2. 配置连接信息
 
-### 方式一：环境变量
+### 方式一：本地开发使用项目根目录 `.env`
 
-环境变量优先级最高，适合 Docker、Compose 和生产部署：
+在项目根目录创建 `.env`（可从 `.env.example` 复制）：
+
+```bash
+cp .env.example .env
+```
+
+填写现有 MySQL 的连接信息：
+
+```text
+DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
+DB_USER=accounting
+DB_PASSWORD=请替换为数据库密码
+```
+
+执行 `pnpm dev` 时，开发脚本会自动读取该文件并传给 API。已经存在的系统环境变量优先于 `.env`。
+
+### 方式二：部署使用环境变量
+
+环境变量适合 Docker、Compose 和生产部署：
 
 ```text
 DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
@@ -50,7 +68,7 @@ DATABASE_URL=jdbc:mysql://mysql:3306/star_accounting
 
 不要把真实密码写入 Dockerfile、镜像或 Git 仓库，应通过部署环境变量、Compose 的 `.env` 文件或密钥管理服务注入。
 
-### 方式二：用户目录配置文件
+### 方式三：用户目录配置文件（兼容方式）
 
 应用会读取运行后端的系统用户目录下的 `.wotty-stark/db.properties`：
 
