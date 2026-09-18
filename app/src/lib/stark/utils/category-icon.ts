@@ -1,54 +1,75 @@
 import type { Transaction } from "@/lib/stark/models";
 
 const categoryIconFiles: Record<string, string> = {
-  餐饮: "canyin.png",
-  购物: "gouwu.png",
-  交通: "jiaotong.png",
-  住房: "zhufang.png",
-  娱乐: "yule.png",
-  医疗: "yiliao.png",
-  日用: "riyong.png",
-  服装: "fuzhuang.png",
-  美容: "meirong.png",
-  宠物: "chongwu.png",
-  通讯: "tongxun.png",
-  运动: "yundong.png",
-  旅行: "lvxing.png",
-  教育: "jiaoyu.png",
-  工资: "gongzi.png",
-  奖金: "jiangjin.png",
-  理财: "licai.png",
-  转账: "jiaoyi.png",
-  还款: "jiaoyi.png",
-  其他: "qita.png",
+  餐饮: "canyinlei.webp",
+  购物: "gouwulei.webp",
+  交通: "gongongchuxing.webp",
+  住房: "zhufang.webp",
+  娱乐: "youxilei.webp",
+  医疗: "yaopin.webp",
+  日用: "qingjie.webp",
+  服装: "fuzhuanglei.webp",
+  美容: "jiajulei1.webp",
+  宠物: "baobaolei.webp",
+  通讯: "dianzilei.webp",
+  运动: "jianshenlei.webp",
+  旅行: "chuxinglei.webp",
+  教育: "jiaoyulei.webp",
+  工资: "gongjulei.webp",
+  奖金: "wanoulei.webp",
+  理财: "jiajulei1.webp",
+  转账: "dianzilei.webp",
+  还款: "gongjulei.webp",
+  其他: "gongjulei.webp",
 };
 
 const incomeCategoryIcons: Record<string, string> = {
-  工资: "gongzi.png",
-  奖金: "jiangjin.png",
-  理财: "licai.png",
+  工资: "gongjulei.webp",
+  奖金: "wanoulei.webp",
+  理财: "jiajulei1.webp",
 };
 
 const categoryKeywordIcons: Array<[RegExp, string]> = [
-  [/餐|美食|咖啡/, "canyin.png"],
-  [/交|车|公交|地铁/, "jiaotong.png"],
-  [/购|百货|超市|充值/, "gouwu.png"],
-  [/娱|文化|休闲|电影/, "yule.png"],
-  [/日用|生活/, "riyong.png"],
-  [/医|健康/, "yiliao.png"],
-  [/住|房|租|水电/, "zhufang.png"],
-  [/旅/, "lvxing.png"],
-  [/美/, "meirong.png"],
-  [/宠/, "chongwu.png"],
-  [/服/, "fuzhuang.png"],
-  [/通|信用卡/, "tongxun.png"],
-  [/运/, "yundong.png"],
-  [/工|薪资|薪酬/, "gongzi.png"],
-  [/奖|红利|分红/, "jiangjin.png"],
-  [/理财|投资/, "licai.png"],
-  [/教|培训/, "jiaoyu.png"],
-  [/转|退款|收入/, "qita.png"],
+  [/水果/, "shuiguo.webp"],
+  [/肉/, "roulei.webp"],
+  [/水产|海鲜/, "shuicanlei.webp"],
+  [/牛奶|乳制品/, "niunai.webp"],
+  [/糖果|零食/, "tangguo.webp"],
+  [/甜品|蛋糕/, "tianpinlei.webp"],
+  [/下午茶/, "xiawucha.webp"],
+  [/酒/, "jiulei.webp"],
+  [/烟|香烟|烟草/, "yancaplei.webp"],
+  [/餐|美食|咖啡/, "canyinlei.webp"],
+  [/自行车|骑行/, "zixingche.webp"],
+  [/摩托/, "motuo.webp"],
+  [/汽车|打车|出租|自驾/, "qichelei.webp"],
+  [/公交|地铁|公共出行/, "gongongchuxing.webp"],
+  [/交|车/, "gongongchuxing.webp"],
+  [/购|百货|超市|充值/, "gouwulei.webp"],
+  [/影音|视频|电影/, "yingyinlei.webp"],
+  [/娱|文化|休闲|游戏/, "youxilei.webp"],
+  [/日用|生活|清洁/, "qingjie.webp"],
+  [/医|健康|药/, "yaopin.webp"],
+  [/水费/, "shuifei.webp"],
+  [/燃气|煤气/, "ranqi.webp"],
+  [/住|房|租/, "zhufang.webp"],
+  [/旅/, "chuxinglei.webp"],
+  [/宠/, "baobaolei.webp"],
+  [/服/, "fuzhuanglei.webp"],
+  [/鞋/, "xielei.webp"],
+  [/通|信用卡|手机/, "dianzilei.webp"],
+  [/耳机|音频/, "dianzishebei.webp"],
+  [/健身|运动|体育/, "jianshenlei.webp"],
+  [/户外/, "huwai.webp"],
+  [/工|薪资|薪酬/, "gongjulei.webp"],
+  [/奖|红利|分红/, "wanoulei.webp"],
+  [/理财|投资/, "jiajulei1.webp"],
+  [/教|培训/, "jiaoyulei.webp"],
+  [/书|阅读/, "tushulei.webp"],
+  [/转|退款|收入/, "dianzilei.webp"],
 ];
+
+const fallbackCategoryIcon = "/category-icons/gongjulei.webp";
 
 function incomeIconFile(category: string): string | null {
   const normalized = category.trim();
@@ -60,7 +81,9 @@ function incomeIconFile(category: string): string | null {
 }
 
 export function categoryIconSrcForCategory(category: string, type?: Transaction["type"]): string {
-  if (type === "TRANSFER" || type === "REPAYMENT") return "/category-icons/jiaoyi.png";
+  if (type === "TRANSFER" || type === "REPAYMENT") {
+    return `/category-icons/${categoryIconFiles[type === "TRANSFER" ? "转账" : "还款"]}`;
+  }
   const normalized = category.trim();
   if (categoryIconFiles[normalized]) return `/category-icons/${categoryIconFiles[normalized]}`;
   if (type === "INCOME") {
@@ -69,26 +92,12 @@ export function categoryIconSrcForCategory(category: string, type?: Transaction[
   }
   const matched = categoryKeywordIcons.find(([matcher]) => matcher.test(normalized));
   if (matched) return `/category-icons/${matched[1]}`;
-  return "/category-icons/qita.png";
+  return fallbackCategoryIcon;
 }
 
 export function categoryIconSrc(item: Transaction): string {
   const text = `${item.merchant || ""}${item.description || ""}${item.category}`;
   const directIcon = categoryIconSrcForCategory(item.category, item.type);
-  if (directIcon !== "/category-icons/qita.png" || item.type === "INCOME") return directIcon;
-  if (text.includes("餐") || text.includes("咖啡")) return "/category-icons/canyin.png";
-  if (text.includes("交") || text.includes("地铁")) return "/category-icons/jiaotong.png";
-  if (text.includes("购") || text.includes("超市")) return "/category-icons/gouwu.png";
-  if (text.includes("娱") || text.includes("电影")) return "/category-icons/yule.png";
-  if (text.includes("生活") || text.includes("日用")) return "/category-icons/riyong.png";
-  if (text.includes("医")) return "/category-icons/yiliao.png";
-  if (text.includes("住") || text.includes("租")) return "/category-icons/zhufang.png";
-  if (text.includes("旅")) return "/category-icons/lvxing.png";
-  if (text.includes("美")) return "/category-icons/meirong.png";
-  if (text.includes("宠")) return "/category-icons/chongwu.png";
-  if (text.includes("服")) return "/category-icons/fuzhuang.png";
-  if (text.includes("通")) return "/category-icons/tongxun.png";
-  if (text.includes("运")) return "/category-icons/yundong.png";
-  if (text.includes("教")) return "/category-icons/jiaoyu.png";
-  return "/category-icons/qita.png";
+  if (directIcon !== fallbackCategoryIcon || item.type === "INCOME") return directIcon;
+  return categoryIconSrcForCategory(text, item.type);
 }
