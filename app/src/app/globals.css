@@ -8682,6 +8682,15 @@ button.stark-compass-card {
 .cloud-test-status.success { color: #26785c; border-color: #b9dfd0; background: #edf8f4; }
 .cloud-test-status.error { color: #a84e46; border-color: #efc8c4; background: #fff2f0; }
 
+.cloud-auth-form { gap: 11px; }
+.cloud-auth-tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 4px; border-radius: 10px; background: #f1f5f9; }
+.cloud-auth-tabs button { height: 32px; border: 0; border-radius: 7px; color: #758197; background: transparent; font-size: calc(11px * var(--user-font-scale)); }
+.cloud-auth-tabs button.active { color: var(--primary); background: #ffffff; box-shadow: 0 1px 4px rgb(39 70 110 / 12%); }
+.cloud-auth-submit { width: 100%; min-height: 38px; }
+.cloud-auth-submit:disabled { opacity: 0.55; }
+.cloud-auth-current { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 11px; border: 1px solid #dce5f0; border-radius: 9px; color: #526078; background: #f8fafd; font-size: calc(10px * var(--user-font-scale)); }
+.cloud-auth-current button { border: 0; color: var(--primary); background: transparent; font-size: inherit; }
+
 .settings-mode-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

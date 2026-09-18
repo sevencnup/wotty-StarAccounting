@@ -46,6 +46,7 @@ cp .env.example .env
 DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
 DB_USER=accounting
 DB_PASSWORD=请替换为数据库密码
+JWT_SECRET=请替换为至少 32 位的随机字符串
 ```
 
 执行 `pnpm dev` 时，开发脚本会自动读取该文件并传给 API。已经存在的系统环境变量优先于 `.env`。
@@ -58,6 +59,7 @@ DB_PASSWORD=请替换为数据库密码
 DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
 DB_USER=accounting
 DB_PASSWORD=请替换为数据库密码
+JWT_SECRET=请替换为至少 32 位的随机字符串
 ```
 
 容器连接同一 Compose 网络中的 MySQL 时，将 `127.0.0.1` 改为 MySQL 服务名，例如：
@@ -84,6 +86,8 @@ DB_PASSWORD=请替换为数据库密码
 ```
 
 `DB_USER` 不填写时默认使用 `root`；`DATABASE_URL` 和 `DB_PASSWORD` 必须提供。
+
+`JWT_SECRET` 用于签发云端登录令牌。多人部署时必须设置为至少 32 位的随机字符串，部署后不要随意更换，否则已有登录状态会失效。
 
 ## 3. 首次启动行为
 
@@ -133,6 +137,8 @@ Compose 的首次启动顺序如下：
 
 - Web：`http://127.0.0.1:12366`
 - API 健康检查：`http://127.0.0.1:12367/api/health`
+
+首次打开应用默认使用本地模式，不需要登录。进入“设置 → 切换模式”，测试云端地址后选择“云端模式”，应用会要求注册或登录云端账户；不同账户只能看到自己拥有的账本。
 
 MySQL 数据保存在 `mysql-data` 数据卷中。`MYSQL_DATABASE`、`MYSQL_USER` 和 `MYSQL_PASSWORD` 只会在该数据卷首次为空时初始化；普通重启不会删除数据或重新初始化账号。
 

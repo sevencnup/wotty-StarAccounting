@@ -1,6 +1,9 @@
 package com.wotty.stark.server.route
 
 import io.ktor.http.*
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.JWTPrincipal
+import io.ktor.server.application.ApplicationCall
 import io.ktor.server.response.*
 import io.ktor.server.request.*
 import io.ktor.server.routing.*
@@ -18,6 +21,16 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.datetime.Clock
 
 private fun JsonObject.jsonText(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
+
+private fun ApplicationCall.currentUserId(): String = principal<JWTPrincipal>()
+    ?.payload?.getClaim("userId")?.asString()
+    ?: error("Missing authenticated user")
+
+private suspend fun ApplicationCall.ensureAccountAccess(userId: String, accountId: String): Boolean {
+    if (DatabaseFactory.accountBelongsToUser(userId, accountId)) return true
+    respond(HttpStatusCode.Forbidden, mapOf("error" to "无权访问该账本"))
+    return false
+}
 
 @Serializable
 data class AppVersionResponse(
@@ -65,49 +78,52 @@ fun Routing.appRoutes() {
     }
 }
 
-fun Routing.userRoutes() {
+fun Route.userRoutes() {
     // GET /api/user/me - 获取当前用户
     get("/api/user/me") {
-        call.respond(DatabaseFactory.listUsersRest().firstOrNull() ?: JsonNull)
+        call.respond(DatabaseFactory.listUsersRest(call.currentUserId()).firstOrNull() ?: JsonNull)
     }
 
     // POST /api/user - 创建/保存用户
     post("/api/user") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("users", payload)
+        DatabaseFactory.upsertEntityPayload("users", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.accountRoutes() {
+fun Route.accountRoutes() {
+    val userId = { call: ApplicationCall -> call.currentUserId() }
     // GET /api/accounts - 账本列表
     get("/api/accounts") {
-        call.respond(DatabaseFactory.listAccountsRest())
+        call.respond(DatabaseFactory.listAccountsRest(userId(call)))
     }
 
     // GET /api/accounts/{id} - 单个账本
     get("/api/accounts/{id}") {
-        call.respond(DatabaseFactory.getAccountRest(call.parameters["id"] ?: "") ?: JsonNull)
+        call.respond(DatabaseFactory.getAccountRest(call.parameters["id"] ?: "", userId(call)) ?: JsonNull)
     }
 
     // POST /api/accounts - 创建/更新账本
     post("/api/accounts") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("accounts", payload)
+        DatabaseFactory.upsertEntityPayload("accounts", payload, userId(call))
         call.respond(HttpStatusCode.NoContent)
     }
 
     // DELETE /api/accounts/{id} - 删除账本
     delete("/api/accounts/{id}") {
-        DatabaseFactory.deleteEntity("accounts", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("accounts", call.parameters["id"] ?: "", userId(call))
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.transactionRoutes() {
+fun Route.transactionRoutes() {
     // GET /api/transactions?accountId=&month=&page=&pageSize= - 分页查询交易
     get("/api/transactions") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         val month = call.request.queryParameters["month"]
         if (month != null && runCatching { reportingMonthRange(month) }.isFailure) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid month; expected YYYY-MM"))
@@ -120,20 +136,28 @@ fun Routing.transactionRoutes() {
 
     // GET /api/transactions/{id} - 单笔交易
     get("/api/transactions/{id}") {
-        call.respond(DatabaseFactory.getTransactionRest(call.parameters["id"] ?: "") ?: JsonNull)
+        val userId = call.currentUserId()
+        val id = call.parameters["id"] ?: ""
+        if (!DatabaseFactory.entityBelongsToUser(userId, "transactions", id)) {
+            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "无权访问该交易"))
+            return@get
+        }
+        call.respond(DatabaseFactory.getTransactionRest(id, userId) ?: JsonNull)
     }
 
     // POST /api/transactions - 创建/更新交易
     post("/api/transactions") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("transactions", payload)
+        DatabaseFactory.upsertEntityPayload("transactions", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 
     // POST /api/transactions/import - 批量导入（按 orderId 去重）
     post("/api/transactions/import") {
         val items = call.receive<JsonArray>()
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@post
         val existing = DatabaseFactory.listTransactionOrderIds(accountId).toMutableSet()
         var imported = 0
         var skipped = 0
@@ -146,7 +170,7 @@ fun Routing.transactionRoutes() {
                 if (!orderId.isNullOrBlank() && orderId in existing) {
                     skipped++
                 } else {
-                    DatabaseFactory.upsertEntityPayload("transactions", payload)
+                    DatabaseFactory.upsertEntityPayload("transactions", payload, userId)
                     if (!orderId.isNullOrBlank()) existing.add(orderId)
                     imported++
                 }
@@ -165,7 +189,7 @@ fun Routing.transactionRoutes() {
 
     // DELETE /api/transactions/{id} - 删除交易
     delete("/api/transactions/{id}") {
-        DatabaseFactory.deleteEntity("transactions", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("transactions", call.parameters["id"] ?: "", call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
@@ -204,11 +228,13 @@ private data class DemoSeedResponse(
     val seeded: Int,
 )
 
-fun Routing.syncRoutes() {
+fun Route.syncRoutes() {
     get("/api/sync") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(
-            DatabaseFactory.listRecords(accountId).map { row ->
+            DatabaseFactory.listRecords(accountId, userId).map { row ->
                 SyncRecordResponse(
                     id = row.id,
                     entityType = row.entityType,
@@ -222,6 +248,7 @@ fun Routing.syncRoutes() {
     }
 
     post("/api/sync") {
+        val userId = call.currentUserId()
         val request = call.receive<SyncRecordRequest>()
         DatabaseFactory.upsertRecord(
             SyncRecordRow(
@@ -232,11 +259,13 @@ fun Routing.syncRoutes() {
                 payload = request.payload.toString(),
                 updatedAt = request.updatedAt,
             ),
+            currentUserId = userId,
         )
         call.respond(HttpStatusCode.NoContent)
     }
 
     post("/api/sync/demo") {
+        val userId = call.currentUserId()
         val now = Clock.System.now().toString().replace("T", " ").replace("Z", "")
         val month = now.substring(0, 7)
         val demoRecords = listOf(
@@ -312,129 +341,149 @@ fun Routing.syncRoutes() {
                     entityType = item.entityType,
                     accountId = item.accountId,
                     userId = item.userId,
-                    payload = item.payload,
+                    payload = item.payload.replace("local-user", userId),
                     updatedAt = now,
                 ),
+                currentUserId = userId,
             )
         }
         call.respond(DemoSeedResponse(status = "ok", seeded = demoRecords.size))
     }
 }
 
-fun Routing.assetRoutes() {
+fun Route.assetRoutes() {
     get("/api/assets") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(DatabaseFactory.listAssetsRest(accountId))
     }
     post("/api/assets") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("assets", payload)
+        DatabaseFactory.upsertEntityPayload("assets", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
     delete("/api/assets/{id}") {
-        DatabaseFactory.deleteEntity("assets", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("assets", call.parameters["id"] ?: "", call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.budgetRoutes() {
+fun Route.budgetRoutes() {
     get("/api/budgets") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(DatabaseFactory.listBudgetsRest(accountId))
     }
     post("/api/budgets") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("budgets", payload)
+        DatabaseFactory.upsertEntityPayload("budgets", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
     delete("/api/budgets/{id}") {
-        DatabaseFactory.deleteEntity("budgets", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("budgets", call.parameters["id"] ?: "", call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.loanRoutes() {
+fun Route.loanRoutes() {
     get("/api/loans") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(DatabaseFactory.listLoansRest(accountId))
     }
     post("/api/loans") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("loans", payload)
+        DatabaseFactory.upsertEntityPayload("loans", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
     delete("/api/loans/{id}") {
-        DatabaseFactory.deleteEntity("loans", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("loans", call.parameters["id"] ?: "", call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.savingsRoutes() {
+fun Route.savingsRoutes() {
     get("/api/savings-goals") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(DatabaseFactory.listSavingsGoalsRest(accountId))
     }
     post("/api/savings-goals") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("savingsGoals", payload)
+        DatabaseFactory.upsertEntityPayload("savingsGoals", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
     delete("/api/savings-goals/{id}") {
-        DatabaseFactory.deleteEntity("savingsGoals", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("savingsGoals", call.parameters["id"] ?: "", call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
     get("/api/savings-plans") {
+        val userId = call.currentUserId()
         val goalId = call.request.queryParameters["goalId"] ?: ""
-        call.respond(DatabaseFactory.listSavingsPlansRest(goalId))
+        call.respond(DatabaseFactory.listSavingsPlansRest(goalId, userId))
     }
     post("/api/savings-plans") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("savingsPlans", payload)
+        DatabaseFactory.upsertEntityPayload("savingsPlans", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
     delete("/api/savings-plans/{id}") {
-        DatabaseFactory.deleteEntity("savingsPlans", call.parameters["id"] ?: "")
+        DatabaseFactory.deleteEntity("savingsPlans", call.parameters["id"] ?: "", call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.categoryRuleRoutes() {
+fun Route.categoryRuleRoutes() {
     get("/api/category-rules") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(DatabaseFactory.listCategoryRulesRest(accountId))
     }
     post("/api/category-rules") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("categoryRules", payload)
+        DatabaseFactory.upsertEntityPayload("categoryRules", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.importErrorRoutes() {
+fun Route.importErrorRoutes() {
     get("/api/import-errors") {
+        val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
         call.respond(DatabaseFactory.listImportErrorLogsRest(accountId))
     }
     post("/api/import-errors") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("importErrorLogs", payload)
+        DatabaseFactory.upsertEntityPayload("importErrorLogs", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }
 
-fun Routing.exchangeRateRoutes() {
+fun Route.exchangeRateRoutes() {
     get("/api/exchange-rates") {
         call.respond(DatabaseFactory.listExchangeRatesRest())
     }
 }
 
-fun Routing.themeConfigRoutes() {
+fun Route.themeConfigRoutes() {
     get("/api/theme-config/{userId}") {
-        call.respond(DatabaseFactory.getThemeConfigRest(call.parameters["userId"] ?: "") ?: JsonNull)
+        val userId = call.currentUserId()
+        val requestedUserId = call.parameters["userId"] ?: ""
+        if (requestedUserId != userId) {
+            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "无权访问该用户配置"))
+            return@get
+        }
+        call.respond(DatabaseFactory.getThemeConfigRest(userId) ?: JsonNull)
     }
     put("/api/theme-config") {
         val payload = call.receive<JsonElement>().jsonObject
-        DatabaseFactory.upsertEntityPayload("themeConfigs", payload)
+        DatabaseFactory.upsertEntityPayload("themeConfigs", payload, call.currentUserId())
         call.respond(HttpStatusCode.NoContent)
     }
 }

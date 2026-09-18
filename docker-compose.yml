@@ -25,6 +25,7 @@ services:
       DATABASE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-star_accounting}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC
       DB_USER: ${DB_USER:-accounting}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
     depends_on:
       mysql:
         condition: service_healthy

@@ -23,6 +23,7 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insert
@@ -39,6 +40,7 @@ import java.nio.file.Path
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.Properties
 
 private val json = Json { ignoreUnknownKeys = true }
@@ -53,6 +55,19 @@ internal data class DatabaseSettings(
 internal data class ReportingMonthRange(
     val start: LocalDateTime,
     val endExclusive: LocalDateTime,
+)
+
+class AccessDeniedException(message: String = "You do not have access to this resource") : RuntimeException(message)
+
+data class AuthUser(
+    val id: String,
+    val email: String,
+    val password: String,
+    val name: String?,
+    val defaultAccountId: String?,
+    val role: String,
+    val createdAt: LocalDateTime,
+    val updatedAt: LocalDateTime,
 )
 
 internal fun reportingMonthRange(month: String): ReportingMonthRange {
@@ -317,6 +332,185 @@ object DatabaseFactory {
         }
     }
 
+    fun findUserById(id: String): AuthUser? = transaction {
+        Users.selectAll().where { Users.id eq id }.firstOrNull()?.toAuthUser()
+    }
+
+    fun findUserByEmail(email: String): AuthUser? = transaction {
+        Users.selectAll().where { Users.email eq email }.firstOrNull()?.toAuthUser()
+    }
+
+    fun registerUser(email: String, passwordHash: String, name: String?): AuthUser = transaction {
+        if (Users.selectAll().where { Users.email eq email }.count() > 0) {
+            error("An account with this email already exists")
+        }
+        val now = LocalDateTime.now()
+        val id = "user-${UUID.randomUUID()}"
+        val legacy = Users.selectAll().where { Users.id eq "local-user" }.firstOrNull()
+        val legacyCanMigrate = legacy != null && (
+            legacy[Users.password].isBlank() || legacy[Users.email] == "cloud@wotty.stark"
+        )
+        val existingDefault = if (legacyCanMigrate) {
+            Accounts.selectAll().where { Accounts.id eq (legacy?.get(Users.defaultAccountId) ?: "default") }.firstOrNull()
+        } else {
+            null
+        }
+        val accountId = existingDefault?.get(Accounts.id) ?: "account-${UUID.randomUUID()}"
+
+        Users.insert {
+            it[Users.id] = id
+            it[Users.email] = email
+            it[Users.password] = passwordHash
+            it[Users.name] = name?.trim()?.takeIf(String::isNotBlank)
+            it[Users.defaultAccountId] = accountId
+            it[Users.role] = "USER"
+            it[Users.createdAt] = now
+            it[Users.updatedAt] = now
+        }
+
+        if (legacyCanMigrate) {
+            migrateLegacyUser("local-user", id)
+            if (existingDefault != null) {
+                Accounts.update({ Accounts.id eq accountId }) {
+                    it[Accounts.ownerId] = id
+                    it[Accounts.updatedAt] = now
+                }
+            } else {
+                Accounts.insert {
+                    it[Accounts.id] = accountId
+                    it[Accounts.name] = "默认账本"
+                    it[Accounts.ownerId] = id
+                    it[Accounts.createdAt] = now
+                    it[Accounts.updatedAt] = now
+                }
+            }
+            Users.deleteWhere { Users.id eq "local-user" }
+        } else {
+            Accounts.insert {
+                it[Accounts.id] = accountId
+                it[Accounts.name] = "默认账本"
+                it[Accounts.ownerId] = id
+                it[Accounts.createdAt] = now
+                it[Accounts.updatedAt] = now
+            }
+        }
+        findUserByIdInTransaction(id) ?: error("Failed to create user")
+    }
+
+    fun updatePassword(userId: String, passwordHash: String) = transaction {
+        Users.update({ Users.id eq userId }) {
+            it[Users.password] = passwordHash
+            it[Users.updatedAt] = LocalDateTime.now()
+        }
+    }
+
+    fun accountBelongsToUser(userId: String, accountId: String): Boolean = transaction {
+        Accounts.selectAll().where { (Accounts.id eq accountId) and (Accounts.ownerId eq userId) }.count() > 0
+    }
+
+    fun entityBelongsToUser(userId: String, entityType: String, id: String): Boolean = transaction {
+        when (entityType) {
+            "users" -> Users.selectAll().where { (Users.id eq id) and (Users.id eq userId) }.count() > 0
+            "accounts" -> Accounts.selectAll().where { (Accounts.id eq id) and (Accounts.ownerId eq userId) }.count() > 0
+            "transactions" -> Transactions.selectAll().where { (Transactions.id eq id) and (Transactions.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "assets" -> Assets.selectAll().where { (Assets.id eq id) and (Assets.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "budgets" -> Budgets.selectAll().where { (Budgets.id eq id) and (Budgets.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "loans" -> Loans.selectAll().where { (Loans.id eq id) and (Loans.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "savingsGoals" -> SavingsGoals.selectAll().where { (SavingsGoals.id eq id) and (SavingsGoals.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "savingsPlans" -> SavingsPlans.selectAll().where {
+                (SavingsPlans.id eq id) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId))
+            }.count() > 0
+            "categoryRules" -> TransactionCategoryRules.selectAll().where { (TransactionCategoryRules.id eq id) and (TransactionCategoryRules.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "importErrorLogs" -> ImportErrorLogs.selectAll().where { (ImportErrorLogs.id eq id) and (ImportErrorLogs.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "themeConfigs" -> ThemeConfigs.selectAll().where { (ThemeConfigs.id eq id) and (ThemeConfigs.userId eq userId) }.count() > 0
+            else -> false
+        }
+    }
+
+    private fun ownedAccountIds(userId: String) = Accounts
+        .select(Accounts.id)
+        .where { Accounts.ownerId eq userId }
+
+    private fun ownedGoalIds(userId: String) = SavingsGoals
+        .select(SavingsGoals.id)
+        .where { SavingsGoals.accountId inSubQuery ownedAccountIds(userId) }
+
+    private fun entityBelongsToUserInTransaction(userId: String, entityType: String, id: String): Boolean = when (entityType) {
+        "users" -> Users.selectAll().where { (Users.id eq id) and (Users.id eq userId) }.count() > 0
+        "accounts" -> Accounts.selectAll().where { (Accounts.id eq id) and (Accounts.ownerId eq userId) }.count() > 0
+        "transactions" -> Transactions.selectAll().where { (Transactions.id eq id) and (Transactions.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "assets" -> Assets.selectAll().where { (Assets.id eq id) and (Assets.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "budgets" -> Budgets.selectAll().where { (Budgets.id eq id) and (Budgets.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "loans" -> Loans.selectAll().where { (Loans.id eq id) and (Loans.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "savingsGoals" -> SavingsGoals.selectAll().where { (SavingsGoals.id eq id) and (SavingsGoals.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "savingsPlans" -> SavingsPlans.selectAll().where { (SavingsPlans.id eq id) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId)) }.count() > 0
+        "categoryRules" -> TransactionCategoryRules.selectAll().where { (TransactionCategoryRules.id eq id) and (TransactionCategoryRules.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "importErrorLogs" -> ImportErrorLogs.selectAll().where { (ImportErrorLogs.id eq id) and (ImportErrorLogs.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "themeConfigs" -> ThemeConfigs.selectAll().where { (ThemeConfigs.id eq id) and (ThemeConfigs.userId eq userId) }.count() > 0
+        else -> false
+    }
+
+    private fun assertPayloadAccess(userId: String, entityType: String, payload: JsonObject) {
+        val id = payload.getNullableString("id") ?: throw AccessDeniedException("Missing entity id")
+        val exists = entityBelongsToUserInTransaction(userId, entityType, id)
+        if (!exists && entityExistsInTransaction(entityType, id)) {
+            throw AccessDeniedException()
+        }
+        when (entityType) {
+            "users" -> if (id != userId) throw AccessDeniedException()
+            "accounts" -> {
+                val ownerId = payload.getNullableString("ownerId")
+                if (!exists && ownerId != userId) throw AccessDeniedException()
+            }
+            "savingsPlans" -> {
+                val goalId = payload.getNullableString("goalId")
+        if (goalId == null || (!exists && SavingsGoals.selectAll().where {
+                        (SavingsGoals.id eq goalId) and (SavingsGoals.accountId inSubQuery ownedAccountIds(userId))
+                    }.count() == 0L)) throw AccessDeniedException()
+            }
+            "themeConfigs" -> if (payload.getNullableString("userId") != userId && !exists) throw AccessDeniedException()
+            "exchangeRates" -> throw AccessDeniedException()
+            else -> {
+                val accountId = payload.getNullableString("accountId")
+                if (accountId == null || (!exists && Accounts.selectAll().where {
+                        (Accounts.id eq accountId) and (Accounts.ownerId eq userId)
+                    }.count() == 0L)) throw AccessDeniedException()
+            }
+        }
+    }
+
+    private fun entityExistsInTransaction(entityType: String, id: String): Boolean = when (entityType) {
+        "users" -> Users.selectAll().where { Users.id eq id }.count() > 0
+        "accounts" -> Accounts.selectAll().where { Accounts.id eq id }.count() > 0
+        "transactions" -> Transactions.selectAll().where { Transactions.id eq id }.count() > 0
+        "assets" -> Assets.selectAll().where { Assets.id eq id }.count() > 0
+        "budgets" -> Budgets.selectAll().where { Budgets.id eq id }.count() > 0
+        "loans" -> Loans.selectAll().where { Loans.id eq id }.count() > 0
+        "savingsGoals" -> SavingsGoals.selectAll().where { SavingsGoals.id eq id }.count() > 0
+        "savingsPlans" -> SavingsPlans.selectAll().where { SavingsPlans.id eq id }.count() > 0
+        "categoryRules" -> TransactionCategoryRules.selectAll().where { TransactionCategoryRules.id eq id }.count() > 0
+        "importErrorLogs" -> ImportErrorLogs.selectAll().where { ImportErrorLogs.id eq id }.count() > 0
+        "themeConfigs" -> ThemeConfigs.selectAll().where { ThemeConfigs.id eq id }.count() > 0
+        else -> false
+    }
+
+    private fun migrateLegacyUser(fromId: String, toId: String) {
+        Accounts.update({ Accounts.ownerId eq fromId }) { it[Accounts.ownerId] = toId }
+        Assets.update({ Assets.userId eq fromId }) { it[Assets.userId] = toId }
+        Budgets.update({ Budgets.userId eq fromId }) { it[Budgets.userId] = toId }
+        ImportErrorLogs.update({ ImportErrorLogs.userId eq fromId }) { it[ImportErrorLogs.userId] = toId }
+        Loans.update({ Loans.userId eq fromId }) { it[Loans.userId] = toId }
+        SavingsGoals.update({ SavingsGoals.userId eq fromId }) { it[SavingsGoals.userId] = toId }
+        Transactions.update({ Transactions.userId eq fromId }) { it[Transactions.userId] = toId }
+        TransactionCategoryRules.update({ TransactionCategoryRules.userId eq fromId }) { it[TransactionCategoryRules.userId] = toId }
+        ThemeConfigs.update({ ThemeConfigs.userId eq fromId }) { it[ThemeConfigs.userId] = toId }
+    }
+
+    private fun findUserByIdInTransaction(id: String): AuthUser? = Users.selectAll()
+        .where { Users.id eq id }
+        .firstOrNull()
+        ?.toAuthUser()
+
     private fun removeLegacySavingsDemoRecords() {
         val legacyGoalIds = listOf("goal-travel", "goal-emergency", "goal-demo-travel", "goal-demo-emergency")
         SavingsPlans.deleteWhere { SavingsPlans.goalId inList legacyGoalIds }
@@ -326,9 +520,11 @@ object DatabaseFactory {
     /** 数据库是否已连接并可用（供健康检查诊断，未配 DATABASE_URL 时为 false） */
     fun isReady(): Boolean = runCatching { transaction { exec("SELECT 1") } }.isSuccess
 
-    fun listRecords(accountId: String): List<SyncRecordRow> = transaction {
+    fun listRecords(accountId: String, userId: String): List<SyncRecordRow> = transaction {
+        val ownsAccount = Accounts.selectAll().where { (Accounts.id eq accountId) and (Accounts.ownerId eq userId) }.count() > 0
+        if (!ownsAccount) return@transaction emptyList()
         buildList {
-            addAll(Users.selectAll().map { it.toUserRecord() })
+            addAll(Users.selectAll().where { Users.id eq userId }.map { it.toUserRecord() })
             addAll(Accounts.selectAll().where { Accounts.id eq accountId }.map { it.toAccountRecord() })
             addAll(Transactions.selectAll().where { Transactions.accountId eq accountId }.map { it.toTransactionRecord() })
             addAll(Assets.selectAll().where { Assets.accountId eq accountId }.map { it.toAssetRecord() })
@@ -347,13 +543,14 @@ object DatabaseFactory {
         }
     }
 
-    fun upsertRecord(record: SyncRecordRow) {
+    fun upsertRecord(record: SyncRecordRow, currentUserId: String? = null) {
         val payload = json.parseToJsonElement(record.payload).jsonObject
         if (payload["__deleted"]?.jsonPrimitive?.booleanOrNull == true) {
-            deleteEntity(record.entityType, record.id)
+            deleteEntity(record.entityType, record.id, currentUserId)
             return
         }
         transaction {
+            if (currentUserId != null) assertPayloadAccess(currentUserId, record.entityType, payload)
             when (record.entityType) {
                 "users" -> upsertUser(payload)
                 "accounts" -> upsertAccount(payload)
@@ -371,7 +568,10 @@ object DatabaseFactory {
         }
     }
 
-    fun deleteEntity(entityType: String, id: String) = transaction {
+    fun deleteEntity(entityType: String, id: String, currentUserId: String? = null) = transaction {
+        if (currentUserId != null && !entityBelongsToUserInTransaction(currentUserId, entityType, id)) {
+            throw AccessDeniedException()
+        }
         when (entityType) {
             "users" -> Users.deleteWhere { Users.id eq id }
             "accounts" -> Accounts.deleteWhere { Accounts.id eq id }
@@ -391,20 +591,34 @@ object DatabaseFactory {
     // —— REST 接口辅助：写/删走通用记录，读复用 toXRecord 序列化 ——
     private fun SyncRecordRow.toPayloadJson(): JsonObject = json.parseToJsonElement(payload).jsonObject
 
-    fun upsertEntityPayload(entityType: String, payload: JsonObject) {
+    fun upsertEntityPayload(entityType: String, payload: JsonObject, currentUserId: String? = null) {
+        val normalizedPayload = if (currentUserId == null) payload else normalizePayloadForUser(entityType, payload, currentUserId)
         val updatedAt = payload.getNullableString("updatedAt")
             ?: payload.getNullableString("createdAt")
             ?: Clock.System.now().toString().replace("T", " ").replace("Z", "")
         upsertRecord(
             SyncRecordRow(
-                id = payload.getString("id"),
+                id = normalizedPayload.getString("id"),
                 entityType = entityType,
-                accountId = payload.getNullableString("accountId"),
-                userId = payload.getNullableString("userId"),
-                payload = payload.toString(),
+                accountId = normalizedPayload.getNullableString("accountId"),
+                userId = normalizedPayload.getNullableString("userId"),
+                payload = normalizedPayload.toString(),
                 updatedAt = updatedAt,
             ),
+            currentUserId = currentUserId,
         )
+    }
+
+    private fun normalizePayloadForUser(entityType: String, payload: JsonObject, userId: String): JsonObject {
+        val values = payload.toMutableMap()
+        when (entityType) {
+            "accounts" -> values["ownerId"] = JsonPrimitive(userId)
+            "users", "themeConfigs" -> values["userId"] = JsonPrimitive(userId)
+            "transactions", "assets", "budgets", "loans", "savingsGoals", "categoryRules", "importErrorLogs" -> {
+                values["userId"] = JsonPrimitive(userId)
+            }
+        }
+        return JsonObject(values)
     }
 
     fun listTransactionOrderIds(accountId: String): Set<String> = transaction {
@@ -415,16 +629,16 @@ object DatabaseFactory {
             .toSet()
     }
 
-    fun listUsersRest(): List<JsonObject> = transaction {
-        Users.selectAll().map { it.toUserRecord().toPayloadJson() }
+    fun listUsersRest(userId: String): List<JsonObject> = transaction {
+        Users.selectAll().where { Users.id eq userId }.map { it.toUserRecord().toPayloadJson() }
     }
 
-    fun listAccountsRest(): List<JsonObject> = transaction {
-        Accounts.selectAll().map { it.toAccountRecord().toPayloadJson() }
+    fun listAccountsRest(userId: String): List<JsonObject> = transaction {
+        Accounts.selectAll().where { Accounts.ownerId eq userId }.map { it.toAccountRecord().toPayloadJson() }
     }
 
-    fun getAccountRest(id: String): JsonObject? = transaction {
-        Accounts.selectAll().where { Accounts.id eq id }.firstOrNull()?.toAccountRecord()?.toPayloadJson()
+    fun getAccountRest(id: String, userId: String): JsonObject? = transaction {
+        Accounts.selectAll().where { (Accounts.id eq id) and (Accounts.ownerId eq userId) }.firstOrNull()?.toAccountRecord()?.toPayloadJson()
     }
 
     fun listTransactionsRest(accountId: String, page: Int, pageSize: Int, month: String? = null): List<JsonObject> = transaction {
@@ -448,8 +662,8 @@ object DatabaseFactory {
             .map { it.toTransactionRecord().toPayloadJson() }
     }
 
-    fun getTransactionRest(id: String): JsonObject? = transaction {
-        Transactions.selectAll().where { Transactions.id eq id }.firstOrNull()?.toTransactionRecord()?.toPayloadJson()
+    fun getTransactionRest(id: String, userId: String): JsonObject? = transaction {
+        Transactions.selectAll().where { (Transactions.id eq id) and (Transactions.accountId inSubQuery ownedAccountIds(userId)) }.firstOrNull()?.toTransactionRecord()?.toPayloadJson()
     }
 
     fun listAssetsRest(accountId: String): List<JsonObject> = transaction {
@@ -468,8 +682,10 @@ object DatabaseFactory {
         SavingsGoals.selectAll().where { SavingsGoals.accountId eq accountId }.map { it.toSavingsGoalRecord().toPayloadJson() }
     }
 
-    fun listSavingsPlansRest(goalId: String): List<JsonObject> = transaction {
-        SavingsPlans.selectAll().where { SavingsPlans.goalId eq goalId }.map { it.toSavingsPlanRecord().toPayloadJson() }
+    fun listSavingsPlansRest(goalId: String, userId: String): List<JsonObject> = transaction {
+        SavingsPlans.selectAll().where {
+            (SavingsPlans.goalId eq goalId) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId))
+        }.map { it.toSavingsPlanRecord().toPayloadJson() }
     }
 
     fun listCategoryRulesRest(accountId: String): List<JsonObject> = transaction {
@@ -489,6 +705,17 @@ object DatabaseFactory {
     }
 }
 
+private fun ResultRow.toAuthUser() = AuthUser(
+    id = this[Users.id],
+    email = this[Users.email],
+    password = this[Users.password],
+    name = this[Users.name],
+    defaultAccountId = this[Users.defaultAccountId],
+    role = this[Users.role],
+    createdAt = this[Users.createdAt],
+    updatedAt = this[Users.updatedAt],
+)
+
 private fun ResultRow.toUserRecord() = SyncRecordRow(
     id = this[Users.id],
     entityType = "users",
@@ -497,7 +724,8 @@ private fun ResultRow.toUserRecord() = SyncRecordRow(
     payload = jsonObject(
         "id" to this[Users.id],
         "email" to this[Users.email],
-        "password" to this[Users.password],
+        // Password hashes must never be sent through the sync API.
+        "password" to "",
         "name" to this[Users.name],
         "defaultAccountId" to this[Users.defaultAccountId],
         "role" to this[Users.role],

@@ -1,7 +1,11 @@
 package com.wotty.stark.server
 
 import com.wotty.stark.server.route.*
+import com.wotty.stark.server.util.AccessDeniedException
+import com.wotty.stark.server.util.AuthTokens
 import com.wotty.stark.server.util.DatabaseFactory
+import io.ktor.server.auth.*
+import io.ktor.server.auth.jwt.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -39,8 +43,29 @@ fun Application.module() {
         allowHeader("Authorization")
     }
 
+    install(Authentication) {
+        jwt("auth-jwt") {
+            realm = "wotty-stark"
+            verifier(AuthTokens.verifier())
+            validate { credential ->
+                val userId = credential.payload.getClaim("userId").asString()
+                if (!userId.isNullOrBlank() && DatabaseFactory.findUserById(userId) != null) {
+                    JWTPrincipal(credential.payload)
+                } else {
+                    null
+                }
+            }
+            challenge { _, _ ->
+                call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "请先登录云端账户"))
+            }
+        }
+    }
+
     // 错误处理
     install(StatusPages) {
+        exception<AccessDeniedException> { call, cause ->
+            call.respond(HttpStatusCode.Forbidden, mapOf("error" to (cause.message ?: "无权访问该数据")))
+        }
         exception<Throwable> { call, cause ->
             call.application.environment.log.error("Request failed: ${call.request.httpMethod.value} ${call.request.path()}", cause)
             call.respondText(
@@ -54,18 +79,21 @@ fun Application.module() {
     // 注册路由
     routing {
         appRoutes()
-        userRoutes()
-        accountRoutes()
-        transactionRoutes()
-        assetRoutes()
-        budgetRoutes()
-        loanRoutes()
-        savingsRoutes()
-        categoryRuleRoutes()
-        importErrorRoutes()
-        exchangeRateRoutes()
-        themeConfigRoutes()
-        syncRoutes()
+        authRoutes()
+        authenticate("auth-jwt") {
+            userRoutes()
+            accountRoutes()
+            transactionRoutes()
+            assetRoutes()
+            budgetRoutes()
+            loanRoutes()
+            savingsRoutes()
+            categoryRuleRoutes()
+            importErrorRoutes()
+            exchangeRateRoutes()
+            themeConfigRoutes()
+            syncRoutes()
+        }
     }
 
     // 数据库缺失时保留健康检查与版本接口可用，但给出醒目的告警，避免"接口全 500 却误以为后端正常"
