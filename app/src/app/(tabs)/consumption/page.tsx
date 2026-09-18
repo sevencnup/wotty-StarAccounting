@@ -12,7 +12,7 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
-import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
+import { categoryIconSrc, categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
 import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import { formatMoney, reportingMonthEndDate, reportingMonthLabel, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
@@ -41,28 +41,7 @@ type FilterOption = {
 };
 
 function categoryIconForFilter(category: string) {
-  const rules: Array<[RegExp, string]> = [
-    [/餐|美食|咖啡/, "canyin.png"],
-    [/交|车|公交|地铁/, "jiaotong.png"],
-    [/购|百货|超市|充值/, "gouwu.png"],
-    [/娱|文化|休闲|电影/, "yule.png"],
-    [/日用|生活/, "riyong.png"],
-    [/医|健康/, "yiliao.png"],
-    [/住|房|租|水电/, "zhufang.png"],
-    [/旅/, "lvxing.png"],
-    [/美/, "meirong.png"],
-    [/宠/, "chongwu.png"],
-    [/服/, "fuzhuang.png"],
-    [/通|信用卡/, "tongxun.png"],
-    [/运/, "yundong.png"],
-    [/工|薪资|薪酬/, "gongzi.png"],
-    [/奖|红利|分红/, "jiangjin.png"],
-    [/理财|投资/, "licai.png"],
-    [/教|培训/, "jiaoyu.png"],
-    [/转|退款|收入/, "qita.png"],
-  ];
-  const matched = rules.find(([matcher]) => matcher.test(category));
-  return "/category-icons/" + (matched?.[1] ?? "qita.png");
+  return categoryIconSrcForCategory(category);
 }
 
 function accountIconForFilter(account: string) {
