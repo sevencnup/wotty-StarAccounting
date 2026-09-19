@@ -20,7 +20,7 @@ const categoryIconFiles: Record<string, string> = {
   理财: "jiajulei1.webp",
   转账: "dianzilei.webp",
   还款: "gongjulei.webp",
-  其他: "xianshi.webp",
+  其他: "qita.webp",
   保险: "baoxian.webp",
   红包: "hongbao.webp",
   充电: "chongdian-optimized.webp",
@@ -179,7 +179,7 @@ const categoryKeywordIcons: Array<[RegExp, string]> = [
   [/转|退款|收入/, "dianzilei.webp"],
 ];
 
-const fallbackCategoryIcon = "/category-icons/gongjulei.webp";
+const fallbackCategoryIcon = "/category-icons/qita.webp";
 
 function incomeIconFile(category: string): string | null {
   const normalized = category.trim();
