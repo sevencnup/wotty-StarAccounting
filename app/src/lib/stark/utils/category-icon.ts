@@ -96,6 +96,8 @@ const hiddenExpenseCategories = new Set([
   "摩托车",
   "牛奶",
   "健身",
+  "游戏",
+  "小工具",
 ]);
 
 const expenseCategoryOrder = [
