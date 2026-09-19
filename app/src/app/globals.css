@@ -2234,8 +2234,8 @@ button.stark-compass-card {
   grid-template-rows: auto auto;
   align-items: center;
   min-width: 0;
-  gap: 1px 8px;
-  padding: 6px 8px;
+  gap: 1px 6px;
+  padding: 6px;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -2275,9 +2275,10 @@ button.stark-compass-card {
   grid-row: 1 / span 2;
   margin-top: 0;
   color: #0f172a;
-  font-size: calc(12px * var(--user-font-scale));
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   white-space: nowrap;
 }
 
@@ -2315,7 +2316,7 @@ button.stark-compass-card {
   }
 
   .category-amount {
-    font-size: calc(11px * var(--user-font-scale));
+    font-size: calc(10px * var(--user-font-scale));
   }
 }
 
