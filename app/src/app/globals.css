@@ -12999,17 +12999,18 @@ button.stark-compass-card {
 .journal-panel .tile-icon-box {
   width: 30px;
   height: 30px;
-  border-radius: 0;
-  background: transparent;
+  border-radius: 10px;
+  background: #ffffff;
 }
 
 .journal-panel .category-tile.active .tile-icon-box {
-  background: transparent;
+  background: #ffffff;
 }
 
 .journal-panel .tile-icon {
   width: 28px;
   height: 28px;
+  mix-blend-mode: multiply;
 }
 
 .journal-panel .category-tile.active {
