@@ -1357,12 +1357,199 @@ nextjs-portal {
 }
 
 .diag-link {
+  border: 0;
+  padding: 0;
   color: #0060c0;
+  background: transparent;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
   text-decoration: none;
   flex: 0 0 auto;
+  cursor: pointer;
 }
+
+.diagnostic-sheet {
+  background: #f7f9fc;
+}
+
+.diagnostic-sheet-body {
+  gap: 10px;
+}
+
+.diagnostic-sheet-hero,
+.diagnostic-sheet-section {
+  padding: 14px;
+  border: 1px solid #e7edf3;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.diagnostic-sheet-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.diagnostic-sheet-hero.has-risk {
+  border-color: rgba(244, 63, 94, 0.2);
+  background: #fff8f8;
+}
+
+.diagnostic-sheet-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #f0f9ff;
+  flex: 0 0 auto;
+}
+
+.diagnostic-sheet-hero.has-risk .diagnostic-sheet-icon {
+  background: #fff1f2;
+}
+
+.diagnostic-sheet-hero > div:last-child {
+  min-width: 0;
+}
+
+.diagnostic-sheet-hero strong {
+  display: block;
+  color: #172033;
+  font-size: calc(14px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.diagnostic-sheet-hero p,
+.diagnostic-sheet-empty {
+  margin: 5px 0 0;
+  color: #637086;
+  font-size: calc(11px * var(--user-font-scale));
+  line-height: 1.55;
+}
+
+.diagnostic-sheet-section {
+  display: grid;
+  gap: 10px;
+}
+
+.diagnostic-sheet-section h3 {
+  margin: 0;
+  color: #172033;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.diagnostic-sheet-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.diagnostic-sheet-metrics > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.diagnostic-sheet-metrics span,
+.diagnostic-sheet-budget small {
+  color: #7b8798;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.diagnostic-sheet-metrics strong {
+  color: #1f2937;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.diagnostic-sheet-metrics strong.positive { color: #0d8a5f; }
+.diagnostic-sheet-metrics strong.negative { color: #d9485f; }
+
+.diagnostic-sheet-insights,
+.diagnostic-sheet-budgets {
+  display: grid;
+  gap: 9px;
+}
+
+.diagnostic-sheet-insight {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+}
+
+.diagnostic-sheet-insight-dot {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+
+.diagnostic-sheet-insight.warn .diagnostic-sheet-insight-dot { background: #f59e0b; }
+.diagnostic-sheet-insight.danger .diagnostic-sheet-insight-dot { background: #e11d48; }
+
+.diagnostic-sheet-insight strong {
+  display: block;
+  color: #273449;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.diagnostic-sheet-insight p {
+  margin: 2px 0 0;
+  color: #758196;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.5;
+}
+
+.diagnostic-sheet-budget {
+  display: grid;
+  gap: 5px;
+}
+
+.diagnostic-sheet-budget-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.diagnostic-sheet-budget-head span,
+.diagnostic-sheet-budget-head strong {
+  min-width: 0;
+  color: #526179;
+  font-size: calc(10px * var(--user-font-scale));
+  overflow-wrap: anywhere;
+}
+
+.diagnostic-sheet-budget-head strong {
+  color: #273449;
+  font-weight: 600;
+  text-align: right;
+}
+
+.diagnostic-sheet-budget-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e9eef5;
+}
+
+.diagnostic-sheet-budget-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0d8a5f;
+}
+
+.diagnostic-sheet-budget-track i.warn { background: #f59e0b; }
+.diagnostic-sheet-budget-track i.danger { background: #e11d48; }
 
 /* Stark Monthly Budget Allocation */
 .stark-budget-allocation-card {

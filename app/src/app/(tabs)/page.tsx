@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
+import { BottomSheet } from "@/components/stark/BottomSheet";
 import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
@@ -335,7 +336,76 @@ function StarkCrystalHero({
 }
 
 // Stark AI 财务诊断条
-function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
+function StarkDiagnosticSheet({ summary, onClose }: { summary: HomeSummary; onClose: () => void }) {
+  const locale = useAppLocale();
+  const topInsight = summary.insights[0];
+  const budget = summary.budgetAlerts[0];
+  const hasRisk = budget && (budget.tone === "danger" || budget.tone === "warn");
+  const title = translateValue(hasRisk ? "预算需关注" : "财务诊断", locale);
+  const headline = topInsight
+    ? translateText(topInsight.detail, locale)
+    : (budget
+      ? `${translateValue(budget.title, locale)}${locale === "en-US" ? ` used ${Math.round(budget.percent)}%; the remaining budget is in a healthy range` : `已消耗 ${Math.round(budget.percent)}%，结余处于合理区间`}`
+      : translateValue("本月现金流平稳，无超支或临近违约风险", locale));
+
+  return (
+    <BottomSheet title={title} onClose={onClose} className="diagnostic-sheet" bodyClassName="diagnostic-sheet-body">
+      <section className={`diagnostic-sheet-hero ${hasRisk ? "has-risk" : ""}`}>
+        <div className="diagnostic-sheet-icon"><SparklesIcon size={20} strokeWidth={2.1} color={hasRisk ? "#e11d48" : "#0060c0"} /></div>
+        <div>
+          <strong>{title}</strong>
+          <p>{headline}</p>
+        </div>
+      </section>
+
+      <section className="diagnostic-sheet-section">
+        <h3>{translateValue("现金流概览", locale)}</h3>
+        <div className="diagnostic-sheet-metrics">
+          <div><span>{translateValue("本月收入", locale)}</span><strong>¥ {formatMoney(summary.income)}</strong></div>
+          <div><span>{translateValue("本月支出", locale)}</span><strong>¥ {formatMoney(summary.expense)}</strong></div>
+          <div><span>{translateValue("本月结余", locale)}</span><strong className={summary.forecast.monthBalance >= 0 ? "positive" : "negative"}>¥ {formatMoney(Math.abs(summary.forecast.monthBalance))}</strong></div>
+        </div>
+      </section>
+
+      <section className="diagnostic-sheet-section">
+        <h3>{translateValue("诊断明细", locale)}</h3>
+        {summary.insights.length ? (
+          <div className="diagnostic-sheet-insights">
+            {summary.insights.map((insight) => (
+              <article className={`diagnostic-sheet-insight ${insight.tone}`} key={insight.id}>
+                <span className="diagnostic-sheet-insight-dot" aria-hidden="true" />
+                <div><strong>{translateText(insight.title, locale)}</strong><p>{translateText(insight.detail, locale)}</p></div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="diagnostic-sheet-empty">{translateValue("本月现金流平稳，无超支或临近违约风险", locale)}</p>
+        )}
+      </section>
+
+      {summary.budgetAlerts.length ? (
+        <section className="diagnostic-sheet-section">
+          <h3>{translateValue("预算管理", locale)}</h3>
+          <div className="diagnostic-sheet-budgets">
+            {summary.budgetAlerts.map((item) => (
+              <div className="diagnostic-sheet-budget" key={item.id}>
+                <div className="diagnostic-sheet-budget-head">
+                  <span>{translateText(item.title, locale)}</span>
+                  <strong>¥ {formatMoney(item.spent)} / ¥ {formatMoney(item.budget)}</strong>
+                </div>
+                <div className="diagnostic-sheet-budget-track"><i className={item.tone} style={{ width: `${Math.min(item.percent, 100)}%` }} /></div>
+                <small>{locale === "en-US" ? `${Math.round(item.percent)}% used` : `已使用 ${Math.round(item.percent)}%`}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </BottomSheet>
+  );
+}
+
+// Stark AI 财务诊断条
+function StarkDiagnosticBanner({ summary, onOpen }: { summary: HomeSummary; onOpen: () => void }) {
   const locale = useAppLocale();
   const topInsight = summary.insights[0];
   const budget = summary.budgetAlerts[0];
@@ -356,9 +426,9 @@ function StarkDiagnosticBanner({ summary }: { summary: HomeSummary }) {
               : translateValue("本月现金流平稳，无超支或临近违约风险", locale))}
         </p>
       </div>
-      <Link href="/consumption" className="diag-link">
+      <button type="button" className="diag-link" onClick={onOpen}>
         {translateText("查看 ›", locale)}
-      </Link>
+      </button>
     </div>
   );
 }
@@ -745,6 +815,7 @@ export function HomeDashboard() {
   const [reportingMonth, setReportingMonth] = useState("2026-01");
   const [monthReady, setMonthReady] = useState(false);
   const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
+  const [diagnosticOpen, setDiagnosticOpen] = useState(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -896,7 +967,7 @@ export function HomeDashboard() {
       <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => router.push("/budgets/")} />
 
       {/* AI 财务诊断条 */}
-      <StarkDiagnosticBanner summary={summary} />
+      <StarkDiagnosticBanner summary={summary} onOpen={() => setDiagnosticOpen(true)} />
 
       {/* 四维财务罗盘 */}
       <StarkCompassMatrix summary={summary} onManageBudget={() => router.push("/budgets/")} />
@@ -909,6 +980,8 @@ export function HomeDashboard() {
 
       {/* 收支动态走势 */}
       <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
+
+      {diagnosticOpen ? <StarkDiagnosticSheet summary={summary} onClose={() => setDiagnosticOpen(false)} /> : null}
 
     </div>
   );
