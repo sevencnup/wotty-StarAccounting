@@ -2178,10 +2178,10 @@ button.stark-compass-card {
 }
 
 .category-donut-layout {
-  display: grid;
-  grid-template-columns: 132px minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .category-donut {
@@ -2218,7 +2218,9 @@ button.stark-compass-card {
 
 .category-items-list {
   display: grid;
-  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  gap: 6px 8px;
   min-width: 0;
 }
 
@@ -2290,7 +2292,6 @@ button.stark-compass-card {
 
 @media (max-width: 360px) {
   .category-donut-layout {
-    grid-template-columns: 112px minmax(0, 1fr);
     gap: 10px;
   }
 
