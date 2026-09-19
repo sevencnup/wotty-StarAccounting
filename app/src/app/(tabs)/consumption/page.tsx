@@ -109,6 +109,7 @@ export default function ConsumptionPage() {
   const [detailQuery, setDetailQuery] = useState("");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [filterMenuReady, setFilterMenuReady] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [filterMenuPosition, setFilterMenuPosition] = useState({ top: 0, left: 0, width: 300 });
   const categoryFilterRef = useRef<HTMLDivElement>(null);
@@ -213,7 +214,11 @@ export default function ConsumptionPage() {
   }, [monthTransactions, platforms]);
 
   useEffect(() => {
-    if (!categoryOpen && !accountOpen) return;
+    if (!categoryOpen && !accountOpen) {
+      setFilterMenuReady(false);
+      return;
+    }
+    setFilterMenuReady(false);
     const updateFilterMenuPosition = () => {
       const activeFilterRef = categoryOpen ? categoryFilterRef : accountFilterRef;
       const activeMenuRef = categoryOpen ? categoryMenuRef : accountMenuRef;
@@ -229,6 +234,7 @@ export default function ConsumptionPage() {
         ? Math.max(12, filterBox.top - menuHeight - 8)
         : filterBox.bottom + 8;
       setFilterMenuPosition({ top, left, width });
+      setFilterMenuReady(true);
     };
     const frame = window.requestAnimationFrame(updateFilterMenuPosition);
     window.addEventListener("resize", updateFilterMenuPosition, { passive: true });
@@ -407,12 +413,14 @@ export default function ConsumptionPage() {
               aria-expanded={categoryOpen}
               onClick={() => {
                 setAccountOpen(false);
+                setFilterMenuReady(false);
                 setCategoryOpen((open) => !open);
               }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   setAccountOpen(false);
+                  setFilterMenuReady(false);
                   setCategoryOpen(true);
                 }
               }}
@@ -429,7 +437,7 @@ export default function ConsumptionPage() {
                 className="consumption-category-menu"
                 role="listbox"
                 aria-label={locale === "en-US" ? "Select expense category" : "选择消费分类"}
-                style={filterMenuPosition}
+                style={{ ...filterMenuPosition, visibility: filterMenuReady ? "visible" : "hidden" }}
               >
                 <div className="consumption-category-menu-head">
                   <strong>{locale === "en-US" ? "Expense category" : "消费分类"}</strong>
@@ -475,12 +483,14 @@ export default function ConsumptionPage() {
               aria-expanded={accountOpen}
               onClick={() => {
                 setCategoryOpen(false);
+                setFilterMenuReady(false);
                 setAccountOpen((open) => !open);
               }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   setCategoryOpen(false);
+                  setFilterMenuReady(false);
                   setAccountOpen(true);
                 }
               }}
@@ -495,7 +505,7 @@ export default function ConsumptionPage() {
                 className="consumption-category-menu consumption-account-menu"
                 role="listbox"
                 aria-label={locale === "en-US" ? "Select spending account" : "选择消费账户"}
-                style={filterMenuPosition}
+                style={{ ...filterMenuPosition, visibility: filterMenuReady ? "visible" : "hidden" }}
               >
                 <div className="consumption-category-menu-head">
                   <strong>{locale === "en-US" ? "Spending account" : "消费账户"}</strong>

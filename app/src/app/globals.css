@@ -9813,10 +9813,10 @@ button.stark-compass-card {
 
 @keyframes consumption-category-menu-in {
   from {
-    transform: translateY(-4px) scale(0.98);
+    opacity: 0;
   }
   to {
-    transform: translateY(0) scale(1);
+    opacity: 1;
   }
 }
 
