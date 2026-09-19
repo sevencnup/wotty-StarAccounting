@@ -81,9 +81,10 @@ const categoryIconFiles: Record<string, string> = {
 };
 
 const nonExpenseCategories = new Set(["工资", "奖金", "理财", "转账", "还款"]);
+const hiddenExpenseCategories = new Set(["公共出行", "电子设备", "宝宝", "汽车", "自行车"]);
 
 export const expenseCategoryOptions = Object.keys(categoryIconFiles).filter(
-  (category) => !nonExpenseCategories.has(category),
+  (category) => !nonExpenseCategories.has(category) && !hiddenExpenseCategories.has(category),
 );
 
 const incomeCategoryIcons: Record<string, string> = {
