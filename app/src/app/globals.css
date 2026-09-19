@@ -13006,6 +13006,7 @@ button.stark-compass-card {
   align-items: center;
   justify-content: center;
   line-height: 0;
+  overflow: hidden;
 }
 
 .journal-panel .category-tile.active .tile-icon-box {
@@ -13019,6 +13020,10 @@ button.stark-compass-card {
   margin: auto;
   object-position: 50% 50%;
   mix-blend-mode: multiply;
+}
+
+.journal-panel .tile-icon[src$="/qita.webp"] {
+  transform: scale(2.2);
 }
 
 .journal-panel .category-tile.active {
