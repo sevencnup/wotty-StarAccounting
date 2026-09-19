@@ -96,6 +96,11 @@ const hiddenExpenseCategories = new Set([
   "旅行",
   "鲜食",
   "植物",
+  "教育培训",
+  "健身训练",
+  "摩托车",
+  "牛奶",
+  "健身",
 ]);
 
 export const expenseCategoryOptions = Object.keys(categoryIconFiles).filter(
