@@ -12997,10 +12997,15 @@ button.stark-compass-card {
 }
 
 .journal-panel .tile-icon-box {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  padding: 3px;
   border-radius: 10px;
   background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .journal-panel .category-tile.active .tile-icon-box {
@@ -13008,8 +13013,11 @@ button.stark-compass-card {
 }
 
 .journal-panel .tile-icon {
-  width: 28px;
-  height: 28px;
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: auto;
+  object-position: 50% 50%;
   mix-blend-mode: multiply;
 }
 
