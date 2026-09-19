@@ -932,7 +932,7 @@ export function JournalPanel({
                   className="meta-input"
                   value={merchant}
                   onChange={(e) => setMerchant(e.target.value)}
-                  placeholder="商户名称 (选填)"
+                  placeholder="商户名称（选填）"
                 />
                 <input
                   type="text"

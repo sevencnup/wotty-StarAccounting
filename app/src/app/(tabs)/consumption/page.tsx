@@ -14,7 +14,7 @@ import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toA
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
 import { categoryIconSrc, categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
 import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
-import { formatMoney, reportingMonthEndDate, reportingMonthLabel, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
+import { formatMoney, isReportingYearKey, reportingMonthDate, reportingMonthEndDate, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
 
@@ -59,6 +59,16 @@ function recentTimeLabel(dateStr: string) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${mm}-${dd} ${hh}:${mi}`;
+}
+
+function reportingPeriodLabel(period: string, locale: "zh-CN" | "en-US") {
+  if (locale === "zh-CN") {
+    if (isReportingYearKey(period)) return `${period}年全年`;
+    const [year, month] = period.split("-");
+    return `${year}年${Number(month)}月`;
+  }
+  if (isReportingYearKey(period)) return `${period} full year`;
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(period));
 }
 
 function transactionTimestamp(dateStr: string) {
@@ -335,7 +345,7 @@ export default function ConsumptionPage() {
       <section className="consumption-overview-card">
         <div className="consumption-overview-head">
           <div>
-            <span>{reportingMonthLabel(reportingMonth)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
+            <span>{reportingPeriodLabel(reportingMonth, locale)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
             <h2>{locale === "en-US" ? "Spending in selected period" : "当前筛选支出"}</h2>
           </div>
           <MonthPicker
@@ -344,7 +354,7 @@ export default function ConsumptionPage() {
             ariaLabel={locale === "en-US" ? "Select spending month" : "选择消费统计月份"}
             triggerClassName="consumption-period-button"
           >
-            <span>{reportingMonthLabel(reportingMonth)}</span>
+            <span>{reportingPeriodLabel(reportingMonth, locale)}</span>
             <ChevronDownIcon />
           </MonthPicker>
         </div>
@@ -394,7 +404,7 @@ export default function ConsumptionPage() {
               <span className="consumption-category-trigger-icon">
                 <img src={categoryIconForFilter(categoryFilter)} alt="" />
               </span>
-              <span className="consumption-category-trigger-value">{categoryFilter}</span>
+              <span className="consumption-category-trigger-value">{translateValue(categoryFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
             {categoryOpen ? createPortal(
@@ -460,7 +470,7 @@ export default function ConsumptionPage() {
               }}
             >
               <span className="consumption-account-trigger-icon">{accountIconForFilter(platformFilter)}</span>
-              <span className="consumption-category-trigger-value">{platformFilter}</span>
+              <span className="consumption-category-trigger-value">{translateValue(platformFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
             {accountOpen ? createPortal(

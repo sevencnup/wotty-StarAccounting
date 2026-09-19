@@ -538,7 +538,7 @@ export function ConsumptionCharts({
             {displayRatios.map((item) => (
               <div key={item.name} className="ratio-row">
                 <span className="ratio-dot" style={{ background: item.color }} />
-                <span>{item.name}</span>
+                <span>{translateValue(item.name, locale)}</span>
                 <strong>{item.percent}%</strong>
               </div>
             ))}

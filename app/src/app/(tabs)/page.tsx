@@ -193,7 +193,11 @@ function StarkCrystalHero({
   onReportingMonthChange: (month: string) => void;
 }) {
   const locale = useAppLocale();
-  const monthLabel = reportingMonthLabel(reportingMonth);
+  const monthLabel = isReportingYearKey(reportingMonth)
+    ? locale === "en-US" ? `${reportingMonth} full year` : reportingMonthLabel(reportingMonth)
+    : locale === "en-US"
+      ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(reportingMonth))
+      : reportingMonthLabel(reportingMonth);
   const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
 
@@ -257,7 +261,7 @@ function StarkCrystalHero({
         {/* 背景轻淡月份水印 */}
         <div className="stark-card-watermark">
           {isReportingYearKey(reportingMonth)
-            ? `${reportingMonth}年`
+            ? locale === "en-US" ? reportingMonth : `${reportingMonth}年`
             : new Intl.DateTimeFormat(locale, { month: "short" }).format(reportingMonthDate(reportingMonth))}
         </div>
 
@@ -289,11 +293,11 @@ function StarkCrystalHero({
           </strong>
         </div>
         {activeMetric === "balance" ? (
-          <div className="stark-cycle-breakdown" aria-label="发薪周期资金明细">
-            <span>{balanceMode === "salary" ? "收入" : "月收入"} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
-            <span>{balanceMode === "salary" ? "消费" : "月消费"} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
-            <span>储蓄 ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
-            <span>还款 ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
+          <div className="stark-cycle-breakdown" aria-label={translateValue("发薪周期资金明细", locale)}>
+            <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
+            <span>{translateValue(balanceMode === "salary" ? "消费" : "月消费", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
+            <span>{translateValue("储蓄", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
+            <span>{translateValue("还款", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
           </div>
         ) : null}
 
@@ -306,7 +310,7 @@ function StarkCrystalHero({
                 className="stark-setting-pill"
                 onClick={() => setShowSalaryModal(true)}
               >
-                发薪日 {salaryDay} 号 ›
+                {translateValue("发薪日", locale)} {salaryDay}{locale === "en-US" ? "" : "号"} ›
               </button>
             ) : (
               <Link href="/consumption" className="stark-detail-arrow">
@@ -371,6 +375,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
   ];
   const periodLabel = isReportingYearKey(reportingMonth) ? "全年资金分配" : "本月资金分配";
   const availableLabel = allocation.available >= 0 ? "可继续安排" : "已超出收入";
+  const translatedAvailableLabel = translateValue(availableLabel, locale);
   const cardClassName = "stark-budget-allocation-card" + (allocation.available < 0 ? " has-overrun" : "");
 
   return (
@@ -393,7 +398,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
             <strong className={allocation.available < 0 ? "negative" : ""}>
               {allocation.available < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(allocation.available))}
             </strong>
-            <small>{locale === "en-US" ? availableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : availableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
+            <small>{locale === "en-US" ? translatedAvailableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : translatedAvailableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
           </div>
           <div className="stark-budget-allocation-income">
             <span>{translateValue("收入", locale)}</span>

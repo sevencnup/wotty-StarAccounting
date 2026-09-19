@@ -11,6 +11,7 @@ import { REPORTING_MONTH_KEY, clampPercent, formatMoney, isReportingYearKey, mon
 import { getCurrentAccountId, getSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import type { Loan, Transaction } from "@/lib/stark/models";
 import type { EChartsCoreOption } from "echarts/core";
+import { translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
 const repo = new DataModeManager().getRepository();
 
@@ -51,14 +52,16 @@ function statusLabel(loan: Loan) {
   return "还款中";
 }
 
-function buildForecastChartOption(activeLoans: Loan[]): EChartsCoreOption {
+function buildForecastChartOption(activeLoans: Loan[], locale: AppLocale): EChartsCoreOption {
   const now = new Date();
   const months: string[] = [];
   const monthAmounts: number[] = [];
 
   for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const mLabel = `${d.getMonth() + 1}月`;
+    const mLabel = locale === "en-US"
+      ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(d)
+      : `${d.getMonth() + 1}月`;
     months.push(mLabel);
 
     // 计算当月需要还款的总额
@@ -85,7 +88,7 @@ function buildForecastChartOption(activeLoans: Loan[]): EChartsCoreOption {
       textStyle: { color: "#142036", fontSize: 12 },
       formatter: (params: any) => {
         const item = Array.isArray(params) ? params[0] : params;
-        return `<div style="font-size:11px;color:#64748b;">${item.name}应还</div><strong style="color:#0d8a5f;font-size:13px;">¥ ${formatMoney(Number(item.value))}</strong>`;
+        return `<div style="font-size:11px;color:#64748b;">${item.name}${locale === "en-US" ? " due" : "应还"}</div><strong style="color:#0d8a5f;font-size:13px;">¥ ${formatMoney(Number(item.value))}</strong>`;
       },
     },
     xAxis: {
@@ -131,7 +134,7 @@ function buildForecastChartOption(activeLoans: Loan[]): EChartsCoreOption {
   };
 }
 
-function buildDonutChartOption(loans: Loan[]): EChartsCoreOption {
+function buildDonutChartOption(loans: Loan[], locale: AppLocale): EChartsCoreOption {
   const palette = ["#0d8a5f", "#2a78d6", "#df9d35", "#e87962", "#8b5cf6", "#06b6d4"];
   const activeLoans = loans.filter((l) => l.status !== "PAID_OFF" && l.remainingAmount > 0);
   const data = activeLoans.map((l, i) => ({
@@ -157,13 +160,14 @@ function buildDonutChartOption(loans: Loan[]): EChartsCoreOption {
         center: ["50%", "50%"],
         avoidLabelOverlap: false,
         label: { show: false },
-        data: data.length ? data : [{ value: 1, name: "无贷款", itemStyle: { color: "#e2ecf2" } }],
+        data: data.length ? data : [{ value: 1, name: translateValue("无贷款", locale), itemStyle: { color: "#e2ecf2" } }],
       },
     ],
   };
 }
 
 export default function LoansPage() {
+  const locale = useAppLocale();
   const [list, setList] = useState<Loan[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -257,8 +261,8 @@ export default function LoansPage() {
     [...summary.activeLoans].sort((a, b) => dueMeta(a).target.getTime() - dueMeta(b).target.getTime())
   ), [summary.activeLoans]);
 
-  const forecastOption = useMemo(() => buildForecastChartOption(summary.activeLoans), [summary.activeLoans]);
-  const donutOption = useMemo(() => buildDonutChartOption(list), [list]);
+  const forecastOption = useMemo(() => buildForecastChartOption(summary.activeLoans, locale), [locale, summary.activeLoans]);
+  const donutOption = useMemo(() => buildDonutChartOption(list, locale), [list, locale]);
 
   if (loading) return <PageSkeleton title="贷款" cards={4} />;
   if (loadError) return <PageDataError title="贷款" onRetry={() => setLoadVersion((version) => version + 1)} />;
