@@ -9627,7 +9627,8 @@ button.stark-compass-card {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 8px;
-  background: #f1f3f5;
+  border: 1px solid #edf0f2;
+  background: #ffffff;
 }
 
 .consumption-category-trigger-icon {
@@ -9779,7 +9780,7 @@ button.stark-compass-card {
 .consumption-category-option-icon {
   width: 28px;
   height: 28px;
-  background: #f1f3f5;
+  background: #ffffff;
 }
 
 .consumption-category-option.selected .consumption-category-option-icon {
@@ -9787,8 +9788,9 @@ button.stark-compass-card {
 }
 
 .consumption-category-option-icon img {
-  width: 18px;
-  height: 18px;
+  display: block;
+  width: 22px;
+  height: 22px;
   object-fit: contain;
 }
 

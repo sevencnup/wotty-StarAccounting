@@ -48,13 +48,14 @@ function accountIconSrcForFilter(account: string) {
   if (account === "微信") return "/category-icons/weixin.webp";
   if (account === "支付宝") return "/category-icons/zhifubao.webp";
   if (account === "银行卡") return "/category-icons/unionpau.webp";
+  if (account === "全部账户" || account === "其他") return "/category-icons/qita.webp";
   return "";
 }
 
 function AccountFilterIcon({ account }: { account: string }) {
   const src = accountIconSrcForFilter(account);
   if (src) return <img src={src} alt="" />;
-  return account === "其他" ? "其" : "全";
+  return "";
 }
 
 function recentTimeLabel(dateStr: string) {
