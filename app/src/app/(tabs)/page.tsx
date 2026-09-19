@@ -512,8 +512,11 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 }
 
 // 本月支出构成 (替代老旧流水列表)
-function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
+function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
   const locale = useAppLocale();
+  const isAnnual = isReportingYearKey(reportingMonth);
+  const periodLabel = isAnnual ? "全年支出" : "本月支出";
+  const structureLabel = isAnnual ? "全年支出结构" : "本月支出结构";
   const ratios = summary.ratios.slice(0, 4);
   const total = summary.expense || summary.ratios.reduce((sum, item) => sum + item.amount, 0) || 1;
   const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
@@ -534,7 +537,7 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
     <SurfaceCard className="stark-category-card">
       <div className="category-card-head">
         <div className="category-title-block">
-          <strong>{translateValue("本月支出结构", locale)}</strong>
+          <strong>{translateValue(structureLabel, locale)}</strong>
           <span className="category-sub">{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</span>
         </div>
         <Link href="/consumption" className="category-all-link">
@@ -549,10 +552,10 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
               className="category-donut"
               style={{ background: donutBackground }}
               role="img"
-              aria-label={`${translateValue("本月支出", locale)} ¥ ${formatMoney(summary.expense)}`}
+              aria-label={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
             >
               <div className="category-donut-center">
-                <span>{translateValue("本月支出", locale)}</span>
+                <span>{translateValue(periodLabel, locale)}</span>
                 <strong>¥ {formatMoney(summary.expense)}</strong>
               </div>
             </div>
@@ -894,7 +897,7 @@ export function HomeDashboard() {
       <StarkCompassMatrix summary={summary} onManageBudget={() => router.push("/budgets/")} />
 
       {/* 本月支出构成 (替代老旧流水) */}
-      <TopExpenseStructure summary={summary} />
+      <TopExpenseStructure summary={summary} reportingMonth={reportingMonth} />
 
       {/* 财务行动建议 */}
       <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />
