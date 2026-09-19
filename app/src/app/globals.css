@@ -9843,6 +9843,21 @@ button.stark-compass-card {
   font-size: calc(11px * var(--user-font-scale));
 }
 
+.consumption-search-wrap:focus-within,
+.detail-search-wrap:focus-within {
+  border-color: #e2e8f0;
+  box-shadow: none;
+}
+
+.consumption-search-wrap input:focus,
+.consumption-search-wrap input:focus-visible,
+.detail-search-wrap input:focus,
+.detail-search-wrap input:focus-visible {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 .consumption-chart-stack {
   display: grid;
   gap: 12px;
