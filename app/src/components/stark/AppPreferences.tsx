@@ -28,7 +28,7 @@ export function AppPreferences() {
     translateDocument(document.body, locale);
     // Keep the server-rendered Chinese markup from flashing before the saved
     // language has been applied and translated on the client.
-    document.body.style.visibility = "visible";
+    document.body.classList.add("app-ready");
     observer.observe(document.body, {
       subtree: true,
       childList: true,

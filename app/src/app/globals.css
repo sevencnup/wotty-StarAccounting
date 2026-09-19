@@ -60,6 +60,12 @@ body {
   overscroll-behavior-x: none;
 }
 
+/* Hide the server-rendered default language until the saved UI settings have
+   been applied. The class is client-owned so route transitions cannot reset it. */
+body:not(.app-ready) {
+  visibility: hidden;
+}
+
 * {
   box-sizing: border-box;
   scrollbar-width: none;
