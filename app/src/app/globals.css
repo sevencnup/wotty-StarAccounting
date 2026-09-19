@@ -9618,7 +9618,7 @@ button.stark-compass-card {
 
 .consumption-category-trigger:focus-visible {
   border-radius: 7px;
-  box-shadow: 0 0 0 2px rgba(56, 161, 214, 0.25);
+  box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.2);
 }
 
 .consumption-category-trigger-icon,
@@ -9627,7 +9627,7 @@ button.stark-compass-card {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 8px;
-  background: #edf7fd;
+  background: #f1f3f5;
 }
 
 .consumption-category-trigger-icon {
@@ -9647,8 +9647,8 @@ button.stark-compass-card {
   flex: 0 0 auto;
   place-items: center;
   border-radius: 8px;
-  color: #1682b5;
-  background: #e5f5fc;
+  color: #6b7280;
+  background: #f1f3f5;
   font-size: calc(10px * var(--user-font-scale));
   font-weight: 800;
 }
@@ -9661,13 +9661,13 @@ button.stark-compass-card {
 .consumption-account-option-icon {
   width: 28px;
   height: 28px;
-  color: #27718f;
-  background: #edf7fb;
+  color: #6b7280;
+  background: #f1f3f5;
 }
 
 .consumption-category-option.selected .consumption-account-option-icon {
-  color: #0879b5;
-  background: #d4f0fc;
+  color: #4b5563;
+  background: #e5e7eb;
 }
 
 .consumption-category-trigger-value {
@@ -9697,12 +9697,12 @@ button.stark-compass-card {
   width: min(278px, calc(100vw - 32px));
   padding: 8px;
   overflow: hidden;
-  border: 1px solid #dbeaf4;
+  border: 1px solid #e5e7eb;
   border-radius: 16px;
   isolation: isolate;
   background: #ffffff;
   opacity: 1;
-  box-shadow: 0 18px 38px rgba(44, 78, 104, 0.17), 0 3px 8px rgba(44, 78, 104, 0.08);
+  box-shadow: 0 18px 38px rgba(31, 41, 55, 0.12), 0 3px 8px rgba(31, 41, 55, 0.06);
   transform-origin: top left;
   animation: consumption-category-menu-in 150ms ease-out;
 }
@@ -9716,13 +9716,13 @@ button.stark-compass-card {
 }
 
 .consumption-category-menu-head strong {
-  color: #163d59;
+  color: #374151;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 700;
 }
 
 .consumption-category-menu-head span {
-  color: #94a9b8;
+  color: #9ca3af;
   font-size: calc(10px * var(--user-font-scale));
 }
 
@@ -9744,14 +9744,14 @@ button.stark-compass-card {
   border: 0;
   border-radius: 11px;
   background: transparent;
-  color: #344b5c;
+  color: #4b5563;
   text-align: left;
   cursor: pointer;
   transition: background 140ms ease, transform 140ms ease;
 }
 
 .consumption-category-option:hover {
-  background: #f3f9fc;
+  background: #f8fafc;
 }
 
 .consumption-category-option:active {
@@ -9759,23 +9759,23 @@ button.stark-compass-card {
 }
 
 .consumption-category-option.selected {
-  background: #eef7fc;
-  color: #0879b5;
+  background: #f1f3f5;
+  color: #374151;
 }
 
 .consumption-category-option:focus-visible {
-  outline: 2px solid rgba(56, 161, 214, 0.38);
+  outline: 2px solid rgba(107, 114, 128, 0.28);
   outline-offset: -2px;
 }
 
 .consumption-category-option-icon {
   width: 28px;
   height: 28px;
-  background: #f0f5f8;
+  background: #f1f3f5;
 }
 
 .consumption-category-option.selected .consumption-category-option-icon {
-  background: #d4f0fc;
+  background: #e5e7eb;
 }
 
 .consumption-category-option-icon img {
@@ -9805,7 +9805,7 @@ button.stark-compass-card {
 }
 
 .consumption-category-check {
-  color: #0793d0;
+  color: #6b7280;
   font-size: calc(14px * var(--user-font-scale));
   font-weight: 800;
   text-align: center;
