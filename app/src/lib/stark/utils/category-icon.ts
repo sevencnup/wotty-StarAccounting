@@ -103,7 +103,33 @@ const hiddenExpenseCategories = new Set([
   "健身",
 ]);
 
-export const expenseCategoryOptions = Object.keys(categoryIconFiles).filter(
+const expenseCategoryOrder = [
+  // 餐饮食品
+  "餐饮", "闲食", "水果", "肉类", "水产", "糖果", "甜品", "下午茶", "饮品", "酒类", "烟草",
+  // 购物服饰与宠物
+  "购物", "服装", "鞋类", "美容", "个人护理", "理发", "宠物", "玩具",
+  // 交通出行
+  "交通", "出行", "旅游", "加油", "停车费",
+  // 住房与日用
+  "住房", "家具", "家电", "装修", "水费", "电费", "燃气", "网费", "清洁", "清洁优化", "日常清洁", "日用", "生活用品",
+  // 数码通讯
+  "通讯", "电子产品", "影音", "充电", "打印",
+  // 医疗健康
+  "医疗", "药品", "门诊",
+  // 运动户外
+  "体育", "户外",
+  // 教育与娱乐
+  "教育", "图书", "娱乐", "游戏",
+  // 其他
+  "工具", "小工具", "花圃", "其他",
+];
+
+const orderedExpenseCategories = Array.from(new Set([
+  ...expenseCategoryOrder,
+  ...Object.keys(categoryIconFiles),
+]));
+
+export const expenseCategoryOptions = orderedExpenseCategories.filter(
   (category) => !nonExpenseCategories.has(category) && !hiddenExpenseCategories.has(category),
 );
 
