@@ -96,9 +96,14 @@ const orderedExpenseCategories = Array.from(new Set([
   ...Object.keys(categoryIconFiles),
 ]));
 
-export const expenseCategoryOptions = orderedExpenseCategories.filter(
+const visibleExpenseCategories = orderedExpenseCategories.filter(
   (category) => !nonExpenseCategories.has(category),
 );
+
+export const expenseCategoryOptions = [
+  ...visibleExpenseCategories.filter((category) => category !== "其他"),
+  "其他",
+];
 
 const incomeCategoryIcons: Record<string, string> = {
   工资: "gongjulei.webp",
