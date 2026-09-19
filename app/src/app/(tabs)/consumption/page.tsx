@@ -44,12 +44,17 @@ function categoryIconForFilter(category: string) {
   return categoryIconSrcForCategory(category);
 }
 
-function accountIconForFilter(account: string) {
-  if (account === "银行卡") return "卡";
-  if (account === "支付宝") return "支";
-  if (account === "微信") return "微";
-  if (account === "其他") return "其";
-  return "全";
+function accountIconSrcForFilter(account: string) {
+  if (account === "微信") return "/category-icons/weixin.webp";
+  if (account === "支付宝") return "/category-icons/zhifubao.webp";
+  if (account === "银行卡") return "/category-icons/unionpau.webp";
+  return "";
+}
+
+function AccountFilterIcon({ account }: { account: string }) {
+  const src = accountIconSrcForFilter(account);
+  if (src) return <img src={src} alt="" />;
+  return account === "其他" ? "其" : "全";
 }
 
 function recentTimeLabel(dateStr: string) {
@@ -495,7 +500,7 @@ export default function ConsumptionPage() {
                 }
               }}
             >
-              <span className="consumption-account-trigger-icon">{accountIconForFilter(platformFilter)}</span>
+              <span className="consumption-account-trigger-icon"><AccountFilterIcon account={platformFilter} /></span>
               <span className="consumption-category-trigger-value">{translateValue(platformFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
@@ -526,7 +531,7 @@ export default function ConsumptionPage() {
                           setAccountOpen(false);
                         }}
                       >
-                        <span className="consumption-account-option-icon">{accountIconForFilter(option.label)}</span>
+                        <span className="consumption-account-option-icon"><AccountFilterIcon account={option.label} /></span>
                         <span className="consumption-category-option-copy">
                           <strong>{translateValue(option.label, locale)}</strong>
                           <small>{formatCount(option.count, "transactions", locale)}</small>

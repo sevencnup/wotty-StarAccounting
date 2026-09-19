@@ -9658,6 +9658,14 @@ button.stark-compass-card {
   height: 22px;
 }
 
+.consumption-account-trigger-icon img,
+.consumption-account-option-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
 .consumption-account-option-icon {
   width: 28px;
   height: 28px;
