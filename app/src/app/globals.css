@@ -1464,13 +1464,14 @@ nextjs-portal {
 
 .stark-budget-allocation-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
 .stark-budget-allocation-main > div {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .stark-budget-allocation-main > div + div {
@@ -1485,19 +1486,16 @@ nextjs-portal {
 
 .stark-budget-allocation-main strong {
   color: #0f172a;
-  font-size: calc(23px * var(--user-font-scale));
+  font-size: calc(17px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
+  white-space: nowrap;
 }
 
 .stark-budget-allocation-main strong.negative,
 .stark-budget-allocation-grid strong.negative {
   color: #b45309;
-}
-
-.stark-budget-allocation-income strong {
-  font-size: calc(17px * var(--user-font-scale));
 }
 
 .stark-budget-allocation-track {
