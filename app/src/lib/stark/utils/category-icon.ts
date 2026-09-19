@@ -62,6 +62,7 @@ const categoryIconFiles: Record<string, string> = {
   图书: "tushulei.webp",
   玩偶: "wanju.webp",
   玩具: "wanju.webp",
+  闲食: "xianshi.webp",
   鲜食: "xianshi.webp",
   下午茶: "xiawucha.webp",
   小工具: "xiaogongju-optimized.webp",
@@ -74,6 +75,7 @@ const categoryIconFiles: Record<string, string> = {
   影音: "yingyinlei.webp",
   饮品: "niunai.webp",
   游戏: "youxilei.webp",
+  花圃: "zhiwu.webp",
   植物: "zhiwu.webp",
   装修: "zhuangxiulei.webp",
   自行车: "zixingche.webp",
@@ -81,7 +83,20 @@ const categoryIconFiles: Record<string, string> = {
 };
 
 const nonExpenseCategories = new Set(["工资", "奖金", "理财", "转账", "还款"]);
-const hiddenExpenseCategories = new Set(["公共出行", "电子设备", "宝宝", "汽车", "自行车"]);
+const hiddenExpenseCategories = new Set([
+  "公共出行",
+  "电子设备",
+  "宝宝",
+  "汽车",
+  "自行车",
+  "婴儿",
+  "宝宝用品",
+  "玩偶",
+  "医疗优化",
+  "旅行",
+  "鲜食",
+  "植物",
+]);
 
 export const expenseCategoryOptions = Object.keys(categoryIconFiles).filter(
   (category) => !nonExpenseCategories.has(category) && !hiddenExpenseCategories.has(category),
