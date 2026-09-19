@@ -21,6 +21,8 @@ const categoryIconFiles: Record<string, string> = {
   转账: "dianzilei.webp",
   还款: "gongjulei.webp",
   其他: "xianshi.webp",
+  保险: "baoxian.webp",
+  红包: "hongbao.webp",
   充电: "chongdian-optimized.webp",
   出行: "chuxinglei.webp",
   打印: "dayin-optimized.webp",
@@ -32,12 +34,15 @@ const categoryIconFiles: Record<string, string> = {
   个人护理: "gerenhuli-optimized.webp",
   家具: "jiajulei.webp",
   家电: "jiajulei1.webp",
+  家政: "jiazheng.webp",
   教育培训: "jiaoyulei.webp",
   酒类: "jiulei.webp",
   加油: "jiayou-optimized.webp",
   理发: "lifa-optimized.webp",
+  礼物: "liwu.webp",
   旅游: "lvyou-optimized.webp",
   门诊: "menz-optimized.webp",
+  汽车保养: "qichebaoyang.webp",
   清洁: "qingjie.webp",
   清洁优化: "qingjie-optimized.webp",
   燃气: "ranqi.webp",
@@ -68,6 +73,8 @@ const categoryIconFiles: Record<string, string> = {
   植物: "zhiwu.webp",
   装修: "zhuangxiulei.webp",
   网费: "wangfei-optimized.webp",
+  维修: "weixiu.webp",
+  物业费: "wuyefei.webp",
 };
 
 const nonExpenseCategories = new Set(["工资", "奖金", "理财", "转账", "还款"]);
@@ -95,11 +102,11 @@ const expenseCategoryOrder = [
   // 餐饮食品
   "餐饮", "闲食", "水果", "肉类", "水产", "糖果", "甜品", "下午茶", "饮品", "酒类", "烟草",
   // 购物服饰与宠物
-  "购物", "服装", "鞋类", "美容", "个人护理", "理发", "宠物", "玩具",
+  "购物", "服装", "鞋类", "美容", "个人护理", "理发", "宠物", "玩具", "礼物", "红包",
   // 交通出行
-  "交通", "出行", "旅游", "加油", "充电", "停车费",
+  "交通", "出行", "旅游", "加油", "充电", "汽车保养", "停车费",
   // 住房与日用
-  "住房", "家具", "家电", "装修", "水费", "电费", "燃气", "网费", "清洁", "清洁优化", "日常清洁", "日用", "生活用品",
+  "住房", "物业费", "家具", "家电", "装修", "水费", "电费", "燃气", "网费", "清洁", "清洁优化", "日常清洁", "家政", "维修", "日用", "生活用品",
   // 数码通讯
   "通讯", "电子产品", "影音", "打印",
   // 医疗健康
@@ -109,7 +116,7 @@ const expenseCategoryOrder = [
   // 教育与娱乐
   "教育", "图书", "娱乐", "游戏",
   // 其他
-  "工具", "小工具", "花圃", "其他",
+  "工具", "小工具", "保险", "花圃", "其他",
 ];
 
 const orderedExpenseCategories = Array.from(new Set([
@@ -128,6 +135,13 @@ const incomeCategoryIcons: Record<string, string> = {
 };
 
 const categoryKeywordIcons: Array<[RegExp, string]> = [
+  [/保险/, "baoxian.webp"],
+  [/红包/, "hongbao.webp"],
+  [/礼物|礼品/, "liwu.webp"],
+  [/家政/, "jiazheng.webp"],
+  [/保养|洗车/, "qichebaoyang.webp"],
+  [/维修|修理/, "weixiu.webp"],
+  [/物业/, "wuyefei.webp"],
   [/水果/, "shuiguo.webp"],
   [/肉/, "roulei.webp"],
   [/水产|海鲜/, "shuicanlei.webp"],
