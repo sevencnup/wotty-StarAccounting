@@ -362,7 +362,7 @@ export default function ConsumptionPage() {
         <div className="consumption-overview-stats">
           <div><span>{locale === "en-US" ? "Daily average" : "日均支出"}</span><strong>¥ {formatMoney(monthSummary.dailyAverage)}</strong></div>
           <div><span>{locale === "en-US" ? "Selected-period income" : "筛选期收入"}</span><strong>¥ {formatMoney(monthSummary.income)}</strong></div>
-          <div><span>{locale === "en-US" ? "Current balance" : "当前结余"}</span><strong className={monthSummary.balance >= 0 ? "positive" : "negative"}>¥ {formatMoney(Math.abs(monthSummary.balance))}</strong></div>
+          <div><span>{locale === "en-US" ? "Current balance" : "当前结余"}</span><strong className={monthSummary.balance >= 0 ? "positive" : "negative"}>{monthSummary.balance < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(monthSummary.balance))}</strong></div>
         </div>
       </section>
 
