@@ -13293,10 +13293,6 @@ button.stark-compass-card {
   mix-blend-mode: multiply;
 }
 
-.journal-panel .tile-icon[src$="/qita.webp"] {
-  transform: scale(2.2);
-}
-
 .journal-panel .tile-icon[src$="/gongju.webp"] {
   transform: scale(1.8);
 }
