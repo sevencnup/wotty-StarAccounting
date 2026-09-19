@@ -484,15 +484,18 @@ export function ConsumptionCharts({
   ratios,
   transactions,
   monthKey,
+  viewMode,
   showDeepAnalysis = true,
 }: {
   trend: HomeTrend;
   ratios: HomeRatio[];
   transactions: Transaction[];
   monthKey: string;
+  viewMode: "expense" | "income" | "all";
   showDeepAnalysis?: boolean;
 }) {
   const locale = useAppLocale();
+  const incomeMode = viewMode === "income";
   const reportingDate = useMemo(() => reportingMonthDate(monthKey), [monthKey]);
   const trendOption = useMemo(() => buildTrendOption(trend, locale), [locale, trend]);
   const ratioOption = useMemo(() => buildRatioOption(ratios, locale), [locale, ratios]);
@@ -528,7 +531,7 @@ export function ConsumptionCharts({
       <section className="home-card ratio-card consumption-chart-card">
         <div className="section-head">
           <div className="consumption-chart-title">
-            <h2>{translateValue("支出分类构成", locale)}</h2>
+            <h2>{translateValue(incomeMode ? "收入来源构成" : "支出分类构成", locale)}</h2>
             <span>{translateValue("金额占比", locale)}</span>
           </div>
         </div>
@@ -551,8 +554,10 @@ export function ConsumptionCharts({
         <div className="trend-panel">
           <div className="section-head">
             <div className="consumption-chart-title">
-                <h2>{translateValue("消费节律", locale)}</h2>
-                <span>{translateValue(isReportingYearKey(monthKey) ? "每月的支出热度" : "每天的支出热度", locale)}</span>
+                <h2>{translateValue(incomeMode ? "收入节律" : "消费节律", locale)}</h2>
+                <span>{translateValue(isReportingYearKey(monthKey)
+                  ? incomeMode ? "每月的收入热度" : "每月的支出热度"
+                  : incomeMode ? "每天的收入热度" : "每天的支出热度", locale)}</span>
             </div>
           </div>
           <CalendarHeatmap transactions={transactions} monthKey={monthKey} locale={locale} />
@@ -565,14 +570,14 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>{translateValue("商家消费排行", locale)}</h2>
-                  <span>{translateValue("消费金额前 10 名", locale)}</span>
+                  <h2>{translateValue(incomeMode ? "收入来源排行" : "商家消费排行", locale)}</h2>
+                  <span>{translateValue(incomeMode ? "收入金额前 10 名" : "消费金额前 10 名", locale)}</span>
                 </div>
               </div>
               {merchantRanking.length ? (
                 <EChartView option={merchantRankingOption} className="merchant-ranking-chart" />
               ) : (
-                <div className="merchant-ranking-empty">{translateValue("当前筛选下暂无商家支出", locale)}</div>
+                <div className="merchant-ranking-empty">{translateValue(incomeMode ? "当前筛选下暂无收入来源" : "当前筛选下暂无商家支出", locale)}</div>
               )}
             </div>
           </section>
@@ -581,7 +586,9 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>{translateValue(isReportingYearKey(monthKey) ? "每月平台支出" : "每日平台支出", locale)}</h2>
+                  <h2>{translateValue(isReportingYearKey(monthKey)
+                    ? incomeMode ? "每月平台收入" : "每月平台支出"
+                    : incomeMode ? "每日平台收入" : "每日平台支出", locale)}</h2>
                   <span>{translateValue("按账户拆分", locale)}</span>
                 </div>
                 <PlatformLegend platforms={barPlatforms} locale={locale} />
@@ -594,7 +601,7 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>{translateValue("消费流向图", locale)}</h2>
+                  <h2>{translateValue(incomeMode ? "收入流向图" : "消费流向图", locale)}</h2>
                   <span>{translateValue("账户到分类", locale)}</span>
                 </div>
               </div>
