@@ -485,14 +485,12 @@ export function ConsumptionCharts({
   transactions,
   monthKey,
   viewMode,
-  showDeepAnalysis = true,
 }: {
   trend: HomeTrend;
   ratios: HomeRatio[];
   transactions: Transaction[];
   monthKey: string;
   viewMode: "expense" | "income" | "all";
-  showDeepAnalysis?: boolean;
 }) {
   const locale = useAppLocale();
   const incomeMode = viewMode === "income";
@@ -564,8 +562,7 @@ export function ConsumptionCharts({
         </div>
       </section>
 
-      {showDeepAnalysis ? (
-        <>
+      <>
           <section className="home-card consumption-chart-card merchant-ranking-card">
             <div className="trend-panel">
               <div className="section-head">
@@ -610,8 +607,7 @@ export function ConsumptionCharts({
               </div>
             </div>
           </section>
-        </>
-      ) : null}
+      </>
     </div>
   );
 }

@@ -107,7 +107,6 @@ export default function ConsumptionPage() {
   const [platformFilter, setPlatformFilter] = useState("全部账户");
   const [query, setQuery] = useState("");
   const [detailQuery, setDetailQuery] = useState("");
-  const [showDeepAnalysis, setShowDeepAnalysis] = useState(true);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -544,7 +543,6 @@ export default function ConsumptionPage() {
         transactions={displayChartTransactions}
         monthKey={reportingMonth}
         viewMode={viewMode}
-        showDeepAnalysis={showDeepAnalysis}
       />
 
       <section className="consumption-detail-card">
@@ -579,10 +577,6 @@ export default function ConsumptionPage() {
         </div>
       </section>
 
-      <button type="button" className="consumption-deep-toggle" onClick={() => setShowDeepAnalysis((value) => !value)}>
-        {showDeepAnalysis ? (locale === "en-US" ? "Hide deep analysis" : "收起深入分析") : (locale === "en-US" ? "Show deep analysis" : "展开深入分析")}
-        <ChevronDownIcon />
-      </button>
       {editingTransaction ? <JournalPanel mode="sheet" variant="journal" transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={() => { setEditingTransaction(null); }} /> : null}
     </div>
   );

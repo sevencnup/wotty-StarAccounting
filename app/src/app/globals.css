@@ -9929,23 +9929,6 @@ button.stark-compass-card {
   text-align: center;
 }
 
-.consumption-deep-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 34px;
-  border: 0;
-  color: #0060c0;
-  background: transparent;
-  font-size: calc(11px * var(--user-font-scale));
-  cursor: pointer;
-}
-
-.consumption-deep-toggle svg {
-  transition: transform 150ms ease;
-}
-
 .consumption-deep-summary {
   display: grid;
   grid-template-columns: 1fr 1fr;
