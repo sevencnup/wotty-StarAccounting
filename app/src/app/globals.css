@@ -2046,20 +2046,25 @@ button.stark-compass-card {
 }
 
 .stark-bars-wrapper {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
   gap: 8px;
   height: 100px;
   align-items: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .stark-trend-col {
+  flex: 0 0 calc((100% - 32px) / 5);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  width: 100%;
+  min-width: 56px;
   height: 100%;
   margin: 0;
   padding: 0;
@@ -2071,6 +2076,7 @@ button.stark-compass-card {
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
+  scroll-snap-align: start;
 }
 
 .stark-trend-col:focus-visible {
