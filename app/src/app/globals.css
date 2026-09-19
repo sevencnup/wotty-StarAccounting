@@ -6097,6 +6097,12 @@ button.stark-compass-card {
   object-fit: contain;
 }
 
+/* The source artwork for “Other” fills its canvas more tightly than the
+   other category icons; keep its visual size aligned wherever it is used. */
+img[src$="/qita.webp"] {
+  transform: scale(0.84);
+}
+
 .category-tile.active .tile-icon {
   filter: none;
 }
