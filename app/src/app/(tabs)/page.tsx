@@ -515,7 +515,20 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
   const locale = useAppLocale();
   const ratios = summary.ratios.slice(0, 4);
-  const total = summary.expense || 1;
+  const total = summary.expense || summary.ratios.reduce((sum, item) => sum + item.amount, 0) || 1;
+  const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
+  const donutSegments = [
+    ...ratios.map((item) => ({ amount: item.amount, color: item.color })),
+    ...(otherAmount > 0 ? [{ amount: otherAmount, color: "#94a3b8" }] : []),
+  ];
+  let donutOffset = 0;
+  const donutStops = donutSegments.map((item) => {
+    const start = donutOffset;
+    donutOffset += (item.amount / total) * 100;
+    return `${item.color} ${start}% ${donutOffset}%`;
+  }).join(", ");
+  const donutBackground = `radial-gradient(circle at center, #ffffff 0 57%, transparent 58%), conic-gradient(${donutStops})`;
+  const percentOfTotal = (amount: number) => Math.round((amount / total) * 100);
 
   return (
     <SurfaceCard className="stark-category-card">
@@ -531,29 +544,41 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
 
       {ratios.length ? (
         <div className="category-card-body">
-          {/* 分段多彩占比条 */}
-          <div className="category-segment-bar">
-            {ratios.map((item) => (
-              <span
-                key={item.name}
-                style={{ width: `${Math.max(item.percent, 4)}%`, background: item.color }}
-                title={`${translateValue(item.name, locale)} ${item.percent}%`}
-              />
-            ))}
-          </div>
+          <div className="category-donut-layout">
+            <div
+              className="category-donut"
+              style={{ background: donutBackground }}
+              role="img"
+              aria-label={`${translateValue("本月支出", locale)} ¥ ${formatMoney(summary.expense)}`}
+            >
+              <div className="category-donut-center">
+                <span>{translateValue("本月支出", locale)}</span>
+                <strong>¥ {formatMoney(summary.expense)}</strong>
+              </div>
+            </div>
 
-          {/* 分类网格 */}
-          <div className="category-items-grid">
-            {ratios.map((item) => (
-              <Link href="/consumption" key={item.name} className="category-grid-item">
-                <div className="category-item-top">
-                  <span className="category-dot" style={{ background: item.color }} />
-                  <span className="category-name">{translateValue(item.name, locale)}</span>
+            <div className="category-items-list">
+              {ratios.map((item) => (
+                <Link href="/consumption" key={item.name} className="category-grid-item">
+                  <div className="category-item-top">
+                    <span className="category-dot" style={{ background: item.color }} />
+                    <span className="category-name">{translateValue(item.name, locale)}</span>
+                  </div>
+                  <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
+                  <span className="category-percent">{locale === "en-US" ? `${percentOfTotal(item.amount)}% share` : `${percentOfTotal(item.amount)}% 占比`}</span>
+                </Link>
+              ))}
+              {otherAmount > 0 ? (
+                <div className="category-grid-item category-grid-item-other">
+                  <div className="category-item-top">
+                    <span className="category-dot" style={{ background: "#94a3b8" }} />
+                    <span className="category-name">{translateValue("其他", locale)}</span>
+                  </div>
+                  <strong className="category-amount">¥ {formatMoney(otherAmount)}</strong>
+                  <span className="category-percent">{locale === "en-US" ? `${percentOfTotal(otherAmount)}% share` : `${percentOfTotal(otherAmount)}% 占比`}</span>
                 </div>
-                <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
-                <span className="category-percent">{locale === "en-US" ? `${item.percent}% share` : `${item.percent}% 占比`}</span>
-              </Link>
-            ))}
+              ) : null}
+            </div>
           </div>
         </div>
       ) : (
