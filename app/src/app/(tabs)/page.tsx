@@ -363,7 +363,7 @@ function StarkDiagnosticSheet({ summary, onClose }: { summary: HomeSummary; onCl
         <div className="diagnostic-sheet-metrics">
           <div><span>{translateValue("本月收入", locale)}</span><strong>¥ {formatMoney(summary.income)}</strong></div>
           <div><span>{translateValue("本月支出", locale)}</span><strong>¥ {formatMoney(summary.expense)}</strong></div>
-          <div><span>{translateValue("本月结余", locale)}</span><strong className={summary.forecast.monthBalance >= 0 ? "positive" : "negative"}>¥ {formatMoney(Math.abs(summary.forecast.monthBalance))}</strong></div>
+          <div><span>{translateValue("本月结余", locale)}</span><strong className={summary.forecast.monthBalance >= 0 ? "positive" : "negative"}>{summary.forecast.monthBalance < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(summary.forecast.monthBalance))}</strong></div>
         </div>
       </section>
 
