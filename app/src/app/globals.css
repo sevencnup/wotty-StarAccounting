@@ -7307,10 +7307,17 @@ img[src$="/qita.webp"] {
   box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
 }
 
+.savings-goal-field .savings-goal-name-input,
+.savings-goal-field .savings-goal-name-input:focus {
+  border-color: #dce4ef;
+  box-shadow: none;
+  outline: none;
+}
+
 .savings-deposit-switch {
-  display: inline-grid;
-  grid-template-columns: repeat(3, 86px);
-  width: fit-content;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
   max-width: 100%;
   gap: 4px;
 }
