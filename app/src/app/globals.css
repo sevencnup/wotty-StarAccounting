@@ -7312,11 +7312,14 @@ img[src$="/qita.webp"] {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   width: 100%;
+  min-width: 0;
   max-width: 100%;
   gap: 4px;
 }
 
 .savings-deposit-switch button {
+  width: 100%;
+  min-width: 0;
   height: 30px;
   padding: 0 7px;
   border: 1px solid #e2e8f0;
