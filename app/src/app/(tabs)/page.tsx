@@ -193,7 +193,11 @@ function StarkCrystalHero({
   onReportingMonthChange: (month: string) => void;
 }) {
   const locale = useAppLocale();
-  const monthLabel = reportingMonthLabel(reportingMonth);
+  const monthLabel = isReportingYearKey(reportingMonth)
+    ? locale === "en-US" ? `${reportingMonth} full year` : reportingMonthLabel(reportingMonth)
+    : locale === "en-US"
+      ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(reportingMonth))
+      : reportingMonthLabel(reportingMonth);
   const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
 
@@ -257,7 +261,7 @@ function StarkCrystalHero({
         {/* 背景轻淡月份水印 */}
         <div className="stark-card-watermark">
           {isReportingYearKey(reportingMonth)
-            ? `${reportingMonth}年`
+            ? locale === "en-US" ? reportingMonth : `${reportingMonth}年`
             : new Intl.DateTimeFormat(locale, { month: "short" }).format(reportingMonthDate(reportingMonth))}
         </div>
 
@@ -289,11 +293,11 @@ function StarkCrystalHero({
           </strong>
         </div>
         {activeMetric === "balance" ? (
-          <div className="stark-cycle-breakdown" aria-label="发薪周期资金明细">
-            <span>{balanceMode === "salary" ? "收入" : "月收入"} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
-            <span>{balanceMode === "salary" ? "消费" : "月消费"} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
-            <span>储蓄 ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
-            <span>还款 ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
+          <div className="stark-cycle-breakdown" aria-label={translateValue("发薪周期资金明细", locale)}>
+            <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
+            <span>{translateValue(balanceMode === "salary" ? "消费" : "月消费", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
+            <span>{translateValue("储蓄", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
+            <span>{translateValue("还款", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
           </div>
         ) : null}
 
@@ -306,7 +310,7 @@ function StarkCrystalHero({
                 className="stark-setting-pill"
                 onClick={() => setShowSalaryModal(true)}
               >
-                发薪日 {salaryDay} 号 ›
+                {translateValue("发薪日", locale)} {salaryDay}{locale === "en-US" ? "" : "号"} ›
               </button>
             ) : (
               <Link href="/consumption" className="stark-detail-arrow">
@@ -371,6 +375,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
   ];
   const periodLabel = isReportingYearKey(reportingMonth) ? "全年资金分配" : "本月资金分配";
   const availableLabel = allocation.available >= 0 ? "可继续安排" : "已超出收入";
+  const translatedAvailableLabel = translateValue(availableLabel, locale);
   const cardClassName = "stark-budget-allocation-card" + (allocation.available < 0 ? " has-overrun" : "");
 
   return (
@@ -393,7 +398,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
             <strong className={allocation.available < 0 ? "negative" : ""}>
               {allocation.available < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(allocation.available))}
             </strong>
-            <small>{locale === "en-US" ? availableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : availableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
+            <small>{locale === "en-US" ? translatedAvailableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : translatedAvailableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
           </div>
           <div className="stark-budget-allocation-income">
             <span>{translateValue("收入", locale)}</span>
@@ -512,16 +517,32 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 }
 
 // 本月支出构成 (替代老旧流水列表)
-function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
+function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
   const locale = useAppLocale();
+  const isAnnual = isReportingYearKey(reportingMonth);
+  const periodLabel = isAnnual ? "全年支出" : "本月支出";
+  const structureLabel = isAnnual ? "全年支出结构" : "本月支出结构";
   const ratios = summary.ratios.slice(0, 4);
-  const total = summary.expense || 1;
+  const total = summary.expense || summary.ratios.reduce((sum, item) => sum + item.amount, 0) || 1;
+  const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
+  const donutSegments = [
+    ...ratios.map((item) => ({ amount: item.amount, color: item.color })),
+    ...(otherAmount > 0 ? [{ amount: otherAmount, color: "#94a3b8" }] : []),
+  ];
+  let donutOffset = 0;
+  const donutStops = donutSegments.map((item) => {
+    const start = donutOffset;
+    donutOffset += (item.amount / total) * 100;
+    return `${item.color} ${start}% ${donutOffset}%`;
+  }).join(", ");
+  const donutBackground = `radial-gradient(circle at center, #ffffff 0 57%, transparent 58%), conic-gradient(${donutStops})`;
+  const percentOfTotal = (amount: number) => Math.round((amount / total) * 100);
 
   return (
     <SurfaceCard className="stark-category-card">
       <div className="category-card-head">
         <div className="category-title-block">
-          <strong>{translateValue("本月支出结构", locale)}</strong>
+          <strong>{translateValue(structureLabel, locale)}</strong>
           <span className="category-sub">{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</span>
         </div>
         <Link href="/consumption" className="category-all-link">
@@ -531,29 +552,41 @@ function TopExpenseStructure({ summary }: { summary: HomeSummary }) {
 
       {ratios.length ? (
         <div className="category-card-body">
-          {/* 分段多彩占比条 */}
-          <div className="category-segment-bar">
-            {ratios.map((item) => (
-              <span
-                key={item.name}
-                style={{ width: `${Math.max(item.percent, 4)}%`, background: item.color }}
-                title={`${translateValue(item.name, locale)} ${item.percent}%`}
-              />
-            ))}
-          </div>
+          <div className="category-donut-layout">
+            <div
+              className="category-donut"
+              style={{ background: donutBackground }}
+              role="img"
+              aria-label={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
+            >
+              <div className="category-donut-center">
+                <span>{translateValue(periodLabel, locale)}</span>
+                <strong>¥ {formatMoney(summary.expense)}</strong>
+              </div>
+            </div>
 
-          {/* 分类网格 */}
-          <div className="category-items-grid">
-            {ratios.map((item) => (
-              <Link href="/consumption" key={item.name} className="category-grid-item">
-                <div className="category-item-top">
-                  <span className="category-dot" style={{ background: item.color }} />
-                  <span className="category-name">{translateValue(item.name, locale)}</span>
+            <div className="category-items-list">
+              {ratios.map((item) => (
+                <Link href="/consumption" key={item.name} className="category-grid-item">
+                  <div className="category-item-top">
+                    <span className="category-dot" style={{ background: item.color }} />
+                    <span className="category-name">{translateValue(item.name, locale)}</span>
+                  </div>
+                  <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
+                  <span className="category-percent">{locale === "en-US" ? `${percentOfTotal(item.amount)}% share` : `${percentOfTotal(item.amount)}% 占比`}</span>
+                </Link>
+              ))}
+              {otherAmount > 0 ? (
+                <div className="category-grid-item category-grid-item-other">
+                  <div className="category-item-top">
+                    <span className="category-dot" style={{ background: "#94a3b8" }} />
+                    <span className="category-name">{translateValue("其他", locale)}</span>
+                  </div>
+                  <strong className="category-amount">¥ {formatMoney(otherAmount)}</strong>
+                  <span className="category-percent">{locale === "en-US" ? `${percentOfTotal(otherAmount)}% share` : `${percentOfTotal(otherAmount)}% 占比`}</span>
                 </div>
-                <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
-                <span className="category-percent">{locale === "en-US" ? `${item.percent}% share` : `${item.percent}% 占比`}</span>
-              </Link>
-            ))}
+              ) : null}
+            </div>
           </div>
         </div>
       ) : (
@@ -869,7 +902,7 @@ export function HomeDashboard() {
       <StarkCompassMatrix summary={summary} onManageBudget={() => router.push("/budgets/")} />
 
       {/* 本月支出构成 (替代老旧流水) */}
-      <TopExpenseStructure summary={summary} />
+      <TopExpenseStructure summary={summary} reportingMonth={reportingMonth} />
 
       {/* 财务行动建议 */}
       <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />

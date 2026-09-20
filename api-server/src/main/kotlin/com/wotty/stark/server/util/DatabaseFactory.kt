@@ -264,6 +264,11 @@ object Transactions : Table("transaction") {
     val createdAt = datetime("createdAt")
     val updatedAt = datetime("updatedAt")
 
+    init {
+        // Monthly reports filter by both the selected account and date range.
+        index("Transaction_accountId_date_idx", false, accountId, date)
+    }
+
     override val primaryKey = PrimaryKey(id)
 }
 
@@ -293,8 +298,13 @@ data class SyncRecordRow(
 )
 
 object DatabaseFactory {
+    private fun environmentInt(name: String, default: Int, minimum: Int, maximum: Int): Int =
+        System.getenv(name)?.toIntOrNull()?.coerceIn(minimum, maximum) ?: default
+
     private val dataSource by lazy {
         val settings = loadDatabaseSettings()
+        val maximumPoolSize = environmentInt("DB_POOL_MAX_SIZE", default = 10, minimum = 1, maximum = 50)
+        val minimumIdle = environmentInt("DB_POOL_MIN_IDLE", default = 1, minimum = 0, maximum = maximumPoolSize)
         val config = HikariConfig().apply {
             jdbcUrl = settings.jdbcUrl
             driverClassName = "com.mysql.cj.jdbc.Driver"
@@ -302,8 +312,9 @@ object DatabaseFactory {
             password = settings.password
             // 统一 UTF-8，避免中文/emoji 写入被错编成乱码
             jdbcUrl = jdbcUrl.let { url -> if (url.contains("?")) url else "$url?useUnicode=true&characterEncoding=UTF-8" }
-            maximumPoolSize = 10
-            minimumIdle = 5
+            this.maximumPoolSize = maximumPoolSize
+            // API 启动时只需一个连接；Hikari 会按请求逐步扩容，避免一次性建立空闲连接。
+            this.minimumIdle = minimumIdle
             idleTimeout = 30000
             maxLifetime = 600000
             connectionTimeout = 30000

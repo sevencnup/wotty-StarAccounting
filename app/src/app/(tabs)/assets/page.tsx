@@ -11,6 +11,7 @@ import { clampPercent, formatMoney } from "@/lib/stark/utils/format";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { Asset, AssetType, Loan, SavingsGoal } from "@/lib/stark/models";
 import type { EChartsCoreOption } from "echarts/core";
+import { translateValue, useAppLocale } from "@/lib/stark/i18n";
 
 const repo = new DataModeManager().getRepository();
 const assetTypes: AssetType[] = ["CASH", "BANK_CARD", "ALIPAY", "WECHAT", "INVESTMENT", "OTHER"];
@@ -23,9 +24,9 @@ const typeMeta: Record<AssetType, { label: string; short: string; color: string 
   OTHER: { label: "其他", short: "其", color: "#8996aa" },
 };
 
-function buildAssetDonutOption(groups: Array<{ label: string; amount: number; color: string }>): EChartsCoreOption {
+function buildAssetDonutOption(groups: Array<{ label: string; amount: number; color: string }>, locale: "zh-CN" | "en-US"): EChartsCoreOption {
   const data = groups.map((g) => ({
-    name: g.label,
+    name: translateValue(g.label, locale),
     value: g.amount,
     itemStyle: { color: g.color },
   }));
@@ -47,13 +48,14 @@ function buildAssetDonutOption(groups: Array<{ label: string; amount: number; co
         center: ["50%", "50%"],
         avoidLabelOverlap: false,
         label: { show: false },
-        data: data.length ? data : [{ value: 1, name: "暂无配置", itemStyle: { color: "#e2ecf2" } }],
+        data: data.length ? data : [{ value: 1, name: translateValue("暂无配置", locale), itemStyle: { color: "#e2ecf2" } }],
       },
     ],
   };
 }
 
 export default function AssetsPage() {
+  const locale = useAppLocale();
   const [list, setList] = useState<Asset[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -149,7 +151,7 @@ export default function AssetsPage() {
     };
   }, [list, savingsGoals, loans]);
 
-  const assetDonutOption = useMemo(() => buildAssetDonutOption(summary.groups), [summary.groups]);
+  const assetDonutOption = useMemo(() => buildAssetDonutOption(summary.groups, locale), [locale, summary.groups]);
 
   if (loading) return <PageSkeleton title="资产" cards={4} />;
   if (loadError) return <PageDataError title="资产" onRetry={() => setLoadVersion((version) => version + 1)} />;
@@ -245,7 +247,7 @@ export default function AssetsPage() {
                   <div key={group.label} className="asset-donut-row">
                     <div className="asset-donut-lead">
                       <i style={{ background: group.color }} />
-                      <strong>{group.label}</strong>
+                      <strong>{translateValue(group.label, locale)}</strong>
                     </div>
                     <span className="asset-donut-pct">{pct.toFixed(1)}%</span>
                     <strong className="asset-donut-amount">¥ {formatMoney(group.amount)}</strong>
@@ -282,7 +284,7 @@ export default function AssetsPage() {
                   <i style={{ background: typeMeta[item.type].color }}>{typeMeta[item.type].short}</i>
                   <div className="asset-item-name">
                     <strong>{item.name}</strong>
-                    <small>{typeMeta[item.type].label}</small>
+                    <small>{translateValue(typeMeta[item.type].label, locale)}</small>
                   </div>
                   <strong className="asset-item-val">¥ {formatMoney(item.balance)}</strong>
                   <div className="finance-item-actions"><button type="button" onClick={() => setEditingAsset(item)}>编辑</button><button type="button" onClick={() => void deleteAsset(item)}>删除</button></div>
@@ -316,7 +318,7 @@ export default function AssetsPage() {
                   <i>{typeMeta[item.type].short}</i>
                   <div className="asset-item-name">
                     <strong>{item.name}</strong>
-                    <small>{typeMeta[item.type].label}</small>
+                    <small>{translateValue(typeMeta[item.type].label, locale)}</small>
                   </div>
                   <strong className="asset-item-val liability">¥ {formatMoney(Math.abs(item.balance))}</strong>
                   <div className="finance-item-actions"><button type="button" onClick={() => setEditingAsset(item)}>编辑</button><button type="button" onClick={() => void deleteAsset(item)}>删除</button></div>

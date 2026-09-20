@@ -12,9 +12,9 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
-import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
+import { categoryIconSrc, categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
 import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
-import { formatMoney, reportingMonthEndDate, reportingMonthLabel, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
+import { formatMoney, isReportingYearKey, reportingMonthDate, reportingMonthEndDate, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
 
@@ -41,28 +41,7 @@ type FilterOption = {
 };
 
 function categoryIconForFilter(category: string) {
-  const rules: Array<[RegExp, string]> = [
-    [/餐|美食|咖啡/, "canyin.png"],
-    [/交|车|公交|地铁/, "jiaotong.png"],
-    [/购|百货|超市|充值/, "gouwu.png"],
-    [/娱|文化|休闲|电影/, "yule.png"],
-    [/日用|生活/, "riyong.png"],
-    [/医|健康/, "yiliao.png"],
-    [/住|房|租|水电/, "zhufang.png"],
-    [/旅/, "lvxing.png"],
-    [/美/, "meirong.png"],
-    [/宠/, "chongwu.png"],
-    [/服/, "fuzhuang.png"],
-    [/通|信用卡/, "tongxun.png"],
-    [/运/, "yundong.png"],
-    [/工|薪资|薪酬/, "gongzi.png"],
-    [/奖|红利|分红/, "jiangjin.png"],
-    [/理财|投资/, "licai.png"],
-    [/教|培训/, "jiaoyu.png"],
-    [/转|退款|收入/, "qita.png"],
-  ];
-  const matched = rules.find(([matcher]) => matcher.test(category));
-  return "/category-icons/" + (matched?.[1] ?? "qita.png");
+  return categoryIconSrcForCategory(category);
 }
 
 function accountIconForFilter(account: string) {
@@ -80,6 +59,16 @@ function recentTimeLabel(dateStr: string) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${mm}-${dd} ${hh}:${mi}`;
+}
+
+function reportingPeriodLabel(period: string, locale: "zh-CN" | "en-US") {
+  if (locale === "zh-CN") {
+    if (isReportingYearKey(period)) return `${period}年全年`;
+    const [year, month] = period.split("-");
+    return `${year}年${Number(month)}月`;
+  }
+  if (isReportingYearKey(period)) return `${period} full year`;
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(period));
 }
 
 function transactionTimestamp(dateStr: string) {
@@ -356,7 +345,7 @@ export default function ConsumptionPage() {
       <section className="consumption-overview-card">
         <div className="consumption-overview-head">
           <div>
-            <span>{reportingMonthLabel(reportingMonth)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
+            <span>{reportingPeriodLabel(reportingMonth, locale)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
             <h2>{locale === "en-US" ? "Spending in selected period" : "当前筛选支出"}</h2>
           </div>
           <MonthPicker
@@ -365,7 +354,7 @@ export default function ConsumptionPage() {
             ariaLabel={locale === "en-US" ? "Select spending month" : "选择消费统计月份"}
             triggerClassName="consumption-period-button"
           >
-            <span>{reportingMonthLabel(reportingMonth)}</span>
+            <span>{reportingPeriodLabel(reportingMonth, locale)}</span>
             <ChevronDownIcon />
           </MonthPicker>
         </div>
@@ -415,7 +404,7 @@ export default function ConsumptionPage() {
               <span className="consumption-category-trigger-icon">
                 <img src={categoryIconForFilter(categoryFilter)} alt="" />
               </span>
-              <span className="consumption-category-trigger-value">{categoryFilter}</span>
+              <span className="consumption-category-trigger-value">{translateValue(categoryFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
             {categoryOpen ? createPortal(
@@ -481,7 +470,7 @@ export default function ConsumptionPage() {
               }}
             >
               <span className="consumption-account-trigger-icon">{accountIconForFilter(platformFilter)}</span>
-              <span className="consumption-category-trigger-value">{platformFilter}</span>
+              <span className="consumption-category-trigger-value">{translateValue(platformFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
             {accountOpen ? createPortal(

@@ -515,8 +515,8 @@ export function ConsumptionCharts({
         <div className="trend-panel">
           <div className="section-head">
             <div className="consumption-chart-title">
-              <h2>收支趋势</h2>
-              <span>按当前筛选范围</span>
+              <h2>{translateValue("收支趋势", locale)}</h2>
+              <span>{translateValue("按当前筛选范围", locale)}</span>
             </div>
               <TrendLegend locale={locale} />
           </div>
@@ -528,8 +528,8 @@ export function ConsumptionCharts({
       <section className="home-card ratio-card consumption-chart-card">
         <div className="section-head">
           <div className="consumption-chart-title">
-            <h2>支出分类构成</h2>
-            <span>金额占比</span>
+            <h2>{translateValue("支出分类构成", locale)}</h2>
+            <span>{translateValue("金额占比", locale)}</span>
           </div>
         </div>
         <div className="ratio-content">
@@ -538,7 +538,7 @@ export function ConsumptionCharts({
             {displayRatios.map((item) => (
               <div key={item.name} className="ratio-row">
                 <span className="ratio-dot" style={{ background: item.color }} />
-                <span>{item.name}</span>
+                <span>{translateValue(item.name, locale)}</span>
                 <strong>{item.percent}%</strong>
               </div>
             ))}
@@ -551,8 +551,8 @@ export function ConsumptionCharts({
         <div className="trend-panel">
           <div className="section-head">
             <div className="consumption-chart-title">
-                <h2>消费节律</h2>
-                <span>{isReportingYearKey(monthKey) ? "每月的支出热度" : "每天的支出热度"}</span>
+                <h2>{translateValue("消费节律", locale)}</h2>
+                <span>{translateValue(isReportingYearKey(monthKey) ? "每月的支出热度" : "每天的支出热度", locale)}</span>
             </div>
           </div>
           <CalendarHeatmap transactions={transactions} monthKey={monthKey} locale={locale} />
@@ -565,14 +565,14 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>{locale === "en-US" ? "Top merchant spending" : "商家消费排行"}</h2>
-                  <span>{locale === "en-US" ? "Top 10 by expense amount" : "消费金额前 10 名"}</span>
+                  <h2>{translateValue("商家消费排行", locale)}</h2>
+                  <span>{translateValue("消费金额前 10 名", locale)}</span>
                 </div>
               </div>
               {merchantRanking.length ? (
                 <EChartView option={merchantRankingOption} className="merchant-ranking-chart" />
               ) : (
-                <div className="merchant-ranking-empty">{locale === "en-US" ? "No merchant spending in the current filters" : "当前筛选下暂无商家支出"}</div>
+                <div className="merchant-ranking-empty">{translateValue("当前筛选下暂无商家支出", locale)}</div>
               )}
             </div>
           </section>
@@ -581,8 +581,8 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>{isReportingYearKey(monthKey) ? "每月平台支出" : "每日平台支出"}</h2>
-                  <span>按账户拆分</span>
+                  <h2>{translateValue(isReportingYearKey(monthKey) ? "每月平台支出" : "每日平台支出", locale)}</h2>
+                  <span>{translateValue("按账户拆分", locale)}</span>
                 </div>
                 <PlatformLegend platforms={barPlatforms} locale={locale} />
               </div>
@@ -594,8 +594,8 @@ export function ConsumptionCharts({
             <div className="trend-panel">
               <div className="section-head">
                 <div className="consumption-chart-title">
-                  <h2>消费流向图</h2>
-                  <span>账户到分类</span>
+                  <h2>{translateValue("消费流向图", locale)}</h2>
+                  <span>{translateValue("账户到分类", locale)}</span>
                 </div>
               </div>
               <div className="sankey-scroll">

@@ -1464,13 +1464,14 @@ nextjs-portal {
 
 .stark-budget-allocation-main {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
 .stark-budget-allocation-main > div {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .stark-budget-allocation-main > div + div {
@@ -1485,19 +1486,16 @@ nextjs-portal {
 
 .stark-budget-allocation-main strong {
   color: #0f172a;
-  font-size: calc(23px * var(--user-font-scale));
+  font-size: calc(17px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
+  white-space: nowrap;
 }
 
 .stark-budget-allocation-main strong.negative,
 .stark-budget-allocation-grid strong.negative {
   color: #b45309;
-}
-
-.stark-budget-allocation-income strong {
-  font-size: calc(17px * var(--user-font-scale));
 }
 
 .stark-budget-allocation-track {
@@ -2046,20 +2044,25 @@ button.stark-compass-card {
 }
 
 .stark-bars-wrapper {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
   gap: 8px;
   height: 100px;
   align-items: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .stark-trend-col {
+  flex: 0 0 calc((100% - 32px) / 5);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  width: 100%;
+  min-width: 56px;
   height: 100%;
   margin: 0;
   padding: 0;
@@ -2071,6 +2074,7 @@ button.stark-compass-card {
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
+  scroll-snap-align: start;
 }
 
 .stark-trend-col:focus-visible {
@@ -2170,39 +2174,71 @@ button.stark-compass-card {
 }
 
 .category-card-body {
-  display: grid;
+  display: block;
+}
+
+.category-donut-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 12px;
 }
 
-.category-segment-bar {
-  display: flex;
-  height: 8px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #f1f5f9;
-  gap: 2px;
-}
-
-.category-segment-bar span {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 300ms ease;
-}
-
-.category-items-grid {
+.category-donut {
+  position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+}
+
+.category-donut-center {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.category-donut-center span {
+  color: #94a3b8;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.category-donut-center strong {
+  color: #0f172a;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.category-items-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  gap: 2px 8px;
+  padding: 6px;
+  border: 1px solid rgba(226, 232, 240, 0.72);
+  border-radius: 12px;
+  background: #f8fafc;
+  min-width: 0;
 }
 
 .category-grid-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid rgba(226, 232, 240, 0.6);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  min-width: 0;
+  gap: 1px 6px;
+  padding: 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   text-decoration: none;
   transition: background 120ms ease;
 }
@@ -2215,6 +2251,7 @@ button.stark-compass-card {
   display: flex;
   align-items: center;
   gap: 5px;
+  min-width: 0;
 }
 
 .category-dot {
@@ -2225,20 +2262,28 @@ button.stark-compass-card {
 }
 
 .category-name {
+  overflow: hidden;
   color: #475569;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .category-amount {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  margin-top: 0;
   color: #0f172a;
-  font-size: calc(14px * var(--user-font-scale));
+  font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  margin-top: 2px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .category-percent {
+  grid-column: 1;
   color: #94a3b8;
   font-size: calc(10px * var(--user-font-scale));
 }
@@ -2248,6 +2293,31 @@ button.stark-compass-card {
   text-align: center;
   color: #94a3b8;
   font-size: calc(12px * var(--user-font-scale));
+}
+
+@media (max-width: 360px) {
+  .category-donut-layout {
+    gap: 10px;
+  }
+
+  .category-donut {
+    width: 112px;
+    height: 112px;
+  }
+
+  .category-donut-center strong {
+    font-size: calc(11px * var(--user-font-scale));
+  }
+
+  .category-grid-item {
+    gap: 1px 5px;
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .category-amount {
+    font-size: calc(10px * var(--user-font-scale));
+  }
 }
 
 /* Stark Smart Financial Advisory */
@@ -12997,19 +13067,37 @@ button.stark-compass-card {
 }
 
 .journal-panel .tile-icon-box {
-  width: 30px;
-  height: 30px;
-  border-radius: 0;
-  background: transparent;
+  width: 32px;
+  height: 32px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  overflow: hidden;
 }
 
 .journal-panel .category-tile.active .tile-icon-box {
-  background: transparent;
+  background: #ffffff;
 }
 
 .journal-panel .tile-icon {
-  width: 28px;
-  height: 28px;
+  display: block;
+  width: 26px;
+  height: 26px;
+  margin: auto;
+  object-position: 50% 50%;
+  mix-blend-mode: multiply;
+}
+
+.journal-panel .tile-icon[src$="/qita.webp"] {
+  transform: scale(2.2);
+}
+
+.journal-panel .tile-icon[src$="/gongju.webp"] {
+  transform: scale(1.8);
 }
 
 .journal-panel .category-tile.active {
