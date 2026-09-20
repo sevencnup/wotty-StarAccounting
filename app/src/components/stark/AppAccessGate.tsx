@@ -16,11 +16,29 @@ function normalizeUrl(value: string) {
   return value.trim().replace(/\/$/, "");
 }
 
-async function verifyApi(url: string) {
+function isProtectedDestination(value: string) {
+  return value === "/app" || value.startsWith("/app/") || value === "/web" || value.startsWith("/web/");
+}
+
+function getDestination() {
+  if (typeof window === "undefined") return "/app";
+  const requested = new URLSearchParams(window.location.search).get("next") ?? "";
+  return isProtectedDestination(requested) ? requested : "/app";
+}
+
+function isModeSwitchRequested() {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("switchMode") === "1";
+}
+
+/** 检测后端和数据库；根入口与受保护路由共用。 */
+export async function verifyCloudConnection(urlValue: string) {
+  const url = normalizeUrl(urlValue);
+  if (!url) throw new Error("请输入云端 API 地址");
+
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), 5000);
   try {
-    const response = await fetch(`${normalizeUrl(url)}/api/health`, { signal: controller.signal });
+    const response = await fetch(`${url}/api/health`, { signal: controller.signal });
     const payload = await response.json() as { status?: string; db?: boolean };
     if (!response.ok || payload.status !== "ok") throw new Error("后端服务返回异常");
     if (!payload.db) throw new Error("后端服务可访问，但数据库尚未连接");
@@ -29,8 +47,8 @@ async function verifyApi(url: string) {
   }
 }
 
-export function AppAccessGate({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
+/** 根路径统一入口：选择模式、检测 API 并完成云端登录。 */
+export function AppAccessGate() {
   const [native, setNative] = useState(false);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [phase, setPhase] = useState<AccessPhase>("BOOTING");
@@ -45,7 +63,12 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
   const [name, setName] = useState("");
   const [authError, setAuthError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const destinationRef = useRef("/app");
   const mountedRef = useRef(true);
+
+  function completeAccess() {
+    window.location.replace(destinationRef.current);
+  }
 
   async function checkCloud(urlValue: string, resumeIfAuthenticated: boolean) {
     const url = normalizeUrl(urlValue);
@@ -56,7 +79,7 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
     setApiVerified(false);
     setAuthError("");
     try {
-      await verifyApi(url);
+      await verifyCloudConnection(url);
       if (!mountedRef.current) return;
       manager.setCloudApiUrl(url);
       setCloudApiUrl(url);
@@ -68,10 +91,10 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
       setCloudUser(user);
       if (user && resumeIfAuthenticated) {
         await manager.switchMode("CLOUD");
-        if (mountedRef.current) setReady(true);
-      } else {
-        setPhase("AUTH");
+        completeAccess();
+        return;
       }
+      setPhase("AUTH");
     } catch (error) {
       if (!mountedRef.current) return;
       setConnectionState("ERROR");
@@ -83,6 +106,7 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     mountedRef.current = true;
+    destinationRef.current = getDestination();
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
     const initialUrl = getCloudApiUrl();
@@ -90,44 +114,30 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
     setMode(initialMode);
     setApiUrl(initialUrl);
 
-    if (initialMode === "LOCAL") {
-      void manager.switchMode("LOCAL").then(() => {
-        if (mountedRef.current) setReady(true);
-      });
+    if (nativeRuntime && initialMode === "LOCAL") {
+      setPhase("LOCAL");
     } else {
-      void checkCloud(initialUrl, true);
+      void checkCloud(initialUrl, !isModeSwitchRequested());
     }
 
-    const openAccessGate = () => {
-      setReady(false);
-      const currentMode: DataMode = isNativeAppRuntime() ? getCurrentDataMode() : "CLOUD";
-      setMode(currentMode);
-      if (currentMode === "LOCAL") {
-        setPhase("LOCAL");
-      } else {
-        void checkCloud(getCloudApiUrl(), false);
-      }
-    };
-    window.addEventListener("stark:open-access-gate", openAccessGate);
     return () => {
       mountedRef.current = false;
-      window.removeEventListener("stark:open-access-gate", openAccessGate);
     };
   }, []);
 
   async function enterLocalMode() {
     if (!native) return;
     await manager.switchMode("LOCAL");
-    window.location.reload();
+    completeAccess();
   }
 
-  async function continueCloud(reload = true) {
+  async function continueCloud() {
     if (!apiVerified || !cloudUser) return;
-    setCloudApiUrl(normalizeUrl(apiUrl));
-    manager.setCloudApiUrl(normalizeUrl(apiUrl));
+    const url = normalizeUrl(apiUrl);
+    setCloudApiUrl(url);
+    manager.setCloudApiUrl(url);
     await manager.switchMode("CLOUD");
-    if (reload) window.location.reload();
-    else setReady(true);
+    completeAccess();
   }
 
   async function submitAuth() {
@@ -147,7 +157,7 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
       setCloudUser(user);
       setCloudApiUrl(url);
       await manager.switchMode("CLOUD");
-      window.location.reload();
+      completeAccess();
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : "登录失败，请检查云端服务");
     } finally {
@@ -176,8 +186,6 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
     setPhase("AUTH");
   }
 
-  if (ready) return <>{children}</>;
-
   return (
     <div className="app-access-shell">
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
@@ -187,7 +195,7 @@ export function AppAccessGate({ children }: { children: React.ReactNode }) {
         <p className="app-access-intro">先选择数据模式，再验证服务和账户。</p>
 
         <div className={`app-access-mode-switch${native ? "" : " single"}`} aria-label="选择数据模式">
-          {native ? <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => { setMode("LOCAL"); setPhase("LOCAL"); setCloudUser(null); }}>本地模式</button> : null}
+          {native ? <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => { setMode("LOCAL"); setPhase("LOCAL"); }}>本地模式</button> : null}
           <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={switchToCloud}>云端模式</button>
         </div>
 

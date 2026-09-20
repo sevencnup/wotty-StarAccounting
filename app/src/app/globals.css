@@ -4600,6 +4600,17 @@ button.stark-compass-card {
     linear-gradient(145deg, #f4f8fc 0%, #eaf1f8 100%);
 }
 
+.app-route-access-loading {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f4f8fc;
+  color: #5d7187;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .app-access-card {
   width: min(100%, 440px);
   padding: 34px 28px 28px;

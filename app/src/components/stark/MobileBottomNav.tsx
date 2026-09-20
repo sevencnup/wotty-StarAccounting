@@ -5,12 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const NAV_ITEMS = [
-  { href: "/", label: "首页", icon: "/nav-icons/home.png" },
-  { href: "/consumption", label: "消费", icon: "/nav-icons/Consumption.png" },
-  { href: "/savings", label: "储蓄", icon: "/nav-icons/Savings.png" },
-  { href: "/loans", label: "贷款", icon: "/nav-icons/loan.png" },
-  { href: "/assets", label: "资产", icon: "/nav-icons/assets.png" },
-  { href: "/accounts", label: "设置", icon: "/nav-icons/setup.png" },
+  { href: "/app", label: "首页", icon: "/nav-icons/home.png" },
+  { href: "/app/consumption", label: "消费", icon: "/nav-icons/Consumption.png" },
+  { href: "/app/savings", label: "储蓄", icon: "/nav-icons/Savings.png" },
+  { href: "/app/loans", label: "贷款", icon: "/nav-icons/loan.png" },
+  { href: "/app/assets", label: "资产", icon: "/nav-icons/assets.png" },
+  { href: "/app/accounts", label: "设置", icon: "/nav-icons/setup.png" },
 ] as const;
 
 export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target: string) => void }) {
@@ -20,7 +20,7 @@ export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target
     <nav className="mobile-bottom-nav" aria-label="主导航">
       <div className="mobile-bottom-nav-inner">
         {NAV_ITEMS.map((item) => {
-          const active = item.href === "/" ? pathname === "/" || pathname.startsWith("/budgets") : pathname.startsWith(item.href);
+          const active = item.href === "/app" ? pathname === "/app" || pathname === "/app/" || pathname.startsWith("/app/budgets") : pathname.startsWith(item.href);
           return (
             <Link
               key={item.href}

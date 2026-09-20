@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import packageInfo from "../../../../package.json";
+import packageInfo from "../../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -262,7 +262,7 @@ export default function AccountsPage() {
       <PageTopBar title="设置" />
 
       <section className="settings-center-group">
-        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={() => window.dispatchEvent(new Event("stark:open-access-gate"))} />
+        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={() => window.location.assign("/?next=/app/accounts&switchMode=1")} />
         <SettingsRow type="IMPORT" title="导入账单" value="微信 / 支付宝" onClick={() => setActivePanel("IMPORT")} />
         <SettingsRow type="EXPORT" title="导出账单" value="CSV 文件" onClick={() => { setExportMessage("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开"); setActivePanel("EXPORT"); }} />
       </section>

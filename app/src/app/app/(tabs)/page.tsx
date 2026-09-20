@@ -318,7 +318,7 @@ function StarkCrystalHero({
                 {translateValue("发薪日", locale)} {salaryDay}{locale === "en-US" ? "" : "号"} ›
               </button>
             ) : (
-              <Link href="/consumption" className="stark-detail-arrow">
+              <Link href="/app/consumption" className="stark-detail-arrow">
                 {translateValue("查看明细分析", locale)} <ChevronRightIcon size={12} />
               </Link>
             )}
@@ -523,7 +523,7 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 
   return (
     <div className="stark-compass-matrix">
-      <Link href="/assets" className="stark-compass-card asset">
+      <Link href="/app/assets" className="stark-compass-card asset">
         <div className="compass-header">
           <span className="compass-icon-wrapper asset">
             <ShieldCheckIcon size={14} strokeWidth={2.2} color="#059669" />
@@ -555,7 +555,7 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
         </div>
       </button>
 
-      <Link href="/loans" className="stark-compass-card loan">
+      <Link href="/app/loans" className="stark-compass-card loan">
         <div className="compass-header">
           <span className="compass-icon-wrapper loan">
             <CreditCardIcon size={14} strokeWidth={2.2} color="#e11d48" />
@@ -571,7 +571,7 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
         </div>
       </Link>
 
-      <Link href="/savings" className="stark-compass-card saving">
+      <Link href="/app/savings" className="stark-compass-card saving">
         <div className="compass-header">
           <span className="compass-icon-wrapper saving">
             <PiggyBankIcon size={14} strokeWidth={2.2} color="#d97706" />
@@ -619,7 +619,7 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
           <strong>{translateValue(structureLabel, locale)}</strong>
           <span className="category-sub">{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</span>
         </div>
-        <Link href="/consumption" className="category-all-link">
+        <Link href="/app/consumption" className="category-all-link">
           {translateValue("分类明细", locale)} <ChevronRightIcon size={12} />
         </Link>
       </div>
@@ -641,7 +641,7 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
 
             <div className="category-items-list">
               {ratios.map((item) => (
-                <Link href="/consumption" key={item.name} className="category-grid-item">
+                <Link href="/app/consumption" key={item.name} className="category-grid-item">
                   <div className="category-item-top">
                     <span className="category-dot" style={{ background: item.color }} />
                     <span className="category-name">{translateValue(item.name, locale)}</span>
@@ -703,7 +703,7 @@ function SmartAdvisoryCard({ summary, reportingMonth, locale }: { summary: HomeS
           <span className="tip-bullet">2</span>
           <p>
             {locale === "en-US" ? <>Remaining total budget <b>¥{formatMoney(remainingBudget)}</b>. Consider directing the surplus to </> : <>剩余总预算 <b>¥{formatMoney(remainingBudget)}</b>，建议将富余资金分配至</>}
-            <Link href="/savings" className="advisory-inline-link">{translateText("储蓄计划 ›", locale)}</Link>
+            <Link href="/app/savings" className="advisory-inline-link">{translateText("储蓄计划 ›", locale)}</Link>
           </p>
         </div>
       </div>
@@ -941,7 +941,7 @@ export function HomeDashboard() {
           <code>{getCloudApiUrl()}</code>
           <div className="home-data-error-actions">
             <button type="button" onClick={() => setLoadVersion((version) => version + 1)}>重新加载</button>
-            <Link href="/accounts">检查数据源设置</Link>
+            <Link href="/app/accounts">检查数据源设置</Link>
           </div>
         </section>
       </div>

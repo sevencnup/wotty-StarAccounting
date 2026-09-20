@@ -32,7 +32,7 @@ export function BudgetManagementRouteSheet() {
     // The budget screen is a route-backed sheet, but it can also be opened
     // directly (for example after a refresh). Replacing the route avoids
     // navigating back to an empty document or an unrelated history entry.
-    router.replace("/");
+    router.replace("/app");
   }
 
   return (

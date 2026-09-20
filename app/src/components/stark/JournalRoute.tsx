@@ -36,7 +36,7 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
 
   function closePanel() {
     if (resolvedVariant === "savings") {
-      window.location.replace("/savings/");
+      window.location.replace("/app/savings/");
       return;
     }
     window.history.back();

@@ -30,7 +30,7 @@ export function PageDataError({ title, onRetry }: { title: string; onRetry?: () 
         {isCloud ? <code>{getCloudApiUrl()}</code> : null}
         <div className="home-data-error-actions">
           {onRetry ? <button type="button" onClick={onRetry}>重新加载</button> : null}
-          <Link href="/accounts">检查数据源设置</Link>
+          <Link href="/app/accounts">检查数据源设置</Link>
         </div>
       </section>
     </div>
