@@ -9,6 +9,7 @@ import { MonthPicker } from "@/components/stark/MonthPicker";
 import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
 import { JournalPanel } from "@/components/stark/JournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
@@ -106,6 +107,7 @@ export default function ConsumptionPage() {
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [reportingMonth, setReportingMonth] = useState("2026-01");
+  const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [accountId, setAccountId] = useState(() => getCurrentAccountId());
   const [monthReady, setMonthReady] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("expense");
@@ -134,10 +136,14 @@ export default function ConsumptionPage() {
     let active = true;
     setLoading(true);
     setLoadError(false);
-    void getTransactionsForReportingPeriod(accountId, reportingMonth)
-      .then((data) => {
+    void Promise.all([
+      getTransactionsForReportingPeriod(accountId, reportingMonth),
+      loadAvailableTransactionMonths(repo, accountId),
+    ])
+      .then(([data, loadedAvailableMonths]) => {
         if (!active) return;
         setTransactions(data);
+        setAvailableMonths(loadedAvailableMonths);
       })
       .catch(() => {
         if (active) setLoadError(true);
@@ -152,9 +158,14 @@ export default function ConsumptionPage() {
     if (!monthReady) return;
     let active = true;
     const reload = () => {
-      void getTransactionsForReportingPeriod(accountId, reportingMonth)
-        .then((data) => {
-          if (active) setTransactions(data);
+      void Promise.all([
+        getTransactionsForReportingPeriod(accountId, reportingMonth),
+        loadAvailableTransactionMonths(repo, accountId),
+      ])
+        .then(([data, loadedAvailableMonths]) => {
+          if (!active) return;
+          setTransactions(data);
+          setAvailableMonths(loadedAvailableMonths);
         })
         .catch(() => {
           if (active) setLoadError(true);
@@ -381,6 +392,7 @@ export default function ConsumptionPage() {
             onChange={handleReportingMonthChange}
             ariaLabel={locale === "en-US" ? "Select spending month" : "选择消费统计月份"}
             triggerClassName="consumption-period-button"
+            availableMonths={availableMonths}
           >
             <span>{reportingPeriodLabel(reportingMonth, locale)}</span>
             <ChevronDownIcon />

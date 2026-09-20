@@ -17,12 +17,14 @@ export function MonthPicker({
   onChange,
   ariaLabel,
   triggerClassName,
+  availableMonths,
   children,
 }: {
   value: string;
   onChange: (month: string) => void;
   ariaLabel: string;
   triggerClassName: string;
+  availableMonths?: ReadonlySet<string>;
   children: ReactNode;
 }) {
   const selectedYear = Number(value.slice(0, 4));
@@ -77,12 +79,14 @@ export function MonthPicker({
   }
 
   function selectMonth(month: number) {
+    if (availableMonths && !availableMonths.has(monthKey(visibleYearRef.current, month))) return;
     setOpen(false);
     onChange(monthKey(visibleYearRef.current, month));
     window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   function selectYear() {
+    if (availableMonths && !MONTHS.some((month) => availableMonths.has(monthKey(visibleYearRef.current, month)))) return;
     setOpen(false);
     onChange(String(visibleYearRef.current));
     window.requestAnimationFrame(() => triggerRef.current?.focus());
@@ -158,8 +162,9 @@ export function MonthPicker({
 
                 <button
                   type="button"
-                  className={selectedMonth === null && visibleYear === selectedYear ? "reporting-year-option selected" : "reporting-year-option"}
+                  className={`${selectedMonth === null && visibleYear === selectedYear ? "reporting-year-option selected" : "reporting-year-option"}${availableMonths && !MONTHS.some((month) => availableMonths.has(monthKey(visibleYear, month))) ? " unavailable" : ""}`}
                   aria-pressed={selectedMonth === null && visibleYear === selectedYear}
+                  disabled={Boolean(availableMonths && !MONTHS.some((month) => availableMonths.has(monthKey(visibleYear, month))))}
                   onClick={selectYear}
                 >
                   全年
@@ -168,14 +173,18 @@ export function MonthPicker({
                 <div className="reporting-month-grid" role="grid" aria-label={`${visibleYear}年月份`}>
                   {MONTHS.map((month) => {
                     const selected = visibleYear === selectedYear && month === selectedMonth;
+                    const available = !availableMonths || availableMonths.has(monthKey(visibleYear, month));
                     return (
                       <button
                         key={month}
-                        ref={selected ? selectedMonthRef : undefined}
+                        ref={selected && available ? selectedMonthRef : undefined}
                         type="button"
                         role="gridcell"
-                        className={selected ? "selected" : ""}
+                        className={`${selected ? "selected" : ""}${available ? "" : " unavailable"}`}
                         aria-selected={selected}
+                        aria-disabled={!available}
+                        disabled={!available}
+                        title={available ? undefined : "暂无账单"}
                         onClick={() => selectMonth(month)}
                       >
                         {month}月

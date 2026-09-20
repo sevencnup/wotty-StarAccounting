@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { BottomSheet } from "@/components/stark/BottomSheet";
@@ -183,6 +184,7 @@ function StarkCrystalHero({
   transactionCount,
   reportingMonth,
   onReportingMonthChange,
+  availableMonths,
 }: {
   summary: HomeSummary;
   salaryDay: number;
@@ -192,6 +194,7 @@ function StarkCrystalHero({
   transactionCount: number;
   reportingMonth: string;
   onReportingMonthChange: (month: string) => void;
+  availableMonths: ReadonlySet<string>;
 }) {
   const locale = useAppLocale();
   const monthLabel = isReportingYearKey(reportingMonth)
@@ -227,6 +230,7 @@ function StarkCrystalHero({
           onChange={onReportingMonthChange}
           ariaLabel={locale === "en-US" ? "Select home reporting month" : "选择首页统计月份"}
           triggerClassName="stark-period-badge"
+          availableMonths={availableMonths}
         >
           <span>{monthLabel}</span>
           <ChevronDownIcon size={14} />
@@ -812,6 +816,7 @@ export function HomeDashboard() {
   const [loadError, setLoadError] = useState("");
   const [loadVersion, setLoadVersion] = useState(0);
   const [reportingMonth, setReportingMonth] = useState("2026-01");
+  const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [monthReady, setMonthReady] = useState(false);
   const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
@@ -848,9 +853,13 @@ export function HomeDashboard() {
             nextMonthKey(reportingMonth),
             ...(b.some((budget) => budget.period === "YEARLY") ? selectedYearMonths : []),
           ])];
-        const monthlyTransactions = await repo.getTransactionsByMonths(accountId, monthKeys);
+        const [monthlyTransactions, loadedAvailableMonths] = await Promise.all([
+          repo.getTransactionsByMonths(accountId, monthKeys),
+          loadAvailableTransactionMonths(repo, accountId),
+        ]);
         if (!active) return;
         setTransactions(monthlyTransactions.flat());
+        setAvailableMonths(loadedAvailableMonths);
         setAssets(a);
         setBudgets(b);
         setLoans(l);
@@ -961,6 +970,7 @@ export function HomeDashboard() {
         transactionCount={currentTransactions.length}
         reportingMonth={reportingMonth}
         onReportingMonthChange={handleReportingMonthChange}
+        availableMonths={availableMonths}
       />
 
       {/* 本月资金分配 */}
