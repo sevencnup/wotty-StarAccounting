@@ -34,14 +34,10 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 import kotlinx.datetime.Clock
 import java.math.BigDecimal
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
-import java.util.Properties
 
 private val json = Json { ignoreUnknownKeys = true }
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -78,17 +74,8 @@ internal fun reportingMonthRange(month: String): ReportingMonthRange {
 
 internal fun loadDatabaseSettings(
     environment: Map<String, String> = System.getenv(),
-    userHome: Path = Path.of(System.getProperty("user.home")),
 ): DatabaseSettings {
-    val properties = Properties()
-    val configPath = userHome.resolve(".wotty-stark").resolve("db.properties")
-    if (Files.isRegularFile(configPath)) {
-        Files.newBufferedReader(configPath, StandardCharsets.UTF_8).use(properties::load)
-    }
-
-    fun value(key: String): String? =
-        environment[key]?.trim()?.takeIf(String::isNotEmpty)
-            ?: properties.getProperty(key)?.trim()?.takeIf(String::isNotEmpty)
+    fun value(key: String): String? = environment[key]?.trim()?.takeIf(String::isNotEmpty)
 
     return DatabaseSettings(
         jdbcUrl = value("DATABASE_URL") ?: error("Missing database setting: DATABASE_URL"),

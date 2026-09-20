@@ -70,22 +70,7 @@ DATABASE_URL=jdbc:mysql://mysql:3306/star_accounting
 
 不要把真实密码写入 Dockerfile、镜像或 Git 仓库，应通过部署环境变量、Compose 的 `.env` 文件或密钥管理服务注入。
 
-### 方式三：用户目录配置文件（兼容方式）
-
-应用会读取运行后端的系统用户目录下的 `.wotty-stark/db.properties`：
-
-- Linux：`~/.wotty-stark/db.properties`
-- Windows：`%USERPROFILE%\\.wotty-stark\\db.properties`
-
-文件内容：
-
-```properties
-DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
-DB_USER=accounting
-DB_PASSWORD=请替换为数据库密码
-```
-
-`DB_USER` 不填写时默认使用 `root`；`DATABASE_URL` 和 `DB_PASSWORD` 必须提供。
+本地开发和 Docker API 都只读取进程环境变量。执行 `pnpm dev` 时，项目根目录 `.env` 会由开发脚本自动加载；如果没有 `.env` 或对应环境变量，API 不会读取其他本机配置文件，数据库状态会为 `db:false`。
 
 `JWT_SECRET` 用于签发云端登录令牌。多人部署时必须设置为至少 32 位的随机字符串，部署后不要随意更换，否则已有登录状态会失效。
 
