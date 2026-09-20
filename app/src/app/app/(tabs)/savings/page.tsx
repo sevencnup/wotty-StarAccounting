@@ -120,7 +120,7 @@ export default function SavingsPage() {
     <div className="page-stack savings-dashboard-page">
       <PageTopBar title="储蓄" />
 
-      <aside className="savings-planning-notice" role="note">
+      <aside className="financial-planning-notice" role="note">
         <strong>规划提醒</strong>
         <p>本项目只用于规划，不能实际存入资金，请合理规划资金存放。</p>
       </aside>

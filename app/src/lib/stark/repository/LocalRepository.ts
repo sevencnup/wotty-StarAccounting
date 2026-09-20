@@ -14,7 +14,7 @@ import type {
   User,
 } from "@/lib/stark/models/types";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
-import { deleteRecord, getAllRecords, getRecord, putManyRecords, putRecord, type StoreName } from "@/lib/stark/storage/indexeddb";
+import { deleteRecord, deleteSavingsGoalAndPlans, getAllRecords, getRecord, putManyRecords, putRecord, type StoreName } from "@/lib/stark/storage/indexeddb";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { isLocalDemoSavingsGoal, LOCAL_DEMO_RECORD_IDS } from "@/lib/stark/repository/local-demo-data";
@@ -250,7 +250,7 @@ export class LocalRepository implements DataRepository {
 
   async deleteSavingsGoal(id: string) {
     await this.ensureSeeded();
-    await deleteRecord("savingsGoals", id);
+    await deleteSavingsGoalAndPlans(id);
   }
 
   async getSavingsPlans(goalId: string) {

@@ -541,7 +541,10 @@ object DatabaseFactory {
             "assets" -> Assets.deleteWhere { Assets.id eq id }
             "budgets" -> Budgets.deleteWhere { Budgets.id eq id }
             "loans" -> Loans.deleteWhere { Loans.id eq id }
-            "savingsGoals" -> SavingsGoals.deleteWhere { SavingsGoals.id eq id }
+            "savingsGoals" -> {
+                SavingsPlans.deleteWhere { SavingsPlans.goalId eq id }
+                SavingsGoals.deleteWhere { SavingsGoals.id eq id }
+            }
             "savingsPlans" -> SavingsPlans.deleteWhere { SavingsPlans.id eq id }
             "categoryRules" -> TransactionCategoryRules.deleteWhere { TransactionCategoryRules.id eq id }
             "importErrorLogs" -> ImportErrorLogs.deleteWhere { ImportErrorLogs.id eq id }

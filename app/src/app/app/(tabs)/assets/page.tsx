@@ -164,6 +164,11 @@ export default function AssetsPage() {
     <div className="page-stack finance-page assets-page">
       <PageTopBar title="资产" />
 
+      <aside className="financial-planning-notice" role="note">
+        <strong>规划提醒</strong>
+        <p>本项目只用于规划，不能实际存入资金，请合理规划资金存放。</p>
+      </aside>
+
       {/* 净资产驾驶舱：核心总览 */}
       <section className="asset-cockpit-hero">
         <div className="finance-eyebrow-row">

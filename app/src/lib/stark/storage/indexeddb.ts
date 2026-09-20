@@ -143,3 +143,24 @@ export async function deleteRecord(storeName: StoreName, id: string) {
     store.delete(id);
   });
 }
+
+/** 在同一 IndexedDB 事务内删除储蓄目标及其全部月度计划。 */
+export async function deleteSavingsGoalAndPlans(goalId: string) {
+  const db = await openDb();
+  return new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction(["savingsGoals", "savingsPlans"], "readwrite");
+    const goals = transaction.objectStore("savingsGoals");
+    const plans = transaction.objectStore("savingsPlans");
+    const request = plans.getAll();
+
+    request.onsuccess = () => {
+      const relatedPlans = (request.result as SavingsPlan[]).filter((plan) => plan.goalId === goalId);
+      relatedPlans.forEach((plan) => plans.delete(plan.id));
+      goals.delete(goalId);
+    };
+    request.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB 删除储蓄目标失败"));
+    transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB 删除储蓄目标已取消"));
+  });
+}

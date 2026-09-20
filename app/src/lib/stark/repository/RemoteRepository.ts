@@ -197,7 +197,10 @@ export class RemoteRepository implements DataRepository {
     return await this.request<SavingsGoal[]>(savingsGoalsPath(accountId));
   }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
-  async deleteSavingsGoal(id: string) { await this.delete("savingsGoals", id); }
+  async deleteSavingsGoal(id: string) {
+    this.syncCache.clear();
+    await this.request<void>(`/api/savings-goals/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
   async getSavingsPlans(goalId: string) {
     return await this.request<SavingsPlan[]>(savingsPlansPath(goalId));
   }

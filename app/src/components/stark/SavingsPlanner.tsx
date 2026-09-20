@@ -168,6 +168,7 @@ export function SavingsPlanner({
   const [monthToAdd, setMonthToAdd] = useState("");
   const [hydrating, setHydrating] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState("");
   const [goalMissing, setGoalMissing] = useState(false);
   const loadStartedRef = useRef(false);
@@ -455,7 +456,7 @@ export function SavingsPlanner({
   }
 
   async function savePlans() {
-    if (saving || goalMissing) return;
+    if (saving || deleting || goalMissing) return;
     setSaving(true);
     try {
       const now = nowText();
@@ -527,6 +528,28 @@ export function SavingsPlanner({
       setNotice("保存失败，请稍后重试");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteGoal() {
+    if (!savingsGoalId || deleting || saving) return;
+    const planCount = persistedPlansRef.current.length;
+    const planDescription = planCount ? `以及其 ${planCount} 条月度储蓄计划` : "";
+    if (!window.confirm(`确定删除储蓄目标“${goal.name}”${planDescription}吗？此操作无法恢复。`)) return;
+
+    setDeleting(true);
+    setNotice("");
+    try {
+      await repo.deleteSavingsGoal(goal.id);
+      persistedPlansRef.current = [];
+      draftSubmittedRef.current = true;
+      clearNewEntryDraft("savings", draftScope);
+      window.dispatchEvent(new Event("stark:savings-saved"));
+      setDeleting(false);
+      onSaved?.();
+    } catch (error) {
+      setNotice(error instanceof Error && error.message ? `删除失败：${error.message}` : "删除失败，请稍后重试");
+      setDeleting(false);
     }
   }
 
@@ -696,9 +719,17 @@ export function SavingsPlanner({
           </table>
         </div>
 
+        {savingsGoalId ? <section className="savings-goal-danger-zone">
+          <div>
+            <strong>删除储蓄目标</strong>
+            <p>将同时删除该目标下的 {persistedPlansRef.current.length} 条月度储蓄计划，此操作无法恢复。</p>
+          </div>
+          <button type="button" disabled={saving || deleting} onClick={() => void deleteGoal()}>{deleting ? "删除中..." : "删除目标"}</button>
+        </section> : null}
+
         <div className="savings-plan-footer">
           <span style={notice === "请先输入支出名称" || notice === "列已存在，请换一个名称" ? { fontSize: 9 } : undefined}>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
-          <button type="button" className="primary-button" disabled={saving || goalMissing} onClick={() => void savePlans()}>{saving ? "保存中" : savingsGoalId ? "保存修改" : "保存计划"}</button>
+          <button type="button" className="primary-button" disabled={saving || deleting || goalMissing} onClick={() => void savePlans()}>{saving ? "保存中" : savingsGoalId ? "保存修改" : "保存计划"}</button>
         </div>
       </section>
     </div>
