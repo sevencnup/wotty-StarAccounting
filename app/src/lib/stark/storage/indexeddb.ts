@@ -5,6 +5,7 @@ import type {
   CategoryRule,
   ExchangeRate,
   ImportErrorLog,
+  ImportResult,
   Loan,
   SavingsGoal,
   SavingsPlan,
@@ -162,5 +163,88 @@ export async function deleteSavingsGoalAndPlans(goalId: string) {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB 删除储蓄目标失败"));
     transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB 删除储蓄目标已取消"));
+  });
+}
+
+/**
+ * 在同一 IndexedDB 事务内导入账单，并对其中已关联贷款的还款更新贷款余额。
+ * 只会处理本次通过订单号去重后真正写入的流水，避免重复导入再次冲销贷款。
+ */
+export async function importTransactionsAndApplyLoanRepayments(transactions: Transaction[]): Promise<ImportResult> {
+  if (!transactions.length) return { imported: 0, skipped: 0, errors: 0, loanRepayments: 0, loanRepaymentAmount: 0 };
+  const db = await openDb();
+  return new Promise<ImportResult>((resolve, reject) => {
+    const transaction = db.transaction(["transactions", "loans"], "readwrite");
+    const transactionStore = transaction.objectStore("transactions");
+    const loanStore = transaction.objectStore("loans");
+    const existingRequest = transactionStore.getAll();
+    const loansRequest = loanStore.getAll();
+    let existingTransactions: Transaction[] | null = null;
+    let loans: Loan[] | null = null;
+    let result: ImportResult | null = null;
+
+    const applyImport = () => {
+      if (!existingTransactions || !loans) return;
+      const accountId = transactions[0]?.accountId;
+      const existingOrderIds = new Set(
+        existingTransactions
+          .filter((item) => item.accountId === accountId)
+          .map((item) => item.orderId)
+          .filter((item): item is string => Boolean(item)),
+      );
+      const pending = transactions.filter((item) => {
+        if (!item.orderId) return true;
+        if (existingOrderIds.has(item.orderId)) return false;
+        existingOrderIds.add(item.orderId);
+        return true;
+      });
+      const loanById = new Map(loans.filter((loan) => loan.accountId === accountId).map((loan) => [loan.id, { ...loan }]));
+      let loanRepayments = 0;
+      let loanRepaymentAmount = 0;
+
+      pending.forEach((item) => {
+        transactionStore.put(item);
+        if (item.type !== "REPAYMENT" || !item.loanId) return;
+        const loan = loanById.get(item.loanId);
+        if (!loan || loan.status === "PAID_OFF" || loan.remainingAmount <= 0) return;
+        const reducedAmount = Math.min(item.amount, loan.remainingAmount);
+        if (reducedAmount <= 0) return;
+        loan.remainingAmount = Math.max(0, loan.remainingAmount - reducedAmount);
+        if (loan.monthlyPayment > 0 && item.amount >= loan.monthlyPayment) {
+          loan.paidPeriods = Math.min(loan.periods, loan.paidPeriods + 1);
+        }
+        loan.status = loan.remainingAmount <= 0 ? "PAID_OFF" : loan.status;
+        loan.updatedAt = item.updatedAt;
+        loanRepayments += 1;
+        loanRepaymentAmount += reducedAmount;
+      });
+      loanById.forEach((loan, id) => {
+        const original = loans?.find((item) => item.id === id);
+        if (original && original !== loan && (original.remainingAmount !== loan.remainingAmount || original.paidPeriods !== loan.paidPeriods || original.status !== loan.status)) {
+          loanStore.put(loan);
+        }
+      });
+      result = {
+        imported: pending.length,
+        skipped: transactions.length - pending.length,
+        errors: 0,
+        loanRepayments,
+        loanRepaymentAmount,
+      };
+    };
+
+    existingRequest.onsuccess = () => {
+      existingTransactions = (existingRequest.result ?? []) as Transaction[];
+      applyImport();
+    };
+    loansRequest.onsuccess = () => {
+      loans = (loansRequest.result ?? []) as Loan[];
+      applyImport();
+    };
+    existingRequest.onerror = () => transaction.abort();
+    loansRequest.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve(result ?? { imported: 0, skipped: 0, errors: 0 });
+    transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB 账单导入失败"));
+    transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB 账单导入已取消"));
   });
 }

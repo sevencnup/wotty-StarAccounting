@@ -52,6 +52,7 @@ type AssetDraft = {
 
 type LoanDraft = {
   loanPlatform: string;
+  loanMatchKeywords: string;
   loanTotalAmount: string;
   loanRemainingAmount: string;
   loanMonthlyPayment: string;
@@ -114,6 +115,7 @@ export function JournalPanel({
   const [assetBalance, setAssetBalance] = useState("");
   const [assetType, setAssetType] = useState<AssetType>("ALIPAY");
   const [loanPlatform, setLoanPlatform] = useState("");
+  const [loanMatchKeywords, setLoanMatchKeywords] = useState("");
   const [loanTotalAmount, setLoanTotalAmount] = useState("");
   const [loanRemainingAmount, setLoanRemainingAmount] = useState("");
   const [loanMonthlyPayment, setLoanMonthlyPayment] = useState("");
@@ -163,6 +165,7 @@ export function JournalPanel({
     }
     if (loan) {
       setLoanPlatform(loan.platform);
+      setLoanMatchKeywords(loan.matchKeywords ?? "");
       setLoanTotalAmount(String(loan.totalAmount));
       setLoanRemainingAmount(String(loan.remainingAmount));
       setLoanMonthlyPayment(String(loan.monthlyPayment));
@@ -209,6 +212,7 @@ export function JournalPanel({
       const draft = readNewEntryDraft<LoanDraft>(draftKind);
       if (draft) {
         setLoanPlatform(draft.loanPlatform);
+        setLoanMatchKeywords(draft.loanMatchKeywords ?? "");
         setLoanTotalAmount(draft.loanTotalAmount);
         setLoanRemainingAmount(draft.loanRemainingAmount);
         setLoanMonthlyPayment(draft.loanMonthlyPayment);
@@ -243,11 +247,11 @@ export function JournalPanel({
     if (draftKind === "asset") {
       saveNewEntryDraft(draftKind, { assetName, assetBalance, assetType } satisfies AssetDraft);
     } else if (draftKind === "loan") {
-      saveNewEntryDraft(draftKind, { loanPlatform, loanTotalAmount, loanRemainingAmount, loanMonthlyPayment, loanPeriods, loanDueDay } satisfies LoanDraft);
+      saveNewEntryDraft(draftKind, { loanPlatform, loanMatchKeywords, loanTotalAmount, loanRemainingAmount, loanMonthlyPayment, loanPeriods, loanDueDay } satisfies LoanDraft);
     } else {
       saveNewEntryDraft(draftKind, { type, amount, category, platform, merchant, description, date } satisfies JournalDraft);
     }
-  }, [assetBalance, assetName, assetType, date, description, draftKind, draftReady, isEditingEntity, isSavings, loanDueDay, loanMonthlyPayment, loanPeriods, loanPlatform, loanRemainingAmount, loanTotalAmount, amount, category, merchant, platform, type]);
+  }, [assetBalance, assetName, assetType, date, description, draftKind, draftReady, isEditingEntity, isSavings, loanDueDay, loanMatchKeywords, loanMonthlyPayment, loanPeriods, loanPlatform, loanRemainingAmount, loanTotalAmount, amount, category, merchant, platform, type]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setVisible(true));
@@ -516,7 +520,7 @@ export function JournalPanel({
       monthlyPayment: Number(loanMonthlyPayment) || 0,
       dueDate: Math.min(31, Math.max(1, Number(loanDueDay) || 20)),
       status: loan?.status ?? "ACTIVE",
-      matchKeywords: loan?.matchKeywords ?? null,
+      matchKeywords: loanMatchKeywords.trim() || null,
       createdAt: loan?.createdAt ?? now,
       updatedAt: now,
     });
@@ -524,6 +528,7 @@ export function JournalPanel({
     clearNewEntryDraft(draftKind);
     window.dispatchEvent(new Event("stark:loan-saved"));
     setLoanPlatform("");
+    setLoanMatchKeywords("");
     setLoanTotalAmount("");
     setLoanRemainingAmount("");
     setLoanMonthlyPayment("");
@@ -726,6 +731,16 @@ export function JournalPanel({
                   placeholder="如：建设银行房贷 / 招行车贷"
                   className="modern-form-input"
                 />
+              </div>
+              <div className="modern-form-group">
+                <label>账单匹配关键词（选填）</label>
+                <input
+                  value={loanMatchKeywords}
+                  onChange={(event) => setLoanMatchKeywords(event.target.value)}
+                  placeholder="如：招行信用卡 1234；多个关键词用逗号分隔"
+                  className="modern-form-input"
+                />
+                <small className="modern-form-tip">导入账单时，需同时命中还款字样和贷款名称/关键词才会自动冲销。</small>
               </div>
 
               <div className="modern-form-grid-2">

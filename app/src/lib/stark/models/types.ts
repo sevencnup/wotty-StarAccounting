@@ -204,6 +204,10 @@ export interface ImportResult {
   skipped: number;
   errors: number;
   failedRows?: ImportFailedRow[];
+  /** 本次实际导入并自动关联到贷款的还款流水数。 */
+  loanRepayments?: number;
+  /** 本次自动减少的贷款待还金额。 */
+  loanRepaymentAmount?: number;
 }
 
 export interface ImportFailedRow {

@@ -58,6 +58,8 @@ data class ImportTransactionsResponse(
     val skipped: Int,
     val errors: Int,
     val failedRows: List<ImportFailedRow> = emptyList(),
+    val loanRepayments: Int = 0,
+    val loanRepaymentAmount: Double = 0.0,
 )
 
 fun Routing.appRoutes() {
@@ -158,33 +160,28 @@ fun Route.transactionRoutes() {
         val userId = call.currentUserId()
         val accountId = call.request.queryParameters["accountId"] ?: "default"
         if (!call.ensureAccountAccess(userId, accountId)) return@post
-        val existing = DatabaseFactory.listTransactionOrderIds(accountId).toMutableSet()
-        var imported = 0
-        var skipped = 0
-        var errors = 0
-        val failedRows = mutableListOf<ImportFailedRow>()
-        items.forEachIndexed { index, element ->
-            runCatching {
-                val payload = element.jsonObject
-                val orderId = payload.jsonText("orderId")
-                if (!orderId.isNullOrBlank() && orderId in existing) {
-                    skipped++
-                } else {
-                    DatabaseFactory.upsertEntityPayload("transactions", payload, userId)
-                    if (!orderId.isNullOrBlank()) existing.add(orderId)
-                    imported++
-                }
-            }.onFailure { cause ->
-                errors++
-                failedRows += ImportFailedRow(
-                    lineNumber = index + 1,
-                    rawData = element.toString(),
-                    errorMessage = cause.message ?: "无法保存该行",
-                    errorType = "IMPORT",
-                )
-            }
-        }
-        call.respond(ImportTransactionsResponse(imported, skipped, errors, failedRows))
+        val result = DatabaseFactory.importTransactionsAndApplyLoanRepayments(
+            items.map { it.jsonObject },
+            accountId,
+            userId,
+        )
+        call.respond(
+            ImportTransactionsResponse(
+                imported = result.imported,
+                skipped = result.skipped,
+                errors = result.errors,
+                failedRows = result.failedRows.map { failure ->
+                    ImportFailedRow(
+                        lineNumber = failure.lineNumber,
+                        rawData = failure.rawData,
+                        errorMessage = failure.errorMessage,
+                        errorType = failure.errorType,
+                    )
+                },
+                loanRepayments = result.loanRepayments,
+                loanRepaymentAmount = result.loanRepaymentAmount,
+            ),
+        )
     }
 
     // DELETE /api/transactions/{id} - 删除交易

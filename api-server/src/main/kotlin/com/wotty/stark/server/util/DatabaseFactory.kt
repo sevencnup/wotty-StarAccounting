@@ -287,6 +287,22 @@ data class SyncRecordRow(
     val updatedAt: String,
 )
 
+data class TransactionImportFailure(
+    val lineNumber: Int,
+    val rawData: String,
+    val errorMessage: String,
+    val errorType: String,
+)
+
+data class TransactionImportResult(
+    val imported: Int,
+    val skipped: Int,
+    val errors: Int,
+    val failedRows: List<TransactionImportFailure>,
+    val loanRepayments: Int,
+    val loanRepaymentAmount: Double,
+)
+
 object DatabaseFactory {
     private fun environmentInt(name: String, default: Int, minimum: Int, maximum: Int): Int =
         System.getenv(name)?.toIntOrNull()?.coerceIn(minimum, maximum) ?: default
@@ -586,12 +602,63 @@ object DatabaseFactory {
         return JsonObject(values)
     }
 
-    fun listTransactionOrderIds(accountId: String): Set<String> = transaction {
-        Transactions.selectAll()
+    /**
+     * 导入流水与贷款冲销必须在同一事务完成：只有本次真正新增的关联还款，才会减少贷款余额。
+     */
+    fun importTransactionsAndApplyLoanRepayments(
+        items: List<JsonObject>,
+        accountId: String,
+        userId: String,
+    ): TransactionImportResult = transaction {
+        val existingOrderIds = Transactions.selectAll()
             .where { Transactions.accountId eq accountId }
-            .map { it[Transactions.orderId] ?: "" }
-            .filter { it.isNotBlank() }
-            .toSet()
+            .mapNotNull { it[Transactions.orderId] }
+            .toMutableSet()
+        var imported = 0
+        var skipped = 0
+        var errors = 0
+        var loanRepayments = 0
+        var loanRepaymentAmount = BigDecimal.ZERO
+        val failures = mutableListOf<TransactionImportFailure>()
+
+        items.forEachIndexed { index, payload ->
+            runCatching {
+                val orderId = payload.getNullableString("orderId")
+                if (!orderId.isNullOrBlank() && orderId in existingOrderIds) {
+                    skipped += 1
+                } else {
+                    val normalizedValues = payload.toMutableMap()
+                    normalizedValues["accountId"] = JsonPrimitive(accountId)
+                    normalizedValues["userId"] = JsonPrimitive(userId)
+                    val normalizedPayload = JsonObject(normalizedValues)
+                    validateImportedLoanRepayment(normalizedPayload, accountId, userId)
+                    upsertTransaction(normalizedPayload)
+                    val repaymentAmount = applyImportedLoanRepayment(normalizedPayload, accountId, userId)
+                    if (!orderId.isNullOrBlank()) existingOrderIds += orderId
+                    imported += 1
+                    if (repaymentAmount > BigDecimal.ZERO) {
+                        loanRepayments += 1
+                        loanRepaymentAmount += repaymentAmount
+                    }
+                }
+            }.onFailure { cause ->
+                errors += 1
+                failures += TransactionImportFailure(
+                    lineNumber = index + 1,
+                    rawData = payload.toString(),
+                    errorMessage = cause.message ?: "无法保存该行",
+                    errorType = "IMPORT",
+                )
+            }
+        }
+        TransactionImportResult(
+            imported = imported,
+            skipped = skipped,
+            errors = errors,
+            failedRows = failures,
+            loanRepayments = loanRepayments,
+            loanRepaymentAmount = loanRepaymentAmount.toDouble(),
+        )
     }
 
     fun listUsersRest(userId: String): List<JsonObject> = transaction {
@@ -966,7 +1033,45 @@ private fun upsertTransaction(payload: JsonObject) = upsertById(Transactions, Tr
         row[Transactions.remarkCategory] = payload.getNullableString("remarkCategory")
         row[Transactions.createdAt] = payload.getDateTime("createdAt")
         row[Transactions.updatedAt] = payload.getDateTime("updatedAt")
+}
+
+private fun validateImportedLoanRepayment(payload: JsonObject, accountId: String, userId: String) {
+    if (payload.getString("type") != "REPAYMENT") return
+    val loanId = payload.getNullableString("loanId") ?: return
+    require(payload.getDecimal("amount") > BigDecimal.ZERO) { "还款金额必须大于 0" }
+    val belongsToCurrentUser = Loans.selectAll().where {
+        (Loans.id eq loanId) and (Loans.accountId eq accountId) and (Loans.userId eq userId)
+    }.count() > 0
+    require(belongsToCurrentUser) { "关联贷款不存在或无权访问" }
+}
+
+/** 在当前数据库事务内更新一笔已关联贷款的还款；非关联流水返回 0。 */
+private fun applyImportedLoanRepayment(payload: JsonObject, accountId: String, userId: String): BigDecimal {
+    if (payload.getString("type") != "REPAYMENT") return BigDecimal.ZERO
+    val loanId = payload.getNullableString("loanId") ?: return BigDecimal.ZERO
+    val loan = Loans.selectAll().where {
+        (Loans.id eq loanId) and (Loans.accountId eq accountId) and (Loans.userId eq userId)
+    }.firstOrNull() ?: throw IllegalArgumentException("关联贷款不存在或无权访问")
+    val amount = payload.getDecimal("amount")
+    if (amount <= BigDecimal.ZERO) return BigDecimal.ZERO
+    val remainingAmount = loan[Loans.remainingAmount]
+    if (remainingAmount <= BigDecimal.ZERO || loan[Loans.status] == "PAID_OFF") return BigDecimal.ZERO
+    val reducedAmount = amount.min(remainingAmount)
+    val monthlyPayment = loan[Loans.monthlyPayment]
+    val paidPeriods = if (monthlyPayment > BigDecimal.ZERO && amount >= monthlyPayment) {
+        minOf(loan[Loans.periods], loan[Loans.paidPeriods] + 1)
+    } else {
+        loan[Loans.paidPeriods]
     }
+    val nextRemainingAmount = remainingAmount - reducedAmount
+    Loans.update({ Loans.id eq loanId }) { row ->
+        row[Loans.remainingAmount] = nextRemainingAmount
+        row[Loans.paidPeriods] = paidPeriods
+        row[Loans.status] = if (nextRemainingAmount <= BigDecimal.ZERO) "PAID_OFF" else loan[Loans.status]
+        row[Loans.updatedAt] = payload.getDateTime("updatedAt")
+    }
+    return reducedAmount
+}
 
 private fun upsertAsset(payload: JsonObject) = upsertById(Assets, Assets.id, payload.getString("id")) { row ->
         row[Assets.userId] = payload.getString("userId")

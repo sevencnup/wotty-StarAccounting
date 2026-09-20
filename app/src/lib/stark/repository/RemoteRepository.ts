@@ -169,10 +169,12 @@ export class RemoteRepository implements DataRepository {
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
     if (!transactions.length) return { imported: 0, skipped: 0, errors: 0 };
     const accountId = transactions[0].accountId;
-    return this.request<ImportResult>(transactionsImportPath(accountId), {
+    const result = await this.request<ImportResult>(transactionsImportPath(accountId), {
       method: "POST",
       body: JSON.stringify(transactions),
     });
+    this.syncCache.delete(accountId);
+    return result;
   }
 
   async getAssets(accountId: string) {

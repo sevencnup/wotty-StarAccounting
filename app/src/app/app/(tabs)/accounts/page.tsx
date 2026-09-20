@@ -13,6 +13,7 @@ import { createId } from "@/lib/stark/utils/id";
 import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
 import { serializeTransactionsToCsv } from "@/lib/stark/export/transaction-csv";
 import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
+import { matchImportedLoanRepayments } from "@/lib/stark/import/loan-repayment";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 import { AccountReconciliationSheet } from "@/components/stark/AccountReconciliationSheet";
 import { BottomSheet } from "@/components/stark/BottomSheet";
@@ -194,9 +195,20 @@ export default function AccountsPage() {
     setImportMessage(`正在导入 ${pendingBillImport.transactions.length} 笔${pendingBillImport.platform}账单...`);
     try {
       const repository = manager.getRepository();
-      const rules = await repository.getCategoryRules(getCurrentAccountId());
-      const result = await repository.importTransactions(applyCategoryRules(pendingBillImport.transactions, rules));
-      setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔${result.errors ? "，失败行可再次确认导入" : ""}`);
+      const accountId = getCurrentAccountId();
+      const [rules, loans] = await Promise.all([
+        repository.getCategoryRules(accountId),
+        repository.getLoans(accountId),
+      ]);
+      const categorizedTransactions = applyCategoryRules(pendingBillImport.transactions, rules);
+      const matched = matchImportedLoanRepayments(categorizedTransactions, loans);
+      const result = await repository.importTransactions(matched.transactions);
+      const repaymentSummary = result.loanRepayments
+        ? `，自动关联 ${result.loanRepayments} 笔贷款还款${result.loanRepaymentAmount ? `（¥${result.loanRepaymentAmount.toFixed(2)}）` : ""}`
+        : "";
+      setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔${repaymentSummary}${result.errors ? "，失败行可再次确认导入" : ""}`);
+      if (result.imported) window.dispatchEvent(new Event("stark:transaction-saved"));
+      if (result.loanRepayments) window.dispatchEvent(new Event("stark:loan-saved"));
       if (result.errors > 0) {
         const now = nowText();
         const failedRows: ImportFailedRow[] = result.failedRows?.length

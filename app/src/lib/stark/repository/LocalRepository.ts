@@ -14,11 +14,10 @@ import type {
   User,
 } from "@/lib/stark/models/types";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
-import { deleteRecord, deleteSavingsGoalAndPlans, getAllRecords, getRecord, putManyRecords, putRecord, type StoreName } from "@/lib/stark/storage/indexeddb";
+import { deleteRecord, deleteSavingsGoalAndPlans, getAllRecords, getRecord, importTransactionsAndApplyLoanRepayments, putRecord, type StoreName } from "@/lib/stark/storage/indexeddb";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { isLocalDemoSavingsGoal, LOCAL_DEMO_RECORD_IDS } from "@/lib/stark/repository/local-demo-data";
-import { selectTransactionsForImport } from "@/lib/stark/repository/transaction-import";
 
 function uuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -177,16 +176,7 @@ export class LocalRepository implements DataRepository {
 
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
     await this.ensureSeeded();
-    const accountId = transactions[0]?.accountId ?? getCurrentAccountId();
-    const existing = (await getAllRecords<Transaction>("transactions"))
-      .filter((transaction) => transaction.accountId === accountId);
-    const { pending, skipped } = selectTransactionsForImport(transactions, existing);
-    await putManyRecords("transactions", pending);
-    return {
-      imported: pending.length,
-      skipped,
-      errors: 0,
-    };
+    return importTransactionsAndApplyLoanRepayments(transactions);
   }
 
   async getAssets(accountId: string) {
