@@ -71,3 +71,17 @@ test("uses a more specific keyword to distinguish loans from the same bank", () 
   );
   assert.equal(result?.id, "loan-card");
 });
+
+test("matches a manually categorized transfer when the custom category names the loan repayment", () => {
+  const result = findLoanForBillRepayment(
+    transaction({
+      type: "TRANSFER",
+      category: "转账",
+      merchant: "收款方",
+      paymentMethod: "微信零钱",
+      remarkCategory: "招商银行房贷还款",
+    }),
+    [loan({ platform: "招商银行房贷" })],
+  );
+  assert.equal(result?.id, "loan-cmb");
+});

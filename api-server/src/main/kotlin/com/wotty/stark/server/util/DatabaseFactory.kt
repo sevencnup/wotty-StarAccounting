@@ -303,6 +303,12 @@ data class TransactionImportResult(
     val loanRepaymentAmount: Double,
 )
 
+data class LoanRepaymentClassificationResult(
+    val applied: Int,
+    val amount: Double,
+    val skipped: Int,
+)
+
 object DatabaseFactory {
     private fun environmentInt(name: String, default: Int, minimum: Int, maximum: Int): Int =
         System.getenv(name)?.toIntOrNull()?.coerceIn(minimum, maximum) ?: default
@@ -659,6 +665,56 @@ object DatabaseFactory {
             loanRepayments = loanRepayments,
             loanRepaymentAmount = loanRepaymentAmount.toDouble(),
         )
+    }
+
+    /**
+     * 将已存在且未关联贷款的账单更新为还款流水，并在同一事务内冲销对应贷款。
+     */
+    fun applyLoanRepaymentClassifications(
+        items: List<JsonObject>,
+        accountId: String,
+        userId: String,
+    ): LoanRepaymentClassificationResult = transaction {
+        var applied = 0
+        var amount = BigDecimal.ZERO
+        var skipped = 0
+        items.forEach { payload ->
+            val transactionId = payload.getNullableString("id")
+            val loanId = payload.getNullableString("loanId")
+            if (transactionId.isNullOrBlank() || loanId.isNullOrBlank() || payload.getNullableString("type") != "REPAYMENT") {
+                skipped += 1
+                return@forEach
+            }
+            val current = Transactions.selectAll().where {
+                (Transactions.id eq transactionId) and (Transactions.accountId eq accountId) and (Transactions.userId eq userId)
+            }.firstOrNull()
+            if (current == null || current[Transactions.loanId] != null) {
+                skipped += 1
+                return@forEach
+            }
+            val loan = Loans.selectAll().where {
+                (Loans.id eq loanId) and (Loans.accountId eq accountId) and (Loans.userId eq userId)
+            }.firstOrNull()
+            if (loan == null || loan[Loans.status] == "PAID_OFF" || loan[Loans.remainingAmount] <= BigDecimal.ZERO) {
+                skipped += 1
+                return@forEach
+            }
+
+            val normalizedValues = payload.toMutableMap()
+            normalizedValues["accountId"] = JsonPrimitive(accountId)
+            normalizedValues["userId"] = JsonPrimitive(userId)
+            val normalizedPayload = JsonObject(normalizedValues)
+            validateImportedLoanRepayment(normalizedPayload, accountId, userId)
+            upsertTransaction(normalizedPayload)
+            val repaymentAmount = applyImportedLoanRepayment(normalizedPayload, accountId, userId)
+            if (repaymentAmount > BigDecimal.ZERO) {
+                applied += 1
+                amount += repaymentAmount
+            } else {
+                skipped += 1
+            }
+        }
+        LoanRepaymentClassificationResult(applied, amount.toDouble(), skipped)
     }
 
     fun listUsersRest(userId: String): List<JsonObject> = transaction {

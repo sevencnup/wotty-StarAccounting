@@ -210,6 +210,15 @@ export interface ImportResult {
   loanRepaymentAmount?: number;
 }
 
+export interface LoanRepaymentClassificationResult {
+  /** 本次新关联到贷款并实际冲销余额的账单数。 */
+  applied: number;
+  /** 本次实际减少的贷款待还金额。 */
+  amount: number;
+  /** 已有关联、缺少目标或不可处理而跳过的账单数。 */
+  skipped: number;
+}
+
 export interface ImportFailedRow {
   lineNumber: number;
   rawData: string;

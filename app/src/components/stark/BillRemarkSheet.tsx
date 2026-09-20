@@ -6,6 +6,7 @@ import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
 import { applyCategoryRule, buildRemarkTransactionSearchIndex, filterRemarkTransactionIndex, hasRemark, REMARK_SUGGESTIONS, type RemarkTransactionFilter } from "@/lib/stark/dashboard/remark";
+import { matchImportedLoanRepayments } from "@/lib/stark/import/loan-repayment";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { CategoryRule, Transaction } from "@/lib/stark/models";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
@@ -147,7 +148,17 @@ export function BillRemarkSheet() {
     const trimmed = value.trim();
     const updated: Transaction = { ...tx, remarkCategory: trimmed || null, updatedAt: nowText() };
     await repo.saveTransaction(updated);
-    setTransactions((prev) => prev.map((item) => (item.id === tx.id ? updated : item)));
+    const loans = await repo.getLoans(accountId);
+    const matched = matchImportedLoanRepayments([updated], loans).transactions[0];
+    let saved = updated;
+    if (matched.loanId) {
+      const result = await repo.applyLoanRepaymentClassifications([matched]);
+      if (result.applied) {
+        saved = matched;
+        window.dispatchEvent(new Event("stark:loan-saved"));
+      }
+    }
+    setTransactions((prev) => prev.map((item) => (item.id === tx.id ? saved : item)));
     setExpandedId(null);
     window.dispatchEvent(new Event("stark:transaction-saved"));
   }
@@ -160,7 +171,10 @@ export function BillRemarkSheet() {
     setSavingRule(true);
     setRuleMessage("正在匹配并应用流水...");
     try {
-      const allTransactions = await repo.getTransactions(accountId, 1, Number.MAX_SAFE_INTEGER);
+      const [allTransactions, loans] = await Promise.all([
+        repo.getTransactions(accountId, 1, Number.MAX_SAFE_INTEGER),
+        repo.getLoans(accountId),
+      ]);
 
       const timestamp = nowText();
       const existing = rules.find((rule) => sameKeyword(ruleKeyword(rule), trimmedKeyword));
@@ -181,15 +195,23 @@ export function BillRemarkSheet() {
       const changedTransactions = updatedTransactions
         .filter((item, index) => item.remarkCategory !== allTransactions[index]?.remarkCategory)
         .map((item) => ({ ...item, updatedAt: timestamp }));
-      const updatedById = new Map(updatedTransactions.map((item) => [item.id, item]));
 
       await repo.saveCategoryRule(rule);
       await saveInBatches(repo, changedTransactions);
+      const matched = matchImportedLoanRepayments(changedTransactions, loans);
+      const loanRepaymentTransactions = matched.transactions.filter((item) => Boolean(item.loanId));
+      const repaymentResult = await repo.applyLoanRepaymentClassifications(loanRepaymentTransactions);
       setRules((prev) => [rule, ...prev.filter((item) => item.id !== rule.id)].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
-      setTransactions((prev) => prev.map((item) => updatedById.get(item.id) ?? item));
+      if (loanRepaymentTransactions.length) {
+        setTransactions(await repo.getTransactions(accountId, 1, Number.MAX_SAFE_INTEGER));
+      } else {
+        const updatedById = new Map(updatedTransactions.map((item) => [item.id, item]));
+        setTransactions((prev) => prev.map((item) => updatedById.get(item.id) ?? item));
+      }
       setKeyword("");
-      setRuleMessage(`已应用到 ${changedTransactions.length} 笔流水，后续导入同名账单也会自动归类`);
+      setRuleMessage(`已应用到 ${changedTransactions.length} 笔流水${repaymentResult.applied ? `，其中 ${repaymentResult.applied} 笔已关联贷款还款` : ""}，后续导入同名账单也会自动归类`);
       window.dispatchEvent(new Event("stark:transaction-saved"));
+      if (repaymentResult.applied) window.dispatchEvent(new Event("stark:loan-saved"));
     } catch {
       setRuleMessage("规则保存失败，请检查当前数据源是否可用");
     } finally {

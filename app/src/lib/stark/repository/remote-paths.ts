@@ -9,3 +9,7 @@ export function savingsPlansPath(goalId: string) {
 export function transactionsImportPath(accountId: string) {
   return `/api/transactions/import?accountId=${encodeURIComponent(accountId)}`;
 }
+
+export function loanRepaymentClassificationsPath(accountId: string) {
+  return `/api/transactions/loan-repayments?accountId=${encodeURIComponent(accountId)}`;
+}

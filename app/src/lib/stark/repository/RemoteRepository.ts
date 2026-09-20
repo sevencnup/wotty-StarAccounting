@@ -7,6 +7,7 @@ import type {
   ImportErrorLog,
   ImportResult,
   Loan,
+  LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
   ThemeConfig,
@@ -17,7 +18,7 @@ import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { clearCloudAuth, getCloudAuthToken } from "@/lib/stark/storage/cloud-auth";
-import { savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
+import { loanRepaymentClassificationsPath, savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
 
 type EntityType =
   | "users"
@@ -170,6 +171,16 @@ export class RemoteRepository implements DataRepository {
     if (!transactions.length) return { imported: 0, skipped: 0, errors: 0 };
     const accountId = transactions[0].accountId;
     const result = await this.request<ImportResult>(transactionsImportPath(accountId), {
+      method: "POST",
+      body: JSON.stringify(transactions),
+    });
+    this.syncCache.delete(accountId);
+    return result;
+  }
+  async applyLoanRepaymentClassifications(transactions: Transaction[]): Promise<LoanRepaymentClassificationResult> {
+    if (!transactions.length) return { applied: 0, amount: 0, skipped: 0 };
+    const accountId = transactions[0].accountId;
+    const result = await this.request<LoanRepaymentClassificationResult>(loanRepaymentClassificationsPath(accountId), {
       method: "POST",
       body: JSON.stringify(transactions),
     });

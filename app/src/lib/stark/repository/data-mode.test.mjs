@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "./remote-paths.ts";
+import { loanRepaymentClassificationsPath, savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "./remote-paths.ts";
 import { selectDataRepository } from "./data-mode.ts";
 
 test("cloud mode propagates remote read failures without reading local demo data", async () => {
@@ -40,4 +40,8 @@ test("builds a targeted endpoint for remote savings goals", () => {
 
 test("builds the remote batch import endpoint for the selected account", () => {
   assert.equal(transactionsImportPath("default/a"), "/api/transactions/import?accountId=default%2Fa");
+});
+
+test("builds the remote endpoint for applying classified loan repayments", () => {
+  assert.equal(loanRepaymentClassificationsPath("default/a"), "/api/transactions/loan-repayments?accountId=default%2Fa");
 });

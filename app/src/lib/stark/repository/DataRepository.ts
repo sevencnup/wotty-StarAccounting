@@ -7,6 +7,7 @@ import type {
   ImportErrorLog,
   ImportResult,
   Loan,
+  LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
   ThemeConfig,
@@ -30,6 +31,7 @@ export interface DataRepository {
   saveTransaction(transaction: Transaction): Promise<void>;
   deleteTransaction(id: string): Promise<void>;
   importTransactions(transactions: Transaction[]): Promise<ImportResult>;
+  applyLoanRepaymentClassifications(transactions: Transaction[]): Promise<LoanRepaymentClassificationResult>;
 
   getAssets(accountId: string): Promise<Asset[]>;
   saveAsset(asset: Asset): Promise<void>;

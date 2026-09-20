@@ -62,6 +62,13 @@ data class ImportTransactionsResponse(
     val loanRepaymentAmount: Double = 0.0,
 )
 
+@Serializable
+data class LoanRepaymentClassificationResponse(
+    val applied: Int,
+    val amount: Double,
+    val skipped: Int,
+)
+
 fun Routing.appRoutes() {
     get("/api/health") {
         call.respond(HealthResponse(status = "ok", db = DatabaseFactory.isReady()))
@@ -180,6 +187,26 @@ fun Route.transactionRoutes() {
                 },
                 loanRepayments = result.loanRepayments,
                 loanRepaymentAmount = result.loanRepaymentAmount,
+            ),
+        )
+    }
+
+    // POST /api/transactions/loan-repayments - 将已归类账单关联到贷款并冲销余额
+    post("/api/transactions/loan-repayments") {
+        val items = call.receive<JsonArray>()
+        val userId = call.currentUserId()
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@post
+        val result = DatabaseFactory.applyLoanRepaymentClassifications(
+            items.map { it.jsonObject },
+            accountId,
+            userId,
+        )
+        call.respond(
+            LoanRepaymentClassificationResponse(
+                applied = result.applied,
+                amount = result.amount,
+                skipped = result.skipped,
             ),
         )
     }

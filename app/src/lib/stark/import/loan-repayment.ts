@@ -23,6 +23,7 @@ function billText(transaction: Transaction) {
     transaction.merchant,
     transaction.description,
     transaction.paymentMethod,
+    transaction.remarkCategory,
   ].filter(Boolean).join(" ");
 }
 
@@ -31,9 +32,11 @@ function billText(transaction: Transaction) {
  * 匹配关键词可用逗号、分号或换行分隔，用于区分同一银行的多笔贷款。
  */
 export function findLoanForBillRepayment(transaction: Transaction, loans: Loan[]) {
-  if (transaction.loanId || transaction.type === "INCOME" || transaction.type === "TRANSFER") return null;
+  if (transaction.loanId || transaction.type === "INCOME") return null;
   const rawText = billText(transaction);
   if (!repaymentPattern.test(rawText)) return null;
+  const hasExplicitRepaymentRemark = repaymentPattern.test(transaction.remarkCategory ?? "");
+  if (transaction.type === "TRANSFER" && !hasExplicitRepaymentRemark) return null;
 
   const normalizedText = normalize(rawText);
   const candidates: LoanMatchCandidate[] = loans.flatMap((loan) => {

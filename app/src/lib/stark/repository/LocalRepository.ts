@@ -7,6 +7,7 @@ import type {
   ImportErrorLog,
   ImportResult,
   Loan,
+  LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
   ThemeConfig,
@@ -14,7 +15,7 @@ import type {
   User,
 } from "@/lib/stark/models/types";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
-import { deleteRecord, deleteSavingsGoalAndPlans, getAllRecords, getRecord, importTransactionsAndApplyLoanRepayments, putRecord, type StoreName } from "@/lib/stark/storage/indexeddb";
+import { applyLoanRepaymentClassifications, deleteRecord, deleteSavingsGoalAndPlans, getAllRecords, getRecord, importTransactionsAndApplyLoanRepayments, putRecord, type StoreName } from "@/lib/stark/storage/indexeddb";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { isLocalDemoSavingsGoal, LOCAL_DEMO_RECORD_IDS } from "@/lib/stark/repository/local-demo-data";
@@ -177,6 +178,11 @@ export class LocalRepository implements DataRepository {
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
     await this.ensureSeeded();
     return importTransactionsAndApplyLoanRepayments(transactions);
+  }
+
+  async applyLoanRepaymentClassifications(transactions: Transaction[]): Promise<LoanRepaymentClassificationResult> {
+    await this.ensureSeeded();
+    return applyLoanRepaymentClassifications(transactions);
   }
 
   async getAssets(accountId: string) {

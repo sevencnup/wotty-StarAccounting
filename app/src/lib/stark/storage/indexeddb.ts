@@ -7,6 +7,7 @@ import type {
   ImportErrorLog,
   ImportResult,
   Loan,
+  LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
   ThemeConfig,
@@ -246,5 +247,82 @@ export async function importTransactionsAndApplyLoanRepayments(transactions: Tra
     transaction.oncomplete = () => resolve(result ?? { imported: 0, skipped: 0, errors: 0 });
     transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB 账单导入失败"));
     transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB 账单导入已取消"));
+  });
+}
+
+/**
+ * 将已存在的账单转为关联贷款的还款流水，并在同一 IndexedDB 事务内更新贷款。
+ * 仅处理尚未关联贷款的账单，规则重复应用不会再次冲销。
+ */
+export async function applyLoanRepaymentClassifications(transactions: Transaction[]): Promise<LoanRepaymentClassificationResult> {
+  if (!transactions.length) return { applied: 0, amount: 0, skipped: 0 };
+  const db = await openDb();
+  return new Promise<LoanRepaymentClassificationResult>((resolve, reject) => {
+    const transaction = db.transaction(["transactions", "loans"], "readwrite");
+    const transactionStore = transaction.objectStore("transactions");
+    const loanStore = transaction.objectStore("loans");
+    const currentTransactionsRequest = transactionStore.getAll();
+    const loansRequest = loanStore.getAll();
+    let currentTransactions: Transaction[] | null = null;
+    let loans: Loan[] | null = null;
+    let result: LoanRepaymentClassificationResult | null = null;
+
+    const applyClassifications = () => {
+      if (!currentTransactions || !loans) return;
+      const currentById = new Map(currentTransactions.map((item) => [item.id, item]));
+      const loanById = new Map(loans.map((loan) => [loan.id, { ...loan }]));
+      let applied = 0;
+      let amount = 0;
+      let skipped = 0;
+
+      transactions.forEach((item) => {
+        const current = currentById.get(item.id);
+        if (!current || current.accountId !== item.accountId || current.loanId || item.type !== "REPAYMENT" || !item.loanId) {
+          skipped += 1;
+          return;
+        }
+        const loan = loanById.get(item.loanId);
+        if (!loan || loan.accountId !== item.accountId || loan.status === "PAID_OFF" || loan.remainingAmount <= 0) {
+          skipped += 1;
+          return;
+        }
+        const updatedTransaction = { ...current, ...item };
+        const reducedAmount = Math.min(updatedTransaction.amount, loan.remainingAmount);
+        if (reducedAmount <= 0) {
+          skipped += 1;
+          return;
+        }
+        transactionStore.put(updatedTransaction);
+        loan.remainingAmount = Math.max(0, loan.remainingAmount - reducedAmount);
+        if (loan.monthlyPayment > 0 && updatedTransaction.amount >= loan.monthlyPayment) {
+          loan.paidPeriods = Math.min(loan.periods, loan.paidPeriods + 1);
+        }
+        loan.status = loan.remainingAmount <= 0 ? "PAID_OFF" : loan.status;
+        loan.updatedAt = updatedTransaction.updatedAt;
+        applied += 1;
+        amount += reducedAmount;
+      });
+      loanById.forEach((loan, id) => {
+        const original = loans?.find((item) => item.id === id);
+        if (original && (original.remainingAmount !== loan.remainingAmount || original.paidPeriods !== loan.paidPeriods || original.status !== loan.status)) {
+          loanStore.put(loan);
+        }
+      });
+      result = { applied, amount, skipped };
+    };
+
+    currentTransactionsRequest.onsuccess = () => {
+      currentTransactions = (currentTransactionsRequest.result ?? []) as Transaction[];
+      applyClassifications();
+    };
+    loansRequest.onsuccess = () => {
+      loans = (loansRequest.result ?? []) as Loan[];
+      applyClassifications();
+    };
+    currentTransactionsRequest.onerror = () => transaction.abort();
+    loansRequest.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve(result ?? { applied: 0, amount: 0, skipped: transactions.length });
+    transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB 贷款还款归类失败"));
+    transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB 贷款还款归类已取消"));
   });
 }
