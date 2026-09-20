@@ -6,7 +6,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCloudApiUrl, getCurrentAccountId, getCurrentDataMode } from "@/lib/stark/storage/local-config";
-import { cloudResetPassword } from "@/lib/stark/repository/cloud-auth";
+import { cloudLogout, cloudResetPassword } from "@/lib/stark/repository/cloud-auth";
 import { getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
@@ -21,7 +21,7 @@ import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, typ
 type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
-type PanelKey = "MODE" | "PASSWORD" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
+type PanelKey = "PASSWORD" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
@@ -34,7 +34,6 @@ type PendingBillImport = {
 
 function SettingIcon({ type }: { type: PanelKey }) {
   const paths: Record<PanelKey, React.ReactNode> = {
-    MODE: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
     PASSWORD: <><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
@@ -147,6 +146,13 @@ export default function AccountsPage() {
     } finally {
       setPasswordSubmitting(false);
     }
+  }
+
+  function logout() {
+    if (!window.confirm("确定要退出当前云端账户吗？")) return;
+    cloudLogout();
+    setCloudUser(null);
+    window.location.replace("/");
   }
 
   async function prepareBillImport(file: File) {
@@ -262,7 +268,6 @@ export default function AccountsPage() {
       <PageTopBar title="设置" />
 
       <section className="settings-center-group">
-        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={() => window.location.assign("/?next=/app/accounts&switchMode=1")} />
         <SettingsRow type="IMPORT" title="导入账单" value="微信 / 支付宝" onClick={() => setActivePanel("IMPORT")} />
         <SettingsRow type="EXPORT" title="导出账单" value="CSV 文件" onClick={() => { setExportMessage("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开"); setActivePanel("EXPORT"); }} />
       </section>
@@ -284,6 +289,8 @@ export default function AccountsPage() {
         <SettingsRow type="UPDATE" title="检查更新" value="检查 App 版本" onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} />
         <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
+
+      {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={logout}>退出登录</button> : null}
 
       {activePanel ? (
         <BottomSheet
@@ -336,7 +343,7 @@ export default function AccountsPage() {
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN", "EN_US"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : item === "ZH_CN" ? "固定使用简体中文" : "固定使用英文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
-            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>先在切换模式中确认当前数据源，云端模式还需要后端服务可访问。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件。</p></div><div><strong>Web 端和 App 有何不同？</strong><p>目前暂时只开发安卓客户端，Web 端适用于 PC、iOS、鸿蒙等设备。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">国际站点端反馈 <ChevronIcon /></a><a href="https://sevencn.com/software/staraccounting" target="_blank" rel="noreferrer">国内站点端反馈 <ChevronIcon /></a></div> : null}
+            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>请返回根登录入口确认云端服务与数据库状态，再重新登录。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件。</p></div><div><strong>Web 端和 App 有何不同？</strong><p>目前暂时只开发安卓客户端，Web 端适用于 PC、iOS、鸿蒙等设备。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">国际站点端反馈 <ChevronIcon /></a><a href="https://sevencn.com/software/staraccounting" target="_blank" rel="noreferrer">国内站点端反馈 <ChevronIcon /></a></div> : null}
             {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星会计</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div><nav className="settings-about-links" aria-label="相关网站"><a href="https://sevencn.com" target="_blank" rel="noreferrer"><span>博客</span><strong>sevencn.com</strong><ChevronIcon /></a><a href="https://s.wotty.app" target="_blank" rel="noreferrer"><span>项目网站</span><strong>s.wotty.app</strong><ChevronIcon /></a><a href="https://github.com/sevencnup/wotty-StarAccounting" target="_blank" rel="noreferrer"><span>开源地址</span><strong>github.com/sevencnup/wotty-StarAccounting</strong><ChevronIcon /></a></nav></div> : null}
         </BottomSheet>
       ) : null}

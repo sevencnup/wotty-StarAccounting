@@ -8780,6 +8780,21 @@ img[src$="/qita.webp"] {
   opacity: 0.35;
 }
 
+.settings-logout-button {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #fecdd3;
+  border-radius: 15px;
+  color: #dc2626;
+  background: #fffafb;
+  font-size: calc(14px * var(--user-font-scale));
+  font-weight: 700;
+}
+
+.settings-logout-button:active {
+  background: #fff1f2;
+}
+
 .settings-center-icon {
   display: grid;
   place-items: center;
@@ -8795,7 +8810,6 @@ img[src$="/qita.webp"] {
   height: 21px;
 }
 
-.settings-center-icon.mode { background: #3b82f6; }
 .settings-center-icon.import { background: #14b8a6; }
 .settings-center-icon.export { background: #0f9f91; }
 .settings-center-icon.theme { background: #a855f7; }
