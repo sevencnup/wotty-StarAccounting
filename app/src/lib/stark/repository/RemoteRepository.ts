@@ -16,6 +16,7 @@ import type {
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
+import { clearCloudAuth, getCloudAuthToken } from "@/lib/stark/storage/cloud-auth";
 import { savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
 
 type EntityType =
@@ -46,12 +47,22 @@ function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: 
 }
 
 export class RemoteRepository implements DataRepository {
-  private readonly baseUrl: string;
+  private baseUrl: string;
   private readonly syncRequests = new Map<string, Promise<SyncRecord[]>>();
   private readonly syncCache = new Map<string, { expiresAt: number; records: SyncRecord[] }>();
 
   constructor(baseUrl = getCloudApiUrl()) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
+  }
+
+  clearCache() {
+    this.syncCache.clear();
+    this.syncRequests.clear();
+  }
+
+  setBaseUrl(baseUrl: string) {
+    this.baseUrl = baseUrl.replace(/\/$/, "");
+    this.clearCache();
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -61,9 +72,16 @@ export class RemoteRepository implements DataRepository {
       const response = await fetch(`${this.baseUrl}${path}`, {
         ...init,
         signal: controller.signal,
-        headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+        headers: {
+          "Content-Type": "application/json",
+          ...(getCloudAuthToken() ? { Authorization: `Bearer ${getCloudAuthToken()}` } : {}),
+          ...(init?.headers ?? {}),
+        },
       });
-      if (!response.ok) throw new Error(`Cloud API ${response.status}: ${await response.text()}`);
+      if (!response.ok) {
+        if (response.status === 401) clearCloudAuth();
+        throw new Error(`Cloud API ${response.status}: ${await response.text()}`);
+      }
       if (response.status === 204) return undefined as T;
       return response.json() as Promise<T>;
     } finally {
@@ -113,7 +131,10 @@ export class RemoteRepository implements DataRepository {
     return this.save(entityType, { id, accountId: targetAccountId, __deleted: true, updatedAt: new Date().toISOString() });
   }
 
-  async getCurrentUser() { return (await this.list("users")).find((item) => item.id === "local-user") as User | undefined ?? null; }
+  async getCurrentUser() {
+    const user = await this.request<User>("/api/auth/me");
+    return { ...user, password: "" };
+  }
   async saveUser(user: User) { await this.save("users", user); }
 
   async getAccounts() { return await this.list("accounts") as unknown as Account[]; }

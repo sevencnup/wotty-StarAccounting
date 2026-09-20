@@ -1,105 +1,155 @@
-# 版本记录
+# Wotty Star Accounting
 
-## 0.0.26
+## 项目介绍
 
-- 修复记账收入分类图标错误复用教育图标
+Wotty Star Accounting 是一个面向个人的记账与财务管理项目，支持收入支出、预算、储蓄目标、资产、贷款、账单导入和消费分析。
 
-## 0.0.25
+项目由两个部分组成：
 
-- 去掉记账金额输入框内部重复的蓝色聚焦边框
+- `app`：Next.js Web 前端，也可通过 Capacitor 打包为 Android 应用。
+- `api-server`：Ktor + MySQL 后端，为云端模式提供数据读写和同步接口。
 
-## 0.0.24
+前端支持两种数据模式：
 
-- 去掉记账金额表单聚焦时的内层蓝色边框
+- `LOCAL`：数据保存在浏览器 IndexedDB，不依赖后端和 MySQL，适合离线使用。
+- `CLOUD`：数据通过 API 服务保存到 MySQL，适合多设备或长期部署。应用默认使用云端模式。
 
-## 0.0.23
+## 目录结构
 
-- 修复记账页禁用状态下保存按钮显示为浅蓝色
+```text
+app/                    Web 前端和 Android 工程
+api-server/             Ktor API 后端
+docs/                   使用说明和开发文档
+releases/               已归档的 APK 安装包
+```
 
-## 0.0.22
+## 环境要求
 
-- 统一记账页保存按钮与支付账户按钮的蓝色
+- Node.js
+- pnpm
+- Java 17（启动 `api-server` 时需要）
+- MySQL 8（仅使用 `CLOUD` 模式时需要）
 
-## 0.0.21
+依赖统一由仓库根目录的 pnpm workspace 管理。首次使用时在项目根目录执行：
 
-- 优化首页预算明细在大字号和长金额下的两行布局
+```bash
+pnpm install
+```
 
-## 0.0.20
+不要在 `app` 或其他子目录单独执行 `npm install`、`pnpm install`。
 
-- 修复 Android Live Reload 重启时开发缓存损坏和 Windows 进程残留
+## 本地开发
 
-## 0.0.19
+### 一键启动 Web 和 API
 
-- 修复 Android Live Reload 使用标准 APK 输出文件名
+在项目根目录执行：
 
-## 0.0.18
+```bash
+cp .env.example .env
+# 修改 .env 中的本机 MySQL 连接信息
+pnpm dev
+```
 
-- 修复 Android Live Reload 部署时自定义 APK 文件名不兼容
+启动后：
 
-## 0.0.17
+- Web 前端：`http://127.0.0.1:12366`
+- API 后端：`http://127.0.0.1:12367`
+- API 健康检查：`http://127.0.0.1:12367/api/health`
 
-- 修复 Windows 下 Android Live Reload 命令无法启动
+`app/scripts/dev.mjs` 会自动读取项目根目录 `.env`，同时启动前端和 API；退出命令时会一并停止两个服务。
 
-## 0.0.16
+### 只启动前端
 
-- 增加 Android Live Reload 开发模式
+```bash
+pnpm --filter wotty-stark-web dev
+```
 
-## 0.0.15
+只启动前端适合使用 `LOCAL` 模式开发；使用 `CLOUD` 模式时仍需启动 API 和 MySQL。
 
-- 修复手机浏览器原生侧滑返回切换底层页面
+### 只启动 API
 
-## 0.0.14
+Linux/macOS：
 
-- 修复底部弹层侧滑关闭后误切换主导航
+```bash
+sh app/android/gradlew -p api-server run
+```
 
-## 0.0.13
+Windows：
 
-- 加强底部弹层侧滑返回保护
+```powershell
+app\android\gradlew.bat -p api-server run
+```
 
-## 0.0.12
+## 数据库配置
 
-- 修复底部弹层侧滑返回触发主页面切换
+API 使用 MySQL，但应用不会自动安装 MySQL，也不会自动创建 `star_accounting` 数据库。首次部署前需要先创建数据库、用户和权限。
 
-## 0.0.11
+完整配置步骤请参阅：[数据库配置与部署说明](docs/database-config.md)。
 
-- 修复底部弹层滑动带动底层页面滚动
+配置完成后检查：
 
-## 0.0.10
+```bash
+curl http://127.0.0.1:12367/api/health
+```
 
-- 增强预算金额和周期控件与面板背景的区分度
+返回以下内容表示 API 和数据库均已连通：
 
-## 0.0.9
+```json
+{"status":"ok","db":true}
+```
 
-- 统一应用蓝色主题色
+首次连接成功时，API 会自动创建缺失的业务表和字段，但不会创建 MySQL 数据库本身。
 
-## 0.0.8
+### Docker Compose 一键部署
 
-- 修复预算编辑表单与操作按钮的颜色对比度
+项目根目录已提供 Compose 部署文件。首次部署时执行：
 
-## 0.0.7
+```bash
+cp .env.example .env
+# 编辑 .env，设置强密码
+docker compose up -d --build
+```
 
-- 修复新增预算自动唤起输入法
+MySQL 容器会在空数据卷中自动创建数据库和应用账号，API 容器会在数据库健康后启动并自动创建业务表。Web、API 和数据库分别由 `12366`、`12367` 以及内部 MySQL 服务提供。
 
-## 0.0.6
+数据保存在 `mysql-data` 数据卷中。只有确认要清空全部数据时，才执行 `docker compose down -v`。
 
-- 优化预算提醒滑动条样式
+## 使用 Web 应用
 
-## 0.0.5
+1. 打开 `http://127.0.0.1:12366`。
+2. 进入账户设置，确认数据模式和云端服务地址。
+3. 使用 `CLOUD` 模式时，将服务地址设置为 API 地址，例如 `http://127.0.0.1:12367`。
+4. 点击连接测试，确认健康检查通过后再录入数据。
+5. 使用 `LOCAL` 模式时，数据仅保存在当前浏览器，清理浏览器站点数据可能导致本地数据丢失。
 
-- 修复预算编辑表单布局
+默认云端地址为当前访问主机的 `12367` 端口；如果前端和 API 不在同一台机器，请填写 API 所在机器的局域网 IP 或域名。
 
-## 0.0.4
+## 构建和检查
 
-- 统一底部弹层规格与层级
+```bash
+pnpm --filter wotty-stark-web typecheck
+pnpm --filter wotty-stark-web test
+pnpm --filter wotty-stark-web build
+```
 
-## 0.0.3
+Android 调试与 Live Reload 说明请参阅：[Android Live Reload](docs/android-live-reload.md)。
 
-- 统一底部弹层组件
+## 常见问题
 
-## 0.0.2
+### 健康检查返回 `db:false`
 
-- 预算管理改为底部滑出面板
+检查 MySQL 是否运行、数据库是否已创建、账号是否有权限，并确认 `DATABASE_URL`、`DB_USER`、`DB_PASSWORD` 已注入 API 进程。数据库配置缺失时，API 仍会启动，但数据接口会返回 500。
 
-## 0.0.1
+### 前端无法连接 API
 
-- 项目目录调整
+确认 API 监听 `12367`，浏览器能访问 `/api/health`，并在账户设置中填写正确的云端服务地址。手机访问时不能填写手机自己的 `localhost`，应填写运行 API 的电脑 IP。
+
+### 想完全离线使用
+
+在账户设置中切换到 `LOCAL` 模式。此模式不需要启动 API 或配置 MySQL，但数据不会自动同步到其他设备。
+
+## 其他文档
+
+- [数据库配置与部署说明](docs/database-config.md)
+- [Android Live Reload](docs/android-live-reload.md)
+- [版本记录](docs/version-history.md)

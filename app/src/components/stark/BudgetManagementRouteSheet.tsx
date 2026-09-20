@@ -28,11 +28,18 @@ export function BudgetManagementRouteSheet() {
     setBudgets(nextBudgets);
   }
 
+  function closeSheet() {
+    // The budget screen is a route-backed sheet, but it can also be opened
+    // directly (for example after a refresh). Replacing the route avoids
+    // navigating back to an empty document or an unrelated history entry.
+    router.replace("/");
+  }
+
   return (
     <BudgetManagementSheet
       budgets={budgets}
       onBudgetsChange={handleBudgetsChange}
-      onClose={() => router.back()}
+      onClose={closeSheet}
       historyMode="route"
     />
   );

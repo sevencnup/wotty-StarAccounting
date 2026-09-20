@@ -12,9 +12,9 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
-import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
+import { categoryIconSrc, categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
 import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
-import { formatMoney, reportingMonthEndDate, reportingMonthLabel, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
+import { formatMoney, isReportingYearKey, reportingMonthDate, reportingMonthEndDate, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
 import { formatCount, translateValue, useAppLocale } from "@/lib/stark/i18n";
 
@@ -41,36 +41,21 @@ type FilterOption = {
 };
 
 function categoryIconForFilter(category: string) {
-  const rules: Array<[RegExp, string]> = [
-    [/餐|美食|咖啡/, "canyin.png"],
-    [/交|车|公交|地铁/, "jiaotong.png"],
-    [/购|百货|超市|充值/, "gouwu.png"],
-    [/娱|文化|休闲|电影/, "yule.png"],
-    [/日用|生活/, "riyong.png"],
-    [/医|健康/, "yiliao.png"],
-    [/住|房|租|水电/, "zhufang.png"],
-    [/旅/, "lvxing.png"],
-    [/美/, "meirong.png"],
-    [/宠/, "chongwu.png"],
-    [/服/, "fuzhuang.png"],
-    [/通|信用卡/, "tongxun.png"],
-    [/运/, "yundong.png"],
-    [/工|薪资|薪酬/, "gongzi.png"],
-    [/奖|红利|分红/, "jiangjin.png"],
-    [/理财|投资/, "licai.png"],
-    [/教|培训/, "jiaoyu.png"],
-    [/转|退款|收入/, "qita.png"],
-  ];
-  const matched = rules.find(([matcher]) => matcher.test(category));
-  return "/category-icons/" + (matched?.[1] ?? "qita.png");
+  return categoryIconSrcForCategory(category);
 }
 
-function accountIconForFilter(account: string) {
-  if (account === "银行卡") return "卡";
-  if (account === "支付宝") return "支";
-  if (account === "微信") return "微";
-  if (account === "其他") return "其";
-  return "全";
+function accountIconSrcForFilter(account: string) {
+  if (account === "微信") return "/category-icons/weixin.webp";
+  if (account === "支付宝") return "/category-icons/zhifubao.webp";
+  if (account === "银行卡") return "/category-icons/unionpau.webp";
+  if (account === "全部账户" || account === "其他") return "/category-icons/qita.webp";
+  return "";
+}
+
+function AccountFilterIcon({ account }: { account: string }) {
+  const src = accountIconSrcForFilter(account);
+  if (src) return <img src={src} alt="" />;
+  return "";
 }
 
 function recentTimeLabel(dateStr: string) {
@@ -80,6 +65,16 @@ function recentTimeLabel(dateStr: string) {
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
   return `${mm}-${dd} ${hh}:${mi}`;
+}
+
+function reportingPeriodLabel(period: string, locale: "zh-CN" | "en-US") {
+  if (locale === "zh-CN") {
+    if (isReportingYearKey(period)) return `${period}年全年`;
+    const [year, month] = period.split("-");
+    return `${year}年${Number(month)}月`;
+  }
+  if (isReportingYearKey(period)) return `${period} full year`;
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(period));
 }
 
 function transactionTimestamp(dateStr: string) {
@@ -118,9 +113,9 @@ export default function ConsumptionPage() {
   const [platformFilter, setPlatformFilter] = useState("全部账户");
   const [query, setQuery] = useState("");
   const [detailQuery, setDetailQuery] = useState("");
-  const [showDeepAnalysis, setShowDeepAnalysis] = useState(true);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [filterMenuReady, setFilterMenuReady] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [filterMenuPosition, setFilterMenuPosition] = useState({ top: 0, left: 0, width: 300 });
   const categoryFilterRef = useRef<HTMLDivElement>(null);
@@ -225,7 +220,11 @@ export default function ConsumptionPage() {
   }, [monthTransactions, platforms]);
 
   useEffect(() => {
-    if (!categoryOpen && !accountOpen) return;
+    if (!categoryOpen && !accountOpen) {
+      setFilterMenuReady(false);
+      return;
+    }
+    setFilterMenuReady(false);
     const updateFilterMenuPosition = () => {
       const activeFilterRef = categoryOpen ? categoryFilterRef : accountFilterRef;
       const activeMenuRef = categoryOpen ? categoryMenuRef : accountMenuRef;
@@ -241,6 +240,7 @@ export default function ConsumptionPage() {
         ? Math.max(12, filterBox.top - menuHeight - 8)
         : filterBox.bottom + 8;
       setFilterMenuPosition({ top, left, width });
+      setFilterMenuReady(true);
     };
     const frame = window.requestAnimationFrame(updateFilterMenuPosition);
     window.addEventListener("resize", updateFilterMenuPosition, { passive: true });
@@ -266,11 +266,21 @@ export default function ConsumptionPage() {
   }, [categoryFilter, monthTransactions, platformFilter, query, viewMode]);
 
   const chartTransactions = useMemo(() => toAnalysisTransactions(filteredTransactions), [filteredTransactions]);
+  // The shared chart helpers are expense-oriented. Project income entries as
+  // expense entries for the income view so category, rhythm, merchant,
+  // platform, and flow charts can reuse the same aggregation pipeline.
+  const displayChartTransactions = useMemo(
+    () => viewMode === "income"
+      ? chartTransactions.map((item) => item.type === "INCOME" ? { ...item, type: "EXPENSE" as const } : item)
+      : chartTransactions,
+    [chartTransactions, viewMode],
+  );
 
   const monthSummary = useMemo(() => {
     const expenses = monthTransactions.filter((item) => effectiveType(item) === "EXPENSE");
     const income = monthTransactions.filter((item) => item.type === "INCOME");
-    const categoryTotals = expenses.reduce<Record<string, number>>((totals, item) => {
+    const primaryTransactions = viewMode === "income" ? income : expenses;
+    const categoryTotals = primaryTransactions.reduce<Record<string, number>>((totals, item) => {
       totals[effectiveCategory(item)] = (totals[effectiveCategory(item)] ?? 0) + item.amount;
       return totals;
     }, {});
@@ -278,35 +288,42 @@ export default function ConsumptionPage() {
       .sort((a, b) => b[1] - a[1])[0] ?? [];
     const expense = expenses.reduce((sum, item) => sum + item.amount, 0);
     const incomeTotal = income.reduce((sum, item) => sum + item.amount, 0);
+    const primaryAmount = primaryTransactions.reduce((sum, item) => sum + item.amount, 0);
     return {
       expense,
       income: incomeTotal,
+      primaryAmount,
       balance: incomeTotal - expense,
       count: monthTransactions.length,
       expenseCount: expenses.length,
       topCategory,
       topCategoryAmount,
-      dailyAverage: expense / Math.max(
+      dailyAverage: primaryAmount / Math.max(
         Math.round((reportingMonthEndDate(reportingMonth).getTime() - reportingPeriodDate(reportingMonth).getTime()) / 86400000) + 1,
         1,
       ),
     };
-  }, [monthTransactions, reportingMonth]);
+  }, [monthTransactions, reportingMonth, viewMode]);
 
   const platformSummary = useMemo(() => {
+    const targetType = viewMode === "income" ? "INCOME" : "EXPENSE";
     const calc = (items: Transaction[]) => ({
-      expense: items.filter((i) => effectiveType(i) === "EXPENSE").reduce((s, i) => s + i.amount, 0),
-      count: items.filter((i) => effectiveType(i) === "EXPENSE").length,
+      expense: items.filter((i) => effectiveType(i) === targetType).reduce((s, i) => s + i.amount, 0),
+      count: items.filter((i) => effectiveType(i) === targetType).length,
     });
     return {
       wechat: calc(monthTransactions.filter((item) => normalizeConsumptionPlatform(item.platform) === "微信")),
       alipay: calc(monthTransactions.filter((item) => normalizeConsumptionPlatform(item.platform) === "支付宝")),
     };
-  }, [monthTransactions]);
+  }, [monthTransactions, viewMode]);
 
   const charts = useMemo(
     () => buildHomeSummary({ transactions: chartTransactions, assets: [], budgets: [], loans: [], savingsGoals: [], reportingMonth }),
     [chartTransactions, reportingMonth],
+  );
+  const displayCharts = useMemo(
+    () => buildHomeSummary({ transactions: displayChartTransactions, assets: [], budgets: [], loans: [], savingsGoals: [], reportingMonth }),
+    [displayChartTransactions, reportingMonth],
   );
 
   const detailMatchedTransactions = useMemo(() => {
@@ -356,8 +373,8 @@ export default function ConsumptionPage() {
       <section className="consumption-overview-card">
         <div className="consumption-overview-head">
           <div>
-            <span>{reportingMonthLabel(reportingMonth)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
-            <h2>{locale === "en-US" ? "Spending in selected period" : "当前筛选支出"}</h2>
+            <span>{reportingPeriodLabel(reportingMonth, locale)} · {locale === "en-US" ? "Cash-flow overview" : "现金流概览"}</span>
+            <h2>{locale === "en-US" ? (viewMode === "income" ? "Income in selected period" : "Spending in selected period") : (viewMode === "income" ? "当前筛选收入" : "当前筛选支出")}</h2>
           </div>
           <MonthPicker
             value={reportingMonth}
@@ -365,15 +382,15 @@ export default function ConsumptionPage() {
             ariaLabel={locale === "en-US" ? "Select spending month" : "选择消费统计月份"}
             triggerClassName="consumption-period-button"
           >
-            <span>{reportingMonthLabel(reportingMonth)}</span>
+            <span>{reportingPeriodLabel(reportingMonth, locale)}</span>
             <ChevronDownIcon />
           </MonthPicker>
         </div>
-        <strong className="consumption-overview-total">¥ {formatMoney(monthSummary.expense)}</strong>
+        <strong className="consumption-overview-total">¥ {formatMoney(monthSummary.primaryAmount)}</strong>
         <div className="consumption-overview-stats">
-          <div><span>{locale === "en-US" ? "Daily average" : "日均支出"}</span><strong>¥ {formatMoney(monthSummary.dailyAverage)}</strong></div>
+          <div><span>{locale === "en-US" ? (viewMode === "income" ? "Daily average income" : "Daily average spending") : (viewMode === "income" ? "日均收入" : "日均支出")}</span><strong>¥ {formatMoney(monthSummary.dailyAverage)}</strong></div>
           <div><span>{locale === "en-US" ? "Selected-period income" : "筛选期收入"}</span><strong>¥ {formatMoney(monthSummary.income)}</strong></div>
-          <div><span>{locale === "en-US" ? "Current balance" : "当前结余"}</span><strong className={monthSummary.balance >= 0 ? "positive" : "negative"}>¥ {formatMoney(Math.abs(monthSummary.balance))}</strong></div>
+          <div><span>{locale === "en-US" ? "Current balance" : "当前结余"}</span><strong className={monthSummary.balance >= 0 ? "positive" : "negative"}>{monthSummary.balance < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(monthSummary.balance))}</strong></div>
         </div>
       </section>
 
@@ -382,7 +399,7 @@ export default function ConsumptionPage() {
         <div><span>{translateValue("支付宝", locale)} {locale === "en-US" ? "spending" : "支出"}</span><strong>¥ {formatMoney(platformSummary.alipay.expense)}</strong><small>{formatCount(platformSummary.alipay.count, "transactions", locale)}</small></div>
       </section>
 
-      <RemarkedExpenseCard transactions={monthTransactions} locale={locale} />
+      {viewMode !== "income" ? <RemarkedExpenseCard transactions={monthTransactions} locale={locale} /> : null}
 
       <section className={"consumption-filter-card" + (categoryOpen || accountOpen ? " is-category-open" : "")}>
         <div className="consumption-mode-tabs" role="tablist" aria-label={locale === "en-US" ? "Transaction type" : "收支类型"}>
@@ -402,12 +419,14 @@ export default function ConsumptionPage() {
               aria-expanded={categoryOpen}
               onClick={() => {
                 setAccountOpen(false);
+                setFilterMenuReady(false);
                 setCategoryOpen((open) => !open);
               }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   setAccountOpen(false);
+                  setFilterMenuReady(false);
                   setCategoryOpen(true);
                 }
               }}
@@ -415,7 +434,7 @@ export default function ConsumptionPage() {
               <span className="consumption-category-trigger-icon">
                 <img src={categoryIconForFilter(categoryFilter)} alt="" />
               </span>
-              <span className="consumption-category-trigger-value">{categoryFilter}</span>
+              <span className="consumption-category-trigger-value">{translateValue(categoryFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
             {categoryOpen ? createPortal(
@@ -424,7 +443,7 @@ export default function ConsumptionPage() {
                 className="consumption-category-menu"
                 role="listbox"
                 aria-label={locale === "en-US" ? "Select expense category" : "选择消费分类"}
-                style={filterMenuPosition}
+                style={{ ...filterMenuPosition, visibility: filterMenuReady ? "visible" : "hidden" }}
               >
                 <div className="consumption-category-menu-head">
                   <strong>{locale === "en-US" ? "Expense category" : "消费分类"}</strong>
@@ -470,18 +489,20 @@ export default function ConsumptionPage() {
               aria-expanded={accountOpen}
               onClick={() => {
                 setCategoryOpen(false);
+                setFilterMenuReady(false);
                 setAccountOpen((open) => !open);
               }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
                   setCategoryOpen(false);
+                  setFilterMenuReady(false);
                   setAccountOpen(true);
                 }
               }}
             >
-              <span className="consumption-account-trigger-icon">{accountIconForFilter(platformFilter)}</span>
-              <span className="consumption-category-trigger-value">{platformFilter}</span>
+              <span className="consumption-account-trigger-icon"><AccountFilterIcon account={platformFilter} /></span>
+              <span className="consumption-category-trigger-value">{translateValue(platformFilter, locale)}</span>
               <ChevronDownIcon />
             </button>
             {accountOpen ? createPortal(
@@ -490,7 +511,7 @@ export default function ConsumptionPage() {
                 className="consumption-category-menu consumption-account-menu"
                 role="listbox"
                 aria-label={locale === "en-US" ? "Select spending account" : "选择消费账户"}
-                style={filterMenuPosition}
+                style={{ ...filterMenuPosition, visibility: filterMenuReady ? "visible" : "hidden" }}
               >
                 <div className="consumption-category-menu-head">
                   <strong>{locale === "en-US" ? "Spending account" : "消费账户"}</strong>
@@ -511,7 +532,7 @@ export default function ConsumptionPage() {
                           setAccountOpen(false);
                         }}
                       >
-                        <span className="consumption-account-option-icon">{accountIconForFilter(option.label)}</span>
+                        <span className="consumption-account-option-icon"><AccountFilterIcon account={option.label} /></span>
                         <span className="consumption-category-option-copy">
                           <strong>{translateValue(option.label, locale)}</strong>
                           <small>{formatCount(option.count, "transactions", locale)}</small>
@@ -534,10 +555,10 @@ export default function ConsumptionPage() {
 
       <ConsumptionCharts
         trend={charts.trend}
-        ratios={charts.ratios}
-        transactions={chartTransactions}
+        ratios={displayCharts.ratios}
+        transactions={displayChartTransactions}
         monthKey={reportingMonth}
-        showDeepAnalysis={showDeepAnalysis}
+        viewMode={viewMode}
       />
 
       <section className="consumption-detail-card">
@@ -546,7 +567,7 @@ export default function ConsumptionPage() {
             <h2>{locale === "en-US" ? "Transaction details" : "流水明细"}</h2>
             <span>{locale === "en-US" ? `${filteredTransactions.length} filtered results · showing the latest ${Math.min(detailMatchedTransactions.length, 5)}` : `${filteredTransactions.length} 笔筛选结果 · 显示最近 ${Math.min(detailMatchedTransactions.length, 5)} 笔`}</span>
           </div>
-          <span className="consumption-top-category">{locale === "en-US" ? "Top category" : "最高分类"} {translateValue(monthSummary.topCategory, locale)} · ¥{formatMoney(monthSummary.topCategoryAmount)}</span>
+          <span className="consumption-top-category">{locale === "en-US" ? (viewMode === "income" ? "Top income category" : "Top category") : (viewMode === "income" ? "最高收入分类" : "最高分类")} {translateValue(monthSummary.topCategory, locale)} · ¥{formatMoney(monthSummary.topCategoryAmount)}</span>
         </div>
         <label className="detail-search-wrap">
           <SearchIcon />
@@ -572,10 +593,6 @@ export default function ConsumptionPage() {
         </div>
       </section>
 
-      <button type="button" className="consumption-deep-toggle" onClick={() => setShowDeepAnalysis((value) => !value)}>
-        {showDeepAnalysis ? (locale === "en-US" ? "Hide deep analysis" : "收起深入分析") : (locale === "en-US" ? "Show deep analysis" : "展开深入分析")}
-        <ChevronDownIcon />
-      </button>
       {editingTransaction ? <JournalPanel mode="sheet" variant="journal" transaction={editingTransaction} onClose={() => setEditingTransaction(null)} onSaved={() => { setEditingTransaction(null); }} /> : null}
     </div>
   );

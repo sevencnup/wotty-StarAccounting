@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,6 +11,33 @@ const repositoryDirectory = path.resolve(webDirectory, "..");
 const children = new Map();
 let shuttingDown = false;
 let shutdownPromise;
+
+function loadDotEnv(filePath) {
+  if (!existsSync(filePath)) return;
+
+  for (const rawLine of readFileSync(filePath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const match = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!match) continue;
+
+    const [, key, rawValue] = match;
+    if (Object.prototype.hasOwnProperty.call(process.env, key)) continue;
+
+    let value = rawValue.trim();
+    if (
+      value.length >= 2 &&
+      ((value.startsWith("\"") && value.endsWith("\"")) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
+loadDotEnv(path.join(repositoryDirectory, ".env"));
 
 const webPort = 12366;
 const tabRoutes = ["/", "/consumption/", "/savings/", "/loans/", "/assets/", "/accounts/"];
@@ -119,7 +146,7 @@ function startApi() {
 
     return spawn(
       process.env.ComSpec || "cmd.exe",
-      ["/d", "/c", gradleWrapper, "-p", "api-server", "run", "--no-daemon"],
+      ["/d", "/c", gradleWrapper, "-p", "api-server", "run", "--no-daemon", "--configuration-cache"],
       {
         cwd: repositoryDirectory,
         stdio: ["inherit", "pipe", "pipe"],
@@ -128,16 +155,13 @@ function startApi() {
     );
   }
 
-  const gradleWrappers = [
-    path.join(repositoryDirectory, "gradlew"),
-    path.join(webDirectory, "android", "gradlew"),
-  ];
+  const gradleWrappers = [path.join(webDirectory, "android", "gradlew")];
   const gradleWrapper = gradleWrappers.find((candidate) => existsSync(candidate));
   if (!gradleWrapper) {
     throw new Error(`Gradle wrapper not found: ${gradleWrappers.join(", ")}`);
   }
 
-  return spawn(gradleWrapper, ["-p", "api-server", "run", "--no-daemon"], {
+  return spawn("sh", [gradleWrapper, "-p", "api-server", "run", "--no-daemon", "--configuration-cache"], {
     cwd: repositoryDirectory,
     stdio: ["inherit", "pipe", "pipe"],
   });
