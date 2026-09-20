@@ -4590,6 +4590,233 @@ button.stark-compass-card {
   box-shadow: none;
 }
 
+.app-access-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 20% 10%, rgba(57, 127, 232, 0.16), transparent 34%),
+    linear-gradient(145deg, #f4f8fc 0%, #eaf1f8 100%);
+}
+
+.app-access-card {
+  width: min(100%, 440px);
+  padding: 34px 28px 28px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 70px rgba(39, 76, 112, 0.16);
+}
+
+.app-access-brand-mark {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #0060c0, #397fe8);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(0, 96, 192, 0.25);
+}
+
+.app-access-eyebrow {
+  display: block;
+  margin-top: 22px;
+  color: #6b7f95;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.app-access-card h1 {
+  margin: 6px 0 0;
+  color: #142036;
+  font-size: 30px;
+  line-height: 1.2;
+}
+
+.app-access-intro {
+  margin: 8px 0 22px;
+  color: #718096;
+  font-size: 13px;
+}
+
+.app-access-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #edf3f8;
+}
+
+.app-access-mode-switch.single {
+  grid-template-columns: 1fr;
+}
+
+.app-access-mode-switch button,
+.app-access-auth-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #73849a;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.app-access-mode-switch button.active,
+.app-access-auth-tabs button.active {
+  background: #ffffff;
+  color: #0060c0;
+  box-shadow: 0 3px 10px rgba(57, 86, 115, 0.1);
+}
+
+.app-access-cloud-panel,
+.app-access-local-panel {
+  margin-top: 20px;
+}
+
+.app-access-local-panel {
+  padding: 18px;
+  border: 1px solid #dce8f3;
+  border-radius: 17px;
+  background: #f7fbff;
+}
+
+.app-access-local-panel strong,
+.app-access-current-user strong {
+  color: #142036;
+  font-size: 14px;
+}
+
+.app-access-local-panel p {
+  margin: 7px 0 16px;
+  color: #718096;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.app-access-field {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.app-access-field span {
+  color: #5d7187;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.app-access-field input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid #d7e2ec;
+  border-radius: 11px;
+  outline: 0;
+  background: #ffffff;
+  color: #142036;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.app-access-field input:focus {
+  border-color: #397fe8;
+  box-shadow: 0 0 0 3px rgba(57, 127, 232, 0.12);
+}
+
+.app-access-status {
+  min-height: 20px;
+  margin-top: 10px;
+  color: #73849a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.app-access-status.success { color: #0d8a5f; }
+.app-access-status.error { color: #c2414b; }
+
+.app-access-primary,
+.app-access-secondary {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 14px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.app-access-primary {
+  border: 0;
+  background: linear-gradient(135deg, #0060c0, #397fe8);
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgba(0, 96, 192, 0.18);
+}
+
+.app-access-secondary {
+  border: 1px solid #cddbe8;
+  background: #f8fbfe;
+  color: #315d88;
+}
+
+.app-access-primary:disabled,
+.app-access-secondary:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.app-access-auth {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e8eef4;
+}
+
+.app-access-auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 3px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.app-access-current-user {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f3faf7;
+}
+
+.app-access-current-user > div {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.app-access-link {
+  border: 0;
+  background: transparent;
+  color: #397fe8;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.app-access-footnote {
+  display: block;
+  margin-top: 20px;
+  color: #91a0b1;
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .savings-hero-track i {
   display: block;
   height: 100%;

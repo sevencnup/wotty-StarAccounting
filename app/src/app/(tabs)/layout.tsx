@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { JournalPanel } from "@/components/stark/JournalPanel";
+import { AppAccessGate } from "@/components/stark/AppAccessGate";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
@@ -41,32 +42,34 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100dvh",
-        paddingTop: "env(safe-area-inset-top)",
-        background: "var(--background)",
-      }}
-    >
-      <main className="tabs-shell tabs-liquid-shell">{children}</main>
-      {!isJournalRoute ? <MobileBottomNav /> : null}
-      {!isJournalRoute && !isSettingsRoute && !journalVariant ? (
-        <button type="button" className="global-journal-trigger" onClick={openJournal}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-          <span>{isLoansRoute ? "新增贷款" : isAssetsRoute ? "新增资产" : isSavingsRoute ? "添加储蓄" : "记账"}</span>
-        </button>
-      ) : null}
-      {journalVariant ? (
-        <JournalPanel
-          mode="page"
-          variant={journalVariant}
-          onClose={closeJournal}
-          onSaved={closeJournal}
-        />
-      ) : null}
-    </div>
+    <AppAccessGate>
+      <div
+        style={{
+          minHeight: "100dvh",
+          paddingTop: "env(safe-area-inset-top)",
+          background: "var(--background)",
+        }}
+      >
+        <main className="tabs-shell tabs-liquid-shell">{children}</main>
+        {!isJournalRoute ? <MobileBottomNav /> : null}
+        {!isJournalRoute && !isSettingsRoute && !journalVariant ? (
+          <button type="button" className="global-journal-trigger" onClick={openJournal}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            <span>{isLoansRoute ? "新增贷款" : isAssetsRoute ? "新增资产" : isSavingsRoute ? "添加储蓄" : "记账"}</span>
+          </button>
+        ) : null}
+        {journalVariant ? (
+          <JournalPanel
+            mode="page"
+            variant={journalVariant}
+            onClose={closeJournal}
+            onSaved={closeJournal}
+          />
+        ) : null}
+      </div>
+    </AppAccessGate>
   );
 }

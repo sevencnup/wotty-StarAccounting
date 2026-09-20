@@ -1,3 +1,5 @@
+import { Capacitor } from "@capacitor/core";
+
 const CONFIG_PREFIX = "wotty-stark:";
 const DEFAULT_REPORTING_MONTH = "2026-01";
 const DEFAULT_CLOUD_API_PORT = 12367;
@@ -23,12 +25,18 @@ export function setCurrentAccountId(accountId: string) {
   writeValue("current-account-id", accountId);
 }
 
-export function getCurrentDataMode() {
-  return readValue("data-mode") ?? "LOCAL";
+export function getCurrentDataMode(): "LOCAL" | "CLOUD" {
+  if (!isNativeAppRuntime()) return "CLOUD";
+  return readValue("data-mode") === "CLOUD" ? "CLOUD" : "LOCAL";
 }
 
 export function setCurrentDataMode(mode: "LOCAL" | "CLOUD") {
   writeValue("data-mode", mode);
+}
+
+/** 浏览器版只使用云端数据；本地模式仅对 Capacitor 套壳 App 开放。 */
+export function isNativeAppRuntime() {
+  return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
 
 function getDefaultCloudApiUrl() {

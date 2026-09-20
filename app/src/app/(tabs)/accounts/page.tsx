@@ -5,8 +5,8 @@ import packageInfo from "../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { getCloudApiUrl, getCurrentAccountId, getCurrentDataMode, setCloudApiUrl } from "@/lib/stark/storage/local-config";
-import { cloudLogin, cloudLogout, cloudMe, cloudRegister, cloudResetPassword } from "@/lib/stark/repository/cloud-auth";
+import { getCloudApiUrl, getCurrentAccountId, getCurrentDataMode } from "@/lib/stark/storage/local-config";
+import { cloudResetPassword } from "@/lib/stark/repository/cloud-auth";
 import { getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
@@ -21,8 +21,7 @@ import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, typ
 type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
-type PanelKey = "MODE" | "AUTH" | "PASSWORD" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
-type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
+type PanelKey = "MODE" | "PASSWORD" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
@@ -36,7 +35,6 @@ type PendingBillImport = {
 function SettingIcon({ type }: { type: PanelKey }) {
   const paths: Record<PanelKey, React.ReactNode> = {
     MODE: <><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6" /><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" /></>,
-    AUTH: <><circle cx="12" cy="8" r="3.5" /><path d="M5 21c.7-3.4 3.1-5.5 7-5.5s6.3 2.1 7 5.5" /></>,
     PASSWORD: <><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
@@ -70,17 +68,6 @@ function SettingsRow({ type, title, value, onClick, disabled = false }: { type: 
 export default function AccountsPage() {
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [mode, setMode] = useState<DataMode>("CLOUD");
-  const [pendingMode, setPendingMode] = useState<DataMode>("CLOUD");
-  const [cloudUrl, setCloudUrl] = useState("");
-  const [connectionState, setConnectionState] = useState<ConnectionState>("IDLE");
-  const [connectionMessage, setConnectionMessage] = useState("请先测试云端服务是否可连接");
-  const [testedUrl, setTestedUrl] = useState("");
-  const [authMode, setAuthMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authName, setAuthName] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [authSubmitting, setAuthSubmitting] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -104,8 +91,6 @@ export default function AccountsPage() {
     applyUiSettings(saved);
     const savedMode = getCurrentDataMode() as DataMode;
     setMode(savedMode);
-    setPendingMode(savedMode);
-    setCloudUrl(getCloudApiUrl());
     void manager.getRepository().getImportErrorLogs(getCurrentAccountId()).then(setImportErrors).catch(() => setImportErrors([]));
   }, []);
 
@@ -116,14 +101,6 @@ export default function AccountsPage() {
       applyUiSettings(next);
       return next;
     });
-  }
-
-  function openModePanel() {
-    setPendingMode(mode);
-    setConnectionState("IDLE");
-    setConnectionMessage("请先测试云端服务是否可连接");
-    setTestedUrl("");
-    setActivePanel("MODE");
   }
 
   function openPasswordPanel() {
@@ -138,89 +115,6 @@ export default function AccountsPage() {
     setImportPlatform(platform);
     setPendingBillImport(null);
     setImportMessage(`请选择${platform}官方导出的 CSV / Excel 账单`);
-  }
-
-  async function testCloudConnection() {
-    const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
-    setConnectionState("TESTING");
-    setConnectionMessage("正在测试连接...");
-    const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), 5000);
-    try {
-      const response = await fetch(`${url}/api/health`, { signal: controller.signal });
-      const payload = await response.json() as { status?: string; db?: boolean };
-      if (!response.ok || payload.status !== "ok") throw new Error("Invalid health response");
-      if (!payload.db) {
-        setConnectionState("ERROR");
-        setConnectionMessage("后端服务可访问，但数据库尚未连接");
-        setTestedUrl("");
-        return;
-      }
-      setConnectionState("SUCCESS");
-      setConnectionMessage("连接成功，可以切换到云端模式");
-      setTestedUrl(url);
-    } catch {
-      setConnectionState("ERROR");
-      setConnectionMessage("连接失败，请检查地址、后端服务和网络权限");
-      setTestedUrl("");
-    } finally {
-      window.clearTimeout(timer);
-    }
-  }
-
-  async function confirmMode() {
-    const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
-    if (pendingMode === "CLOUD" && (connectionState !== "SUCCESS" || testedUrl !== url)) {
-      setConnectionState("ERROR");
-      setConnectionMessage("请先测试当前云端地址，连接成功后才能确定");
-      return;
-    }
-    if (pendingMode === "CLOUD") {
-      const user = await cloudMe(url);
-      if (!user) {
-        setAuthMode("LOGIN");
-        setAuthEmail("");
-        setAuthPassword("");
-        setAuthName("");
-        setAuthError("");
-        setActivePanel("AUTH");
-        return;
-      }
-      setCloudApiUrl(url);
-      manager.setCloudApiUrl(url);
-      setCloudUser(user);
-    }
-    await manager.switchMode(pendingMode);
-    setMode(pendingMode);
-    setActivePanel(null);
-    window.location.reload();
-  }
-
-  async function submitCloudAuth() {
-    const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
-    if (!authEmail.trim() || !authPassword) {
-      setAuthError("请输入邮箱和密码");
-      return;
-    }
-    setAuthSubmitting(true);
-    setAuthError("");
-    try {
-      manager.setCloudApiUrl(url);
-      if (authMode === "LOGIN") {
-        setCloudUser(await cloudLogin(url, authEmail.trim(), authPassword));
-      } else {
-        setCloudUser(await cloudRegister(url, authEmail.trim(), authPassword, authName));
-      }
-      setCloudApiUrl(url);
-      await manager.switchMode("CLOUD");
-      setMode("CLOUD");
-      setActivePanel(null);
-      window.location.reload();
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "登录失败，请检查云端服务");
-    } finally {
-      setAuthSubmitting(false);
-    }
   }
 
   async function submitPasswordReset() {
@@ -243,7 +137,7 @@ export default function AccountsPage() {
     setPasswordError("");
     setPasswordMessage("");
     try {
-      const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
+      const url = getCloudApiUrl().replace(/\/$/, "");
       await cloudResetPassword(url, newPassword, confirmPassword);
       setNewPassword("");
       setConfirmPassword("");
@@ -368,7 +262,7 @@ export default function AccountsPage() {
       <PageTopBar title="设置" />
 
       <section className="settings-center-group">
-        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={openModePanel} />
+        <SettingsRow type="MODE" title="切换模式" value={mode === "LOCAL" ? "本地模式" : "云端模式"} onClick={() => window.dispatchEvent(new Event("stark:open-access-gate"))} />
         <SettingsRow type="IMPORT" title="导入账单" value="微信 / 支付宝" onClick={() => setActivePanel("IMPORT")} />
         <SettingsRow type="EXPORT" title="导出账单" value="CSV 文件" onClick={() => { setExportMessage("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开"); setActivePanel("EXPORT"); }} />
       </section>
@@ -382,6 +276,7 @@ export default function AccountsPage() {
         <SettingsRow type="THEME" title="主题" value={themeLabels[uiSettings.theme]} onClick={() => setActivePanel("THEME")} />
         <SettingsRow type="LANGUAGE" title="语言" value={languageLabels[uiSettings.language]} onClick={() => setActivePanel("LANGUAGE")} />
         <SettingsRow type="FONT" title="字体大小" value={fontLabels[uiSettings.font]} onClick={() => setActivePanel("FONT")} />
+        {mode === "CLOUD" && cloudUser ? <SettingsRow type="PASSWORD" title="重置密码" value="云端账户" onClick={openPasswordPanel} /> : null}
       </section>
 
       <section className="settings-center-group">
@@ -392,43 +287,11 @@ export default function AccountsPage() {
 
       {activePanel ? (
         <BottomSheet
-          title={activePanel === "MODE" ? "切换模式" : activePanel === "AUTH" ? "登录云端账户" : activePanel === "PASSWORD" ? "重置密码" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          title={activePanel === "PASSWORD" ? "重置密码" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
           className="settings-sheet"
           overlayClassName="settings-sheet-overlay"
           onClose={() => setActivePanel(null)}
         >
-
-            {activePanel === "MODE" ? <div className="settings-sheet-body">
-              <p className="settings-sheet-note">本地模式将数据保存在当前设备；云端模式只读取后端数据库，连接失败时不会混用本地数据。</p>
-              <div className="settings-choice-grid">
-                <button type="button" className={pendingMode === "LOCAL" ? "active" : ""} onClick={() => setPendingMode("LOCAL")}><strong>本地模式</strong><span>数据保存在当前设备</span></button>
-                <button type="button" className={pendingMode === "CLOUD" ? "active" : ""} onClick={() => setPendingMode("CLOUD")}><strong>云端模式</strong><span>连接 MySQL 后端服务</span></button>
-              </div>
-              {pendingMode === "CLOUD" ? <>
-                <label className="settings-url-field"><span>云端服务地址</span><input value={cloudUrl} onChange={(event) => { setCloudUrl(event.target.value); setConnectionState("IDLE"); setTestedUrl(""); }} placeholder="http://localhost:12367" /></label>
-                <div className={`cloud-test-status ${connectionState.toLowerCase()}`}>{connectionMessage}</div>
-                {cloudUser ? <div className="cloud-auth-current">当前账户：{cloudUser.name || cloudUser.email}<button type="button" onClick={() => { cloudLogout(); setCloudUser(null); void manager.switchMode("LOCAL").then(() => { setMode("LOCAL"); setActivePanel(null); window.location.reload(); }); }}>退出云端账户</button></div> : null}
-                {cloudUser ? <button type="button" className="settings-password-link" onClick={openPasswordPanel}>重置密码</button> : null}
-              </> : null}
-              <div className="settings-mode-actions">
-                {pendingMode === "CLOUD" ? <button type="button" className="settings-test-button" disabled={connectionState === "TESTING"} onClick={() => void testCloudConnection()}>{connectionState === "TESTING" ? "测试中..." : "测试连接"}</button> : null}
-                <button type="button" className="settings-confirm-button" onClick={() => void confirmMode()}>确定</button>
-              </div>
-            </div> : null}
-
-            {activePanel === "AUTH" ? <div className="settings-sheet-body cloud-auth-form">
-              <p className="settings-sheet-note">云端模式需要账户登录。账户只用于隔离不同用户的账本数据，不会接触本地模式的数据。</p>
-              <div className="cloud-auth-tabs">
-                <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
-                <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
-              </div>
-              {authMode === "REGISTER" ? <label className="settings-url-field"><span>昵称（可选）</span><input value={authName} onChange={(event) => setAuthName(event.target.value)} placeholder="例如：小明" autoComplete="name" /></label> : null}
-              <label className="settings-url-field"><span>邮箱</span><input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" autoComplete="email" /></label>
-              <label className="settings-url-field"><span>密码（至少 8 位）</span><input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="请输入密码" autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
-              {authError ? <div className="cloud-test-status error">{authError}</div> : null}
-              <button type="button" className="settings-confirm-button cloud-auth-submit" disabled={authSubmitting} onClick={() => void submitCloudAuth()}>{authSubmitting ? "提交中..." : authMode === "LOGIN" ? "登录并切换云端" : "注册并切换云端"}</button>
-              <p className="settings-sheet-tip">忘记密码时可在部署管理员提供的数据库中重置账户；密码不会以明文保存。</p>
-            </div> : null}
 
             {activePanel === "PASSWORD" ? <div className="settings-sheet-body cloud-auth-form">
               <p className="settings-sheet-note">当前已登录云端账户，可直接设置新密码。新密码至少需要 8 位。</p>
@@ -437,7 +300,7 @@ export default function AccountsPage() {
               {passwordError ? <div className="cloud-test-status error">{passwordError}</div> : null}
               {passwordMessage ? <div className="cloud-test-status success">{passwordMessage}</div> : null}
               <div className="settings-mode-actions">
-                <button type="button" className="settings-test-button" disabled={passwordSubmitting} onClick={() => setActivePanel("MODE")}>返回</button>
+                <button type="button" className="settings-test-button" disabled={passwordSubmitting} onClick={() => setActivePanel(null)}>返回</button>
                 <button type="button" className="settings-confirm-button" disabled={passwordSubmitting} onClick={() => void submitPasswordReset()}>{passwordSubmitting ? "提交中..." : "确认重置"}</button>
               </div>
             </div> : null}
