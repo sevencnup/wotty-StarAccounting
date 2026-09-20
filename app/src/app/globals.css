@@ -8959,6 +8959,7 @@ img[src$="/qita.webp"] {
 .cloud-auth-submit:disabled { opacity: 0.55; }
 .cloud-auth-current { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 11px; border: 1px solid #dce5f0; border-radius: 9px; color: #526078; background: #f8fafd; font-size: calc(10px * var(--user-font-scale)); }
 .cloud-auth-current button { border: 0; color: var(--primary); background: transparent; font-size: inherit; }
+.settings-password-link { align-self: flex-start; padding: 0 2px; border: 0; color: var(--primary); background: transparent; font-size: calc(10px * var(--user-font-scale)); }
 
 .settings-mode-actions {
   display: grid;

@@ -22,6 +22,13 @@ data class AuthCredentials(
 )
 
 @Serializable
+data class PasswordResetRequest(
+    val currentPassword: String,
+    val newPassword: String,
+    val confirmPassword: String,
+)
+
+@Serializable
 data class AuthUserResponse(
     val id: String,
     val email: String,
@@ -94,6 +101,36 @@ fun Routing.authRoutes() {
     }
 
     authenticate("auth-jwt") {
+        post("/api/auth/password") {
+            val userId = call.principal<JWTPrincipal>()?.payload?.getClaim("userId")?.asString()
+            val user = userId?.let(DatabaseFactory::findUserById)
+            if (user == null) {
+                call.respond(HttpStatusCode.Unauthorized, AuthError("登录已失效，请重新登录"))
+                return@post
+            }
+
+            val request = call.receive<PasswordResetRequest>()
+            if (request.newPassword.length < 8) {
+                call.respond(HttpStatusCode.BadRequest, AuthError("新密码至少需要 8 位"))
+                return@post
+            }
+            if (request.newPassword != request.confirmPassword) {
+                call.respond(HttpStatusCode.BadRequest, AuthError("两次输入的新密码不一致"))
+                return@post
+            }
+            if (request.currentPassword == request.newPassword) {
+                call.respond(HttpStatusCode.BadRequest, AuthError("新密码不能与当前密码相同"))
+                return@post
+            }
+            if (!PasswordHasher.verify(request.currentPassword, user.password)) {
+                call.respond(HttpStatusCode.Unauthorized, AuthError("当前密码错误"))
+                return@post
+            }
+
+            DatabaseFactory.updatePassword(user.id, PasswordHasher.hash(request.newPassword))
+            call.respond(mapOf("message" to "密码修改成功"))
+        }
+
         get("/api/auth/me") {
             val userId = call.principal<JWTPrincipal>()?.payload?.getClaim("userId")?.asString()
             val user = userId?.let(DatabaseFactory::findUserById)

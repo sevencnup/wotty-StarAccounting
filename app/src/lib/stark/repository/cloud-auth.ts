@@ -52,6 +52,13 @@ export async function cloudMe(baseUrl: string) {
   }
 }
 
+export async function cloudResetPassword(baseUrl: string, currentPassword: string, newPassword: string, confirmPassword: string) {
+  await request<{ message: string }>(baseUrl, "/api/auth/password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+  });
+}
+
 export function cloudLogout() {
   clearCloudAuth();
 }
