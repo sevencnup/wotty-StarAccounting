@@ -1,0 +1,35 @@
+{
+  "ssh": {
+    "host": "203.0.113.10",
+    "port": 22,
+    "username": "root",
+    "password": "请替换成你的SSH密码",
+    "readyTimeoutMs": 20000
+  },
+  "server": {
+    "useSudo": false,
+    "packageManager": "auto",
+    "workspaceDir": "/tmp/wotty-mysql-init",
+    "cleanupRemoteFiles": true
+  },
+  "mysql": {
+    "installServer": true,
+    "rootPassword": "",
+    "port": 3306,
+    "bindAddress": "127.0.0.1",
+    "database": "star_accounting",
+    "appUser": "wotty",
+    "appPassword": "请替换成高强度数据库密码",
+    "grantHosts": [
+      "localhost",
+      "127.0.0.1"
+    ]
+  },
+  "admin": {
+    "createDefaultAdmin": true,
+    "email": "admin@wotty.com",
+    "password": "Admin@123.",
+    "name": "wotty管理员",
+    "accountName": "默认账本"
+  }
+}

@@ -1,0 +1,365 @@
+param(
+  [string]$FrontendUrl,
+  [string]$ApiBaseUrl,
+  [string]$DeviceId,
+  [int]$FrontendPort = 3000,
+  [int]$ApiPort = 3006,
+  [switch]$StartFrontendServer,
+  [switch]$StartBackendServer,
+  [switch]$SkipInstall,
+  [switch]$SkipLaunch,
+  [switch]$ForceWebBootstrapBuild
+)
+
+$ErrorActionPreference = "Stop"
+
+function Get-PrimaryLanIp {
+  try {
+    $defaultRoute = Get-NetRoute -DestinationPrefix "0.0.0.0/0" |
+      Sort-Object RouteMetric, InterfaceMetric |
+      Select-Object -First 1
+
+    if ($defaultRoute) {
+      $ip = Get-NetIPAddress -InterfaceIndex $defaultRoute.InterfaceIndex -AddressFamily IPv4 |
+        Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254*" } |
+        Select-Object -First 1 -ExpandProperty IPAddress
+
+      if ($ip) {
+        return $ip
+      }
+    }
+  } catch {
+  }
+
+  $fallback = Get-NetIPAddress -AddressFamily IPv4 |
+    Where-Object {
+      $_.IPAddress -match "^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)" -and
+      $_.IPAddress -notlike "127.*" -and
+      $_.IPAddress -notlike "169.254*"
+    } |
+    Select-Object -First 1 -ExpandProperty IPAddress
+
+  if (-not $fallback) {
+    throw "No LAN IPv4 address available for Android dev shell."
+  }
+
+  return $fallback
+}
+
+function Normalize-Url {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$RawValue
+  )
+
+  $trimmed = $RawValue.Trim()
+  if (-not $trimmed) {
+    throw "The URL cannot be empty."
+  }
+
+  try {
+    $parsed = [Uri]$trimmed
+  } catch {
+    throw "Invalid URL: $RawValue"
+  }
+
+  if ($parsed.Scheme -notin @("http", "https")) {
+    throw "Only http/https URLs are supported: $RawValue"
+  }
+
+  return $trimmed.TrimEnd("/")
+}
+
+function Start-DetachedPowerShell {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$WorkingDirectory,
+    [Parameter(Mandatory = $true)]
+    [string]$Command,
+    [Parameter(Mandatory = $true)]
+    [string]$WindowTitle
+  )
+
+  $escapedWorkingDirectory = $WorkingDirectory.Replace("'", "''")
+  $escapedWindowTitle = $WindowTitle.Replace("'", "''")
+  $startCommand = "Set-Location '$escapedWorkingDirectory'; `$Host.UI.RawUI.WindowTitle = '$escapedWindowTitle'; $Command"
+
+  Start-Process powershell -ArgumentList @(
+    "-NoExit",
+    "-ExecutionPolicy", "Bypass",
+    "-Command", $startCommand
+  ) | Out-Null
+}
+
+function Get-GradleCommand {
+  param(
+    [string]$AndroidProjectRoot
+  )
+
+  $wrapperPropsPath = Join-Path $AndroidProjectRoot "gradle\\wrapper\\gradle-wrapper.properties"
+  $wrapperProps = Get-Content $wrapperPropsPath -Raw
+  $distributionUrlMatch = [regex]::Match($wrapperProps, "distributionUrl=(.+)")
+
+  if (-not $distributionUrlMatch.Success) {
+    throw "Unable to locate Gradle distribution URL."
+  }
+
+  $distributionUrl = $distributionUrlMatch.Groups[1].Value.Trim().Replace("\:", ":")
+  $versionMatch = [regex]::Match($distributionUrl, "gradle-([0-9.]+)-(bin|all)\.zip")
+
+  if (-not $versionMatch.Success) {
+    throw "Unable to parse Gradle version from distribution URL: $distributionUrl"
+  }
+
+  $gradleVersion = $versionMatch.Groups[1].Value
+  $cachedGradle = Get-ChildItem (Join-Path $env:USERPROFILE ".gradle\\wrapper\\dists") -Recurse -Filter gradle.bat -ErrorAction SilentlyContinue |
+    Where-Object { $_.FullName -like "*gradle-$gradleVersion*" } |
+    Select-Object -First 1
+
+  if ($cachedGradle) {
+    return $cachedGradle.FullName
+  }
+
+  $gradleRoot = Join-Path $env:LOCALAPPDATA "Gradle"
+  $gradleHome = Join-Path $gradleRoot ("gradle-{0}" -f $gradleVersion)
+  $gradleCmd = Join-Path $gradleHome "bin\\gradle.bat"
+
+  if (-not (Test-Path $gradleCmd)) {
+    New-Item -ItemType Directory -Force -Path $gradleRoot | Out-Null
+    $gradleZip = Join-Path $env:TEMP ("gradle-{0}.zip" -f $gradleVersion)
+    Invoke-WebRequest -Uri $distributionUrl -OutFile $gradleZip
+    Expand-Archive -Path $gradleZip -DestinationPath $gradleRoot -Force
+  }
+
+  if (-not (Test-Path $gradleCmd)) {
+    throw "Gradle command not found at: $gradleCmd"
+  }
+
+  return $gradleCmd
+}
+
+function Initialize-AndroidBuildEnvironment {
+  if (-not $env:ANDROID_SDK_ROOT) {
+    $env:ANDROID_SDK_ROOT = Join-Path $env:LOCALAPPDATA "Android\\Sdk"
+  }
+  if (-not $env:ANDROID_HOME) {
+    $env:ANDROID_HOME = $env:ANDROID_SDK_ROOT
+  }
+  if (-not $env:JAVA_HOME) {
+    $studioCmd = Get-Command studio64.exe -ErrorAction SilentlyContinue
+    if ($studioCmd) {
+      $studioRoot = Split-Path -Parent (Split-Path -Parent $studioCmd.Source)
+      $studioJbr = Join-Path $studioRoot "jbr"
+      if (Test-Path (Join-Path $studioJbr "bin\\java.exe")) {
+        $env:JAVA_HOME = $studioJbr
+      }
+    }
+
+    if (-not $env:JAVA_HOME) {
+      $javaExe = (Get-Command java.exe).Source
+      $env:JAVA_HOME = Split-Path -Parent (Split-Path -Parent $javaExe)
+    }
+  }
+}
+
+function Write-AndroidLocalProperties {
+  param(
+    [string]$AndroidSdkRoot,
+    [string]$ProjectRoot
+  )
+
+  $sdkDirEscaped = $AndroidSdkRoot.Replace("\", "\\")
+  @(
+    "## This file is auto-generated by web/scripts/run-android-dev-shell.ps1",
+    "sdk.dir=$sdkDirEscaped"
+  ) | Set-Content -Path (Join-Path $ProjectRoot "android\\local.properties") -Encoding UTF8
+}
+
+function Get-AdbCommand {
+  $sdkAdb = Join-Path $env:ANDROID_SDK_ROOT "platform-tools\\adb.exe"
+  if (Test-Path $sdkAdb) {
+    return $sdkAdb
+  }
+
+  $adbCmd = Get-Command adb.exe -ErrorAction SilentlyContinue
+  if ($adbCmd) {
+    return $adbCmd.Source
+  }
+
+  throw "adb.exe not found. Install Android platform-tools or set ANDROID_SDK_ROOT."
+}
+
+function Get-ConnectedDeviceIds {
+  param(
+    [string]$AdbCommand
+  )
+
+  $rawLines = & $AdbCommand devices
+  if ($LASTEXITCODE -ne 0) {
+    throw "Unable to read adb devices."
+  }
+
+  return ,@(
+    $rawLines |
+      Select-Object -Skip 1 |
+      Where-Object { $_ -match "^\S+\s+device$" } |
+      ForEach-Object { ($_ -split "\s+")[0] }
+  )
+}
+
+function Resolve-TargetDeviceId {
+  param(
+    [string]$AdbCommand,
+    [string]$PreferredDeviceId
+  )
+
+  $connectedDeviceIds = @(Get-ConnectedDeviceIds -AdbCommand $AdbCommand)
+
+  if (-not $connectedDeviceIds.Count) {
+    return $null
+  }
+
+  if ($PreferredDeviceId) {
+    $normalizedPreferredDeviceId = $PreferredDeviceId.Trim()
+
+    if ($connectedDeviceIds -contains $normalizedPreferredDeviceId) {
+      return [string]$normalizedPreferredDeviceId
+    }
+
+    throw "The requested device '$PreferredDeviceId' is not currently connected."
+  }
+
+  if ($connectedDeviceIds.Count -eq 1) {
+    return [string]$connectedDeviceIds[0]
+  }
+
+  throw "Multiple Android devices are connected. Re-run the script with -DeviceId <adb-id>."
+}
+
+function Invoke-GradleDebugBuild {
+  param(
+    [string]$GradleCommand
+  )
+
+  & $GradleCommand :app:assembleDebug --offline
+  if ($LASTEXITCODE -eq 0) {
+    return
+  }
+
+  Write-Host "Offline debug build failed. Retrying with network access..." -ForegroundColor Yellow
+  & $GradleCommand :app:assembleDebug
+
+  if ($LASTEXITCODE -ne 0) {
+    throw "Gradle assembleDebug failed with exit code $LASTEXITCODE"
+  }
+}
+
+$projectRoot = Split-Path -Parent $PSScriptRoot
+$repoRoot = Split-Path -Parent $projectRoot
+Set-Location $projectRoot
+
+$lanIp = Get-PrimaryLanIp
+$resolvedFrontendUrl = if ($FrontendUrl) { Normalize-Url -RawValue $FrontendUrl } else { "http://${lanIp}:$FrontendPort" }
+$resolvedApiBaseUrl = if ($ApiBaseUrl) { Normalize-Url -RawValue $ApiBaseUrl } else { "http://${lanIp}:$ApiPort" }
+
+if ($StartFrontendServer) {
+  Start-DetachedPowerShell -WorkingDirectory $projectRoot -Command "npm.cmd run dev" -WindowTitle "wotty Frontend Dev"
+}
+
+if ($StartBackendServer) {
+  Start-DetachedPowerShell -WorkingDirectory (Join-Path $repoRoot "server") -Command "npm.cmd run dev" -WindowTitle "wotty Backend Dev"
+}
+
+Initialize-AndroidBuildEnvironment
+
+if (-not (Test-Path "android")) {
+  npx.cmd cap add android
+}
+
+$env:CAP_SERVER_URL = $resolvedFrontendUrl
+$env:NEXT_PUBLIC_NATIVE_DEFAULT_API_BASE_URL = $resolvedApiBaseUrl
+
+Write-Host "Android dev shell frontend: $resolvedFrontendUrl" -ForegroundColor Cyan
+Write-Host "Android dev shell API base: $resolvedApiBaseUrl" -ForegroundColor Cyan
+
+Write-AndroidLocalProperties -AndroidSdkRoot $env:ANDROID_SDK_ROOT -ProjectRoot $projectRoot
+
+if ($ForceWebBootstrapBuild -or -not (Test-Path (Join-Path $projectRoot "out\\index.html"))) {
+  Write-Host "Preparing fallback static assets for Capacitor..." -ForegroundColor Yellow
+  npm.cmd run build:export
+} else {
+  Write-Host "Reusing existing web/out fallback assets. Use -ForceWebBootstrapBuild if you want a fresh export." -ForegroundColor DarkGray
+}
+
+npx.cmd cap sync android
+
+$versionName = "dev"
+$buildGradle = Get-Content "android\\app\\build.gradle" -Raw
+$versionMatch = [regex]::Match($buildGradle, 'versionName\s+"([^"]+)"')
+if ($versionMatch.Success) {
+  $versionName = $versionMatch.Groups[1].Value
+}
+
+Push-Location "android"
+try {
+  $gradleCmd = Get-GradleCommand -AndroidProjectRoot $PWD.Path
+  Invoke-GradleDebugBuild -GradleCommand $gradleCmd
+} finally {
+  Pop-Location
+}
+
+$sourceApk = Join-Path $projectRoot "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk"
+if (-not (Test-Path $sourceApk)) {
+  throw "APK not found at: $sourceApk"
+}
+
+$artifactDir = Join-Path $projectRoot "dist-apk"
+New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+
+$targetApk = Join-Path $artifactDir ("wotty-android-dev-shell-{0}.apk" -f $versionName)
+Copy-Item -Path $sourceApk -Destination $targetApk -Force
+
+Write-Host "Dev shell APK generated: $targetApk" -ForegroundColor Green
+
+$adbCommand = Get-AdbCommand
+$targetDeviceId = $null
+
+if (-not $SkipInstall) {
+  $targetDeviceId = Resolve-TargetDeviceId -AdbCommand $adbCommand -PreferredDeviceId $DeviceId
+
+  if (-not $targetDeviceId) {
+    Write-Warning "No Android device connected. The dev shell APK has been built but not installed."
+  } else {
+    Write-Host "Installing dev shell APK to device: $targetDeviceId" -ForegroundColor Cyan
+    & $adbCommand @("-s", "$targetDeviceId", "install", "-r", "$targetApk")
+
+    if ($LASTEXITCODE -ne 0) {
+      throw "adb install failed for device '$targetDeviceId' with exit code $LASTEXITCODE"
+    }
+
+    if (-not $SkipLaunch) {
+      & $adbCommand @("-s", "$targetDeviceId", "shell", "am", "start", "-W", "com.wotty.star_accounting/.MainActivity")
+
+      if ($LASTEXITCODE -ne 0) {
+        throw "adb start failed for device '$targetDeviceId' with exit code $LASTEXITCODE"
+      }
+    }
+  }
+}
+
+Write-Host ""
+Write-Host "Android dev shell is ready." -ForegroundColor Green
+Write-Host "Frontend live URL : $resolvedFrontendUrl"
+Write-Host "Backend API URL   : $resolvedApiBaseUrl"
+Write-Host "APK artifact       : $targetApk"
+
+if ($targetDeviceId) {
+  Write-Host "Installed device   : $targetDeviceId"
+}
+
+Write-Host ""
+Write-Host "Suggested next steps:" -ForegroundColor Yellow
+Write-Host "1. Keep 'npm.cmd run dev' running in web/."
+Write-Host "2. Keep 'npm.cmd run dev' running in server/ if you need local backend debugging."
+Write-Host "3. Use this log command to watch the native shell on your PC:"
+Write-Host "   & '$adbCommand' $(if ($targetDeviceId) { "-s $targetDeviceId " })logcat | Select-String 'Capacitor|Console|chromium|wotty|ERR_|api'"
