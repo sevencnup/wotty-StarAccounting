@@ -607,7 +607,6 @@ export function SavingsPlanner({
           <label className="savings-goal-field">
             <span>储蓄名称</span>
             <input
-              className="savings-goal-name-input"
               value={goalName}
               onChange={(event) => setGoalName(event.target.value)}
               maxLength={24}

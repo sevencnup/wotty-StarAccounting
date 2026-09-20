@@ -7303,12 +7303,6 @@ img[src$="/qita.webp"] {
 }
 
 .savings-goal-field input:focus {
-  border-color: #94a3b8;
-  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.14);
-}
-
-.savings-goal-field .savings-goal-name-input,
-.savings-goal-field .savings-goal-name-input:focus {
   border-color: #dce4ef;
   box-shadow: none;
   outline: none;
