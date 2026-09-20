@@ -23,7 +23,6 @@ data class AuthCredentials(
 
 @Serializable
 data class PasswordResetRequest(
-    val currentPassword: String,
     val newPassword: String,
     val confirmPassword: String,
 )
@@ -116,14 +115,6 @@ fun Routing.authRoutes() {
             }
             if (request.newPassword != request.confirmPassword) {
                 call.respond(HttpStatusCode.BadRequest, AuthError("两次输入的新密码不一致"))
-                return@post
-            }
-            if (request.currentPassword == request.newPassword) {
-                call.respond(HttpStatusCode.BadRequest, AuthError("新密码不能与当前密码相同"))
-                return@post
-            }
-            if (!PasswordHasher.verify(request.currentPassword, user.password)) {
-                call.respond(HttpStatusCode.Unauthorized, AuthError("当前密码错误"))
                 return@post
             }
 

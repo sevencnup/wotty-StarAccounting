@@ -81,7 +81,6 @@ export default function AccountsPage() {
   const [authName, setAuthName] = useState("");
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -128,7 +127,6 @@ export default function AccountsPage() {
   }
 
   function openPasswordPanel() {
-    setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
     setPasswordError("");
@@ -226,7 +224,7 @@ export default function AccountsPage() {
   }
 
   async function submitPasswordReset() {
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (!newPassword || !confirmPassword) {
       setPasswordError("请完整填写密码信息");
       setPasswordMessage("");
       return;
@@ -241,19 +239,12 @@ export default function AccountsPage() {
       setPasswordMessage("");
       return;
     }
-    if (currentPassword === newPassword) {
-      setPasswordError("新密码不能与当前密码相同");
-      setPasswordMessage("");
-      return;
-    }
-
     setPasswordSubmitting(true);
     setPasswordError("");
     setPasswordMessage("");
     try {
       const url = (cloudUrl.trim() || getCloudApiUrl()).replace(/\/$/, "");
-      await cloudResetPassword(url, currentPassword, newPassword, confirmPassword);
-      setCurrentPassword("");
+      await cloudResetPassword(url, newPassword, confirmPassword);
       setNewPassword("");
       setConfirmPassword("");
       setPasswordMessage("密码已重置成功，请妥善保管新密码");
@@ -440,8 +431,7 @@ export default function AccountsPage() {
             </div> : null}
 
             {activePanel === "PASSWORD" ? <div className="settings-sheet-body cloud-auth-form">
-              <p className="settings-sheet-note">修改当前云端账户密码需要验证当前密码。新密码至少需要 8 位。</p>
-              <label className="settings-url-field"><span>当前密码</span><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} placeholder="请输入当前密码" autoComplete="current-password" /></label>
+              <p className="settings-sheet-note">当前已登录云端账户，可直接设置新密码。新密码至少需要 8 位。</p>
               <label className="settings-url-field"><span>新密码</span><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="请输入新密码" autoComplete="new-password" /></label>
               <label className="settings-url-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="请再次输入新密码" autoComplete="new-password" /></label>
               {passwordError ? <div className="cloud-test-status error">{passwordError}</div> : null}
