@@ -101,6 +101,9 @@ object Accounts : Table("account") {
     val id = varchar("id", 191)
     val name = varchar("name", 191)
     val ownerId = varchar("ownerId", 191).index("Account_ownerId_idx")
+    // Nullable so existing account tables can be upgraded without a data rewrite.
+    val openingBalance = decimal("openingBalance", 65, 30).nullable()
+    val openingBalanceDate = datetime("openingBalanceDate").nullable()
     val createdAt = datetime("createdAt")
     val updatedAt = datetime("updatedAt")
 
@@ -361,6 +364,7 @@ object DatabaseFactory {
             it[Accounts.id] = accountId
             it[Accounts.name] = "默认账本"
             it[Accounts.ownerId] = id
+            it[Accounts.openingBalance] = BigDecimal.ZERO
             it[Accounts.createdAt] = now
             it[Accounts.updatedAt] = now
         }
@@ -702,6 +706,8 @@ private fun ResultRow.toAccountRecord() = SyncRecordRow(
         "id" to this[Accounts.id],
         "name" to this[Accounts.name],
         "ownerId" to this[Accounts.ownerId],
+        "openingBalance" to this[Accounts.openingBalance],
+        "openingBalanceDate" to this[Accounts.openingBalanceDate]?.let(::formatDateTime),
         "createdAt" to formatDateTime(this[Accounts.createdAt]),
         "updatedAt" to formatDateTime(this[Accounts.updatedAt]),
     ),
@@ -934,6 +940,8 @@ private fun upsertUser(payload: JsonObject) = upsertById(Users, Users.id, payloa
 private fun upsertAccount(payload: JsonObject) = upsertById(Accounts, Accounts.id, payload.getString("id")) { row ->
         row[Accounts.name] = payload.getString("name")
         row[Accounts.ownerId] = payload.getString("ownerId")
+        row[Accounts.openingBalance] = payload.getNullableDecimal("openingBalance")
+        row[Accounts.openingBalanceDate] = payload.getNullableDateTime("openingBalanceDate")
         row[Accounts.createdAt] = payload.getDateTime("createdAt")
         row[Accounts.updatedAt] = payload.getDateTime("updatedAt")
     }

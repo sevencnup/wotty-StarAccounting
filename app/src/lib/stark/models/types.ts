@@ -117,6 +117,10 @@ export interface Account {
   id: string;
   name: string;
   ownerId: string;
+  /** 账本期初日开始前的实际余额；旧账本为空时按 0 兼容。 */
+  openingBalance?: number | null;
+  /** 期初余额对应的日期，按当天 00:00 作为累计流水起点。 */
+  openingBalanceDate?: string | null;
   createdAt: string;
   updatedAt: string;
 }

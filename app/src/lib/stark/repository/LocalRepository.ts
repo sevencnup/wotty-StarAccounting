@@ -55,6 +55,8 @@ function defaultAccount(): Account {
     id: "default",
     name: "默认账本",
     ownerId: "local-user",
+    openingBalance: 0,
+    openingBalanceDate: null,
     createdAt: now,
     updatedAt: now,
   };
@@ -73,7 +75,16 @@ export class LocalRepository implements DataRepository {
   private async seed() {
     const now = nowText();
     await putRecord("users", defaultUser());
-    await putRecord("accounts", defaultAccount());
+    const existingAccount = await getRecord<Account>("accounts", "default");
+    if (!existingAccount) {
+      await putRecord("accounts", defaultAccount());
+    } else if (existingAccount.openingBalance === undefined || existingAccount.openingBalanceDate === undefined) {
+      await putRecord("accounts", {
+        ...existingAccount,
+        openingBalance: existingAccount.openingBalance ?? 0,
+        openingBalanceDate: existingAccount.openingBalanceDate ?? null,
+      });
+    }
     await this.removeLegacyDemoRecords();
   }
 
