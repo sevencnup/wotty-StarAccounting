@@ -554,8 +554,9 @@ object DatabaseFactory {
             addAll(Assets.selectAll().where { Assets.accountId eq accountId }.map { it.toAssetRecord() })
             addAll(Budgets.selectAll().where { Budgets.accountId eq accountId }.map { it.toBudgetRecord() })
             addAll(Loans.selectAll().where { Loans.accountId eq accountId }.map { it.toLoanRecord() })
-            addAll(SavingsGoals.selectAll().where { SavingsGoals.accountId eq accountId }.map { it.toSavingsGoalRecord() })
-            val goalIds = SavingsGoals.selectAll().where { SavingsGoals.accountId eq accountId }.map { it[SavingsGoals.id] }
+            val savingsGoalRows = SavingsGoals.selectAll().where { SavingsGoals.accountId eq accountId }.toList()
+            addAll(savingsGoalRows.map { it.toSavingsGoalRecord() })
+            val goalIds = savingsGoalRows.map { it[SavingsGoals.id] }
             if (goalIds.isNotEmpty()) {
                 addAll(SavingsPlans.selectAll().where { SavingsPlans.goalId inList goalIds }.map { it.toSavingsPlanRecord() })
             }

@@ -34,21 +34,13 @@ type EntityType =
   | "exchangeRates"
   | "themeConfigs";
 
-type SyncRecord = {
-  id: string;
-  entityType: EntityType;
-  accountId?: string | null;
-  userId?: string | null;
-  payload: Record<string, unknown>;
-  updatedAt: string;
-};
-
 type TimedValue<T> = {
   expiresAt: number;
   value: T;
 };
 
 const TRANSACTION_CACHE_TTL = 20_000;
+const TRANSACTION_PAGE_SIZE = 500;
 
 function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: T[]) {
   return [...items].sort((a, b) => (b.date ?? b.createdAt ?? "").localeCompare(a.date ?? a.createdAt ?? ""));
@@ -56,8 +48,6 @@ function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: 
 
 export class RemoteRepository implements DataRepository {
   private baseUrl: string;
-  private readonly syncRequests = new Map<string, Promise<SyncRecord[]>>();
-  private readonly syncCache = new Map<string, { expiresAt: number; records: SyncRecord[] }>();
   private readonly transactionMonthRequests = new Map<string, Promise<Transaction[]>>();
   private readonly transactionMonthCache = new Map<string, TimedValue<Transaction[]>>();
   private readonly transactionMonthsRequests = new Map<string, Promise<string[]>>();
@@ -69,8 +59,6 @@ export class RemoteRepository implements DataRepository {
   }
 
   clearCache() {
-    this.syncCache.clear();
-    this.syncRequests.clear();
     this.transactionMonthCache.clear();
     this.transactionMonthRequests.clear();
     this.transactionMonthsCache.clear();
@@ -107,26 +95,6 @@ export class RemoteRepository implements DataRepository {
     }
   }
 
-  private async list(entityType: EntityType, accountId?: string) {
-    const targetAccountId = accountId ?? getCurrentAccountId();
-    const cached = this.syncCache.get(targetAccountId);
-    if (cached && cached.expiresAt > Date.now()) {
-      return cached.records.filter((record) => record.entityType === entityType && !record.payload.__deleted).map((record) => record.payload);
-    }
-    let syncRequest = this.syncRequests.get(targetAccountId);
-    if (!syncRequest) {
-      syncRequest = this.request<SyncRecord[]>(`/api/sync?accountId=${encodeURIComponent(targetAccountId)}`)
-        .then((records) => {
-          this.syncCache.set(targetAccountId, { expiresAt: Date.now() + 5000, records });
-          return records;
-        })
-        .finally(() => this.syncRequests.delete(targetAccountId));
-      this.syncRequests.set(targetAccountId, syncRequest);
-    }
-    const records = await syncRequest;
-    return records.filter((record) => record.entityType === entityType && !record.payload.__deleted).map((record) => record.payload);
-  }
-
   private clearTransactionCaches(accountId: string) {
     this.transactionCacheGenerations.set(accountId, (this.transactionCacheGenerations.get(accountId) ?? 0) + 1);
     const prefix = `${accountId}:`;
@@ -144,15 +112,22 @@ export class RemoteRepository implements DataRepository {
     return this.transactionCacheGenerations.get(accountId) ?? 0;
   }
 
-  private async fetchTransactionMonth(accountId: string, month: string) {
-    const pageSize = 500;
+  private async fetchTransactionPage(accountId: string, page: number, pageSize: number, month?: string) {
+    const query = new URLSearchParams({
+      accountId,
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+    if (month) query.set("month", month);
+    return this.request<Transaction[]>(`/api/transactions?${query.toString()}`);
+  }
+
+  private async fetchAllTransactions(accountId: string, month?: string) {
     const transactions: Transaction[] = [];
     for (let page = 1; ; page += 1) {
-      const batch = await this.request<Transaction[]>(
-        `/api/transactions?accountId=${encodeURIComponent(accountId)}&month=${encodeURIComponent(month)}&page=${page}&pageSize=${pageSize}`,
-      );
+      const batch = await this.fetchTransactionPage(accountId, page, TRANSACTION_PAGE_SIZE, month);
       transactions.push(...batch);
-      if (batch.length < pageSize) break;
+      if (batch.length < TRANSACTION_PAGE_SIZE) break;
     }
     return sortByDateDesc(transactions);
   }
@@ -161,7 +136,6 @@ export class RemoteRepository implements DataRepository {
     const record = value as Record<string, unknown>;
     const accountId = record.accountId ?? getCurrentAccountId();
     const targetAccountId = String(accountId);
-    this.syncCache.delete(targetAccountId);
     this.clearTransactionCaches(targetAccountId);
     return this.request<void>("/api/sync", {
       method: "POST",
@@ -193,8 +167,13 @@ export class RemoteRepository implements DataRepository {
   async deleteAccount(id: string) { await this.delete("accounts", id); }
 
   async getTransactions(accountId: string, page = 1, pageSize = 50) {
-    const records = sortByDateDesc(await this.list("transactions", accountId) as unknown as Transaction[]);
-    return records.slice((page - 1) * pageSize, page * pageSize);
+    const normalizedPage = Math.max(1, Math.floor(page));
+    const normalizedPageSize = Math.max(1, Math.floor(pageSize));
+    if (normalizedPageSize <= TRANSACTION_PAGE_SIZE) {
+      return this.fetchTransactionPage(String(accountId), normalizedPage, normalizedPageSize);
+    }
+    const transactions = await this.fetchAllTransactions(String(accountId));
+    return transactions.slice((normalizedPage - 1) * normalizedPageSize, normalizedPage * normalizedPageSize);
   }
   async getTransactionsByMonth(accountId: string, month: string) {
     const targetAccountId = String(accountId);
@@ -205,7 +184,7 @@ export class RemoteRepository implements DataRepository {
     let request = this.transactionMonthRequests.get(cacheKey);
     if (!request) {
       const generation = this.transactionCacheGeneration(targetAccountId);
-      const pending = this.fetchTransactionMonth(targetAccountId, month)
+      const pending = this.fetchAllTransactions(targetAccountId, month)
         .then((transactions) => {
           if (generation === this.transactionCacheGeneration(targetAccountId)) {
             this.transactionMonthCache.set(cacheKey, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: transactions });
@@ -246,7 +225,7 @@ export class RemoteRepository implements DataRepository {
     }
     return request;
   }
-  async getTransaction(id: string) { return (await this.list("transactions")).find((item) => item.id === id) as Transaction | undefined ?? null; }
+  async getTransaction(id: string) { return await this.request<Transaction | null>(`/api/transactions/${encodeURIComponent(id)}`); }
   async saveTransaction(transaction: Transaction) { await this.save("transactions", transaction); }
   async deleteTransaction(id: string) { await this.delete("transactions", id); }
   async importTransactions(transactions: Transaction[]): Promise<ImportResult> {
@@ -256,7 +235,6 @@ export class RemoteRepository implements DataRepository {
       method: "POST",
       body: JSON.stringify(transactions),
     });
-    this.syncCache.delete(accountId);
     this.clearTransactionCaches(accountId);
     return result;
   }
@@ -267,7 +245,6 @@ export class RemoteRepository implements DataRepository {
       method: "POST",
       body: JSON.stringify(transactions),
     });
-    this.syncCache.delete(accountId);
     this.clearTransactionCaches(accountId);
     return result;
   }
@@ -295,7 +272,7 @@ export class RemoteRepository implements DataRepository {
   }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
   async deleteSavingsGoal(id: string) {
-    this.syncCache.clear();
+    this.clearCache();
     await this.request<void>(`/api/savings-goals/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
   async getSavingsPlans(goalId: string) {
@@ -307,7 +284,7 @@ export class RemoteRepository implements DataRepository {
   }
   async saveSavingsPlan(plan: SavingsPlan) { await this.save("savingsPlans", plan); }
   async deleteSavingsPlan(id: string) {
-    this.syncCache.clear();
+    this.clearCache();
     await this.request<void>(`/api/savings-plans/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
