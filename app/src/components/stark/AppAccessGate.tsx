@@ -27,10 +27,6 @@ function getDestination() {
   return isProtectedDestination(requested) ? requested : "/app";
 }
 
-function isModeSwitchRequested() {
-  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("switchMode") === "1";
-}
-
 /** 检测后端和数据库；根入口与受保护路由共用。 */
 export async function verifyCloudConnection(urlValue: string) {
   const url = normalizeUrl(urlValue);
@@ -134,7 +130,7 @@ export function AppAccessGate() {
     if (nativeRuntime && initialMode === "LOCAL") {
       setPhase("LOCAL");
     } else {
-      void checkCloud(initialUrl, !isModeSwitchRequested());
+      void checkCloud(initialUrl, true);
     }
 
     function updateShellHeightForOrientation() {
