@@ -218,8 +218,8 @@ export function AppAccessGate() {
                     <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
                   </div>
                   {authMode === "REGISTER" ? <label className="app-access-field"><span>昵称（可选）</span><input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label> : null}
-                  <label className="app-access-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
-                  <label className="app-access-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                  <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
+                  <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
                   {authError ? <div className="app-access-status error">{authError}</div> : null}
                   <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
                 </div>
