@@ -700,6 +700,40 @@ function buildHomeExpenseRoseOption(
   };
 }
 
+function ExpenseCategoryDetailSheet({ summary, reportingMonth, onClose }: { summary: HomeSummary; reportingMonth: string; onClose: () => void }) {
+  const locale = useAppLocale();
+  const isAnnual = isReportingYearKey(reportingMonth);
+  const periodLabel = isAnnual ? "全年支出" : "本月支出";
+
+  return (
+    <BottomSheet title={translateValue("分类明细", locale)} onClose={onClose} className="expense-category-sheet" bodyClassName="expense-category-sheet-body">
+      <section className="expense-category-total">
+        <span>{translateValue(periodLabel, locale)}</span>
+        <strong>¥ {formatMoney(summary.expense)}</strong>
+        <small>{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</small>
+      </section>
+
+      <section className="expense-category-detail-list" aria-label={translateValue("分类明细", locale)}>
+        {summary.ratios.length ? summary.ratios.map((item) => {
+          const itemName = translateValue(item.name, locale);
+          return (
+            <article className="expense-category-detail-row" key={item.name}>
+              <div className="expense-category-detail-head">
+                <span className="expense-category-detail-name"><i style={{ background: item.color }} />{itemName}</span>
+                <strong>¥ {formatMoney(item.amount)}</strong>
+              </div>
+              <div className="expense-category-detail-progress" aria-label={`${itemName} ${item.percent}%`}>
+                <i style={{ width: `${Math.min(Math.max(item.percent, 0), 100)}%`, background: item.color }} />
+              </div>
+              <small>{locale === "en-US" ? `${item.percent}% of total` : `占本期支出 ${item.percent}%`}</small>
+            </article>
+          );
+        }) : <p className="category-empty">{translateValue("本月暂无支出记录", locale)}</p>}
+      </section>
+    </BottomSheet>
+  );
+}
+
 function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
   const locale = useAppLocale();
   const isAnnual = isReportingYearKey(reportingMonth);
@@ -715,31 +749,36 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
     () => buildHomeExpenseRoseOption(roseSegments, locale),
     [locale, roseSegments],
   );
+  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
-    <SurfaceCard className="stark-category-card">
-      <div className="category-card-head">
-        <div className="category-title-block">
-          <strong>{translateValue(structureLabel, locale)}</strong>
-          <span className="category-sub">{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</span>
+    <>
+      <SurfaceCard className="stark-category-card">
+        <div className="category-card-head">
+          <div className="category-title-block">
+            <strong>{translateValue(structureLabel, locale)}</strong>
+            <span className="category-sub">{locale === "en-US" ? `${summary.ratios.length} categories` : `共 ${summary.ratios.length} 个分类`}</span>
+          </div>
+          <button type="button" className="category-all-link category-all-button" onClick={() => setDetailOpen(true)}>
+            {translateValue("分类明细", locale)} <ChevronRightIcon size={12} />
+          </button>
         </div>
-        <Link href="/app/consumption" className="category-all-link">
-          {translateValue("分类明细", locale)} <ChevronRightIcon size={12} />
-        </Link>
-      </div>
 
-      {ratios.length ? (
-        <div className="category-card-body">
-          <EChartView
-            option={roseOption}
-            className="category-rose-chart"
-            ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
-          />
-        </div>
-      ) : (
-        <div className="category-empty">{translateValue("本月暂无支出记录", locale)}</div>
-      )}
-    </SurfaceCard>
+        {ratios.length ? (
+          <div className="category-card-body">
+            <EChartView
+              option={roseOption}
+              className="category-rose-chart"
+              ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
+            />
+          </div>
+        ) : (
+          <div className="category-empty">{translateValue("本月暂无支出记录", locale)}</div>
+        )}
+      </SurfaceCard>
+
+      {detailOpen ? <ExpenseCategoryDetailSheet summary={summary} reportingMonth={reportingMonth} onClose={() => setDetailOpen(false)} /> : null}
+    </>
   );
 }
 
