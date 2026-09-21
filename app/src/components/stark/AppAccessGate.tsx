@@ -26,6 +26,10 @@ function getDestination() {
   return isProtectedDestination(requested) ? requested : "/app";
 }
 
+function isModeSwitchRequested() {
+  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("switchMode") === "1";
+}
+
 /** 检测后端和数据库；根入口与受保护路由共用。 */
 export async function verifyCloudConnection(urlValue: string) {
   const url = normalizeUrl(urlValue);
@@ -113,7 +117,7 @@ export function AppAccessGate() {
     if (nativeRuntime && initialMode === "LOCAL") {
       setPhase("LOCAL");
     } else {
-      setPhase("AUTH");
+      void checkCloud(initialUrl, !isModeSwitchRequested());
     }
 
     return () => {
@@ -208,17 +212,17 @@ export function AppAccessGate() {
                   <div><button type="button" className="app-access-primary" onClick={() => void continueCloud()}>{apiVerified ? "继续使用云端" : "检测并继续使用"}</button><button type="button" className="app-access-link" onClick={logoutCloud}>退出并更换账户</button></div>
                 </div>
               ) : (
-                <>
-                <div className="app-access-auth-tabs">
-                  <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
-                  <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
+                <div className="app-access-credentials">
+                  <div className="app-access-auth-tabs">
+                    <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
+                    <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
+                  </div>
+                  {authMode === "REGISTER" ? <label className="app-access-field"><span>昵称（可选）</span><input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label> : null}
+                  <label className="app-access-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
+                  <label className="app-access-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                  {authError ? <div className="app-access-status error">{authError}</div> : null}
+                  <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
                 </div>
-                {authMode === "REGISTER" ? <label className="app-access-field"><span>昵称（可选）</span><input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label> : null}
-                <label className="app-access-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
-                <label className="app-access-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
-                {authError ? <div className="app-access-status error">{authError}</div> : null}
-                <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
-                </>
               )}
             </div>
           </section>
