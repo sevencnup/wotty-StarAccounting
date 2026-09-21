@@ -13691,13 +13691,18 @@ body :where(div, section, article, form, label, fieldset):not([class]) {
 }
 
 body :where(input, select, textarea):focus {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
-body :where(button, input, select, textarea):focus-visible {
+body :where(button):focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+body :where(input, select, textarea):focus-visible {
+  outline: 0;
+  outline-offset: 0;
 }
 
 /* Range controls use the track itself as their focus affordance; do not draw

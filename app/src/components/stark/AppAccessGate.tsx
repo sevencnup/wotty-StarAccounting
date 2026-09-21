@@ -63,6 +63,7 @@ export function AppAccessGate() {
   const [name, setName] = useState("");
   const [authError, setAuthError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [shellHeight, setShellHeight] = useState<number | null>(null);
   const destinationRef = useRef("/app");
   const mountedRef = useRef(true);
 
@@ -106,6 +107,7 @@ export function AppAccessGate() {
 
   useEffect(() => {
     mountedRef.current = true;
+    setShellHeight(window.innerHeight);
     destinationRef.current = getDestination();
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
@@ -120,8 +122,17 @@ export function AppAccessGate() {
       void checkCloud(initialUrl, !isModeSwitchRequested());
     }
 
+    function updateShellHeightForOrientation() {
+      window.requestAnimationFrame(() => {
+        if (mountedRef.current) setShellHeight(window.innerHeight);
+      });
+    }
+
+    window.addEventListener("orientationchange", updateShellHeightForOrientation);
+
     return () => {
       mountedRef.current = false;
+      window.removeEventListener("orientationchange", updateShellHeightForOrientation);
     };
   }, []);
 
@@ -191,7 +202,7 @@ export function AppAccessGate() {
   }
 
   return (
-    <div className="app-access-shell">
+    <div className="app-access-shell" style={shellHeight ? { height: `${shellHeight}px`, minHeight: `${shellHeight}px` } : undefined}>
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
         {mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
