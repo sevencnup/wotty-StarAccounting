@@ -995,6 +995,9 @@ export function HomeDashboard() {
   const budgetAllocationStatus = combinedHomeModuleStatus(assetStatus, budgetStatus, savingsStatus);
   const diagnosticStatus = budgetStatus;
   const compassStatus = combinedHomeModuleStatus(assetStatus, loanStatus, savingsStatus);
+  const showDiagnosticStage = budgetAllocationStatus !== "loading";
+  const showCompassStage = showDiagnosticStage && diagnosticStatus !== "loading";
+  const showDetailStages = showCompassStage && compassStatus !== "loading";
 
   function handleSalaryDayChange(day: number) {
     persistSalaryDay(day);
@@ -1087,39 +1090,47 @@ export function HomeDashboard() {
       )}
 
       {/* AI 财务诊断条 */}
-      {diagnosticStatus === "ready" ? (
-        <StarkDiagnosticBanner summary={summary} onOpen={() => setDiagnosticOpen(true)} />
-      ) : (
-        <HomeModulePlaceholder status={diagnosticStatus} onRetry={reloadDashboard} height={86} />
-      )}
+      {showDiagnosticStage ? (
+        diagnosticStatus === "ready" ? (
+          <StarkDiagnosticBanner summary={summary} onOpen={() => setDiagnosticOpen(true)} />
+        ) : (
+          <HomeModulePlaceholder status={diagnosticStatus} onRetry={reloadDashboard} height={86} />
+        )
+      ) : null}
 
       {/* 四维财务罗盘 */}
-      {compassStatus === "ready" ? (
-        <StarkCompassMatrix summary={summary} onManageBudget={() => setBudgetManagementOpen(true)} />
-      ) : (
-        <HomeModulePlaceholder status={compassStatus} onRetry={reloadDashboard} height={172} />
-      )}
-
-      {/* 本月支出构成 (替代老旧流水) */}
-      <TopExpenseStructure summary={summary} reportingMonth={reportingMonth} />
-
-      {/* 财务行动建议 */}
-      <DeferredHomeSection fallback={<Skeleton className="skeleton-card" style={{ height: 128 }} />}>
-        {diagnosticStatus === "ready" ? (
-          <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />
+      {showCompassStage ? (
+        compassStatus === "ready" ? (
+          <StarkCompassMatrix summary={summary} onManageBudget={() => setBudgetManagementOpen(true)} />
         ) : (
-          <HomeModulePlaceholder status={diagnosticStatus} onRetry={reloadDashboard} height={128} />
-        )}
-      </DeferredHomeSection>
+          <HomeModulePlaceholder status={compassStatus} onRetry={reloadDashboard} height={172} />
+        )
+      ) : null}
 
-      {/* 收支动态走势 */}
-      <DeferredHomeSection fallback={<Skeleton className="skeleton-card" style={{ height: 228 }} />}>
-        {historyStatus === "ready" ? (
-          <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
-        ) : (
-          <HomeModulePlaceholder status={historyStatus} onRetry={reloadDashboard} height={228} />
-        )}
-      </DeferredHomeSection>
+      {showDetailStages ? (
+        <>
+          {/* 本月支出构成 (替代老旧流水) */}
+          <TopExpenseStructure summary={summary} reportingMonth={reportingMonth} />
+
+          {/* 财务行动建议 */}
+          <DeferredHomeSection fallback={<Skeleton className="skeleton-card" style={{ height: 128 }} />}>
+            {diagnosticStatus === "ready" ? (
+              <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />
+            ) : (
+              <HomeModulePlaceholder status={diagnosticStatus} onRetry={reloadDashboard} height={128} />
+            )}
+          </DeferredHomeSection>
+
+          {/* 收支动态走势 */}
+          <DeferredHomeSection fallback={<Skeleton className="skeleton-card" style={{ height: 228 }} />}>
+            {historyStatus === "ready" ? (
+              <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
+            ) : (
+              <HomeModulePlaceholder status={historyStatus} onRetry={reloadDashboard} height={228} />
+            )}
+          </DeferredHomeSection>
+        </>
+      ) : null}
 
       {diagnosticOpen ? <StarkDiagnosticSheet summary={summary} onClose={() => setDiagnosticOpen(false)} /> : null}
       {budgetManagementOpen ? (
