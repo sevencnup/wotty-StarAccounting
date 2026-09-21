@@ -4615,7 +4615,7 @@ button.stark-compass-card {
   min-height: 100dvh;
   display: grid;
   place-items: center;
-  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   background:
     radial-gradient(circle at 20% 10%, rgba(57, 127, 232, 0.16), transparent 34%),
     linear-gradient(145deg, #f4f8fc 0%, #eaf1f8 100%);
@@ -4634,29 +4634,29 @@ button.stark-compass-card {
 
 .app-access-card {
   width: min(100%, 440px);
-  padding: 34px 28px 28px;
+  padding: 20px 22px 18px;
   border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 28px;
+  border-radius: 22px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 24px 70px rgba(39, 76, 112, 0.16);
 }
 
 .app-access-brand-mark {
-  width: 46px;
-  height: 46px;
+  width: 38px;
+  height: 38px;
   display: grid;
   place-items: center;
-  border-radius: 15px;
+  border-radius: 12px;
   background: linear-gradient(145deg, #0060c0, #397fe8);
   color: #ffffff;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 800;
   box-shadow: 0 10px 22px rgba(0, 96, 192, 0.25);
 }
 
 .app-access-eyebrow {
   display: block;
-  margin-top: 22px;
+  margin-top: 10px;
   color: #6b7f95;
   font-size: 10px;
   font-weight: 800;
@@ -4664,14 +4664,14 @@ button.stark-compass-card {
 }
 
 .app-access-card h1 {
-  margin: 6px 0 0;
+  margin: 3px 0 0;
   color: #142036;
-  font-size: 30px;
+  font-size: 25px;
   line-height: 1.2;
 }
 
 .app-access-intro {
-  margin: 8px 0 22px;
+  margin: 4px 0 12px;
   color: #718096;
   font-size: 13px;
 }
@@ -4680,8 +4680,8 @@ button.stark-compass-card {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
-  padding: 4px;
-  border-radius: 14px;
+  padding: 3px;
+  border-radius: 11px;
   background: #edf3f8;
 }
 
@@ -4691,9 +4691,9 @@ button.stark-compass-card {
 
 .app-access-mode-switch button,
 .app-access-auth-tabs button {
-  min-height: 38px;
+  min-height: 34px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: transparent;
   color: #73849a;
   font-size: 13px;
@@ -4710,7 +4710,7 @@ button.stark-compass-card {
 
 .app-access-cloud-panel,
 .app-access-local-panel {
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .app-access-local-panel {
@@ -4735,20 +4735,20 @@ button.stark-compass-card {
 
 .app-access-field {
   display: grid;
-  gap: 7px;
-  margin-top: 12px;
+  gap: 4px;
+  margin-top: 8px;
 }
 
 .app-access-field span {
   color: #5d7187;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .app-access-field input {
   width: 100%;
-  min-height: 42px;
-  padding: 0 12px;
+  min-height: 36px;
+  padding: 0 10px;
   border: 1px solid #d7e2ec;
   border-radius: 11px;
   outline: 0;
@@ -4764,11 +4764,11 @@ button.stark-compass-card {
 }
 
 .app-access-status {
-  min-height: 20px;
-  margin-top: 10px;
+  min-height: 16px;
+  margin-top: 6px;
   color: #73849a;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .app-access-status.success { color: #0d8a5f; }
@@ -4777,10 +4777,10 @@ button.stark-compass-card {
 .app-access-primary,
 .app-access-secondary {
   width: 100%;
-  min-height: 42px;
-  margin-top: 14px;
-  border-radius: 11px;
-  font-size: 13px;
+  min-height: 36px;
+  margin-top: 8px;
+  border-radius: 9px;
+  font-size: 12px;
   font-weight: 750;
   cursor: pointer;
 }
@@ -4805,8 +4805,8 @@ button.stark-compass-card {
 }
 
 .app-access-auth {
-  margin-top: 16px;
-  padding-top: 16px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid #e8eef4;
 }
 
@@ -4820,16 +4820,16 @@ button.stark-compass-card {
 }
 
 .app-access-current-user {
-  margin-top: 14px;
-  padding: 14px;
-  border-radius: 14px;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 11px;
   background: #f3faf7;
 }
 
 .app-access-current-user > div {
   display: grid;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 5px;
+  margin-top: 7px;
 }
 
 .app-access-link {
@@ -4842,10 +4842,10 @@ button.stark-compass-card {
 
 .app-access-footnote {
   display: block;
-  margin-top: 20px;
+  margin-top: 10px;
   color: #91a0b1;
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.35;
   text-align: center;
 }
 
