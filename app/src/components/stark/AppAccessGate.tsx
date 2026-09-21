@@ -213,11 +213,13 @@ export function AppAccessGate() {
         ) : (
           <section className="app-access-cloud-panel">
             <div className="app-access-auth">
-              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
-              <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
-              <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
-
-              {cloudUser ? (
+              {!apiVerified ? (
+                <>
+                  <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
+                  <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
+                  <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
+                </>
+              ) : cloudUser ? (
                 <div className="app-access-current-user">
                   <strong>已登录：{cloudUser.name || cloudUser.email}</strong>
                   <div><button type="button" className="app-access-primary" onClick={() => void continueCloud()}>{apiVerified ? "继续使用云端" : "检测并继续使用"}</button><button type="button" className="app-access-link" onClick={logoutCloud}>退出并更换账户</button></div>
