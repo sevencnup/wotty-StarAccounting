@@ -6,9 +6,14 @@ import { RemoteRepository } from "@/lib/stark/repository/RemoteRepository";
 import { selectDataRepository } from "@/lib/stark/repository/data-mode";
 import { getCloudAuthToken } from "@/lib/stark/storage/cloud-auth";
 
+// 页面切换会创建新的 DataModeManager。仓库本身保持共享，才能复用短期
+// 云端缓存和并发请求，避免每个标签页重复拉取同一份账本数据。
+const sharedLocalRepo = new LocalRepository();
+const sharedRemoteRepo = new RemoteRepository();
+
 export class DataModeManager {
-  private readonly localRepo = new LocalRepository();
-  private readonly remoteRepo = new RemoteRepository();
+  private readonly localRepo = sharedLocalRepo;
+  private readonly remoteRepo = sharedRemoteRepo;
   private currentMode: DataMode = "LOCAL";
 
   constructor() {

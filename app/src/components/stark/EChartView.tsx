@@ -3,36 +3,16 @@
 import { useEffect, useRef } from "react";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
 
-export function EChartView({ option, className }: { option: EChartsCoreOption; className?: string }) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const instanceRef = useRef<EChartsType | null>(null);
-  const optionRef = useRef(option);
+let chartRuntimePromise: Promise<typeof import("echarts/core")> | null = null;
 
-  useEffect(() => {
-    optionRef.current = option;
-    instanceRef.current?.setOption(option, true);
-  }, [option]);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-
-    let disposed = false;
-    let resizeObserver: ResizeObserver | null = null;
-
-    async function initializeChart() {
-      // ECharts is intentionally loaded after the page has painted. Keeping this
-      // heavyweight library out of the navigation-critical bundle prevents a tab
-      // change from blocking on chart parsing and initialization.
-      const [echarts, components, charts, renderers] = await Promise.all([
-        import("echarts/core"),
-        import("echarts/components"),
-        import("echarts/charts"),
-        import("echarts/renderers"),
-      ]);
-
-      if (disposed) return;
-
+function loadChartRuntime() {
+  if (!chartRuntimePromise) {
+    chartRuntimePromise = Promise.all([
+      import("echarts/core"),
+      import("echarts/components"),
+      import("echarts/charts"),
+      import("echarts/renderers"),
+    ]).then(([echarts, components, charts, renderers]) => {
       echarts.use([
         components.GridComponent,
         components.TooltipComponent,
@@ -45,6 +25,34 @@ export function EChartView({ option, className }: { option: EChartsCoreOption; c
         charts.HeatmapChart,
         renderers.CanvasRenderer,
       ]);
+      return echarts;
+    });
+  }
+  return chartRuntimePromise;
+}
+
+export function EChartView({ option, className }: { option: EChartsCoreOption; className?: string }) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const instanceRef = useRef<EChartsType | null>(null);
+  const optionRef = useRef(option);
+  const shouldInitializeRef = useRef(false);
+
+  useEffect(() => {
+    optionRef.current = option;
+    instanceRef.current?.setOption(option, true);
+  }, [option]);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    let observer: IntersectionObserver | null = null;
+    let disposed = false;
+    let resizeObserver: ResizeObserver | null = null;
+
+    async function initializeChart() {
+      const echarts = await loadChartRuntime();
+      if (disposed) return;
 
       const chart = echarts.init(root!, undefined, { renderer: "canvas" });
       instanceRef.current = chart;
@@ -54,10 +62,28 @@ export function EChartView({ option, className }: { option: EChartsCoreOption; c
       resizeObserver.observe(root!);
     }
 
-    void initializeChart();
+    function requestInitialization() {
+      if (shouldInitializeRef.current || disposed) return;
+      shouldInitializeRef.current = true;
+      void initializeChart();
+    }
+
+    // The analytics page can render several charts. Defer charts outside the
+    // viewport so the tab becomes interactive before ECharts parses and paints.
+    if (typeof IntersectionObserver === "undefined") {
+      requestInitialization();
+    } else {
+      observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer?.disconnect();
+        requestInitialization();
+      }, { rootMargin: "280px 0px" });
+      observer.observe(root);
+    }
 
     return () => {
       disposed = true;
+      observer?.disconnect();
       resizeObserver?.disconnect();
       instanceRef.current?.dispose();
       instanceRef.current = null;

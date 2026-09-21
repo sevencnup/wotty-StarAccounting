@@ -160,6 +160,17 @@ export class LocalRepository implements DataRepository {
     );
   }
 
+  async getTransactionMonths(accountId: string) {
+    await this.ensureSeeded();
+    const targetAccountId = accountId || getCurrentAccountId();
+    return [...new Set(
+      (await getAllRecords<Transaction>("transactions"))
+        .filter((item) => item.accountId === targetAccountId)
+        .map((item) => item.date.slice(0, 7))
+        .filter((month) => /^\d{4}-(0[1-9]|1[0-2])$/.test(month)),
+    )].sort((a, b) => b.localeCompare(a));
+  }
+
   async getTransaction(id: string) {
     await this.ensureSeeded();
     return (await getRecord<Transaction>("transactions", id)) ?? null;

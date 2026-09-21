@@ -790,6 +790,14 @@ object DatabaseFactory {
             .map { it.toTransactionRecord().toPayloadJson() }
     }
 
+    fun listTransactionMonthsRest(accountId: String): List<String> = transaction {
+        Transactions.select(Transactions.date)
+            .where { Transactions.accountId eq accountId }
+            .map { formatDateTime(it[Transactions.date]).take(7) }
+            .distinct()
+            .sortedDescending()
+    }
+
     fun getTransactionRest(id: String, userId: String): JsonObject? = transaction {
         Transactions.selectAll().where { (Transactions.id eq id) and (Transactions.accountId inSubQuery ownedAccountIds(userId)) }.firstOrNull()?.toTransactionRecord()?.toPayloadJson()
     }

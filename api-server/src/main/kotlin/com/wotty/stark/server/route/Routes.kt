@@ -143,6 +143,14 @@ fun Route.transactionRoutes() {
         call.respond(DatabaseFactory.listTransactionsRest(accountId, page, pageSize, month))
     }
 
+    // GET /api/transactions/months?accountId= - 获取有账单的月份，供月份筛选使用
+    get("/api/transactions/months") {
+        val userId = call.currentUserId()
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
+        call.respond(DatabaseFactory.listTransactionMonthsRest(accountId))
+    }
+
     // GET /api/transactions/{id} - 单笔交易
     get("/api/transactions/{id}") {
         val userId = call.currentUserId()

@@ -25,6 +25,7 @@ export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target
             <Link
               key={item.href}
               href={item.href}
+              prefetch={true}
               className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}
               aria-label={item.label}
               onClick={() => onNavigateStart?.(item.href)}

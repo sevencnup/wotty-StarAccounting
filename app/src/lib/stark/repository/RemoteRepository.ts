@@ -43,6 +43,13 @@ type SyncRecord = {
   updatedAt: string;
 };
 
+type TimedValue<T> = {
+  expiresAt: number;
+  value: T;
+};
+
+const TRANSACTION_CACHE_TTL = 20_000;
+
 function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: T[]) {
   return [...items].sort((a, b) => (b.date ?? b.createdAt ?? "").localeCompare(a.date ?? a.createdAt ?? ""));
 }
@@ -51,6 +58,11 @@ export class RemoteRepository implements DataRepository {
   private baseUrl: string;
   private readonly syncRequests = new Map<string, Promise<SyncRecord[]>>();
   private readonly syncCache = new Map<string, { expiresAt: number; records: SyncRecord[] }>();
+  private readonly transactionMonthRequests = new Map<string, Promise<Transaction[]>>();
+  private readonly transactionMonthCache = new Map<string, TimedValue<Transaction[]>>();
+  private readonly transactionMonthsRequests = new Map<string, Promise<string[]>>();
+  private readonly transactionMonthsCache = new Map<string, TimedValue<string[]>>();
+  private readonly transactionCacheGenerations = new Map<string, number>();
 
   constructor(baseUrl = getCloudApiUrl()) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -59,6 +71,11 @@ export class RemoteRepository implements DataRepository {
   clearCache() {
     this.syncCache.clear();
     this.syncRequests.clear();
+    this.transactionMonthCache.clear();
+    this.transactionMonthRequests.clear();
+    this.transactionMonthsCache.clear();
+    this.transactionMonthsRequests.clear();
+    this.transactionCacheGenerations.clear();
   }
 
   setBaseUrl(baseUrl: string) {
@@ -110,10 +127,42 @@ export class RemoteRepository implements DataRepository {
     return records.filter((record) => record.entityType === entityType && !record.payload.__deleted).map((record) => record.payload);
   }
 
+  private clearTransactionCaches(accountId: string) {
+    this.transactionCacheGenerations.set(accountId, (this.transactionCacheGenerations.get(accountId) ?? 0) + 1);
+    const prefix = `${accountId}:`;
+    for (const key of this.transactionMonthCache.keys()) {
+      if (key.startsWith(prefix)) this.transactionMonthCache.delete(key);
+    }
+    for (const key of this.transactionMonthRequests.keys()) {
+      if (key.startsWith(prefix)) this.transactionMonthRequests.delete(key);
+    }
+    this.transactionMonthsCache.delete(accountId);
+    this.transactionMonthsRequests.delete(accountId);
+  }
+
+  private transactionCacheGeneration(accountId: string) {
+    return this.transactionCacheGenerations.get(accountId) ?? 0;
+  }
+
+  private async fetchTransactionMonth(accountId: string, month: string) {
+    const pageSize = 500;
+    const transactions: Transaction[] = [];
+    for (let page = 1; ; page += 1) {
+      const batch = await this.request<Transaction[]>(
+        `/api/transactions?accountId=${encodeURIComponent(accountId)}&month=${encodeURIComponent(month)}&page=${page}&pageSize=${pageSize}`,
+      );
+      transactions.push(...batch);
+      if (batch.length < pageSize) break;
+    }
+    return sortByDateDesc(transactions);
+  }
+
   private save(entityType: EntityType, value: object) {
     const record = value as Record<string, unknown>;
     const accountId = record.accountId ?? getCurrentAccountId();
-    this.syncCache.delete(String(accountId));
+    const targetAccountId = String(accountId);
+    this.syncCache.delete(targetAccountId);
+    this.clearTransactionCaches(targetAccountId);
     return this.request<void>("/api/sync", {
       method: "POST",
       body: JSON.stringify({
@@ -138,7 +187,7 @@ export class RemoteRepository implements DataRepository {
   }
   async saveUser(user: User) { await this.save("users", user); }
 
-  async getAccounts() { return await this.list("accounts") as unknown as Account[]; }
+  async getAccounts() { return await this.request<Account[]>("/api/accounts"); }
   async getAccount(id: string) { return (await this.getAccounts()).find((item) => item.id === id) ?? null; }
   async saveAccount(account: Account) { await this.save("accounts", account); }
   async deleteAccount(id: string) { await this.delete("accounts", id); }
@@ -148,21 +197,54 @@ export class RemoteRepository implements DataRepository {
     return records.slice((page - 1) * pageSize, page * pageSize);
   }
   async getTransactionsByMonth(accountId: string, month: string) {
-    const pageSize = 500;
-    const transactions: Transaction[] = [];
-    for (let page = 1; ; page += 1) {
-      const batch = await this.request<Transaction[]>(
-        `/api/transactions?accountId=${encodeURIComponent(accountId)}&month=${encodeURIComponent(month)}&page=${page}&pageSize=${pageSize}`,
-      );
-      transactions.push(...batch);
-      if (batch.length < pageSize) break;
+    const targetAccountId = String(accountId);
+    const cacheKey = `${targetAccountId}:${month}`;
+    const cached = this.transactionMonthCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    let request = this.transactionMonthRequests.get(cacheKey);
+    if (!request) {
+      const generation = this.transactionCacheGeneration(targetAccountId);
+      const pending = this.fetchTransactionMonth(targetAccountId, month)
+        .then((transactions) => {
+          if (generation === this.transactionCacheGeneration(targetAccountId)) {
+            this.transactionMonthCache.set(cacheKey, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: transactions });
+          }
+          return transactions;
+        });
+      request = pending.finally(() => {
+        if (this.transactionMonthRequests.get(cacheKey) === request) this.transactionMonthRequests.delete(cacheKey);
+      });
+      this.transactionMonthRequests.set(cacheKey, request);
     }
-    return transactions;
+    return request;
   }
   async getTransactionsByMonths(accountId: string, months: string[]) {
-    const monthSet = new Set(months);
-    return sortByDateDesc((await this.list("transactions", accountId) as unknown as Transaction[])
-      .filter((transaction) => monthSet.has(transaction.date.slice(0, 7))));
+    const uniqueMonths = [...new Set(months)];
+    const monthlyTransactions = await Promise.all(uniqueMonths.map((month) => this.getTransactionsByMonth(accountId, month)));
+    return sortByDateDesc(monthlyTransactions.flat());
+  }
+  async getTransactionMonths(accountId: string) {
+    const targetAccountId = String(accountId);
+    const cached = this.transactionMonthsCache.get(targetAccountId);
+    if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+    let request = this.transactionMonthsRequests.get(targetAccountId);
+    if (!request) {
+      const generation = this.transactionCacheGeneration(targetAccountId);
+      const pending = this.request<string[]>(`/api/transactions/months?accountId=${encodeURIComponent(targetAccountId)}`)
+        .then((months) => {
+          if (generation === this.transactionCacheGeneration(targetAccountId)) {
+            this.transactionMonthsCache.set(targetAccountId, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: months });
+          }
+          return months;
+        });
+      request = pending.finally(() => {
+        if (this.transactionMonthsRequests.get(targetAccountId) === request) this.transactionMonthsRequests.delete(targetAccountId);
+      });
+      this.transactionMonthsRequests.set(targetAccountId, request);
+    }
+    return request;
   }
   async getTransaction(id: string) { return (await this.list("transactions")).find((item) => item.id === id) as Transaction | undefined ?? null; }
   async saveTransaction(transaction: Transaction) { await this.save("transactions", transaction); }
@@ -175,6 +257,7 @@ export class RemoteRepository implements DataRepository {
       body: JSON.stringify(transactions),
     });
     this.syncCache.delete(accountId);
+    this.clearTransactionCaches(accountId);
     return result;
   }
   async applyLoanRepaymentClassifications(transactions: Transaction[]): Promise<LoanRepaymentClassificationResult> {
@@ -185,23 +268,24 @@ export class RemoteRepository implements DataRepository {
       body: JSON.stringify(transactions),
     });
     this.syncCache.delete(accountId);
+    this.clearTransactionCaches(accountId);
     return result;
   }
 
   async getAssets(accountId: string) {
-    return await this.list("assets", accountId) as unknown as Asset[];
+    return await this.request<Asset[]>(`/api/assets?accountId=${encodeURIComponent(accountId)}`);
   }
   async saveAsset(asset: Asset) { await this.save("assets", asset); }
   async deleteAsset(id: string) { await this.delete("assets", id); }
 
   async getBudgets(accountId: string) {
-    return await this.list("budgets", accountId) as unknown as Budget[];
+    return await this.request<Budget[]>(`/api/budgets?accountId=${encodeURIComponent(accountId)}`);
   }
   async saveBudget(budget: Budget) { await this.save("budgets", budget); }
   async deleteBudget(id: string) { await this.delete("budgets", id); }
 
   async getLoans(accountId: string) {
-    return await this.list("loans", accountId) as unknown as Loan[];
+    return await this.request<Loan[]>(`/api/loans?accountId=${encodeURIComponent(accountId)}`);
   }
   async saveLoan(loan: Loan) { await this.save("loans", loan); }
   async deleteLoan(id: string) { await this.delete("loans", id); }
@@ -227,12 +311,12 @@ export class RemoteRepository implements DataRepository {
     await this.request<void>(`/api/savings-plans/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
-  async getCategoryRules(accountId: string) { return await this.list("categoryRules", accountId) as unknown as CategoryRule[]; }
+  async getCategoryRules(accountId: string) { return await this.request<CategoryRule[]>(`/api/category-rules?accountId=${encodeURIComponent(accountId)}`); }
   async saveCategoryRule(rule: CategoryRule) { await this.save("categoryRules", rule); }
   async deleteCategoryRule(id: string, accountId?: string) { await this.delete("categoryRules", id, accountId); }
-  async getImportErrorLogs(accountId: string) { return await this.list("importErrorLogs", accountId) as unknown as ImportErrorLog[]; }
+  async getImportErrorLogs(accountId: string) { return await this.request<ImportErrorLog[]>(`/api/import-errors?accountId=${encodeURIComponent(accountId)}`); }
   async saveImportErrorLog(log: ImportErrorLog) { await this.save("importErrorLogs", log); }
-  async getExchangeRates() { return await this.list("exchangeRates") as unknown as ExchangeRate[]; }
-  async getThemeConfig(userId: string) { return (await this.list("themeConfigs")).find((item) => item.userId === userId) as ThemeConfig | undefined ?? null; }
+  async getExchangeRates() { return await this.request<ExchangeRate[]>("/api/exchange-rates"); }
+  async getThemeConfig(userId: string) { return await this.request<ThemeConfig | null>(`/api/theme-config/${encodeURIComponent(userId)}`); }
   async saveThemeConfig(config: ThemeConfig) { await this.save("themeConfigs", config); }
 }
