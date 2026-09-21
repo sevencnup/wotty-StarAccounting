@@ -4729,7 +4729,14 @@ button.stark-compass-card {
 
 .app-access-field input::placeholder { color: #64748b; opacity: 1; }
 
-.app-access-login-field input { background: #d1d5db; }
+.app-access-login-field input { background: #f1f5f9; }
+
+.app-access-login-field input:focus,
+.app-access-login-field input:focus-visible {
+  border-color: transparent !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
 
 .app-access-status {
   min-height: 16px;
