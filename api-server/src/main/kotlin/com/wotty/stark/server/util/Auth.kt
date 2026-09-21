@@ -15,7 +15,7 @@ private const val JWT_AUDIENCE = "wotty-stark-client"
 private const val TOKEN_LIFETIME_SECONDS = 60L * 60L * 24L * 30L
 private const val PBKDF2_ITERATIONS = 120_000
 private const val PBKDF2_KEY_BITS = 256
-private const val MIN_ACCOUNT_ADMIN_KEY_LENGTH = 16
+private const val MIN_ACCOUNT_ADMIN_KEY_LENGTH = 12
 
 object AuthTokens {
     private val secret: String
