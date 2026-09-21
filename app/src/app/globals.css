@@ -4623,6 +4623,12 @@ button.stark-compass-card {
     linear-gradient(145deg, #f4f8fc 0%, #eaf1f8 100%);
 }
 
+.app-access-shell.keyboard-open {
+  place-items: start center;
+  scroll-padding-block: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
 .app-route-access-loading {
   min-height: 100dvh;
   display: grid;

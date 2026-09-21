@@ -60,12 +60,14 @@ export function AppAccessGate() {
   const [authMode, setAuthMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [authError, setAuthError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [shellHeight, setShellHeight] = useState<number | null>(null);
+  const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<number | null>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
   const destinationRef = useRef("/app");
   const mountedRef = useRef(true);
+  const stableShellHeightRef = useRef(0);
 
   function completeAccess() {
     window.location.replace(destinationRef.current);
@@ -107,7 +109,8 @@ export function AppAccessGate() {
 
   useEffect(() => {
     mountedRef.current = true;
-    setShellHeight(window.innerHeight);
+    stableShellHeightRef.current = window.innerHeight;
+    setShellHeight(stableShellHeightRef.current);
     destinationRef.current = getDestination();
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
@@ -124,15 +127,30 @@ export function AppAccessGate() {
 
     function updateShellHeightForOrientation() {
       window.requestAnimationFrame(() => {
-        if (mountedRef.current) setShellHeight(window.innerHeight);
+        if (!mountedRef.current) return;
+        stableShellHeightRef.current = window.innerHeight;
+        setShellHeight(stableShellHeightRef.current);
+        setKeyboardViewportHeight(null);
+        setKeyboardOpen(false);
       });
     }
 
+    function updateKeyboardLayout() {
+      const visibleHeight = window.visualViewport?.height ?? window.innerHeight;
+      const isKeyboardOpen = visibleHeight < stableShellHeightRef.current - 120;
+      if (!mountedRef.current) return;
+      setKeyboardOpen(isKeyboardOpen);
+      setKeyboardViewportHeight(isKeyboardOpen ? Math.round(visibleHeight) : null);
+    }
+
+    const visualViewport = window.visualViewport;
     window.addEventListener("orientationchange", updateShellHeightForOrientation);
+    visualViewport?.addEventListener("resize", updateKeyboardLayout);
 
     return () => {
       mountedRef.current = false;
       window.removeEventListener("orientationchange", updateShellHeightForOrientation);
+      visualViewport?.removeEventListener("resize", updateKeyboardLayout);
     };
   }, []);
 
@@ -168,7 +186,7 @@ export function AppAccessGate() {
       manager.setCloudApiUrl(url);
       const user = authMode === "LOGIN"
         ? await cloudLogin(url, email.trim(), password)
-        : await cloudRegister(url, email.trim(), password, name);
+        : await cloudRegister(url, email.trim(), password);
       setCloudUser(user);
       setCloudApiUrl(url);
       await manager.switchMode("CLOUD");
@@ -201,8 +219,10 @@ export function AppAccessGate() {
     setPhase("AUTH");
   }
 
+  const activeShellHeight = keyboardViewportHeight ?? shellHeight;
+
   return (
-    <div className="app-access-shell" style={shellHeight ? { height: `${shellHeight}px`, minHeight: `${shellHeight}px` } : undefined}>
+    <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`} style={activeShellHeight ? { height: `${activeShellHeight}px`, minHeight: `${activeShellHeight}px` } : undefined}>
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
         {mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
@@ -213,13 +233,11 @@ export function AppAccessGate() {
         ) : (
           <section className="app-access-cloud-panel">
             <div className="app-access-auth">
-              {!apiVerified ? (
-                <>
-                  <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
-                  <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
-                  <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
-                </>
-              ) : cloudUser ? (
+              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
+              <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
+              <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
+
+              {cloudUser ? (
                 <div className="app-access-current-user">
                   <strong>已登录：{cloudUser.name || cloudUser.email}</strong>
                   <div><button type="button" className="app-access-primary" onClick={() => void continueCloud()}>{apiVerified ? "继续使用云端" : "检测并继续使用"}</button><button type="button" className="app-access-link" onClick={logoutCloud}>退出并更换账户</button></div>
@@ -230,7 +248,6 @@ export function AppAccessGate() {
                     <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
                     <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
                   </div>
-                  {authMode === "REGISTER" ? <label className="app-access-field"><span>昵称（可选）</span><input value={name} onChange={(event) => setName(event.target.value)} autoComplete="name" /></label> : null}
                   <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
                   <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
                   {authError ? <div className="app-access-status error">{authError}</div> : null}

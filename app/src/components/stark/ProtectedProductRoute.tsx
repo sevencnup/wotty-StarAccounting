@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { verifyCloudConnection } from "@/components/stark/AppAccessGate";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudMe } from "@/lib/stark/repository/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime } from "@/lib/stark/storage/local-config";
@@ -28,7 +27,6 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
           await manager.switchMode("LOCAL");
         } else {
           const url = getCloudApiUrl();
-          await verifyCloudConnection(url);
           manager.setCloudApiUrl(url);
           const user = await cloudMe(url);
           if (!user) throw new Error("未登录云端账户");
@@ -48,5 +46,5 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
 
   if (authorized) return <>{children}</>;
 
-  return <main className="app-route-access-loading" aria-busy="true">正在验证访问权限...</main>;
+  return <main className="app-route-access-loading" aria-busy="true">正在进入账本...</main>;
 }
