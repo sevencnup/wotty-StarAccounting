@@ -48,6 +48,7 @@ DB_USER=accounting
 DB_PASSWORD=请替换为数据库密码
 JWT_SECRET=请替换为至少 32 位的随机字符串
 ACCOUNT_ADMIN_KEY=请替换为至少 12 位的随机管理员恢复密钥
+DATA_ENCRYPTION_KEY=请替换为执行 openssl rand -base64 32 生成的完整结果
 ```
 
 执行 `pnpm dev` 时，开发脚本会自动读取该文件并传给 API。已经存在的系统环境变量优先于 `.env`。
@@ -62,6 +63,7 @@ DB_USER=accounting
 DB_PASSWORD=请替换为数据库密码
 JWT_SECRET=请替换为至少 32 位的随机字符串
 ACCOUNT_ADMIN_KEY=请替换为至少 12 位的随机管理员恢复密钥
+DATA_ENCRYPTION_KEY=请替换为执行 openssl rand -base64 32 生成的完整结果
 ```
 
 容器连接同一 Compose 网络中的 MySQL 时，将 `127.0.0.1` 改为 MySQL 服务名，例如：
@@ -77,6 +79,8 @@ DATABASE_URL=jdbc:mysql://mysql:3306/star_accounting
 `JWT_SECRET` 用于签发云端登录令牌。多人部署时必须设置为至少 32 位的随机字符串，部署后不要随意更换，否则已有登录状态会失效。
 
 `ACCOUNT_ADMIN_KEY` 用于无邮件环境下的密码找回，以及已登录后开启或关闭新用户注册。它只保存在 API 进程环境变量中，不能填入 Web 页面配置、数据库或 Git 仓库。建议使用至少 12 位的随机值；未配置时，普通登录和注册仍可用，但找回密码与注册开关会提示不可用。
+
+`DATA_ENCRYPTION_KEY` 用于 AES-256-GCM 加密数据库中交易的商户名称和交易描述。用 `openssl rand -base64 32` 生成后完整写入 `.env`，API 重启时会将历史明文自动迁移为密文。该密钥不可发送到浏览器、不可提交 Git，也不能直接更换；丢失或直接替换会导致已加密字段无法读取。未配置时，这两个字段保持既有明文，便于分步骤升级。
 
 连接池默认最多 10 个连接、启动时保持 1 个空闲连接（`DB_POOL_MAX_SIZE=10`、`DB_POOL_MIN_IDLE=1`）。用户量增加时可通过环境变量调大，但个人部署不需要修改。
 

@@ -28,6 +28,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       # 留空时普通登录可用，但忘记密码和注册开关不可用。
       ACCOUNT_ADMIN_KEY: ${ACCOUNT_ADMIN_KEY:-}
+      # 留空时交易商户和描述字段保持明文；设置后自动迁移为 AES-GCM 密文。
+      DATA_ENCRYPTION_KEY: ${DATA_ENCRYPTION_KEY:-}
     depends_on:
       mysql:
         condition: service_healthy

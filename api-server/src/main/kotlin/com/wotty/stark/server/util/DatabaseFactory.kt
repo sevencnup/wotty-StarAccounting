@@ -19,6 +19,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.Table
+import org.jetbrains.exposed.sql.Transaction
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
@@ -32,6 +33,7 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.statements.UpdateBuilder
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
+import org.slf4j.LoggerFactory
 import kotlinx.datetime.Clock
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -42,6 +44,8 @@ import java.util.UUID
 private val json = Json { ignoreUnknownKeys = true }
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 private const val REGISTRATION_ENABLED_SETTING = "registration-enabled"
+private val transactionFieldCipher by lazy { TransactionFieldCipher.fromEnvironment() }
+private val logger = LoggerFactory.getLogger(DatabaseFactory::class.java)
 
 internal data class DatabaseSettings(
     val jdbcUrl: String,
@@ -254,9 +258,9 @@ object Transactions : Table("transaction") {
     val type = varchar("type", 32)
     val category = varchar("category", 191)
     val platform = varchar("platform", 191)
-    val merchant = varchar("merchant", 191).nullable()
+    val merchant = text("merchant").nullable()
     val date = datetime("date")
-    val description = varchar("description", 191).nullable()
+    val description = text("description").nullable()
     val orderId = varchar("orderId", 191).nullable()
     val paymentMethod = varchar("paymentMethod", 191).nullable()
     val status = varchar("status", 191).nullable()
@@ -363,7 +367,57 @@ object DatabaseFactory {
                 Transactions,
                 TransactionCategoryRules,
             )
+            ensureTransactionSensitiveColumnsSupportCiphertext()
+            migrateLegacyTransactionSensitiveFields()
             removeLegacySavingsDemoRecords()
+        }
+    }
+
+    private fun Transaction.ensureTransactionSensitiveColumnsSupportCiphertext() {
+        val dataTypes = mutableMapOf<String, String>()
+        exec(
+            """
+                SELECT COLUMN_NAME, DATA_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'transaction'
+                  AND COLUMN_NAME IN ('merchant', 'description')
+            """.trimIndent(),
+        ) { result ->
+            while (result.next()) {
+                dataTypes[result.getString("COLUMN_NAME")] = result.getString("DATA_TYPE").lowercase()
+            }
+        }
+        for (column in listOf("merchant", "description")) {
+            if (dataTypes[column] !in setOf("text", "mediumtext", "longtext")) {
+                exec("ALTER TABLE `transaction` MODIFY COLUMN `$column` TEXT NULL")
+            }
+        }
+    }
+
+    private fun migrateLegacyTransactionSensitiveFields() {
+        if (!transactionFieldCipher.isEnabled) {
+            logger.warn("DATA_ENCRYPTION_KEY is not configured; transaction merchant and description fields remain plaintext")
+            val containsEncryptedData = Transactions.selectAll().any { transaction ->
+                transaction[Transactions.merchant]?.startsWith("enc:v1:") == true ||
+                    transaction[Transactions.description]?.startsWith("enc:v1:") == true
+            }
+            check(!containsEncryptedData) {
+                "Found encrypted transaction data but DATA_ENCRYPTION_KEY is not configured"
+            }
+            return
+        }
+        Transactions.selectAll().forEach { transaction ->
+            val merchant = transaction[Transactions.merchant]
+            val description = transaction[Transactions.description]
+            val encryptedMerchant = transactionFieldCipher.migrateStoredValue(merchant)
+            val encryptedDescription = transactionFieldCipher.migrateStoredValue(description)
+            if (encryptedMerchant != merchant || encryptedDescription != description) {
+                Transactions.update({ Transactions.id eq transaction[Transactions.id] }) { row ->
+                    row[Transactions.merchant] = encryptedMerchant
+                    row[Transactions.description] = encryptedDescription
+                }
+            }
         }
     }
 
@@ -892,9 +946,9 @@ private fun ResultRow.toTransactionRecord() = SyncRecordRow(
         "type" to this[Transactions.type],
         "category" to this[Transactions.category],
         "platform" to this[Transactions.platform],
-        "merchant" to this[Transactions.merchant],
+        "merchant" to transactionFieldCipher.decryptForResponse(this[Transactions.merchant]),
         "date" to formatDateTime(this[Transactions.date]),
-        "description" to this[Transactions.description],
+        "description" to transactionFieldCipher.decryptForResponse(this[Transactions.description]),
         "orderId" to this[Transactions.orderId],
         "paymentMethod" to this[Transactions.paymentMethod],
         "status" to this[Transactions.status],
@@ -1118,9 +1172,9 @@ private fun upsertTransaction(payload: JsonObject) = upsertById(Transactions, Tr
         row[Transactions.type] = payload.getString("type")
         row[Transactions.category] = payload.getString("category")
         row[Transactions.platform] = payload.getString("platform")
-        row[Transactions.merchant] = payload.getNullableString("merchant")
+        row[Transactions.merchant] = transactionFieldCipher.encryptForStorage(payload.getNullableString("merchant"))
         row[Transactions.date] = payload.getDateTime("date")
-        row[Transactions.description] = payload.getNullableString("description")
+        row[Transactions.description] = transactionFieldCipher.encryptForStorage(payload.getNullableString("description"))
         row[Transactions.orderId] = payload.getNullableString("orderId")
         row[Transactions.paymentMethod] = payload.getNullableString("paymentMethod")
         row[Transactions.status] = payload.getNullableString("status")
