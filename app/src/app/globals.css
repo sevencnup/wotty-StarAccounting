@@ -4613,7 +4613,9 @@ button.stark-compass-card {
 
 .app-access-shell {
   min-height: 100vh;
-  min-height: 100svh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   display: grid;
   place-items: center;
   overflow-y: auto;

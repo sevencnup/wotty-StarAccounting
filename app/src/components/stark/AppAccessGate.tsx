@@ -62,8 +62,6 @@ export function AppAccessGate() {
   const [password, setPassword] = useState("");
   const [authError, setAuthError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [shellHeight, setShellHeight] = useState<number | null>(null);
-  const [keyboardViewportHeight, setKeyboardViewportHeight] = useState<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const destinationRef = useRef("/app");
   const mountedRef = useRef(true);
@@ -110,7 +108,6 @@ export function AppAccessGate() {
   useEffect(() => {
     mountedRef.current = true;
     stableShellHeightRef.current = window.innerHeight;
-    setShellHeight(stableShellHeightRef.current);
     destinationRef.current = getDestination();
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
@@ -129,8 +126,6 @@ export function AppAccessGate() {
       window.requestAnimationFrame(() => {
         if (!mountedRef.current) return;
         stableShellHeightRef.current = window.innerHeight;
-        setShellHeight(stableShellHeightRef.current);
-        setKeyboardViewportHeight(null);
         setKeyboardOpen(false);
       });
     }
@@ -140,7 +135,6 @@ export function AppAccessGate() {
       const isKeyboardOpen = visibleHeight < stableShellHeightRef.current - 120;
       if (!mountedRef.current) return;
       setKeyboardOpen(isKeyboardOpen);
-      setKeyboardViewportHeight(isKeyboardOpen ? Math.round(visibleHeight) : null);
     }
 
     const visualViewport = window.visualViewport;
@@ -219,10 +213,8 @@ export function AppAccessGate() {
     setPhase("AUTH");
   }
 
-  const activeShellHeight = keyboardViewportHeight ?? shellHeight;
-
   return (
-    <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`} style={activeShellHeight ? { height: `${activeShellHeight}px`, minHeight: `${activeShellHeight}px` } : undefined}>
+    <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`}>
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
         {mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
@@ -248,8 +240,8 @@ export function AppAccessGate() {
                     <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
                     <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
                   </div>
-                  <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
-                  <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                  <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
+                  <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
                   {authError ? <div className="app-access-status error">{authError}</div> : null}
                   <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
                 </div>
