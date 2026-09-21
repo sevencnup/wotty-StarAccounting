@@ -4666,8 +4666,8 @@ button.stark-compass-card {
 .app-access-mode-switch button.active,
 .app-access-auth-tabs button.active {
   background: #ffffff;
-  color: #0060c0;
-  box-shadow: 0 3px 10px rgba(57, 86, 115, 0.1);
+  color: #142036;
+  box-shadow: 0 3px 10px rgba(20, 32, 54, 0.14);
 }
 
 .app-access-cloud-panel,
@@ -4702,7 +4702,7 @@ button.stark-compass-card {
 }
 
 .app-access-field span {
-  color: #5d7187;
+  color: #334155;
   font-size: 11px;
   font-weight: 700;
 }
@@ -4711,7 +4711,7 @@ button.stark-compass-card {
   width: 100%;
   min-height: 36px;
   padding: 0 10px;
-  border: 1px solid #d7e2ec;
+  border: 1px solid #526172;
   border-radius: 11px;
   outline: 0;
   background: #ffffff;
@@ -4721,9 +4721,11 @@ button.stark-compass-card {
 }
 
 .app-access-field input:focus {
-  border-color: #397fe8;
-  box-shadow: 0 0 0 3px rgba(57, 127, 232, 0.12);
+  border-color: #142036;
+  box-shadow: 0 0 0 2px rgba(20, 32, 54, 0.2);
 }
+
+.app-access-field input::placeholder { color: #64748b; opacity: 1; }
 
 .app-access-status {
   min-height: 16px;
@@ -4749,15 +4751,23 @@ button.stark-compass-card {
 
 .app-access-primary {
   border: 0;
-  background: linear-gradient(135deg, #0060c0, #397fe8);
+  background: #142036;
   color: #ffffff;
-  box-shadow: 0 8px 18px rgba(0, 96, 192, 0.18);
+  box-shadow: 0 8px 18px rgba(20, 32, 54, 0.2);
 }
 
 .app-access-secondary {
-  border: 1px solid #cddbe8;
-  background: #f8fbfe;
-  color: #315d88;
+  border: 1px solid #344154;
+  background: #ffffff;
+  color: #142036;
+}
+
+.app-access-primary:focus-visible,
+.app-access-secondary:focus-visible,
+.app-access-mode-switch button:focus-visible,
+.app-access-auth-tabs button:focus-visible {
+  outline: 2px solid #142036;
+  outline-offset: 2px;
 }
 
 .app-access-primary:disabled,
