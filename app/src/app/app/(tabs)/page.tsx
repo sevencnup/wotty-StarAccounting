@@ -636,31 +636,20 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
   );
 }
 
-// 本月支出构成 (替代老旧流水列表)
+// 本月支出构成
 type HomeExpenseSegment = {
   name: string;
   amount: number;
   color: string;
 };
 
-function buildHomeExpenseDonutOption(
+function buildHomeExpenseRoseOption(
   segments: HomeExpenseSegment[],
-  periodLabel: string,
-  total: number,
   locale: AppLocale,
 ): EChartsCoreOption {
   return {
     animationDuration: 420,
     animationEasing: "cubicOut",
-    title: {
-      text: translateValue(periodLabel, locale),
-      subtext: `¥ ${formatMoney(total)}`,
-      left: "center",
-      top: "34%",
-      itemGap: 2,
-      textStyle: { color: "#94a3b8", fontSize: 10, fontWeight: 400 },
-      subtextStyle: { color: "#0f172a", fontSize: 13, fontWeight: 700 },
-    },
     tooltip: {
       trigger: "item",
       confine: true,
@@ -674,16 +663,34 @@ function buildHomeExpenseDonutOption(
     },
     series: [{
       type: "pie",
-      radius: ["56%", "78%"],
-      center: ["50%", "50%"],
-      label: { show: false },
-      labelLine: { show: false },
-      emphasis: { scale: false },
-      itemStyle: { borderColor: "#ffffff", borderWidth: 2 },
+      roseType: "radius",
+      radius: ["18%", "68%"],
+      center: ["50%", "51%"],
+      startAngle: 90,
+      minAngle: 12,
+      avoidLabelOverlap: true,
+      labelLayout: { moveOverlap: "shiftY", hideOverlap: false },
+      label: {
+        show: true,
+        position: "outside",
+        formatter: "{b}",
+        fontSize: 11,
+        fontWeight: 500,
+      },
+      labelLine: {
+        show: true,
+        length: 10,
+        length2: 14,
+        lineStyle: { width: 1 },
+      },
+      emphasis: { scale: false, focus: "self" },
+      itemStyle: { borderColor: "#ffffff", borderWidth: 3, borderRadius: 5 },
       data: segments.map((segment) => ({
         name: translateValue(segment.name, locale),
         value: segment.amount,
         itemStyle: { color: segment.color },
+        label: { color: segment.color },
+        labelLine: { lineStyle: { color: segment.color } },
       })),
     }],
   };
@@ -695,17 +702,15 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
   const periodLabel = isAnnual ? "全年支出" : "本月支出";
   const structureLabel = isAnnual ? "全年支出结构" : "本月支出结构";
   const ratios = summary.ratios.slice(0, 4);
-  const total = summary.expense || summary.ratios.reduce((sum, item) => sum + item.amount, 0) || 1;
   const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
-  const donutSegments = [
+  const roseSegments = [
     ...ratios.map((item) => ({ name: item.name, amount: item.amount, color: item.color })),
     ...(otherAmount > 0 ? [{ name: "其他", amount: otherAmount, color: "#94a3b8" }] : []),
   ];
-  const donutOption = useMemo(
-    () => buildHomeExpenseDonutOption(donutSegments, periodLabel, summary.expense, locale),
-    [donutSegments, locale, periodLabel, summary.expense],
+  const roseOption = useMemo(
+    () => buildHomeExpenseRoseOption(roseSegments, locale),
+    [locale, roseSegments],
   );
-  const percentOfTotal = (amount: number) => Math.round((amount / total) * 100);
 
   return (
     <SurfaceCard className="stark-category-card">
@@ -721,36 +726,11 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
 
       {ratios.length ? (
         <div className="category-card-body">
-          <div className="category-donut-layout">
-            <EChartView
-              option={donutOption}
-              className="category-donut"
-              ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
-            />
-
-            <div className="category-items-list">
-              {ratios.map((item) => (
-                <Link href="/app/consumption" key={item.name} className="category-grid-item">
-                  <div className="category-item-top">
-                    <span className="category-dot" style={{ background: item.color }} />
-                    <span className="category-name">{translateValue(item.name, locale)}</span>
-                  </div>
-                  <strong className="category-amount">¥ {formatMoney(item.amount)}</strong>
-                  <span className="category-percent">{locale === "en-US" ? `${percentOfTotal(item.amount)}% share` : `${percentOfTotal(item.amount)}% 占比`}</span>
-                </Link>
-              ))}
-              {otherAmount > 0 ? (
-                <div className="category-grid-item category-grid-item-other">
-                  <div className="category-item-top">
-                    <span className="category-dot" style={{ background: "#94a3b8" }} />
-                    <span className="category-name">{translateValue("其他", locale)}</span>
-                  </div>
-                  <strong className="category-amount">¥ {formatMoney(otherAmount)}</strong>
-                  <span className="category-percent">{locale === "en-US" ? `${percentOfTotal(otherAmount)}% share` : `${percentOfTotal(otherAmount)}% 占比`}</span>
-                </div>
-              ) : null}
-            </div>
-          </div>
+          <EChartView
+            option={roseOption}
+            className="category-rose-chart"
+            ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
+          />
         </div>
       ) : (
         <div className="category-empty">{translateValue("本月暂无支出记录", locale)}</div>
