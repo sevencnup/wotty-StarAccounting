@@ -943,6 +943,31 @@ nextjs-portal {
   background: #ffffff;
 }
 
+.home-module-load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 74px;
+  padding: 14px 16px;
+  border: 1px solid #f3d7a3;
+  border-radius: 16px;
+  color: #92400e;
+  background: #fffbeb;
+  font-size: calc(12px * var(--user-font-scale));
+}
+
+.home-module-load-error button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  color: #ffffff;
+  background: #b45309;
+  font: inherit;
+  font-weight: 600;
+}
+
 .stark-hero-island {
   display: grid;
   gap: 8px;

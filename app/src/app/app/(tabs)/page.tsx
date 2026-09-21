@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { PropsWithChildren } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
@@ -14,8 +14,9 @@ import {
   buildHomeSummary,
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
+import { homeCoreTransactionMonths, homeSupplementalTransactionMonths } from "@/lib/stark/dashboard/home-load-stages";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
-import { formatMoney, isReportingYearKey, monthKey, nextMonthKey, previousMonthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
+import { formatMoney, isReportingYearKey, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
@@ -123,6 +124,49 @@ function HeaderAction({ children, label }: PropsWithChildren<{ label: string }>)
 
 function SurfaceCard({ children, className = "" }: PropsWithChildren<{ className?: string }>) {
   return <section className={`home-card ${className}`}>{children}</section>;
+}
+
+type HomeModuleStatus = "loading" | "ready" | "error";
+
+function combinedHomeModuleStatus(...statuses: HomeModuleStatus[]) {
+  if (statuses.includes("error")) return "error";
+  return statuses.every((status) => status === "ready") ? "ready" : "loading";
+}
+
+function HomeModulePlaceholder({ status, onRetry, height = 124 }: { status: HomeModuleStatus; onRetry: () => void; height?: number }) {
+  if (status === "loading") return <Skeleton className="skeleton-card" style={{ height }} />;
+  if (status === "error") {
+    return (
+      <section className="home-module-load-error" role="alert">
+        <span>该模块暂时未能加载</span>
+        <button type="button" onClick={onRetry}>重试</button>
+      </section>
+    );
+  }
+  return null;
+}
+
+function DeferredHomeSection({ children, fallback }: { children: ReactNode; fallback: ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry?.isIntersecting) return;
+      setVisible(true);
+      observer.disconnect();
+    }, { rootMargin: "240px 0px" });
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, []);
+
+  return <div ref={hostRef}>{visible ? children : fallback}</div>;
 }
 
 // 发薪日快速配置浮层
@@ -814,6 +858,11 @@ export function HomeDashboard() {
   const [salaryDay, setSalaryDay] = useState(15);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [assetStatus, setAssetStatus] = useState<HomeModuleStatus>("loading");
+  const [budgetStatus, setBudgetStatus] = useState<HomeModuleStatus>("loading");
+  const [loanStatus, setLoanStatus] = useState<HomeModuleStatus>("loading");
+  const [savingsStatus, setSavingsStatus] = useState<HomeModuleStatus>("loading");
+  const [historyStatus, setHistoryStatus] = useState<HomeModuleStatus>("loading");
   const [loadVersion, setLoadVersion] = useState(0);
   const [reportingMonth, setReportingMonth] = useState("2026-01");
   const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
@@ -832,44 +881,94 @@ export function HomeDashboard() {
     if (!monthReady) return;
     const repo = manager.getRepository();
     let active = true;
+    let requestSequence = 0;
     const load = async () => {
+      const requestId = ++requestSequence;
+      const canUpdate = () => active && requestId === requestSequence;
       setLoading(true);
       setLoadError("");
+      setAssetStatus("loading");
+      setBudgetStatus("loading");
+      setLoanStatus("loading");
+      setSavingsStatus("loading");
+      setHistoryStatus("loading");
       try {
         const accountId = getCurrentAccountId();
-        const [a, b, l, s] = await Promise.all([
-          repo.getAssets(accountId),
-          repo.getBudgets(accountId),
-          repo.getLoans(accountId),
-          repo.getSavingsGoals(accountId),
-        ]);
-        const savingsPlans = await repo.getSavingsPlansByGoals(s.map((goal) => goal.id));
-        const selectedYear = isReportingYearKey(reportingMonth) ? reportingMonth : reportingMonth.slice(0, 4);
-        const selectedYearMonths = reportingPeriodMonths(selectedYear);
-        const monthKeys = isReportingYearKey(reportingMonth)
-          ? [...reportingPeriodMonths(previousMonthKey(reportingMonth)), ...selectedYearMonths]
-          : [...new Set([
-            ...reportingMonthSequence(reportingMonth, 5),
-            nextMonthKey(reportingMonth),
-            ...(b.some((budget) => budget.period === "YEARLY") ? selectedYearMonths : []),
-          ])];
-        const [monthlyTransactions, loadedAvailableMonths] = await Promise.all([
-          repo.getTransactionsByMonths(accountId, monthKeys),
+        const [coreTransactions, loadedAvailableMonths] = await Promise.all([
+          repo.getTransactionsByMonths(accountId, homeCoreTransactionMonths(reportingMonth)),
           loadAvailableTransactionMonths(repo, accountId),
         ]);
-        if (!active) return;
-        setTransactions(monthlyTransactions.flat());
+        if (!canUpdate()) return;
+        setTransactions(coreTransactions);
         setAvailableMonths(loadedAvailableMonths);
-        setAssets(a);
-        setBudgets(b);
-        setLoans(l);
-        setSavingsGoals(s);
-        setSavingsPlans(savingsPlans);
+        setLoading(false);
+
+        const assetsRequest = repo.getAssets(accountId);
+        const budgetsRequest = repo.getBudgets(accountId);
+        const loansRequest = repo.getLoans(accountId);
+        const savingsRequest = repo.getSavingsGoals(accountId)
+          .then(async (goals) => [goals, await repo.getSavingsPlansByGoals(goals.map((goal) => goal.id))] as const);
+        const historyRequest = budgetsRequest
+          .then((loadedBudgets) => repo.getTransactionsByMonths(
+            accountId,
+            homeSupplementalTransactionMonths(reportingMonth, loadedBudgets.some((budget) => budget.period === "YEARLY")),
+          ));
+
+        void assetsRequest.then(
+          (items) => {
+            if (!canUpdate()) return;
+            setAssets(items);
+            setAssetStatus("ready");
+          },
+          () => {
+            if (canUpdate()) setAssetStatus("error");
+          },
+        );
+        void budgetsRequest.then(
+          (items) => {
+            if (!canUpdate()) return;
+            setBudgets(items);
+            setBudgetStatus("ready");
+          },
+          () => {
+            if (canUpdate()) setBudgetStatus("error");
+          },
+        );
+        void loansRequest.then(
+          (items) => {
+            if (!canUpdate()) return;
+            setLoans(items);
+            setLoanStatus("ready");
+          },
+          () => {
+            if (canUpdate()) setLoanStatus("error");
+          },
+        );
+        void savingsRequest.then(
+          ([goals, plans]) => {
+            if (!canUpdate()) return;
+            setSavingsGoals(goals);
+            setSavingsPlans(plans);
+            setSavingsStatus("ready");
+          },
+          () => {
+            if (canUpdate()) setSavingsStatus("error");
+          },
+        );
+        void historyRequest.then(
+          (items) => {
+            if (!canUpdate()) return;
+            setTransactions(items);
+            setHistoryStatus("ready");
+          },
+          () => {
+            if (canUpdate()) setHistoryStatus("error");
+          },
+        );
       } catch {
-        if (!active) return;
+        if (!canUpdate()) return;
         setLoadError("云端数据加载失败，请检查后端服务和数据库连接后重试。");
-      } finally {
-        if (active) setLoading(false);
+        setLoading(false);
       }
     };
     void load();
@@ -893,6 +992,9 @@ export function HomeDashboard() {
     () => buildHomeSummary({ transactions: analysisTransactions, assets, budgets, loans, savingsGoals, savingsPlans, salaryDay, reportingMonth }),
     [analysisTransactions, assets, budgets, loans, reportingMonth, savingsGoals, savingsPlans, salaryDay],
   );
+  const budgetAllocationStatus = combinedHomeModuleStatus(assetStatus, budgetStatus, savingsStatus);
+  const diagnosticStatus = budgetStatus;
+  const compassStatus = combinedHomeModuleStatus(assetStatus, loanStatus, savingsStatus);
 
   function handleSalaryDayChange(day: number) {
     persistSalaryDay(day);
@@ -902,6 +1004,10 @@ export function HomeDashboard() {
   function handleReportingMonthChange(month: string) {
     setSelectedReportMonth(month);
     setReportingMonth(month);
+  }
+
+  function reloadDashboard() {
+    setLoadVersion((version) => version + 1);
   }
 
   if (loading) {
@@ -940,7 +1046,7 @@ export function HomeDashboard() {
           <p>{loadError}</p>
           <code>{getCloudApiUrl()}</code>
           <div className="home-data-error-actions">
-            <button type="button" onClick={() => setLoadVersion((version) => version + 1)}>重新加载</button>
+            <button type="button" onClick={reloadDashboard}>重新加载</button>
             <Link href="/app/accounts">检查数据源设置</Link>
           </div>
         </section>
@@ -974,22 +1080,46 @@ export function HomeDashboard() {
       />
 
       {/* 本月资金分配 */}
-      <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => setBudgetManagementOpen(true)} />
+      {budgetAllocationStatus === "ready" ? (
+        <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => setBudgetManagementOpen(true)} />
+      ) : (
+        <HomeModulePlaceholder status={budgetAllocationStatus} onRetry={reloadDashboard} height={178} />
+      )}
 
       {/* AI 财务诊断条 */}
-      <StarkDiagnosticBanner summary={summary} onOpen={() => setDiagnosticOpen(true)} />
+      {diagnosticStatus === "ready" ? (
+        <StarkDiagnosticBanner summary={summary} onOpen={() => setDiagnosticOpen(true)} />
+      ) : (
+        <HomeModulePlaceholder status={diagnosticStatus} onRetry={reloadDashboard} height={86} />
+      )}
 
       {/* 四维财务罗盘 */}
-      <StarkCompassMatrix summary={summary} onManageBudget={() => setBudgetManagementOpen(true)} />
+      {compassStatus === "ready" ? (
+        <StarkCompassMatrix summary={summary} onManageBudget={() => setBudgetManagementOpen(true)} />
+      ) : (
+        <HomeModulePlaceholder status={compassStatus} onRetry={reloadDashboard} height={172} />
+      )}
 
       {/* 本月支出构成 (替代老旧流水) */}
       <TopExpenseStructure summary={summary} reportingMonth={reportingMonth} />
 
       {/* 财务行动建议 */}
-      <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />
+      <DeferredHomeSection fallback={<Skeleton className="skeleton-card" style={{ height: 128 }} />}>
+        {diagnosticStatus === "ready" ? (
+          <SmartAdvisoryCard summary={summary} reportingMonth={reportingMonth} locale={locale} />
+        ) : (
+          <HomeModulePlaceholder status={diagnosticStatus} onRetry={reloadDashboard} height={128} />
+        )}
+      </DeferredHomeSection>
 
       {/* 收支动态走势 */}
-      <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
+      <DeferredHomeSection fallback={<Skeleton className="skeleton-card" style={{ height: 228 }} />}>
+        {historyStatus === "ready" ? (
+          <StarkCashflowTrend transactions={analysisTransactions} reportingMonth={reportingMonth} locale={locale} />
+        ) : (
+          <HomeModulePlaceholder status={historyStatus} onRetry={reloadDashboard} height={228} />
+        )}
+      </DeferredHomeSection>
 
       {diagnosticOpen ? <StarkDiagnosticSheet summary={summary} onClose={() => setDiagnosticOpen(false)} /> : null}
       {budgetManagementOpen ? (
