@@ -2215,6 +2215,11 @@ button.stark-compass-card {
   min-height: 100px;
 }
 
+.home-cashflow-chart {
+  width: 100%;
+  height: 124px;
+}
+
 .stark-trend-detail {
   display: flex;
   align-items: center;
@@ -2272,102 +2277,6 @@ button.stark-compass-card {
   font-variant-numeric: tabular-nums;
 }
 
-.stark-bars-wrapper {
-  display: flex;
-  gap: 8px;
-  height: 100px;
-  align-items: flex-end;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior-x: contain;
-  scroll-snap-type: x proximity;
-  -webkit-overflow-scrolling: touch;
-}
-
-.stark-trend-col {
-  flex: 0 0 calc((100% - 32px) / 5);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  min-width: 56px;
-  height: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
-  scroll-snap-align: start;
-}
-
-.stark-trend-col:focus-visible {
-  outline: 2px solid #0060c0;
-  outline-offset: 3px;
-}
-
-.stark-trend-col.is-selected .dual-bars {
-  transform: translateY(-1px);
-  filter: drop-shadow(0 3px 4px rgba(0, 96, 192, 0.16));
-}
-
-.stark-trend-col.is-selected .month-tag {
-  padding: 3px 5px;
-  border-radius: 6px;
-  background: rgba(186, 230, 253, 0.58);
-  color: #0060c0;
-  font-weight: 600;
-}
-
-.dual-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 72px;
-  width: 22px;
-  transition: transform 200ms ease, filter 200ms ease;
-}
-
-.bar-inc {
-  flex: 1;
-  border-radius: 4px 4px 0 0;
-  background: #bae6fd;
-  transition: height 200ms ease;
-}
-
-.bar-exp {
-  flex: 1;
-  border-radius: 4px 4px 0 0;
-  background: #fecdd3;
-  transition: height 200ms ease;
-}
-
-.stark-trend-col.is-current .bar-inc {
-  background: #0060c0;
-  box-shadow: 0 2px 6px rgba(0, 96, 192, 0.25);
-}
-
-.stark-trend-col.is-current .bar-exp {
-  background: #f43f5e;
-  box-shadow: 0 2px 6px rgba(244, 63, 94, 0.25);
-}
-
-.month-tag {
-  font-size: calc(10px * var(--user-font-scale));
-  color: #94a3b8;
-  line-height: 1;
-}
-
-.stark-trend-col.is-current .month-tag {
-  color: #0f172a;
-  font-weight: 600;
-}
-
 /* Stark Category Breakdown (Expense Structure) */
 .stark-category-card {
   padding: 14px 16px;
@@ -2415,34 +2324,11 @@ button.stark-compass-card {
 
 .category-donut {
   position: relative;
-  display: grid;
-  place-items: center;
   width: 132px;
   height: 132px;
   border: 1px solid rgba(226, 232, 240, 0.8);
   border-radius: 50%;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
-}
-
-.category-donut-center {
-  display: grid;
-  gap: 2px;
-  justify-items: center;
-  pointer-events: none;
-  text-align: center;
-}
-
-.category-donut-center span {
-  color: #94a3b8;
-  font-size: calc(10px * var(--user-font-scale));
-}
-
-.category-donut-center strong {
-  color: #0f172a;
-  font-size: calc(13px * var(--user-font-scale));
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .category-items-list {
@@ -2531,10 +2417,6 @@ button.stark-compass-card {
   .category-donut {
     width: 112px;
     height: 112px;
-  }
-
-  .category-donut-center strong {
-    font-size: calc(11px * var(--user-font-scale));
   }
 
   .category-grid-item {

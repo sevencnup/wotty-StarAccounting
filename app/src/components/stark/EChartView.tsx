@@ -5,6 +5,13 @@ import type { EChartsCoreOption, EChartsType } from "echarts/core";
 
 let chartRuntimePromise: Promise<typeof import("echarts/core")> | null = null;
 
+export type EChartDataClick = {
+  componentType?: string;
+  dataIndex?: number;
+  name?: string;
+  seriesName?: string;
+};
+
 function loadChartRuntime() {
   if (!chartRuntimePromise) {
     chartRuntimePromise = Promise.all([
@@ -31,16 +38,31 @@ function loadChartRuntime() {
   return chartRuntimePromise;
 }
 
-export function EChartView({ option, className }: { option: EChartsCoreOption; className?: string }) {
+export function EChartView({
+  option,
+  className,
+  ariaLabel,
+  onDataClick,
+}: {
+  option: EChartsCoreOption;
+  className?: string;
+  ariaLabel?: string;
+  onDataClick?: (event: EChartDataClick) => void;
+}) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<EChartsType | null>(null);
   const optionRef = useRef(option);
+  const onDataClickRef = useRef(onDataClick);
   const shouldInitializeRef = useRef(false);
 
   useEffect(() => {
     optionRef.current = option;
     instanceRef.current?.setOption(option, true);
   }, [option]);
+
+  useEffect(() => {
+    onDataClickRef.current = onDataClick;
+  }, [onDataClick]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -57,6 +79,14 @@ export function EChartView({ option, className }: { option: EChartsCoreOption; c
       const chart = echarts.init(root!, undefined, { renderer: "canvas" });
       instanceRef.current = chart;
       chart.setOption(optionRef.current, true);
+      chart.on("click", (event) => {
+        onDataClickRef.current?.({
+          componentType: event.componentType,
+          dataIndex: event.dataIndex,
+          name: event.name,
+          seriesName: event.seriesName,
+        });
+      });
 
       resizeObserver = new ResizeObserver(() => chart.resize());
       resizeObserver.observe(root!);
@@ -90,5 +120,5 @@ export function EChartView({ option, className }: { option: EChartsCoreOption; c
     };
   }, []);
 
-  return <div ref={rootRef} className={className} />;
+  return <div ref={rootRef} className={className} role={ariaLabel ? "img" : undefined} aria-label={ariaLabel} />;
 }

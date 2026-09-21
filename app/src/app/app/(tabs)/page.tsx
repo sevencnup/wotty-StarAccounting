@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
+import type { EChartsCoreOption } from "echarts/core";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { EChartView } from "@/components/stark/EChartView";
 import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
@@ -635,6 +637,58 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 }
 
 // 本月支出构成 (替代老旧流水列表)
+type HomeExpenseSegment = {
+  name: string;
+  amount: number;
+  color: string;
+};
+
+function buildHomeExpenseDonutOption(
+  segments: HomeExpenseSegment[],
+  periodLabel: string,
+  total: number,
+  locale: AppLocale,
+): EChartsCoreOption {
+  return {
+    animationDuration: 420,
+    animationEasing: "cubicOut",
+    title: {
+      text: translateValue(periodLabel, locale),
+      subtext: `¥ ${formatMoney(total)}`,
+      left: "center",
+      top: "34%",
+      itemGap: 2,
+      textStyle: { color: "#94a3b8", fontSize: 10, fontWeight: 400 },
+      subtextStyle: { color: "#0f172a", fontSize: 13, fontWeight: 700 },
+    },
+    tooltip: {
+      trigger: "item",
+      confine: true,
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      formatter: (item: { name?: string; value?: number; percent?: number }) => (
+        `${item.name ?? ""}<br/>¥ ${formatMoney(Number(item.value ?? 0))} (${item.percent ?? 0}%)`
+      ),
+    },
+    series: [{
+      type: "pie",
+      radius: ["56%", "78%"],
+      center: ["50%", "50%"],
+      label: { show: false },
+      labelLine: { show: false },
+      emphasis: { scale: false },
+      itemStyle: { borderColor: "#ffffff", borderWidth: 2 },
+      data: segments.map((segment) => ({
+        name: translateValue(segment.name, locale),
+        value: segment.amount,
+        itemStyle: { color: segment.color },
+      })),
+    }],
+  };
+}
+
 function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary; reportingMonth: string }) {
   const locale = useAppLocale();
   const isAnnual = isReportingYearKey(reportingMonth);
@@ -644,16 +698,13 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
   const total = summary.expense || summary.ratios.reduce((sum, item) => sum + item.amount, 0) || 1;
   const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
   const donutSegments = [
-    ...ratios.map((item) => ({ amount: item.amount, color: item.color })),
-    ...(otherAmount > 0 ? [{ amount: otherAmount, color: "#94a3b8" }] : []),
+    ...ratios.map((item) => ({ name: item.name, amount: item.amount, color: item.color })),
+    ...(otherAmount > 0 ? [{ name: "其他", amount: otherAmount, color: "#94a3b8" }] : []),
   ];
-  let donutOffset = 0;
-  const donutStops = donutSegments.map((item) => {
-    const start = donutOffset;
-    donutOffset += (item.amount / total) * 100;
-    return `${item.color} ${start}% ${donutOffset}%`;
-  }).join(", ");
-  const donutBackground = `radial-gradient(circle at center, #ffffff 0 57%, transparent 58%), conic-gradient(${donutStops})`;
+  const donutOption = useMemo(
+    () => buildHomeExpenseDonutOption(donutSegments, periodLabel, summary.expense, locale),
+    [donutSegments, locale, periodLabel, summary.expense],
+  );
   const percentOfTotal = (amount: number) => Math.round((amount / total) * 100);
 
   return (
@@ -671,17 +722,11 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
       {ratios.length ? (
         <div className="category-card-body">
           <div className="category-donut-layout">
-            <div
+            <EChartView
+              option={donutOption}
               className="category-donut"
-              style={{ background: donutBackground }}
-              role="img"
-              aria-label={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
-            >
-              <div className="category-donut-center">
-                <span>{translateValue(periodLabel, locale)}</span>
-                <strong>¥ {formatMoney(summary.expense)}</strong>
-              </div>
-            </div>
+              ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
+            />
 
             <div className="category-items-list">
               {ratios.map((item) => (
@@ -756,24 +801,85 @@ function SmartAdvisoryCard({ summary, reportingMonth, locale }: { summary: HomeS
 }
 
 // Stark 原创月度收支走势
-function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transactions: Transaction[]; reportingMonth: string; locale: AppLocale }) {
-  const monthKeys = isReportingYearKey(reportingMonth)
-    ? reportingPeriodMonths(reportingMonth)
-    : reportingMonthSequence(reportingMonth, 5);
-  const history = monthKeys.map((key) => {
-    const monthTransactions = transactions.filter((item) => monthKey(item.date) === key);
-    return {
-      key,
-      month: locale === "en-US"
-        ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(reportingMonthDate(key))
-        : `${Number(key.slice(5))}月`,
-      expense: monthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
-      income: monthTransactions.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
-      current: isReportingYearKey(reportingMonth) ? key.startsWith(`${reportingMonth}-`) : key === reportingMonth,
-    };
-  });
+type HomeCashflowPoint = {
+  key: string;
+  month: string;
+  expense: number;
+  income: number;
+  current: boolean;
+};
 
-  const maxVal = Math.max(...history.map((item) => Math.max(item.expense, item.income)), 1);
+function buildHomeCashflowTrendOption(history: HomeCashflowPoint[], locale: AppLocale): EChartsCoreOption {
+  return {
+    animationDuration: 420,
+    animationEasing: "cubicOut",
+    grid: { left: 4, right: 4, top: 8, bottom: 22, containLabel: false },
+    tooltip: {
+      trigger: "axis",
+      confine: true,
+      backgroundColor: "rgba(19, 27, 48, 0.92)",
+      borderWidth: 0,
+      padding: [8, 10],
+      textStyle: { color: "#ffffff", fontSize: 12 },
+      valueFormatter: (value: number | string) => `¥ ${formatMoney(Number(value ?? 0))}`,
+    },
+    xAxis: {
+      type: "category",
+      data: history.map((item) => item.month),
+      axisLine: { lineStyle: { color: "#e8eef5" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#94a3b8", fontSize: 10, margin: 8 },
+    },
+    yAxis: {
+      type: "value",
+      show: false,
+      min: 0,
+    },
+    series: [
+      {
+        name: translateValue("收入", locale),
+        type: "bar",
+        barWidth: "24%",
+        barGap: "28%",
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
+        data: history.map((item) => ({
+          value: item.income,
+          itemStyle: { color: item.current ? "#0060c0" : "#bae6fd" },
+        })),
+      },
+      {
+        name: translateValue("支出", locale),
+        type: "bar",
+        barWidth: "24%",
+        itemStyle: { borderRadius: [4, 4, 0, 0] },
+        data: history.map((item) => ({
+          value: item.expense,
+          itemStyle: { color: item.current ? "#f43f5e" : "#fecdd3" },
+        })),
+      },
+    ],
+  };
+}
+
+function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transactions: Transaction[]; reportingMonth: string; locale: AppLocale }) {
+  const history = useMemo(() => {
+    const monthKeys = isReportingYearKey(reportingMonth)
+      ? reportingPeriodMonths(reportingMonth)
+      : reportingMonthSequence(reportingMonth, 5);
+    return monthKeys.map((key) => {
+      const monthTransactions = transactions.filter((item) => monthKey(item.date) === key);
+      return {
+        key,
+        month: locale === "en-US"
+          ? new Intl.DateTimeFormat("en-US", { month: "short" }).format(reportingMonthDate(key))
+          : `${Number(key.slice(5))}月`,
+        expense: monthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0),
+        income: monthTransactions.filter((item) => item.type === "INCOME").reduce((sum, item) => sum + item.amount, 0),
+        current: isReportingYearKey(reportingMonth) ? key.startsWith(`${reportingMonth}-`) : key === reportingMonth,
+      } satisfies HomeCashflowPoint;
+    });
+  }, [locale, reportingMonth, transactions]);
+  const chartOption = useMemo(() => buildHomeCashflowTrendOption(history, locale), [history, locale]);
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
   const selectedMonth = history.find((item) => item.key === selectedMonthKey);
 
@@ -813,35 +919,15 @@ function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transact
           </div>
         ) : null}
 
-        <div className="stark-bars-wrapper">
-          {history.map((item) => {
-            const expH = Math.max(8, Math.min(100, Math.round((item.expense / maxVal) * 100)));
-            const incH = Math.max(8, Math.min(100, Math.round((item.income / maxVal) * 100)));
-            const selected = item.key === selectedMonthKey;
-            const detailLabel = locale === "en-US"
-              ? `${item.month}: ${translateValue("收入", locale)} ¥${formatMoney(item.income)}, ${translateValue("支出", locale)} ¥${formatMoney(item.expense)}`
-              : `${item.month}：收入 ¥${formatMoney(item.income)}，支出 ¥${formatMoney(item.expense)}`;
-
-            return (
-              <button
-                key={item.key}
-                type="button"
-                className={`stark-trend-col ${item.current ? "is-current" : ""} ${selected ? "is-selected" : ""}`}
-                onClick={() => setSelectedMonthKey(selected ? null : item.key)}
-                aria-label={detailLabel}
-                aria-pressed={selected}
-                aria-describedby={selected ? "stark-trend-detail" : undefined}
-                title={detailLabel}
-              >
-                <div className="dual-bars" aria-hidden="true">
-                  <div className="bar-inc" style={{ height: `${incH}%` }} />
-                  <div className="bar-exp" style={{ height: `${expH}%` }} />
-                </div>
-                <span className="month-tag">{item.month}</span>
-              </button>
-            );
-          })}
-        </div>
+        <EChartView
+          option={chartOption}
+          className="home-cashflow-chart"
+          ariaLabel={translateValue("收支动态走势", locale)}
+          onDataClick={({ dataIndex }) => {
+            const item = dataIndex === undefined ? null : history[dataIndex];
+            if (item) setSelectedMonthKey((current) => current === item.key ? null : item.key);
+          }}
+        />
       </div>
     </SurfaceCard>
   );
