@@ -189,16 +189,6 @@ export function AppAccessGate() {
   return (
     <div className="app-access-shell">
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
-        <div className="app-access-brand-mark">星</div>
-        <span className="app-access-eyebrow">STAR ACCOUNTING</span>
-        <h1>进入账本</h1>
-        <p className="app-access-intro">先选择数据模式，再验证服务和账户。</p>
-
-        <div className={`app-access-mode-switch${native ? "" : " single"}`} aria-label="选择数据模式">
-          {native ? <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => { setMode("LOCAL"); setPhase("LOCAL"); }}>本地模式</button> : null}
-          <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={switchToCloud}>云端模式</button>
-        </div>
-
         {mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
             <strong>本地模式</strong>
@@ -234,7 +224,12 @@ export function AppAccessGate() {
           </section>
         )}
 
-        {!native ? <small className="app-access-footnote">Web 端仅使用云端模式；本地模式仅在 Android 套壳 App 中开放。</small> : null}
+        {native ? (
+          <div className="app-access-mode-switch" aria-label="选择数据模式">
+            <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => { setMode("LOCAL"); setPhase("LOCAL"); }}>本地模式</button>
+            <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={switchToCloud}>云端模式</button>
+          </div>
+        ) : null}
       </main>
     </div>
   );

@@ -4641,52 +4641,14 @@ button.stark-compass-card {
   box-shadow: 0 24px 70px rgba(39, 76, 112, 0.16);
 }
 
-.app-access-brand-mark {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #0060c0, #397fe8);
-  color: #ffffff;
-  font-size: 20px;
-  font-weight: 800;
-  box-shadow: 0 10px 22px rgba(0, 96, 192, 0.25);
-}
-
-.app-access-eyebrow {
-  display: block;
-  margin-top: 10px;
-  color: #6b7f95;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-}
-
-.app-access-card h1 {
-  margin: 3px 0 0;
-  color: #142036;
-  font-size: 25px;
-  line-height: 1.2;
-}
-
-.app-access-intro {
-  margin: 4px 0 12px;
-  color: #718096;
-  font-size: 13px;
-}
-
 .app-access-mode-switch {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+  margin-top: 10px;
   padding: 3px;
   border-radius: 11px;
   background: #edf3f8;
-}
-
-.app-access-mode-switch.single {
-  grid-template-columns: 1fr;
 }
 
 .app-access-mode-switch button,
@@ -4710,7 +4672,7 @@ button.stark-compass-card {
 
 .app-access-cloud-panel,
 .app-access-local-panel {
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .app-access-local-panel {
@@ -4838,15 +4800,6 @@ button.stark-compass-card {
   color: #397fe8;
   font-size: 12px;
   cursor: pointer;
-}
-
-.app-access-footnote {
-  display: block;
-  margin-top: 10px;
-  color: #91a0b1;
-  font-size: 11px;
-  line-height: 1.35;
-  text-align: center;
 }
 
 .savings-hero-track i {
