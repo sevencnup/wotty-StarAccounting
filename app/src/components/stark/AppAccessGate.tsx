@@ -8,7 +8,7 @@ import { getCloudAuthUser, type CloudAuthUser } from "@/lib/stark/storage/cloud-
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
-type AccessPhase = "BOOTING" | "LOCAL" | "API" | "AUTH";
+type AccessPhase = "BOOTING" | "LOCAL" | "AUTH";
 
 const manager = new DataModeManager();
 
@@ -24,10 +24,6 @@ function getDestination() {
   if (typeof window === "undefined") return "/app";
   const requested = new URLSearchParams(window.location.search).get("next") ?? "";
   return isProtectedDestination(requested) ? requested : "/app";
-}
-
-function isModeSwitchRequested() {
-  return typeof window !== "undefined" && new URLSearchParams(window.location.search).get("switchMode") === "1";
 }
 
 /** 检测后端和数据库；根入口与受保护路由共用。 */
@@ -53,8 +49,8 @@ export function AppAccessGate() {
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [phase, setPhase] = useState<AccessPhase>("BOOTING");
   const [apiUrl, setApiUrl] = useState("");
-  const [connectionState, setConnectionState] = useState<ConnectionState>("TESTING");
-  const [connectionMessage, setConnectionMessage] = useState("正在检测云端服务...");
+  const [connectionState, setConnectionState] = useState<ConnectionState>("IDLE");
+  const [connectionMessage, setConnectionMessage] = useState("登录前请检测 API 地址");
   const [apiVerified, setApiVerified] = useState(false);
   const [cloudUser, setCloudUser] = useState<CloudAuthUser | null>(() => getCloudAuthUser());
   const [authMode, setAuthMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
@@ -73,7 +69,7 @@ export function AppAccessGate() {
   async function checkCloud(urlValue: string, resumeIfAuthenticated: boolean) {
     const url = normalizeUrl(urlValue);
     setApiUrl(url);
-    setPhase("API");
+    setPhase("AUTH");
     setConnectionState("TESTING");
     setConnectionMessage("正在检测云端服务...");
     setApiVerified(false);
@@ -100,7 +96,7 @@ export function AppAccessGate() {
       setConnectionState("ERROR");
       setConnectionMessage(error instanceof Error && error.message ? error.message : "连接失败，请检查 API 地址和网络权限");
       setApiVerified(false);
-      setPhase("API");
+      setPhase("AUTH");
     }
   }
 
@@ -117,7 +113,7 @@ export function AppAccessGate() {
     if (nativeRuntime && initialMode === "LOCAL") {
       setPhase("LOCAL");
     } else {
-      void checkCloud(initialUrl, !isModeSwitchRequested());
+      setPhase("AUTH");
     }
 
     return () => {
@@ -132,7 +128,11 @@ export function AppAccessGate() {
   }
 
   async function continueCloud() {
-    if (!apiVerified || !cloudUser) return;
+    if (!cloudUser) return;
+    if (!apiVerified) {
+      await checkCloud(apiUrl, true);
+      return;
+    }
     const url = normalizeUrl(apiUrl);
     setCloudApiUrl(url);
     manager.setCloudApiUrl(url);
@@ -175,7 +175,7 @@ export function AppAccessGate() {
 
   function switchToCloud() {
     setMode("CLOUD");
-    void checkCloud(apiUrl || getCloudApiUrl(), false);
+    setPhase("AUTH");
   }
 
   function logoutCloud() {
@@ -197,19 +197,18 @@ export function AppAccessGate() {
           </section>
         ) : (
           <section className="app-access-cloud-panel">
-            <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
-            <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
-            <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
+            <div className="app-access-auth">
+              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
+              <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
+              <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
 
-            {apiVerified && cloudUser ? (
-              <div className="app-access-current-user">
-                <strong>已登录：{cloudUser.name || cloudUser.email}</strong>
-                <div><button type="button" className="app-access-primary" onClick={() => void continueCloud()}>继续使用云端</button><button type="button" className="app-access-link" onClick={logoutCloud}>退出并更换账户</button></div>
-              </div>
-            ) : null}
-
-            {apiVerified && !cloudUser ? (
-              <div className="app-access-auth">
+              {cloudUser ? (
+                <div className="app-access-current-user">
+                  <strong>已登录：{cloudUser.name || cloudUser.email}</strong>
+                  <div><button type="button" className="app-access-primary" onClick={() => void continueCloud()}>{apiVerified ? "继续使用云端" : "检测并继续使用"}</button><button type="button" className="app-access-link" onClick={logoutCloud}>退出并更换账户</button></div>
+                </div>
+              ) : (
+                <>
                 <div className="app-access-auth-tabs">
                   <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
                   <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
@@ -218,9 +217,10 @@ export function AppAccessGate() {
                 <label className="app-access-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" /></label>
                 <label className="app-access-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
                 {authError ? <div className="app-access-status error">{authError}</div> : null}
-                <button type="button" className="app-access-primary" disabled={submitting} onClick={() => void submitAuth()}>{submitting ? "提交中..." : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
-              </div>
-            ) : null}
+                <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
+                </>
+              )}
+            </div>
           </section>
         )}
 

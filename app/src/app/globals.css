@@ -4777,15 +4777,16 @@ button.stark-compass-card {
 }
 
 .app-access-auth {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #e8eef4;
+  margin-top: 0;
+  padding-top: 0;
+  border: 0;
 }
 
 .app-access-auth-tabs {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
+  margin-top: 10px;
   padding: 3px;
   border-radius: 12px;
   background: #f1f5f9;
