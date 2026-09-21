@@ -47,6 +47,7 @@ DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
 DB_USER=accounting
 DB_PASSWORD=请替换为数据库密码
 JWT_SECRET=请替换为至少 32 位的随机字符串
+ACCOUNT_ADMIN_KEY=请替换为至少 16 位的随机管理员恢复密钥
 ```
 
 执行 `pnpm dev` 时，开发脚本会自动读取该文件并传给 API。已经存在的系统环境变量优先于 `.env`。
@@ -60,6 +61,7 @@ DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
 DB_USER=accounting
 DB_PASSWORD=请替换为数据库密码
 JWT_SECRET=请替换为至少 32 位的随机字符串
+ACCOUNT_ADMIN_KEY=请替换为至少 16 位的随机管理员恢复密钥
 ```
 
 容器连接同一 Compose 网络中的 MySQL 时，将 `127.0.0.1` 改为 MySQL 服务名，例如：
@@ -73,6 +75,8 @@ DATABASE_URL=jdbc:mysql://mysql:3306/star_accounting
 本地开发和 Docker API 都只读取进程环境变量。执行 `pnpm dev` 时，项目根目录 `.env` 会由开发脚本自动加载；如果没有 `.env` 或对应环境变量，API 不会读取其他本机配置文件，数据库状态会为 `db:false`。
 
 `JWT_SECRET` 用于签发云端登录令牌。多人部署时必须设置为至少 32 位的随机字符串，部署后不要随意更换，否则已有登录状态会失效。
+
+`ACCOUNT_ADMIN_KEY` 用于无邮件环境下的密码找回，以及已登录后开启或关闭新用户注册。它只保存在 API 进程环境变量中，不能填入 Web 页面配置、数据库或 Git 仓库。建议使用至少 16 位的随机值；未配置时，普通登录和注册仍可用，但找回密码与注册开关会提示不可用。
 
 连接池默认最多 10 个连接、启动时保持 1 个空闲连接（`DB_POOL_MAX_SIZE=10`、`DB_POOL_MIN_IDLE=1`）。用户量增加时可通过环境变量调大，但个人部署不需要修改。
 
@@ -125,7 +129,7 @@ Compose 的首次启动顺序如下：
 - Web：`http://127.0.0.1:12366`
 - API 健康检查：`http://127.0.0.1:12367/api/health`
 
-首次打开应用默认使用本地模式，不需要登录。进入“设置 → 切换模式”，测试云端地址后选择“云端模式”，应用会要求注册或登录云端账户；不同账户只能看到自己拥有的账本。
+首次打开根入口会自动检测云端 API，再进行注册或登录；Android App 还可在登录页选择本地模式。不同账户只能看到自己拥有的账本。已登录后可在“设置 → 账户设置”修改密码，并用管理员恢复密钥控制是否允许新用户注册。
 
 MySQL 数据保存在 `mysql-data` 数据卷中。`MYSQL_DATABASE`、`MYSQL_USER` 和 `MYSQL_PASSWORD` 只会在该数据卷首次为空时初始化；普通重启不会删除数据或重新初始化账号。
 

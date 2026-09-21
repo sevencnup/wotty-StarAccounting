@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { DataMode } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { cloudLogin, cloudLogout, cloudMe, cloudRegister } from "@/lib/stark/repository/cloud-auth";
-import { getCloudAuthUser, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
+import { cloudLogin, cloudLogout, cloudMe, cloudRecoverPassword, cloudRegister, cloudRegistrationStatus } from "@/lib/stark/repository/cloud-auth";
+import { getCloudAuthUser, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
 type AccessPhase = "BOOTING" | "LOCAL" | "AUTH";
+type AuthMode = "LOGIN" | "REGISTER" | "RECOVER";
 
 const manager = new DataModeManager();
 
@@ -57,10 +58,15 @@ export function AppAccessGate() {
   const [connectionMessage, setConnectionMessage] = useState("登录前请检测 API 地址");
   const [apiVerified, setApiVerified] = useState(false);
   const [cloudUser, setCloudUser] = useState<CloudAuthUser | null>(() => getCloudAuthUser());
-  const [authMode, setAuthMode] = useState<"LOGIN" | "REGISTER">("LOGIN");
+  const [authMode, setAuthMode] = useState<AuthMode>("LOGIN");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminKey, setAdminKey] = useState("");
+  const [rememberLogin, setRememberLogin] = useState(() => isCloudAuthRemembered());
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const destinationRef = useRef("/app");
@@ -84,6 +90,15 @@ export function AppAccessGate() {
       if (!mountedRef.current) return;
       manager.setCloudApiUrl(url);
       setCloudApiUrl(url);
+      let registrationOpen = false;
+      try {
+        registrationOpen = (await cloudRegistrationStatus(url)).registrationEnabled;
+      } catch {
+        // Do not reveal a registration option unless the API explicitly permits it.
+      }
+      if (!mountedRef.current) return;
+      setRegistrationEnabled(registrationOpen);
+      if (!registrationOpen) setAuthMode((current) => current === "REGISTER" ? "LOGIN" : current);
       setConnectionState("SUCCESS");
       setConnectionMessage("API 和数据库连接正常");
       setApiVerified(true);
@@ -169,17 +184,35 @@ export function AppAccessGate() {
 
   async function submitAuth() {
     if (!apiVerified) return;
-    if (!email.trim() || !password) {
-      setAuthError("请输入邮箱和密码");
+    if (!email.trim() || !password || (authMode === "RECOVER" && (!confirmPassword || !adminKey))) {
+      setAuthError(authMode === "RECOVER" ? "请完整填写邮箱、新密码和管理员恢复密钥" : "请输入邮箱和密码");
+      return;
+    }
+    if (authMode === "RECOVER" && password.length < 8) {
+      setAuthError("新密码至少需要 8 位");
+      return;
+    }
+    if (authMode === "RECOVER" && password !== confirmPassword) {
+      setAuthError("两次输入的新密码不一致");
       return;
     }
     setSubmitting(true);
     setAuthError("");
+    setAuthMessage("");
     try {
       const url = normalizeUrl(apiUrl);
+      if (authMode === "RECOVER") {
+        const result = await cloudRecoverPassword(url, email.trim(), password, confirmPassword, adminKey);
+        setPassword("");
+        setConfirmPassword("");
+        setAdminKey("");
+        setAuthMode("LOGIN");
+        setAuthMessage(result.message);
+        return;
+      }
       manager.setCloudApiUrl(url);
       const user = authMode === "LOGIN"
-        ? await cloudLogin(url, email.trim(), password)
+        ? await cloudLogin(url, email.trim(), password, rememberLogin)
         : await cloudRegister(url, email.trim(), password);
       setCloudUser(user);
       setCloudApiUrl(url);
@@ -197,7 +230,18 @@ export function AppAccessGate() {
     setApiVerified(false);
     setConnectionState("IDLE");
     setConnectionMessage("请先检测当前 API 地址");
+    setRegistrationEnabled(false);
     setAuthError("");
+    setAuthMessage("");
+  }
+
+  function selectAuthMode(next: AuthMode) {
+    setAuthMode(next);
+    setPassword("");
+    setConfirmPassword("");
+    setAdminKey("");
+    setAuthError("");
+    setAuthMessage("");
   }
 
   function switchToCloud() {
@@ -209,7 +253,9 @@ export function AppAccessGate() {
     cloudLogout();
     setCloudUser(null);
     setAuthError("");
-    setAuthMode("LOGIN");
+    setAuthMessage("");
+    setRememberLogin(false);
+    selectAuthMode("LOGIN");
     setPhase("AUTH");
   }
 
@@ -236,14 +282,25 @@ export function AppAccessGate() {
                 </div>
               ) : (
                 <div className="app-access-credentials">
-                  <div className="app-access-auth-tabs">
-                    <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => { setAuthMode("LOGIN"); setAuthError(""); }}>登录</button>
-                    <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => { setAuthMode("REGISTER"); setAuthError(""); }}>注册</button>
-                  </div>
-                  <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
-                  <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                  {authMode === "RECOVER" ? <>
+                    <div className="app-access-recovery-heading"><strong>重置密码</strong><span>使用服务器管理员恢复密钥验证</span></div>
+                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
+                    <label className="app-access-field app-access-login-field"><span>新密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
+                    <label className="app-access-field app-access-login-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
+                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="off" /></label>
+                  </> : <>
+                    <div className={`app-access-auth-tabs${registrationEnabled ? "" : " single"}`}>
+                      <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => selectAuthMode("LOGIN")}>登录</button>
+                      {registrationEnabled ? <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => selectAuthMode("REGISTER")}>注册</button> : null}
+                    </div>
+                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
+                    <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                    {authMode === "LOGIN" ? <div className="app-access-login-options"><label className="app-access-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>记住密码</span><small>仅保留登录状态</small></label><button type="button" className="app-access-link" onClick={() => selectAuthMode("RECOVER")}>忘记密码？</button></div> : null}
+                  </>}
                   {authError ? <div className="app-access-status error">{authError}</div> : null}
-                  <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : "注册并进入"}</button>
+                  {authMessage ? <div className="app-access-status success">{authMessage}</div> : null}
+                  <button type="button" className="app-access-primary" disabled={submitting || !apiVerified} onClick={() => void submitAuth()}>{submitting ? "提交中..." : !apiVerified ? "请先检测 API 地址" : authMode === "LOGIN" ? "登录并进入" : authMode === "REGISTER" ? "注册并进入" : "确认重置密码"}</button>
+                  {authMode === "RECOVER" ? <button type="button" className="app-access-link app-access-return-login" onClick={() => selectAuthMode("LOGIN")}>返回登录</button> : null}
                 </div>
               )}
             </div>

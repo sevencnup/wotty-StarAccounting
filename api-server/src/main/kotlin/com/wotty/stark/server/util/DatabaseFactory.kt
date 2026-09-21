@@ -41,6 +41,7 @@ import java.util.UUID
 
 private val json = Json { ignoreUnknownKeys = true }
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+private const val REGISTRATION_ENABLED_SETTING = "registration-enabled"
 
 internal data class DatabaseSettings(
     val jdbcUrl: String,
@@ -54,6 +55,7 @@ internal data class ReportingMonthRange(
 )
 
 class AccessDeniedException(message: String = "You do not have access to this resource") : RuntimeException(message)
+class RegistrationDisabledException : RuntimeException("Registration is disabled")
 
 data class AuthUser(
     val id: String,
@@ -95,6 +97,15 @@ object Users : Table("user") {
     val role = varchar("role", 191)
 
     override val primaryKey = PrimaryKey(id)
+}
+
+/** Small persisted flags for authentication behaviour. */
+object AuthSettings : Table("authsetting") {
+    val settingKey = varchar("settingKey", 64)
+    val settingValue = varchar("settingValue", 64)
+    val updatedAt = datetime("updatedAt")
+
+    override val primaryKey = PrimaryKey(settingKey)
 }
 
 object Accounts : Table("account") {
@@ -339,6 +350,7 @@ object DatabaseFactory {
         transaction {
             SchemaUtils.createMissingTablesAndColumns(
                 Users,
+                AuthSettings,
                 Accounts,
                 Assets,
                 Budgets,
@@ -363,7 +375,27 @@ object DatabaseFactory {
         Users.selectAll().where { Users.email eq email }.firstOrNull()?.toAuthUser()
     }
 
+    fun isRegistrationEnabled(): Boolean = transaction {
+        isRegistrationEnabledInTransaction()
+    }
+
+    fun setRegistrationEnabled(enabled: Boolean) = transaction {
+        val now = LocalDateTime.now()
+        val updated = AuthSettings.update({ AuthSettings.settingKey eq REGISTRATION_ENABLED_SETTING }) {
+            it[AuthSettings.settingValue] = enabled.toString()
+            it[AuthSettings.updatedAt] = now
+        }
+        if (updated == 0) {
+            AuthSettings.insert {
+                it[AuthSettings.settingKey] = REGISTRATION_ENABLED_SETTING
+                it[AuthSettings.settingValue] = enabled.toString()
+                it[AuthSettings.updatedAt] = now
+            }
+        }
+    }
+
     fun registerUser(email: String, passwordHash: String, name: String?): AuthUser = transaction {
+        if (!isRegistrationEnabledInTransaction()) throw RegistrationDisabledException()
         if (Users.selectAll().where { Users.email eq email }.count() > 0) {
             error("An account with this email already exists")
         }
@@ -392,6 +424,13 @@ object DatabaseFactory {
         }
         findUserByIdInTransaction(id) ?: error("Failed to create user")
     }
+
+    private fun isRegistrationEnabledInTransaction(): Boolean = AuthSettings
+        .selectAll()
+        .where { AuthSettings.settingKey eq REGISTRATION_ENABLED_SETTING }
+        .firstOrNull()
+        ?.get(AuthSettings.settingValue)
+        ?.equals("false", ignoreCase = true) != true
 
     fun updatePassword(userId: String, passwordHash: String) = transaction {
         Users.update({ Users.id eq userId }) {

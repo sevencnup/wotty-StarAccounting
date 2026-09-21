@@ -1,8 +1,10 @@
 package com.wotty.stark.server.route
 
+import com.wotty.stark.server.util.AccountAdminKey
 import com.wotty.stark.server.util.AuthTokens
 import com.wotty.stark.server.util.DatabaseFactory
 import com.wotty.stark.server.util.PasswordHasher
+import com.wotty.stark.server.util.RegistrationDisabledException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.authenticate
 import io.ktor.server.auth.principal
@@ -25,6 +27,23 @@ data class AuthCredentials(
 data class PasswordResetRequest(
     val newPassword: String,
     val confirmPassword: String,
+)
+
+@Serializable
+data class PasswordRecoveryRequest(
+    val email: String,
+    val newPassword: String,
+    val confirmPassword: String,
+    val adminKey: String,
+)
+
+@Serializable
+data class RegistrationStatusResponse(val registrationEnabled: Boolean)
+
+@Serializable
+data class RegistrationSettingRequest(
+    val registrationEnabled: Boolean,
+    val adminKey: String,
 )
 
 @Serializable
@@ -63,8 +82,52 @@ private fun validCredentials(credentials: AuthCredentials): String? {
     return null
 }
 
+private fun validNewPassword(newPassword: String, confirmPassword: String): String? {
+    if (newPassword.length < 8) return "新密码至少需要 8 位"
+    if (newPassword != confirmPassword) return "两次输入的新密码不一致"
+    return null
+}
+
+private object PasswordRecoveryAttempts {
+    private const val ATTEMPT_LIMIT = 5
+    private const val WINDOW_MILLIS = 10L * 60L * 1000L
+    private val timestampsByEmail = mutableMapOf<String, ArrayDeque<Long>>()
+
+    fun allow(email: String): Boolean = synchronized(this) {
+        val now = System.currentTimeMillis()
+        val timestamps = timestampsByEmail.getOrPut(email) { ArrayDeque() }
+        while (timestamps.isNotEmpty() && timestamps.first() <= now - WINDOW_MILLIS) {
+            timestamps.removeFirst()
+        }
+        if (timestamps.size >= ATTEMPT_LIMIT) return false
+        timestamps.addLast(now)
+        if (timestampsByEmail.size > 1024) timestampsByEmail.clear()
+        true
+    }
+}
+
+private suspend fun io.ktor.server.application.ApplicationCall.requireAccountAdminKey(candidate: String): Boolean {
+    if (!AccountAdminKey.isConfigured()) {
+        respond(HttpStatusCode.ServiceUnavailable, AuthError("服务器尚未配置账户管理员恢复密钥"))
+        return false
+    }
+    if (!AccountAdminKey.matches(candidate)) {
+        respond(HttpStatusCode.Forbidden, AuthError("管理员恢复密钥无效"))
+        return false
+    }
+    return true
+}
+
 fun Routing.authRoutes() {
+    get("/api/auth/registration") {
+        call.respond(RegistrationStatusResponse(DatabaseFactory.isRegistrationEnabled()))
+    }
+
     post("/api/auth/register") {
+        if (!DatabaseFactory.isRegistrationEnabled()) {
+            call.respond(HttpStatusCode.Forbidden, AuthError("当前服务器已关闭新用户注册"))
+            return@post
+        }
         val credentials = call.receive<AuthCredentials>()
         validCredentials(credentials)?.let {
             call.respond(HttpStatusCode.BadRequest, AuthError(it))
@@ -75,10 +138,13 @@ fun Routing.authRoutes() {
             call.respond(HttpStatusCode.Conflict, AuthError("该邮箱已经注册，请直接登录"))
             return@post
         }
-        val user = runCatching {
+        val user = try {
             DatabaseFactory.registerUser(email, PasswordHasher.hash(credentials.password), credentials.name)
-        }.getOrElse {
-            call.respond(HttpStatusCode.InternalServerError, AuthError(it.message ?: "注册失败"))
+        } catch (_: RegistrationDisabledException) {
+            call.respond(HttpStatusCode.Forbidden, AuthError("当前服务器已关闭新用户注册"))
+            return@post
+        } catch (error: Throwable) {
+            call.respond(HttpStatusCode.InternalServerError, AuthError(error.message ?: "注册失败"))
             return@post
         }
         call.respond(AuthResponse(token = AuthTokens.issue(user.id), user = user.toResponse()))
@@ -99,7 +165,38 @@ fun Routing.authRoutes() {
         call.respond(AuthResponse(token = AuthTokens.issue(refreshed.id), user = refreshed.toResponse()))
     }
 
+    post("/api/auth/password/recover") {
+        val request = call.receive<PasswordRecoveryRequest>()
+        val email = normalizeEmail(request.email)
+        if (!Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$").matches(email)) {
+            call.respond(HttpStatusCode.BadRequest, AuthError("请输入有效的邮箱地址"))
+            return@post
+        }
+        validNewPassword(request.newPassword, request.confirmPassword)?.let {
+            call.respond(HttpStatusCode.BadRequest, AuthError(it))
+            return@post
+        }
+        if (!PasswordRecoveryAttempts.allow(email)) {
+            call.respond(HttpStatusCode.TooManyRequests, AuthError("尝试次数过多，请 10 分钟后再试"))
+            return@post
+        }
+        if (!call.requireAccountAdminKey(request.adminKey)) return@post
+
+        DatabaseFactory.findUserByEmail(email)?.let { user ->
+            DatabaseFactory.updatePassword(user.id, PasswordHasher.hash(request.newPassword))
+        }
+        // Keep the same result for a missing address so this API does not reveal registered emails.
+        call.respond(mapOf("message" to "若该邮箱已注册，密码已重置，请使用新密码登录"))
+    }
+
     authenticate("auth-jwt") {
+        post("/api/auth/registration") {
+            val request = call.receive<RegistrationSettingRequest>()
+            if (!call.requireAccountAdminKey(request.adminKey)) return@post
+            DatabaseFactory.setRegistrationEnabled(request.registrationEnabled)
+            call.respond(RegistrationStatusResponse(request.registrationEnabled))
+        }
+
         post("/api/auth/password") {
             val userId = call.principal<JWTPrincipal>()?.payload?.getClaim("userId")?.asString()
             val user = userId?.let(DatabaseFactory::findUserById)
@@ -109,12 +206,8 @@ fun Routing.authRoutes() {
             }
 
             val request = call.receive<PasswordResetRequest>()
-            if (request.newPassword.length < 8) {
-                call.respond(HttpStatusCode.BadRequest, AuthError("新密码至少需要 8 位"))
-                return@post
-            }
-            if (request.newPassword != request.confirmPassword) {
-                call.respond(HttpStatusCode.BadRequest, AuthError("两次输入的新密码不一致"))
+            validNewPassword(request.newPassword, request.confirmPassword)?.let {
+                call.respond(HttpStatusCode.BadRequest, AuthError(it))
                 return@post
             }
 

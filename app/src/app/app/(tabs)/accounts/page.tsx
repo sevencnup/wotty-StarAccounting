@@ -6,7 +6,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCloudApiUrl, getCurrentAccountId, getCurrentDataMode } from "@/lib/stark/storage/local-config";
-import { cloudLogout, cloudResetPassword } from "@/lib/stark/repository/cloud-auth";
+import { cloudLogout, cloudRegistrationStatus, cloudResetPassword, cloudSetRegistrationEnabled } from "@/lib/stark/repository/cloud-auth";
 import { getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
@@ -22,7 +22,7 @@ import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, typ
 type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
-type PanelKey = "PASSWORD" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
+type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
@@ -35,7 +35,7 @@ type PendingBillImport = {
 
 function SettingIcon({ type }: { type: PanelKey }) {
   const paths: Record<PanelKey, React.ReactNode> = {
-    PASSWORD: <><rect x="5" y="10" width="14" height="10" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></>,
+    ACCOUNT: <><circle cx="12" cy="8" r="3.5" /><path d="M5 21c.5-4 3.1-6 7-6s6.5 2 7 6" /><path d="M18 5v4M16 7h4" /></>,
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
     REMARK: <><path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4-7 4V3a1 1 0 0 1 1-1Z" /><path d="M9 8h6" /><path d="M9 12h4" /></>,
@@ -73,6 +73,12 @@ export default function AccountsPage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationSubmitting, setRegistrationSubmitting] = useState(false);
+  const [adminKey, setAdminKey] = useState("");
+  const [registrationError, setRegistrationError] = useState("");
+  const [registrationMessage, setRegistrationMessage] = useState("");
   const [cloudUser, setCloudUser] = useState(() => getCloudAuthUser());
   const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
   const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
@@ -92,6 +98,7 @@ export default function AccountsPage() {
     const savedMode = getCurrentDataMode() as DataMode;
     setMode(savedMode);
     void manager.getRepository().getImportErrorLogs(getCurrentAccountId()).then(setImportErrors).catch(() => setImportErrors([]));
+    if (savedMode === "CLOUD" && getCloudAuthUser()) void loadRegistrationStatus();
   }, []);
 
   function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
@@ -103,12 +110,56 @@ export default function AccountsPage() {
     });
   }
 
-  function openPasswordPanel() {
+  function openAccountSettings() {
     setNewPassword("");
     setConfirmPassword("");
     setPasswordError("");
     setPasswordMessage("");
-    setActivePanel("PASSWORD");
+    setAdminKey("");
+    setRegistrationError("");
+    setRegistrationMessage("");
+    setActivePanel("ACCOUNT");
+    void loadRegistrationStatus();
+  }
+
+  async function loadRegistrationStatus() {
+    const url = getCloudApiUrl().replace(/\/$/, "");
+    if (!url) {
+      setRegistrationError("未配置云端 API 地址");
+      return;
+    }
+    setRegistrationLoading(true);
+    try {
+      const result = await cloudRegistrationStatus(url);
+      setRegistrationEnabled(result.registrationEnabled);
+      setRegistrationError("");
+    } catch (error) {
+      setRegistrationError(error instanceof Error ? error.message : "无法读取注册状态");
+    } finally {
+      setRegistrationLoading(false);
+    }
+  }
+
+  async function submitRegistrationChange() {
+    if (!adminKey.trim()) {
+      setRegistrationError("请输入管理员恢复密钥");
+      setRegistrationMessage("");
+      return;
+    }
+    setRegistrationSubmitting(true);
+    setRegistrationError("");
+    setRegistrationMessage("");
+    try {
+      const url = getCloudApiUrl().replace(/\/$/, "");
+      const result = await cloudSetRegistrationEnabled(url, !registrationEnabled, adminKey);
+      setRegistrationEnabled(result.registrationEnabled);
+      setAdminKey("");
+      setRegistrationMessage(result.registrationEnabled ? "已开启新用户注册" : "已关闭新用户注册");
+    } catch (error) {
+      setRegistrationError(error instanceof Error ? error.message : "注册设置更新失败");
+    } finally {
+      setRegistrationSubmitting(false);
+    }
   }
 
   function selectImportPlatform(platform: BillPlatform) {
@@ -293,7 +344,7 @@ export default function AccountsPage() {
         <SettingsRow type="THEME" title="主题" value={themeLabels[uiSettings.theme]} onClick={() => setActivePanel("THEME")} />
         <SettingsRow type="LANGUAGE" title="语言" value={languageLabels[uiSettings.language]} onClick={() => setActivePanel("LANGUAGE")} />
         <SettingsRow type="FONT" title="字体大小" value={fontLabels[uiSettings.font]} onClick={() => setActivePanel("FONT")} />
-        {mode === "CLOUD" && cloudUser ? <SettingsRow type="PASSWORD" title="重置密码" value="云端账户" onClick={openPasswordPanel} /> : null}
+        {mode === "CLOUD" && cloudUser ? <SettingsRow type="ACCOUNT" title="账户设置" value="密码与注册" onClick={openAccountSettings} /> : null}
       </section>
 
       <section className="settings-center-group">
@@ -306,22 +357,28 @@ export default function AccountsPage() {
 
       {activePanel ? (
         <BottomSheet
-          title={activePanel === "PASSWORD" ? "重置密码" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
           className="settings-sheet"
           overlayClassName="settings-sheet-overlay"
           onClose={() => setActivePanel(null)}
         >
 
-            {activePanel === "PASSWORD" ? <div className="settings-sheet-body cloud-auth-form">
-              <p className="settings-sheet-note">当前已登录云端账户，可直接设置新密码。新密码至少需要 8 位。</p>
-              <label className="settings-url-field"><span>新密码</span><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="请输入新密码" autoComplete="new-password" /></label>
-              <label className="settings-url-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="请再次输入新密码" autoComplete="new-password" /></label>
-              {passwordError ? <div className="cloud-test-status error">{passwordError}</div> : null}
-              {passwordMessage ? <div className="cloud-test-status success">{passwordMessage}</div> : null}
-              <div className="settings-mode-actions">
-                <button type="button" className="settings-test-button" disabled={passwordSubmitting} onClick={() => setActivePanel(null)}>返回</button>
-                <button type="button" className="settings-confirm-button" disabled={passwordSubmitting} onClick={() => void submitPasswordReset()}>{passwordSubmitting ? "提交中..." : "确认重置"}</button>
-              </div>
+            {activePanel === "ACCOUNT" ? <div className="settings-sheet-body account-settings-sheet">
+              <section className="account-settings-section">
+                <div><strong>修改密码</strong><p>当前已登录云端账户，新密码至少需要 8 位。</p></div>
+                <label className="settings-url-field"><span>新密码</span><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="请输入新密码" autoComplete="new-password" /></label>
+                <label className="settings-url-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="请再次输入新密码" autoComplete="new-password" /></label>
+                {passwordError ? <div className="cloud-test-status error">{passwordError}</div> : null}
+                {passwordMessage ? <div className="cloud-test-status success">{passwordMessage}</div> : null}
+                <button type="button" className="settings-confirm-button account-settings-primary" disabled={passwordSubmitting} onClick={() => void submitPasswordReset()}>{passwordSubmitting ? "提交中..." : "确认修改密码"}</button>
+              </section>
+              <section className="account-settings-section account-settings-registration">
+                <div><strong>新用户注册</strong><p>{registrationLoading ? "正在读取注册状态..." : registrationEnabled ? "当前允许新用户注册。" : "当前已关闭新用户注册。"}</p></div>
+                <label className="settings-url-field"><span>管理员恢复密钥</span><input type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} placeholder="仅用于本次操作，不会保存" autoComplete="off" /></label>
+                {registrationError ? <div className="cloud-test-status error">{registrationError}</div> : null}
+                {registrationMessage ? <div className="cloud-test-status success">{registrationMessage}</div> : null}
+                <button type="button" className={`account-registration-button${registrationEnabled ? " close" : ""}`} disabled={registrationLoading || registrationSubmitting} onClick={() => void submitRegistrationChange()}>{registrationSubmitting ? "提交中..." : registrationEnabled ? "关闭新用户注册" : "开启新用户注册"}</button>
+              </section>
             </div> : null}
 
             {activePanel === "IMPORT" ? <div className="settings-sheet-body">

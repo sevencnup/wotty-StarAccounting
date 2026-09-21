@@ -15,6 +15,7 @@ private const val JWT_AUDIENCE = "wotty-stark-client"
 private const val TOKEN_LIFETIME_SECONDS = 60L * 60L * 24L * 30L
 private const val PBKDF2_ITERATIONS = 120_000
 private const val PBKDF2_KEY_BITS = 256
+private const val MIN_ACCOUNT_ADMIN_KEY_LENGTH = 16
 
 object AuthTokens {
     private val secret: String
@@ -36,6 +37,23 @@ object AuthTokens {
             .withIssuedAt(java.util.Date(now))
             .withExpiresAt(java.util.Date(now + TOKEN_LIFETIME_SECONDS * 1000L))
             .sign(Algorithm.HMAC256(secret))
+    }
+}
+
+/** Deployment-owned secret for account recovery and registration control. */
+object AccountAdminKey {
+    private fun configuredValue(): String? = System.getenv("ACCOUNT_ADMIN_KEY")
+        ?.trim()
+        ?.takeIf { it.length >= MIN_ACCOUNT_ADMIN_KEY_LENGTH }
+
+    fun isConfigured(): Boolean = configuredValue() != null
+
+    fun matches(candidate: String): Boolean {
+        val configured = configuredValue() ?: return false
+        return MessageDigest.isEqual(
+            configured.toByteArray(Charsets.UTF_8),
+            candidate.trim().toByteArray(Charsets.UTF_8),
+        )
     }
 }
 

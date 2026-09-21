@@ -26,6 +26,8 @@ services:
       DB_USER: ${DB_USER:-accounting}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      # 留空时普通登录可用，但忘记密码和注册开关不可用。
+      ACCOUNT_ADMIN_KEY: ${ACCOUNT_ADMIN_KEY:-}
     depends_on:
       mysql:
         condition: service_healthy
