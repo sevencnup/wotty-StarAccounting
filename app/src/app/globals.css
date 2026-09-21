@@ -2315,7 +2315,8 @@ button.stark-compass-card {
   padding: 0;
   border: 0;
   background: transparent;
-  font: inherit;
+  font-family: inherit;
+  line-height: inherit;
   cursor: pointer;
 }
 
@@ -7169,7 +7170,7 @@ img[src$="/qita.webp"] {
 }
 
 .savings-plan-card {
-  padding: 14px;
+  padding: 12px;
   overflow: hidden;
 }
 
@@ -7289,10 +7290,12 @@ img[src$="/qita.webp"] {
 }
 
 .savings-plan-toolbar {
-  display: grid;
-  justify-items: start;
-  gap: 7px;
-  margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .savings-plan-actions {
@@ -7510,9 +7513,9 @@ img[src$="/qita.webp"] {
 
 .savings-plan-table th,
 .savings-plan-table td {
-  min-width: 70px;
-  height: 34px;
-  padding: 2px 4px;
+  min-width: 64px;
+  height: 30px;
+  padding: 1px 3px;
   border-right: 1px solid var(--planner-line);
   border-bottom: 1px solid var(--planner-line);
   background: #ffffff;
@@ -7520,7 +7523,7 @@ img[src$="/qita.webp"] {
 }
 
 .savings-plan-table thead th {
-  height: 34px;
+  height: 30px;
   color: #59677f;
   background: #f6f9fd;
   font-weight: 600;
@@ -7544,27 +7547,27 @@ img[src$="/qita.webp"] {
 
 .savings-plan-table .month-column {
   position: relative;
-  min-width: 72px;
-  width: 72px;
-  padding-right: 22px;
+  min-width: 66px;
+  width: 66px;
+  padding-right: 19px;
   white-space: nowrap;
 }
 
 .savings-plan-table .month-remove-button {
   position: absolute;
   top: 50%;
-  right: 3px;
-  width: 18px;
-  min-width: 18px;
-  height: 18px;
+  right: 2px;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
   margin: 0;
   padding: 0;
   border: 0;
   border-radius: 5px;
   color: #a1adbd;
   background: transparent;
-  font-size: calc(14px * var(--user-font-scale));
-  line-height: 18px;
+  font-size: calc(13px * var(--user-font-scale));
+  line-height: 16px;
   transform: translateY(-50%);
   cursor: pointer;
 }
@@ -7595,10 +7598,10 @@ img[src$="/qita.webp"] {
 
 .savings-plan-table .salary-column {
   position: sticky;
-  left: 72px;
+  left: 66px;
   z-index: 2;
-  min-width: 78px;
-  width: 78px;
+  min-width: 70px;
+  width: 70px;
   border-right: 1px solid #dce6f3;
 }
 
@@ -7608,15 +7611,15 @@ img[src$="/qita.webp"] {
 }
 
 .savings-plan-table input {
-  width: 56px;
-  height: 24px;
-  padding: 0 5px;
+  width: 52px;
+  height: 22px;
+  padding: 0 4px;
   border: 1px solid #e1e8f1;
   border-radius: 7px;
   outline: none;
   color: #172038;
   background: #fbfdff;
-  font-size: calc(11px * var(--user-font-scale));
+  font-size: calc(10px * var(--user-font-scale));
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -7627,12 +7630,12 @@ img[src$="/qita.webp"] {
 }
 
 .savings-plan-table .expected-column {
-  min-width: 78px;
+  min-width: 72px;
   background: #f7fbff;
 }
 
 .savings-plan-table .remaining-column {
-  min-width: 78px;
+  min-width: 72px;
 }
 
 .savings-remaining {
