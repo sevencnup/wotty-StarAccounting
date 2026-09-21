@@ -2335,20 +2335,20 @@ button.stark-compass-card {
 }
 
 .expense-category-sheet {
-  min-height: min(54dvh, 480px);
+  min-height: min(48dvh, 420px);
 }
 
 .expense-category-sheet-body {
-  gap: 12px;
-  padding-top: 4px;
+  gap: 8px;
+  padding-top: 2px;
 }
 
 .expense-category-total {
   display: grid;
-  gap: 3px;
-  padding: 14px;
+  gap: 1px;
+  padding: 10px 12px;
   border: 1px solid #e8edf3;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #f8fafc;
 }
 
@@ -2356,27 +2356,27 @@ button.stark-compass-card {
 .expense-category-total small,
 .expense-category-detail-row small {
   color: #94a3b8;
-  font-size: calc(11px * var(--user-font-scale));
+  font-size: calc(10px * var(--user-font-scale));
 }
 
 .expense-category-total strong {
   color: #0f172a;
-  font-size: calc(22px * var(--user-font-scale));
+  font-size: calc(20px * var(--user-font-scale));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .expense-category-detail-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .expense-category-detail-row {
   display: grid;
-  gap: 8px;
-  padding: 12px 13px;
+  gap: 5px;
+  padding: 8px 12px;
   border: 1px solid #e8edf3;
-  border-radius: 14px;
+  border-radius: 12px;
   background: #ffffff;
 }
 
@@ -2384,7 +2384,7 @@ button.stark-compass-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
 .expense-category-detail-name {
@@ -2393,30 +2393,30 @@ button.stark-compass-card {
   min-width: 0;
   overflow: hidden;
   color: #334155;
-  font-size: calc(13px * var(--user-font-scale));
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .expense-category-detail-name i {
-  width: 8px;
-  height: 8px;
-  margin-right: 7px;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
   border-radius: 999px;
   flex: 0 0 auto;
 }
 
 .expense-category-detail-head strong {
   color: #0f172a;
-  font-size: calc(13px * var(--user-font-scale));
+  font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .expense-category-detail-progress {
-  height: 5px;
+  height: 4px;
   overflow: hidden;
   border-radius: 999px;
   background: #edf2f7;
