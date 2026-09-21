@@ -287,7 +287,7 @@ export function AppAccessGate() {
                     <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
                     <label className="app-access-field app-access-login-field"><span>新密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
                     <label className="app-access-field app-access-login-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
-                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="off" /></label>
+                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="off" /></label>
                   </> : <>
                     <div className={`app-access-auth-tabs${registrationEnabled ? "" : " single"}`}>
                       <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => selectAuthMode("LOGIN")}>登录</button>

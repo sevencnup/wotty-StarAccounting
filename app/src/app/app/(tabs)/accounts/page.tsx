@@ -374,7 +374,7 @@ export default function AccountsPage() {
               </section>
               <section className="account-settings-section account-settings-registration">
                 <div><strong>新用户注册</strong><p>{registrationLoading ? "正在读取注册状态..." : registrationEnabled ? "当前允许新用户注册。" : "当前已关闭新用户注册。"}</p></div>
-                <label className="settings-url-field"><span>管理员恢复密钥</span><input type="password" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} placeholder="仅用于本次操作，不会保存" autoComplete="off" /></label>
+                <label className="settings-url-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} placeholder="仅用于本次操作，不会保存" autoComplete="off" /></label>
                 {registrationError ? <div className="cloud-test-status error">{registrationError}</div> : null}
                 {registrationMessage ? <div className="cloud-test-status success">{registrationMessage}</div> : null}
                 <button type="button" className={`account-registration-button${registrationEnabled ? " close" : ""}`} disabled={registrationLoading || registrationSubmitting} onClick={() => void submitRegistrationChange()}>{registrationSubmitting ? "提交中..." : registrationEnabled ? "关闭新用户注册" : "开启新用户注册"}</button>
