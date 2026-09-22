@@ -4910,27 +4910,35 @@ button.stark-compass-card {
 }
 
 .savings-dashboard-page .savings-goal-section {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
+  padding: 0 14px 10px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
+.savings-goal-section .savings-section-head {
+  padding-top: 13px;
+}
+
 .savings-goal-grid {
   display: grid;
-  gap: 9px;
-  margin-top: 10px;
+  gap: 6px;
+  margin-top: 8px;
 }
 
 .savings-goal-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 9px 12px;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 6px 8px;
   min-width: 0;
-  padding: 13px;
+  padding: 9px 10px;
   border: 1px solid rgba(226, 232, 240, 0.85);
-  border-radius: 19px;
+  border-radius: 12px;
   background: #ffffff;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
@@ -4941,10 +4949,10 @@ button.stark-compass-card {
 
 .savings-goal-card strong {
   display: block;
-  margin-top: 5px;
+  margin-top: 3px;
   overflow: hidden;
   color: var(--saving-ink);
-  font-size: calc(14px * var(--user-font-scale));
+  font-size: calc(13px * var(--user-font-scale));
   line-height: 1.15;
   font-weight: 650;
   text-overflow: ellipsis;
@@ -4953,7 +4961,7 @@ button.stark-compass-card {
 
 .savings-goal-card em {
   color: var(--saving-green);
-  font-size: calc(14px * var(--user-font-scale));
+  font-size: calc(13px * var(--user-font-scale));
   font-style: normal;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -4963,14 +4971,14 @@ button.stark-compass-card {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
 }
 
 .savings-goal-edit-button {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 7px;
+  min-height: 22px;
+  padding: 0 6px;
   border: 1px solid rgba(13, 138, 95, 0.18);
   border-radius: 7px;
   color: var(--saving-green);
@@ -4985,7 +4993,7 @@ button.stark-compass-card {
 
 .savings-goal-card small {
   display: block;
-  margin-top: 5px;
+  margin-top: 3px;
   overflow: hidden;
   color: var(--saving-muted);
   font-size: calc(10px * var(--user-font-scale));
@@ -5001,7 +5009,7 @@ button.stark-compass-card {
 .savings-goal-track {
   position: relative;
   grid-column: 1 / -1;
-  height: 8px;
+  height: 5px;
   overflow: hidden;
   border-radius: 999px;
   background: rgba(226, 236, 247, 0.72);
@@ -5026,10 +5034,10 @@ button.stark-compass-card {
   grid-column: 1 / -1;
   display: flex;
   justify-content: space-between;
-  gap: 12px;
-  margin: -1px 0 0;
+  gap: 8px;
+  margin: 0;
   color: var(--saving-muted);
-  font-size: calc(12px * var(--user-font-scale));
+  font-size: calc(10px * var(--user-font-scale));
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
