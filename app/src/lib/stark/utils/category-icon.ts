@@ -182,8 +182,14 @@ export function categoryIconSrcForCategory(category: string, type?: Transaction[
 }
 
 export function categoryIconSrc(item: Transaction): string {
-  const text = `${item.merchant || ""}${item.description || ""}${item.category}`;
-  const directIcon = categoryIconSrcForCategory(item.category, item.type);
-  if (directIcon !== fallbackCategoryIcon || item.type === "INCOME") return directIcon;
-  return categoryIconSrcForCategory(text, item.type);
+  if (item.type === "TRANSFER" || item.type === "REPAYMENT") {
+    return `/category-icons/${categoryIconFiles[item.type === "TRANSFER" ? "转账" : "还款"]}`;
+  }
+  const normalized = item.category.trim();
+  if (categoryIconFiles[normalized]) return `/category-icons/${categoryIconFiles[normalized]}`;
+  if (item.type === "INCOME") {
+    const incomeIcon = incomeCategoryIcons[normalized];
+    if (incomeIcon) return `/category-icons/${incomeIcon}`;
+  }
+  return fallbackCategoryIcon;
 }
