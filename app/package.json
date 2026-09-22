@@ -1,7 +1,7 @@
 {
   "name": "wotty-stark-web",
   "private": true,
-  "version": "0.0.108",
+  "version": "0.0.109",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:mobile": "node scripts/mobile-dev.mjs",
@@ -9,7 +9,8 @@
     "start": "next start -H 0.0.0.0 -p 12366",
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/**/*.test.mjs",
-    "apk": "pnpm build && pnpm exec cap sync android && cd android && .\\gradlew.bat assembleDebug"
+    "apk": "pnpm build && pnpm exec cap sync android && cd android && .\\gradlew.bat assembleDebug",
+    "apk:linux": "pnpm build && pnpm exec cap sync android && cd android && ANDROID_HOME=/opt/android-sdk ANDROID_SDK_ROOT=/opt/android-sdk GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx1280m -Dfile.encoding=UTF-8' bash ./gradlew --no-daemon --max-workers=1 assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",
