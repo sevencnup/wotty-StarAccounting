@@ -83,6 +83,7 @@ export default function AccountsPage() {
   const [registrationError, setRegistrationError] = useState("");
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [cloudUser, setCloudUser] = useState(() => getCloudAuthUser());
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
   const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
   const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单");
@@ -204,10 +205,14 @@ export default function AccountsPage() {
   }
 
   function logout() {
-    if (!window.confirm("确定要退出当前云端账户吗？")) return;
     cloudLogout();
     setCloudUser(null);
-    window.location.replace("/");
+    setLogoutConfirmOpen(false);
+    router.replace("/");
+  }
+
+  function requestLogout() {
+    setLogoutConfirmOpen(true);
   }
 
   function openModeSwitch() {
@@ -366,7 +371,19 @@ export default function AccountsPage() {
         </section>
       ) : null}
 
-      {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={logout}>退出登录</button> : null}
+      {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={requestLogout}>退出登录</button> : null}
+
+      {logoutConfirmOpen ? (
+        <div className="account-confirm-mask" role="presentation" onClick={() => setLogoutConfirmOpen(false)}>
+          <section className="account-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="account-logout-title" onClick={(event) => event.stopPropagation()}>
+            <strong id="account-logout-title">确定要退出当前云端账户吗？</strong>
+            <div className="account-confirm-actions">
+              <button type="button" className="account-confirm-cancel" onClick={() => setLogoutConfirmOpen(false)}>取消</button>
+              <button type="button" className="account-confirm-primary" onClick={logout}>确定</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {activePanel ? (
         <BottomSheet

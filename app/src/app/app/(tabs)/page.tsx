@@ -7,7 +7,7 @@ import type { EChartsCoreOption } from "echarts/core";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { EChartView } from "@/components/stark/EChartView";
-import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
+import { loadAvailableTransactionMonths, resolveAvailableReportingMonth } from "@/lib/stark/repository/transaction-months";
 import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { BottomSheet } from "@/components/stark/BottomSheet";
@@ -1009,6 +1009,13 @@ export function HomeDashboard() {
           loadAvailableTransactionMonths(repo, accountId),
         ]);
         if (!canUpdate()) return;
+        const resolvedReportingMonth = resolveAvailableReportingMonth(reportingMonth, loadedAvailableMonths);
+        if (resolvedReportingMonth !== reportingMonth) {
+          setSelectedReportMonth(resolvedReportingMonth);
+          setReportingMonth(resolvedReportingMonth);
+          setAvailableMonths(loadedAvailableMonths);
+          return;
+        }
         setTransactions(coreTransactions);
         setAvailableMonths(loadedAvailableMonths);
         setLoading(false);

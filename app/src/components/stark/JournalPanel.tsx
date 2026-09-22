@@ -106,6 +106,7 @@ export function JournalPanel({
   const isSalaryPreset = variant === "journal" && preset?.type === "INCOME" && preset.category === "工资";
   const draftKind: NewEntryDraftKind = isSavings ? "savings" : isAsset ? "asset" : isLoan ? "loan" : isSalaryPreset ? "salary" : "journal";
   const [visible, setVisible] = useState(false);
+  const [sheetReady, setSheetReady] = useState(false);
   const [type, setType] = useState<TransactionType>("EXPENSE");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("餐饮");
@@ -256,8 +257,17 @@ export function JournalPanel({
   }, [assetBalance, assetName, assetType, date, description, draftKind, draftReady, isEditingEntity, isSavings, loanDueDay, loanMatchKeywords, loanMonthlyPayment, loanPeriods, loanPlatform, loanRemainingAmount, loanTotalAmount, amount, category, merchant, platform, type]);
 
   useEffect(() => {
-    const frame = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(frame);
+    let secondFrame = 0;
+    const firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
+        setSheetReady(true);
+        setVisible(true);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(firstFrame);
+      if (secondFrame) cancelAnimationFrame(secondFrame);
+    };
   }, []);
 
   useEffect(() => {
@@ -601,7 +611,7 @@ export function JournalPanel({
     >
       <div
         ref={panelRef}
-        className={`journal-panel modern-journal-shell ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${isSavingsRecord ? "savings-record" : ""} ${isAsset ? "asset" : ""} ${isLoan ? "loan" : ""} ${visible ? "visible" : ""}`}
+        className={`journal-panel modern-journal-shell ${isPage ? "page" : ""} ${isSavings ? "savings" : ""} ${isSavingsRecord ? "savings-record" : ""} ${isAsset ? "asset" : ""} ${isLoan ? "loan" : ""} ${sheetReady ? "ready" : ""} ${visible ? "visible" : ""}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* 顶部标题栏 */}

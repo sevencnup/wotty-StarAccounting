@@ -3,6 +3,7 @@ package com.wotty.stark.web;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
+import android.view.WindowManager;
 import android.webkit.WebView;
 
 import androidx.core.view.WindowCompat;
@@ -24,6 +25,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
         // Edge-to-edge: let the app draw under the system status / navigation bars
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);

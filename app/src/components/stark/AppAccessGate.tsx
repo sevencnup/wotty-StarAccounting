@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { DataMode } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -244,18 +244,42 @@ export function AppAccessGate() {
     setAuthMessage("");
   }
 
-  function switchToCloud() {
-    setMode("CLOUD");
-    setPhase("AUTH");
-  }
-
   function logoutCloud() {
     cloudLogout();
     setCloudUser(null);
     setAuthError("");
     setAuthMessage("");
     setRememberLogin(false);
+    setKeyboardOpen(false);
     selectAuthMode("LOGIN");
+    setPhase("AUTH");
+  }
+
+  function handleAuthFieldFocus(event: FocusEvent<HTMLInputElement>) {
+    // Let Android resize the WebView first, then bring the focused field into
+    // the visible area without permanently switching the login card to top alignment.
+    const field = event.currentTarget;
+    window.requestAnimationFrame(() => {
+      field.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+
+  function handleAuthFieldBlur() {
+    window.setTimeout(() => {
+      const visibleHeight = window.visualViewport?.height ?? window.innerHeight;
+      if (visibleHeight >= stableShellHeightRef.current - 120) setKeyboardOpen(false);
+    }, 180);
+  }
+
+  function switchToLocal() {
+    setKeyboardOpen(false);
+    setMode("LOCAL");
+    setPhase("LOCAL");
+  }
+
+  function switchToCloud() {
+    setKeyboardOpen(false);
+    setMode("CLOUD");
     setPhase("AUTH");
   }
 
@@ -271,7 +295,7 @@ export function AppAccessGate() {
         ) : (
           <section className="app-access-cloud-panel">
             <div className="app-access-auth">
-              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
+              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
               <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
               <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
 
@@ -284,17 +308,17 @@ export function AppAccessGate() {
                 <div className="app-access-credentials">
                   {authMode === "RECOVER" ? <>
                     <div className="app-access-recovery-heading"><strong>重置密码</strong><span>使用服务器管理员恢复密钥验证</span></div>
-                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
-                    <label className="app-access-field app-access-login-field"><span>新密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
-                    <label className="app-access-field app-access-login-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
-                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="off" /></label>
+                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="email" /></label>
+                    <label className="app-access-field app-access-login-field"><span>新密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="new-password" /></label>
+                    <label className="app-access-field app-access-login-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="new-password" /></label>
+                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="off" /></label>
                   </> : <>
                     <div className={`app-access-auth-tabs${registrationEnabled ? "" : " single"}`}>
                       <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => selectAuthMode("LOGIN")}>登录</button>
                       {registrationEnabled ? <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => selectAuthMode("REGISTER")}>注册</button> : null}
                     </div>
-                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
-                    <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="email" /></label>
+                    <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
                     {authMode === "LOGIN" ? <div className="app-access-login-options"><label className="app-access-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>记住密码</span><small>仅保留登录状态</small></label><button type="button" className="app-access-link" onClick={() => selectAuthMode("RECOVER")}>忘记密码？</button></div> : null}
                   </>}
                   {authError ? <div className="app-access-status error">{authError}</div> : null}
@@ -309,7 +333,7 @@ export function AppAccessGate() {
 
         {native ? (
           <div className="app-access-mode-switch" aria-label="选择数据模式">
-            <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => { setMode("LOCAL"); setPhase("LOCAL"); }}>本地模式</button>
+            <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={switchToLocal}>本地模式</button>
             <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={switchToCloud}>云端模式</button>
           </div>
         ) : null}
