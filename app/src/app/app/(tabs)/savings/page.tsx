@@ -6,6 +6,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { savingsDepositTypeLabel } from "@/lib/stark/savings/deposit-type";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
@@ -77,10 +78,18 @@ export default function SavingsPage() {
     }
     void loadSavingsDashboard();
     const handleSavingsSaved = () => { void loadSavingsDashboard(); };
+    const handleCacheUpdate = (event: Event) => {
+      const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
+      if (!update || !["savingsGoals", "savingsPlans"].includes(update.resource)) return;
+      if (update.accountId && update.accountId !== getCurrentAccountId()) return;
+      void loadSavingsDashboard();
+    };
     window.addEventListener("stark:savings-saved", handleSavingsSaved);
+    window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     return () => {
       active = false;
       window.removeEventListener("stark:savings-saved", handleSavingsSaved);
+      window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     };
   }, [loadVersion]);
 

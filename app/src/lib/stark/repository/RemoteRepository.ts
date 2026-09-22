@@ -39,7 +39,18 @@ type TimedValue<T> = {
   value: T;
 };
 
+type CachedResource = "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans";
+
+export type RemoteCacheUpdate = {
+  resource: CachedResource;
+  key: string;
+  accountId?: string;
+};
+
+export const REMOTE_CACHE_UPDATED_EVENT = "stark:remote-cache-updated";
+
 const TRANSACTION_CACHE_TTL = 20_000;
+const RESOURCE_CACHE_TTL = 30_000;
 const TRANSACTION_PAGE_SIZE = 500;
 
 function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: T[]) {
@@ -53,22 +64,116 @@ export class RemoteRepository implements DataRepository {
   private readonly transactionMonthsRequests = new Map<string, Promise<string[]>>();
   private readonly transactionMonthsCache = new Map<string, TimedValue<string[]>>();
   private readonly transactionCacheGenerations = new Map<string, number>();
+  private readonly resourceCaches = new Map<CachedResource, Map<string, TimedValue<unknown>>>();
+  private readonly resourceRequests = new Map<CachedResource, Map<string, Promise<unknown>>>();
+  private readonly resourceGenerations = new Map<string, number>();
+  private resourceCacheEpoch = 0;
 
   constructor(baseUrl = getCloudApiUrl()) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
   }
 
   clearCache() {
+    this.resourceCacheEpoch += 1;
     this.transactionMonthCache.clear();
     this.transactionMonthRequests.clear();
     this.transactionMonthsCache.clear();
     this.transactionMonthsRequests.clear();
     this.transactionCacheGenerations.clear();
+    this.resourceCaches.clear();
+    this.resourceRequests.clear();
+    this.resourceGenerations.clear();
   }
 
   setBaseUrl(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.clearCache();
+  }
+
+  private resourceCache(resource: CachedResource) {
+    let cache = this.resourceCaches.get(resource);
+    if (!cache) {
+      cache = new Map();
+      this.resourceCaches.set(resource, cache);
+    }
+    return cache;
+  }
+
+  private resourceRequestMap(resource: CachedResource) {
+    let requests = this.resourceRequests.get(resource);
+    if (!requests) {
+      requests = new Map();
+      this.resourceRequests.set(resource, requests);
+    }
+    return requests;
+  }
+
+  private resourceGenerationKey(resource: CachedResource, key: string) {
+    return `${resource}:${key}`;
+  }
+
+  private resourceGeneration(resource: CachedResource, key: string) {
+    return this.resourceGenerations.get(this.resourceGenerationKey(resource, key)) ?? 0;
+  }
+
+  private invalidateCachedResource(resource: CachedResource, key?: string) {
+    const cache = this.resourceCache(resource);
+    const requests = this.resourceRequestMap(resource);
+    if (key !== undefined) {
+      const generationKey = this.resourceGenerationKey(resource, key);
+      this.resourceGenerations.set(generationKey, this.resourceGeneration(resource, key) + 1);
+      cache.delete(key);
+      requests.delete(key);
+      return;
+    }
+
+    for (const knownKey of new Set([...cache.keys(), ...requests.keys()])) {
+      const generationKey = this.resourceGenerationKey(resource, knownKey);
+      this.resourceGenerations.set(generationKey, this.resourceGeneration(resource, knownKey) + 1);
+    }
+    cache.clear();
+    requests.clear();
+  }
+
+  private notifyCachedResourceUpdate(update: RemoteCacheUpdate) {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent<RemoteCacheUpdate>(REMOTE_CACHE_UPDATED_EVENT, { detail: update }));
+  }
+
+  private refreshCachedResource<T>(resource: CachedResource, key: string, load: () => Promise<T>, accountId?: string) {
+    const requests = this.resourceRequestMap(resource);
+    const pending = requests.get(key) as Promise<T> | undefined;
+    if (pending) return pending;
+
+    const cache = this.resourceCache(resource);
+    const previous = cache.get(key)?.value as T | undefined;
+    const epoch = this.resourceCacheEpoch;
+    const generation = this.resourceGeneration(resource, key);
+    const request = load().then((value) => {
+      if (epoch === this.resourceCacheEpoch && generation === this.resourceGeneration(resource, key)) {
+        cache.set(key, { expiresAt: Date.now() + RESOURCE_CACHE_TTL, value });
+        if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(value)) {
+          this.notifyCachedResourceUpdate({ resource, key, accountId });
+        }
+      }
+      return value;
+    });
+    const settledRequest = request.finally(() => {
+      if (requests.get(key) === settledRequest) requests.delete(key);
+    });
+    requests.set(key, settledRequest);
+    return settledRequest;
+  }
+
+  private readCachedResource<T>(resource: CachedResource, key: string, load: () => Promise<T>, accountId?: string): Promise<T> {
+    const cached = this.resourceCache(resource).get(key) as TimedValue<T> | undefined;
+    if (cached) {
+      if (cached.expiresAt <= Date.now()) {
+        void this.refreshCachedResource(resource, key, load, accountId).catch(() => undefined);
+      }
+      return Promise.resolve(cached.value);
+    }
+    return this.refreshCachedResource(resource, key, load, accountId);
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -108,6 +213,15 @@ export class RemoteRepository implements DataRepository {
     this.transactionMonthsRequests.delete(accountId);
   }
 
+  private clearEntityCaches(entityType: EntityType, accountId: string) {
+    if (entityType === "assets" || entityType === "budgets" || entityType === "loans" || entityType === "savingsGoals") {
+      this.invalidateCachedResource(entityType, accountId);
+    }
+    if (entityType === "savingsGoals" || entityType === "savingsPlans") {
+      this.invalidateCachedResource("savingsPlans");
+    }
+  }
+
   private transactionCacheGeneration(accountId: string) {
     return this.transactionCacheGenerations.get(accountId) ?? 0;
   }
@@ -137,6 +251,7 @@ export class RemoteRepository implements DataRepository {
     const accountId = record.accountId ?? getCurrentAccountId();
     const targetAccountId = String(accountId);
     this.clearTransactionCaches(targetAccountId);
+    this.clearEntityCaches(entityType, targetAccountId);
     return this.request<void>("/api/sync", {
       method: "POST",
       body: JSON.stringify({
@@ -249,34 +364,62 @@ export class RemoteRepository implements DataRepository {
     return result;
   }
 
-  async getAssets(accountId: string) {
-    return await this.request<Asset[]>(`/api/assets?accountId=${encodeURIComponent(accountId)}`);
+  getAssets(accountId: string) {
+    const targetAccountId = String(accountId);
+    return this.readCachedResource(
+      "assets",
+      targetAccountId,
+      () => this.request<Asset[]>(`/api/assets?accountId=${encodeURIComponent(targetAccountId)}`),
+      targetAccountId,
+    );
   }
   async saveAsset(asset: Asset) { await this.save("assets", asset); }
   async deleteAsset(id: string) { await this.delete("assets", id); }
 
-  async getBudgets(accountId: string) {
-    return await this.request<Budget[]>(`/api/budgets?accountId=${encodeURIComponent(accountId)}`);
+  getBudgets(accountId: string) {
+    const targetAccountId = String(accountId);
+    return this.readCachedResource(
+      "budgets",
+      targetAccountId,
+      () => this.request<Budget[]>(`/api/budgets?accountId=${encodeURIComponent(targetAccountId)}`),
+      targetAccountId,
+    );
   }
   async saveBudget(budget: Budget) { await this.save("budgets", budget); }
   async deleteBudget(id: string) { await this.delete("budgets", id); }
 
-  async getLoans(accountId: string) {
-    return await this.request<Loan[]>(`/api/loans?accountId=${encodeURIComponent(accountId)}`);
+  getLoans(accountId: string) {
+    const targetAccountId = String(accountId);
+    return this.readCachedResource(
+      "loans",
+      targetAccountId,
+      () => this.request<Loan[]>(`/api/loans?accountId=${encodeURIComponent(targetAccountId)}`),
+      targetAccountId,
+    );
   }
   async saveLoan(loan: Loan) { await this.save("loans", loan); }
   async deleteLoan(id: string) { await this.delete("loans", id); }
 
-  async getSavingsGoals(accountId: string) {
-    return await this.request<SavingsGoal[]>(savingsGoalsPath(accountId));
+  getSavingsGoals(accountId: string) {
+    const targetAccountId = String(accountId);
+    return this.readCachedResource(
+      "savingsGoals",
+      targetAccountId,
+      () => this.request<SavingsGoal[]>(savingsGoalsPath(targetAccountId)),
+      targetAccountId,
+    );
   }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
   async deleteSavingsGoal(id: string) {
     this.clearCache();
     await this.request<void>(`/api/savings-goals/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
-  async getSavingsPlans(goalId: string) {
-    return await this.request<SavingsPlan[]>(savingsPlansPath(goalId));
+  getSavingsPlans(goalId: string) {
+    return this.readCachedResource(
+      "savingsPlans",
+      goalId,
+      () => this.request<SavingsPlan[]>(savingsPlansPath(goalId)),
+    );
   }
   async getSavingsPlansByGoals(goalIds: string[]) {
     if (!goalIds.length) return [];

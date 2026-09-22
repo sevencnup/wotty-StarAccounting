@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { clampPercent, formatMoney } from "@/lib/stark/utils/format";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { Asset, AssetType, Loan, SavingsGoal } from "@/lib/stark/models";
@@ -63,7 +64,7 @@ export default function AssetsPage() {
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
-  const reload = () => {
+  const reload = useCallback(() => {
     const accountId = getCurrentAccountId();
     void Promise.all([repo.getAssets(accountId), repo.getSavingsGoals(accountId), repo.getLoans(accountId)])
       .then(([assets, savings, loanList]) => {
@@ -73,7 +74,7 @@ export default function AssetsPage() {
         setLoadError(false);
       })
       .catch(() => setLoadError(true));
-  };
+  }, []);
 
   async function deleteAsset(item: Asset) {
     if (!window.confirm(`确定删除资产“${item.name}”吗？`)) return;
@@ -107,7 +108,18 @@ export default function AssetsPage() {
     const handleAssetSaved = () => reload();
     window.addEventListener("stark:asset-saved", handleAssetSaved);
     return () => window.removeEventListener("stark:asset-saved", handleAssetSaved);
-  }, []);
+  }, [reload]);
+
+  useEffect(() => {
+    const handleCacheUpdate = (event: Event) => {
+      const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
+      if (!update || !["assets", "loans", "savingsGoals"].includes(update.resource)) return;
+      if (update.accountId && update.accountId !== getCurrentAccountId()) return;
+      reload();
+    };
+    window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
+    return () => window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
+  }, [reload]);
 
   const summary = useMemo(() => {
     const positive = list.filter((item) => item.balance >= 0);

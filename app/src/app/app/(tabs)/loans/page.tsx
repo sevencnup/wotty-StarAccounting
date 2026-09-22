@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { REPORTING_MONTH_KEY, clampPercent, formatMoney, isReportingYearKey, monthKey, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import { getCurrentAccountId, getSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import type { Loan, Transaction } from "@/lib/stark/models";
@@ -177,14 +178,14 @@ export default function LoansPage() {
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [repaymentLoan, setRepaymentLoan] = useState<Loan | null>(null);
 
-  const reload = () => {
+  const reload = useCallback(() => {
     void repo.getLoans(getCurrentAccountId())
       .then((loans) => {
         setList(loans);
         setLoadError(false);
       })
       .catch(() => setLoadError(true));
-  };
+  }, []);
 
   async function deleteLoan(item: Loan) {
     if (!window.confirm(`确定删除贷款“${item.platform}”吗？`)) return;
@@ -221,7 +222,18 @@ export default function LoansPage() {
       window.removeEventListener("stark:loan-saved", handleLoanSaved);
       window.removeEventListener("stark:transaction-saved", handleTransactionSaved);
     };
-  }, []);
+  }, [reload]);
+
+  useEffect(() => {
+    const handleCacheUpdate = (event: Event) => {
+      const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
+      if (update?.resource !== "loans") return;
+      if (update.accountId && update.accountId !== getCurrentAccountId()) return;
+      reload();
+    };
+    window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
+    return () => window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
+  }, [reload]);
 
   const summary = useMemo(() => {
     const activeLoans = list.filter((item) => item.status !== "PAID_OFF");

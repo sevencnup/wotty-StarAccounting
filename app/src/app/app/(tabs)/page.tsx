@@ -5,6 +5,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
 import type { EChartsCoreOption } from "echarts/core";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { EChartView } from "@/components/stark/EChartView";
 import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
 import { Skeleton } from "@/components/stark/Skeleton";
@@ -1081,12 +1082,63 @@ export function HomeDashboard() {
       }
     };
     void load();
+    const handleCacheUpdate = (event: Event) => {
+      const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
+      const accountId = getCurrentAccountId();
+      if (!update || (update.accountId && update.accountId !== accountId)) return;
+
+      if (update.resource === "assets") {
+        void repo.getAssets(accountId).then(
+          (items) => {
+            if (!active) return;
+            setAssets(items);
+            setAssetStatus("ready");
+          },
+          () => { if (active) setAssetStatus("error"); },
+        );
+      }
+      if (update.resource === "budgets") {
+        void repo.getBudgets(accountId).then(
+          (items) => {
+            if (!active) return;
+            setBudgets(items);
+            setBudgetStatus("ready");
+          },
+          () => { if (active) setBudgetStatus("error"); },
+        );
+      }
+      if (update.resource === "loans") {
+        void repo.getLoans(accountId).then(
+          (items) => {
+            if (!active) return;
+            setLoans(items);
+            setLoanStatus("ready");
+          },
+          () => { if (active) setLoanStatus("error"); },
+        );
+      }
+      if (update.resource === "savingsGoals" || update.resource === "savingsPlans") {
+        void repo.getSavingsGoals(accountId)
+          .then(async (goals) => [goals, await repo.getSavingsPlansByGoals(goals.map((goal) => goal.id))] as const)
+          .then(
+            ([goals, plans]) => {
+              if (!active) return;
+              setSavingsGoals(goals);
+              setSavingsPlans(plans);
+              setSavingsStatus("ready");
+            },
+            () => { if (active) setSavingsStatus("error"); },
+          );
+      }
+    };
     window.addEventListener("stark:transaction-saved", load);
     window.addEventListener("stark:savings-saved", load);
+    window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     return () => {
       active = false;
       window.removeEventListener("stark:transaction-saved", load);
       window.removeEventListener("stark:savings-saved", load);
+      window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     };
   }, [loadVersion, monthReady, reportingMonth]);
 
