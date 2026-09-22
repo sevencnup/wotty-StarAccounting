@@ -8891,6 +8891,7 @@ img[src$="/qita.webp"] {
 .settings-center-icon.remark { background: #f97316; }
 .settings-center-icon.reconciliation { background: #0d8a5f; }
 .settings-center-icon.update { background: #0ea5e9; }
+.settings-center-icon.mode { background: #475569; }
 
 /* ── 账单归类（账户设置页） ── */
 .bill-remark-sheet {
