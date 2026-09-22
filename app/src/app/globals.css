@@ -5370,15 +5370,15 @@ button.stark-compass-card {
     padding: 8px 0;
   }
 
-  .savings-recent-row span {
+  .savings-recent-row > span {
     grid-column: 2 / 4;
   }
 
-  .savings-recent-row time {
+  .savings-recent-row > time {
     grid-column: 2;
   }
 
-  .savings-recent-row em {
+  .savings-recent-row > em {
     grid-column: 3;
   }
 }
@@ -5588,16 +5588,16 @@ button.stark-compass-card {
 }
 
 .savings-dashboard-page .recent-list {
-  gap: 7px;
+  gap: 5px;
 }
 
 .savings-dashboard-page .savings-recent-row {
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  gap: 3px 8px;
-  min-height: 52px;
-  padding: 8px 9px;
+  grid-template-columns: 30px minmax(0, 1fr) minmax(108px, 0.92fr);
+  gap: 2px 7px;
+  min-height: 0;
+  padding: 6px 8px;
   border: 1px solid rgba(255, 255, 255, 0.58);
-  border-radius: 16px;
+  border-radius: 12px;
   background: rgba(244, 249, 255, 0.58);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.76);
   backdrop-filter: blur(12px) saturate(1.12);
@@ -5606,24 +5606,51 @@ button.stark-compass-card {
 
 .savings-dashboard-page .savings-recent-row strong {
   grid-column: 2;
-  font-size: calc(13px * var(--user-font-scale));
-}
-
-.savings-dashboard-page .savings-recent-row span {
-  grid-column: 2;
   font-size: calc(12px * var(--user-font-scale));
 }
 
-.savings-dashboard-page .savings-recent-row time {
+.savings-dashboard-page .savings-recent-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.savings-recent-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-column: 2;
+  gap: 6px;
+  min-width: 0;
+  align-items: center;
+}
+
+.savings-recent-meta span,
+.savings-recent-meta time {
+  min-width: 0;
+  overflow: hidden;
+  color: #65718a;
+  font-size: calc(10px * var(--user-font-scale));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-recent-meta time {
+  color: #8a97aa;
+}
+
+.savings-dashboard-page .savings-recent-row > span {
+  grid-column: 2;
+}
+
+.savings-dashboard-page .savings-recent-row > time {
   grid-column: 2;
   grid-row: 3;
-  font-size: calc(12px * var(--user-font-scale));
 }
 
-.savings-dashboard-page .savings-recent-row em {
+.savings-dashboard-page .savings-recent-row > em {
   grid-column: 3;
   grid-row: 1 / span 3;
-  font-size: calc(13px * var(--user-font-scale));
 }
 
 /* floating journal panel */

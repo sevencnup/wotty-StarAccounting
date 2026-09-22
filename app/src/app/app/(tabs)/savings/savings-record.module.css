@@ -1,17 +1,19 @@
 .recentActions {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-column: 3;
-  grid-row: 1 / span 3;
+  grid-row: 1 / span 2;
   align-content: center;
-  justify-items: end;
-  gap: 6px;
-  min-width: 96px;
+  align-items: center;
+  gap: 4px 6px;
+  min-width: 108px;
 }
 
 .progressSummary {
   display: grid;
+  grid-column: 1 / -1;
   width: 100%;
-  gap: 3px;
+  gap: 2px;
 }
 
 .progressSummary small {
@@ -42,12 +44,12 @@
 .recentActions em {
   grid-column: auto !important;
   grid-row: auto !important;
-  font-size: calc(13px * var(--user-font-scale));
+  font-size: calc(12px * var(--user-font-scale));
 }
 
 .recordButton {
-  min-height: 26px;
-  padding: 0 8px;
+  min-height: 24px;
+  padding: 0 7px;
   border: 1px solid rgba(0, 96, 192, 0.16);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.88);

@@ -221,8 +221,10 @@ export default function SavingsPage() {
               <div key={plan.id} className={`savings-recent-row ${plan.status.toLowerCase()}`}>
                 <div className="savings-recent-icon">存</div>
                 <strong>{goal?.name || "储蓄计划"}</strong>
-                <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
-                <time>{dayLabel(plan.updatedAt.slice(0, 10), locale)}</time>
+                <div className="savings-recent-meta">
+                  <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
+                  <time>{dayLabel(plan.updatedAt.slice(0, 10), locale)}</time>
+                </div>
                 <div className={styles.recentActions}>
                   <div className={styles.progressSummary}>
                     <div className={styles.progressTrack} aria-label={`${goal?.name || "储蓄计划"} 完成 ${progress}%`}>
