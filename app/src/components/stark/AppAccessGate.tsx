@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { DataMode } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudLogin, cloudLogout, cloudMe, cloudRecoverPassword, cloudRegister, cloudRegistrationStatus } from "@/lib/stark/repository/cloud-auth";
@@ -46,6 +47,7 @@ export async function verifyCloudConnection(urlValue: string) {
 
 /** 根路径统一入口：选择模式、检测 API 并完成云端登录。 */
 export function AppAccessGate() {
+  const router = useRouter();
   const [native, setNative] = useState(false);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [phase, setPhase] = useState<AccessPhase>("BOOTING");
@@ -70,7 +72,9 @@ export function AppAccessGate() {
   const stableShellHeightRef = useRef(0);
 
   function completeAccess() {
-    window.location.replace(destinationRef.current);
+    const destination = new URL(destinationRef.current, window.location.origin);
+    if (!destination.pathname.endsWith("/")) destination.pathname = `${destination.pathname}/`;
+    router.replace(`${destination.pathname}${destination.search}${destination.hash}`);
   }
 
   async function checkCloud(urlValue: string, resumeIfAuthenticated: boolean) {
