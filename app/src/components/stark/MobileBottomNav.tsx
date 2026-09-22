@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 export const NAV_ITEMS = [
   { href: "/app", label: "首页", icon: "/nav-icons/home.png" },
@@ -13,14 +14,42 @@ export const NAV_ITEMS = [
   { href: "/app/accounts", label: "设置", icon: "/nav-icons/setup.png" },
 ] as const;
 
-export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target: string) => void }) {
+export function MobileBottomNav({
+  onNavigateStart,
+  optimisticPathname,
+}: {
+  onNavigateStart?: (target: string) => void;
+  optimisticPathname?: string;
+}) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
+  const visiblePathname = optimisticPathname ?? pathname;
+
+  useEffect(() => {
+    const prefetchRoutes = () => {
+      for (const item of NAV_ITEMS) {
+        if (!visiblePathname.startsWith(item.href) || item.href === "/app") router.prefetch(item.href);
+      }
+    };
+    const browser = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    if (browser.requestIdleCallback) {
+      const handle = browser.requestIdleCallback(prefetchRoutes, { timeout: 1200 });
+      return () => browser.cancelIdleCallback?.(handle);
+    }
+    const handle = window.setTimeout(prefetchRoutes, 250);
+    return () => window.clearTimeout(handle);
+  }, [router, visiblePathname]);
 
   return (
     <nav className="mobile-bottom-nav" aria-label="主导航">
       <div className="mobile-bottom-nav-inner">
         {NAV_ITEMS.map((item) => {
-          const active = item.href === "/app" ? pathname === "/app" || pathname === "/app/" || pathname.startsWith("/app/budgets") : pathname.startsWith(item.href);
+          const active = item.href === "/app"
+            ? visiblePathname === "/app" || visiblePathname === "/app/" || visiblePathname.startsWith("/app/budgets")
+            : visiblePathname.startsWith(item.href);
           return (
             <Link
               key={item.href}
@@ -28,7 +57,15 @@ export function MobileBottomNav({ onNavigateStart }: { onNavigateStart?: (target
               prefetch={true}
               className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}
               aria-label={item.label}
-              onClick={() => onNavigateStart?.(item.href)}
+              aria-current={active ? "page" : undefined}
+              onPointerDown={() => router.prefetch(item.href)}
+              onClick={(event) => {
+                if (active) {
+                  event.preventDefault();
+                  return;
+                }
+                onNavigateStart?.(item.href);
+              }}
             >
               <Image src={item.icon} alt="" width={24} height={24} className={active ? "mobile-bottom-nav-icon active" : "mobile-bottom-nav-icon"} />
             </Link>

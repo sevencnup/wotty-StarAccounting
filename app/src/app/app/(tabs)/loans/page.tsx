@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
-import { JournalPanel } from "@/components/stark/JournalPanel";
+import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REPORTING_MONTH_KEY, clampPercent, formatMoney, isReportingYearKey, monthKey, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import { getCurrentAccountId, getSelectedReportMonth } from "@/lib/stark/storage/local-config";

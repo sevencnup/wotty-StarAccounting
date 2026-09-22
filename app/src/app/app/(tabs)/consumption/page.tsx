@@ -7,7 +7,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
-import { JournalPanel } from "@/components/stark/JournalPanel";
+import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";

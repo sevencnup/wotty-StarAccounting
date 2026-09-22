@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
-import { JournalPanel } from "@/components/stark/JournalPanel";
+import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { savingsDepositTypeLabel } from "@/lib/stark/savings/deposit-type";
 import { formatMoney } from "@/lib/stark/utils/format";

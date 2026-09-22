@@ -65,6 +65,20 @@ type KeyboardViewport = {
   offsetTop: number;
 };
 
+export type JournalPanelProps = {
+  onClose: () => void;
+  onSaved?: () => void;
+  mode?: "sheet" | "page";
+  variant?: "journal" | "savings" | "savings-record" | "asset" | "loan" | "repayment";
+  preset?: { type: TransactionType; category: string };
+  savingsGoalId?: string;
+  savingsPlan?: SavingsPlan;
+  savingsGoal?: SavingsGoal;
+  transaction?: Transaction;
+  asset?: Asset;
+  loan?: Loan;
+};
+
 export function JournalPanel({
   onClose,
   onSaved,
@@ -77,19 +91,7 @@ export function JournalPanel({
   transaction,
   asset,
   loan,
-}: {
-  onClose: () => void;
-  onSaved?: () => void;
-  mode?: "sheet" | "page";
-  variant?: "journal" | "savings" | "savings-record" | "asset" | "loan" | "repayment";
-  preset?: { type: TransactionType; category: string };
-  savingsGoalId?: string;
-  savingsPlan?: SavingsPlan;
-  savingsGoal?: SavingsGoal;
-  transaction?: Transaction;
-  asset?: Asset;
-  loan?: Loan;
-}) {
+}: JournalPanelProps) {
   const isPage = mode === "page";
   const isSavings = variant === "savings";
   const isSavingsRecord = variant === "savings-record";
