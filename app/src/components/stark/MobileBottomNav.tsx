@@ -14,16 +14,10 @@ export const NAV_ITEMS = [
   { href: "/app/accounts", label: "设置", icon: "/nav-icons/setup.png" },
 ] as const;
 
-export function MobileBottomNav({
-  onNavigateStart,
-  optimisticPathname,
-}: {
-  onNavigateStart?: (target: string) => void;
-  optimisticPathname?: string;
-}) {
+export function MobileBottomNav() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
-  const visiblePathname = optimisticPathname ?? pathname;
+  const visiblePathname = pathname;
 
   useEffect(() => {
     const prefetchRoutes = () => {
@@ -62,9 +56,7 @@ export function MobileBottomNav({
               onClick={(event) => {
                 if (active) {
                   event.preventDefault();
-                  return;
                 }
-                onNavigateStart?.(item.href);
               }}
             >
               <Image src={item.icon} alt="" width={24} height={24} className={active ? "mobile-bottom-nav-icon active" : "mobile-bottom-nav-icon"} />
