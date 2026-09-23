@@ -1,4 +1,5 @@
 const AUTH_PREFIX = "wotty-stark:cloud-auth:";
+const REMEMBERED_CREDENTIALS_KEY = `${AUTH_PREFIX}remembered-credentials`;
 
 export type CloudAuthUser = {
   id: string;
@@ -8,6 +9,11 @@ export type CloudAuthUser = {
   role: "USER" | "ADMIN" | string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type RememberedCloudCredentials = {
+  email: string;
+  password: string;
 };
 
 function read(key: string) {
@@ -46,6 +52,30 @@ export function getCloudAuthToken() {
 /** True only when the active sign-in was explicitly kept across browser sessions. */
 export function isCloudAuthRemembered() {
   return Boolean(persistentRead("token"));
+}
+
+/** 仅在用户主动勾选“记住账密”时保存；不勾选时始终清除。 */
+export function getRememberedCloudCredentials(): RememberedCloudCredentials | null {
+  if (typeof window === "undefined") return null;
+  const value = window.localStorage.getItem(REMEMBERED_CREDENTIALS_KEY);
+  if (!value) return null;
+  try {
+    const credentials = JSON.parse(value) as Partial<RememberedCloudCredentials>;
+    if (typeof credentials.email !== "string" || typeof credentials.password !== "string") return null;
+    return { email: credentials.email, password: credentials.password };
+  } catch {
+    window.localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY);
+    return null;
+  }
+}
+
+export function setRememberedCloudCredentials(email: string, password: string, remember: boolean) {
+  if (typeof window === "undefined") return;
+  if (!remember) {
+    window.localStorage.removeItem(REMEMBERED_CREDENTIALS_KEY);
+    return;
+  }
+  window.localStorage.setItem(REMEMBERED_CREDENTIALS_KEY, JSON.stringify({ email, password }));
 }
 
 export function getCloudAuthUser(): CloudAuthUser | null {

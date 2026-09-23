@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type FocusEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { DataMode } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudLogin, cloudLogout, cloudMe, cloudRecoverPassword, cloudRegister, cloudRegistrationStatus } from "@/lib/stark/repository/cloud-auth";
-import { getCloudAuthUser, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
+import { getCloudAuthToken, getCloudAuthUser, getRememberedCloudCredentials, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
@@ -28,12 +29,14 @@ function getDestination() {
 }
 
 /** 检测后端和数据库；根入口与受保护路由共用。 */
-export async function verifyCloudConnection(urlValue: string) {
+export async function verifyCloudConnection(urlValue: string, signal?: AbortSignal) {
   const url = normalizeUrl(urlValue);
   if (!url) throw new Error("请输入云端 API 地址");
 
   const controller = new AbortController();
+  const abort = () => controller.abort();
   const timer = window.setTimeout(() => controller.abort(), 5000);
+  signal?.addEventListener("abort", abort, { once: true });
   try {
     const response = await fetch(`${url}/api/health`, { signal: controller.signal });
     const payload = await response.json() as { status?: string; db?: boolean };
@@ -41,11 +44,13 @@ export async function verifyCloudConnection(urlValue: string) {
     if (!payload.db) throw new Error("后端服务可访问，但数据库尚未连接");
   } finally {
     window.clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
 /** 根路径统一入口：选择模式、检测 API 并完成云端登录。 */
 export function AppAccessGate() {
+  const router = useRouter();
   const [native, setNative] = useState(false);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [phase, setPhase] = useState<AccessPhase>("BOOTING");
@@ -68,12 +73,27 @@ export function AppAccessGate() {
   const destinationRef = useRef("/app");
   const mountedRef = useRef(true);
   const stableShellHeightRef = useRef(0);
+  const cloudCheckSequenceRef = useRef(0);
+  const cloudCheckAbortRef = useRef<AbortController | null>(null);
+
+  function cancelCloudCheck() {
+    cloudCheckSequenceRef.current += 1;
+    cloudCheckAbortRef.current?.abort();
+    cloudCheckAbortRef.current = null;
+  }
 
   function completeAccess() {
-    window.location.replace(destinationRef.current);
+    const destination = new URL(destinationRef.current, window.location.origin);
+    if (!destination.pathname.endsWith("/")) destination.pathname = `${destination.pathname}/`;
+    router.replace(`${destination.pathname}${destination.search}${destination.hash}`);
   }
 
   async function checkCloud(urlValue: string, resumeIfAuthenticated: boolean) {
+    cancelCloudCheck();
+    const controller = new AbortController();
+    cloudCheckAbortRef.current = controller;
+    const checkSequence = ++cloudCheckSequenceRef.current;
+    const canUpdateCloud = () => mountedRef.current && cloudCheckSequenceRef.current === checkSequence;
     const url = normalizeUrl(urlValue);
     setApiUrl(url);
     setPhase("AUTH");
@@ -82,8 +102,8 @@ export function AppAccessGate() {
     setApiVerified(false);
     setAuthError("");
     try {
-      await verifyCloudConnection(url);
-      if (!mountedRef.current) return;
+      await verifyCloudConnection(url, controller.signal);
+      if (!canUpdateCloud()) return;
       manager.setCloudApiUrl(url);
       setCloudApiUrl(url);
       let registrationOpen = false;
@@ -92,14 +112,14 @@ export function AppAccessGate() {
       } catch {
         // Do not reveal a registration option unless the API explicitly permits it.
       }
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       setRegistrationEnabled(registrationOpen);
       if (!registrationOpen) setAuthMode((current) => current === "REGISTER" ? "LOGIN" : current);
       setConnectionState("SUCCESS");
       setConnectionMessage("API 和数据库连接正常");
       setApiVerified(true);
       const user = await cloudMe(url);
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       setCloudUser(user);
       if (user && resumeIfAuthenticated) {
         await manager.switchMode("CLOUD");
@@ -108,11 +128,13 @@ export function AppAccessGate() {
       }
       setPhase("AUTH");
     } catch (error) {
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       setConnectionState("ERROR");
       setConnectionMessage(error instanceof Error && error.message ? error.message : "连接失败，请检查 API 地址和网络权限");
       setApiVerified(false);
       setPhase("AUTH");
+    } finally {
+      if (cloudCheckAbortRef.current === controller) cloudCheckAbortRef.current = null;
     }
   }
 
@@ -123,12 +145,25 @@ export function AppAccessGate() {
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
     const initialUrl = getCloudApiUrl();
+    const rememberedCredentials = getRememberedCloudCredentials();
+    if (rememberedCredentials) {
+      setEmail(rememberedCredentials.email);
+      setPassword(rememberedCredentials.password);
+      setRememberLogin(true);
+    }
     setNative(nativeRuntime);
     setMode(initialMode);
     setApiUrl(initialUrl);
 
     if (nativeRuntime && initialMode === "LOCAL") {
       setPhase("LOCAL");
+    } else if (nativeRuntime && getCloudAuthToken() && getCloudAuthUser()) {
+      manager.setCloudApiUrl(initialUrl);
+      void manager.switchMode("CLOUD").then(() => {
+        if (mountedRef.current) completeAccess();
+      }).catch(() => {
+        if (mountedRef.current) void checkCloud(initialUrl, true);
+      });
     } else {
       void checkCloud(initialUrl, true);
     }
@@ -154,6 +189,7 @@ export function AppAccessGate() {
 
     return () => {
       mountedRef.current = false;
+      cancelCloudCheck();
       window.removeEventListener("orientationchange", updateShellHeightForOrientation);
       visualViewport?.removeEventListener("resize", updateKeyboardLayout);
     };
@@ -161,6 +197,7 @@ export function AppAccessGate() {
 
   async function enterLocalMode() {
     if (!native) return;
+    cancelCloudCheck();
     await manager.switchMode("LOCAL");
     completeAccess();
   }
@@ -222,6 +259,7 @@ export function AppAccessGate() {
   }
 
   function changeApiUrl(value: string) {
+    cancelCloudCheck();
     setApiUrl(value);
     setApiVerified(false);
     setConnectionState("IDLE");
@@ -240,25 +278,57 @@ export function AppAccessGate() {
     setAuthMessage("");
   }
 
-  function switchToCloud() {
-    setMode("CLOUD");
-    setPhase("AUTH");
-  }
-
   function logoutCloud() {
+    cancelCloudCheck();
     cloudLogout();
     setCloudUser(null);
     setAuthError("");
     setAuthMessage("");
     setRememberLogin(false);
+    setKeyboardOpen(false);
     selectAuthMode("LOGIN");
     setPhase("AUTH");
+  }
+
+  function handleAuthFieldFocus(event: FocusEvent<HTMLInputElement>) {
+    // Let Android resize the WebView first, then bring the focused field into
+    // the visible area without permanently switching the login card to top alignment.
+    const field = event.currentTarget;
+    window.requestAnimationFrame(() => {
+      field.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+  }
+
+  function handleAuthFieldBlur() {
+    window.setTimeout(() => {
+      const visibleHeight = window.visualViewport?.height ?? window.innerHeight;
+      if (visibleHeight >= stableShellHeightRef.current - 120) setKeyboardOpen(false);
+    }, 180);
+  }
+
+  function switchToLocal() {
+    setKeyboardOpen(false);
+    setMode("LOCAL");
+    setPhase("LOCAL");
+    void enterLocalMode();
+  }
+
+  function switchToCloud() {
+    cancelCloudCheck();
+    setKeyboardOpen(false);
+    setMode("CLOUD");
+    setPhase("AUTH");
+    void checkCloud(apiUrl, true);
   }
 
   return (
     <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`}>
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
-        {mode === "LOCAL" && native ? (
+        {phase === "BOOTING" ? (
+          <section className="app-access-local-panel" aria-live="polite">
+            <strong>正在准备账本...</strong>
+          </section>
+        ) : mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
             <strong>本地模式</strong>
             <p>数据只保存在这台设备，不需要服务器或登录。</p>
@@ -267,7 +337,7 @@ export function AppAccessGate() {
         ) : (
           <section className="app-access-cloud-panel">
             <div className="app-access-auth">
-              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
+              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
               <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
               <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
 
@@ -280,18 +350,18 @@ export function AppAccessGate() {
                 <div className="app-access-credentials">
                   {authMode === "RECOVER" ? <>
                     <div className="app-access-recovery-heading"><strong>重置密码</strong><span>使用服务器管理员恢复密钥验证</span></div>
-                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
-                    <label className="app-access-field app-access-login-field"><span>新密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
-                    <label className="app-access-field app-access-login-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="new-password" /></label>
-                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="off" /></label>
+                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="email" /></label>
+                    <label className="app-access-field app-access-login-field"><span>新密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="new-password" /></label>
+                    <label className="app-access-field app-access-login-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="new-password" /></label>
+                    <label className="app-access-field app-access-login-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="off" /></label>
                   </> : <>
                     <div className={`app-access-auth-tabs${registrationEnabled ? "" : " single"}`}>
                       <button type="button" className={authMode === "LOGIN" ? "active" : ""} onClick={() => selectAuthMode("LOGIN")}>登录</button>
                       {registrationEnabled ? <button type="button" className={authMode === "REGISTER" ? "active" : ""} onClick={() => selectAuthMode("REGISTER")}>注册</button> : null}
                     </div>
-                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete="email" /></label>
-                    <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={() => setKeyboardOpen(true)} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
-                    {authMode === "LOGIN" ? <div className="app-access-login-options"><label className="app-access-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>记住密码</span><small>仅保留登录状态</small></label><button type="button" className="app-access-link" onClick={() => selectAuthMode("RECOVER")}>忘记密码？</button></div> : null}
+                    <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="email" /></label>
+                    <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
+                    {authMode === "LOGIN" ? <div className="app-access-login-options"><label className="app-access-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>记住账密</span><small>保存在本机</small></label><button type="button" className="app-access-link" onClick={() => selectAuthMode("RECOVER")}>忘记密码？</button></div> : null}
                   </>}
                   {authError ? <div className="app-access-status error">{authError}</div> : null}
                   {authMessage ? <div className="app-access-status success">{authMessage}</div> : null}
@@ -305,7 +375,7 @@ export function AppAccessGate() {
 
         {native ? (
           <div className="app-access-mode-switch" aria-label="选择数据模式">
-            <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={() => { setMode("LOCAL"); setPhase("LOCAL"); }}>本地模式</button>
+            <button type="button" className={mode === "LOCAL" ? "active" : ""} onClick={switchToLocal}>本地模式</button>
             <button type="button" className={mode === "CLOUD" ? "active" : ""} onClick={switchToCloud}>云端模式</button>
           </div>
         ) : null}

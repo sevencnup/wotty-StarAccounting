@@ -9,7 +9,7 @@ import { MonthPicker } from "@/components/stark/MonthPicker";
 import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { loadAvailableTransactionMonths } from "@/lib/stark/repository/transaction-months";
+import { loadAvailableTransactionMonths, resolveAvailableReportingMonth } from "@/lib/stark/repository/transaction-months";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
@@ -142,6 +142,13 @@ export default function ConsumptionPage() {
     ])
       .then(([data, loadedAvailableMonths]) => {
         if (!active) return;
+        const resolvedReportingMonth = resolveAvailableReportingMonth(reportingMonth, loadedAvailableMonths);
+        if (resolvedReportingMonth !== reportingMonth) {
+          setSelectedReportMonth(resolvedReportingMonth);
+          setReportingMonth(resolvedReportingMonth);
+          setAvailableMonths(loadedAvailableMonths);
+          return;
+        }
         setTransactions(data);
         setAvailableMonths(loadedAvailableMonths);
       })

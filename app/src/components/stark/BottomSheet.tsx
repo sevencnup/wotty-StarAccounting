@@ -17,6 +17,7 @@ type BottomSheetProps = PropsWithChildren<{
 export function BottomSheet({ children, title, onClose, historyMode = "marker", className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
+  const [enterReady, setEnterReady] = useState(false);
   const [closing, setClosing] = useState(false);
   const historyEntryRef = useRef<{ markerUrl: string } | null>(null);
   const closingRef = useRef(false);
@@ -29,6 +30,14 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
 
   useEffect(() => {
     setMounted(true);
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => setEnterReady(true));
+    });
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
   }, []);
 
   const beginClose = useCallback(() => {
@@ -134,7 +143,7 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
 
   return createPortal(
     <div className={`bottom-sheet-overlay ${closing ? "is-closing" : ""} ${overlayClassName}`.trim()} onClick={requestClose}>
-      <section className={`bottom-sheet ${closing ? "is-closing" : ""} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
+      <section className={`bottom-sheet ${enterReady ? "is-ready" : ""} ${closing ? "is-closing" : ""} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
         <div className="bottom-sheet-handle" aria-hidden="true" />
         <header className="bottom-sheet-header">
           <span aria-hidden="true" />

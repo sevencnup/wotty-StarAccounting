@@ -194,7 +194,9 @@ export class RemoteRepository implements DataRepository {
         throw new Error(`Cloud API ${response.status}: ${await response.text()}`);
       }
       if (response.status === 204) return undefined as T;
-      return response.json() as Promise<T>;
+      // 必须等待响应体读取完成后再离开 try，否则 finally 会提前清掉
+      // 超时定时器；网络连接只返回了响应头但响应体卡住时就会无限等待。
+      return await response.json() as T;
     } finally {
       clearTimeout(timeout);
     }

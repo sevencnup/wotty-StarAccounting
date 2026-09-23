@@ -1855,10 +1855,16 @@ nextjs-portal {
   overscroll-behavior: contain;
   overscroll-behavior-x: none;
   touch-action: pan-y;
+  visibility: hidden;
+  animation: none;
+}
+
+.bottom-sheet.is-ready {
+  visibility: visible;
   animation: bottom-sheet-in 220ms ease both;
 }
 
-.bottom-sheet.is-closing {
+.bottom-sheet.is-ready.is-closing {
   animation: bottom-sheet-out 220ms ease both;
 }
 
@@ -5702,6 +5708,7 @@ button.stark-compass-card {
   display: grid;
   gap: 10px;
   transform: translateY(100%);
+  visibility: hidden;
   transition: transform 220ms ease;
 }
 
@@ -5781,6 +5788,10 @@ button.stark-compass-card {
 
 .journal-panel.visible {
   transform: translateY(0);
+}
+
+.journal-panel.ready {
+  visibility: visible;
 }
 
 /* Embedded savings planner: use the same compact glass language as the journal sheet. */
@@ -8865,6 +8876,59 @@ img[src$="/qita.webp"] {
   background: #fff1f2;
 }
 
+.account-confirm-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(4px);
+}
+
+.account-confirm-dialog {
+  width: min(100%, 340px);
+  padding: 20px;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+}
+
+.account-confirm-dialog > strong {
+  display: block;
+  color: #172033;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 650;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.account-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.account-confirm-actions button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 10px;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 700;
+}
+
+.account-confirm-cancel {
+  color: #1769c2;
+  background: #edf5ff;
+}
+
+.account-confirm-primary {
+  color: #ffffff;
+  background: #1769c2;
+}
+
 .settings-center-icon {
   display: grid;
   place-items: center;
@@ -8891,6 +8955,7 @@ img[src$="/qita.webp"] {
 .settings-center-icon.remark { background: #f97316; }
 .settings-center-icon.reconciliation { background: #0d8a5f; }
 .settings-center-icon.update { background: #0ea5e9; }
+.settings-center-icon.mode { background: #475569; }
 
 /* ── 账单归类（账户设置页） ── */
 .bill-remark-sheet {

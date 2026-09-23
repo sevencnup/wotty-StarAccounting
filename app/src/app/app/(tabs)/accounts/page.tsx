@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import packageInfo from "../../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
@@ -22,7 +23,7 @@ import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, typ
 type BillPlatform = "微信" | "支付宝";
 
 const manager = new DataModeManager();
-type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE";
+type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE" | "MODE";
 const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
@@ -46,6 +47,7 @@ function SettingIcon({ type }: { type: PanelKey }) {
     HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
     ABOUT: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
     UPDATE: <><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v6h-6" /><path d="M12 8v4l2.5 1.5" /></>,
+    MODE: <><path d="M7 7h10" /><path d="m13 3 4 4-4 4" /><path d="M17 17H7" /><path d="m11 13-4 4 4 4" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[type]}</svg>;
 }
@@ -66,6 +68,7 @@ function SettingsRow({ type, title, value, onClick, disabled = false }: { type: 
 }
 
 export default function AccountsPage() {
+  const router = useRouter();
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [newPassword, setNewPassword] = useState("");
@@ -80,6 +83,7 @@ export default function AccountsPage() {
   const [registrationError, setRegistrationError] = useState("");
   const [registrationMessage, setRegistrationMessage] = useState("");
   const [cloudUser, setCloudUser] = useState(() => getCloudAuthUser());
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
   const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
   const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单");
@@ -201,10 +205,18 @@ export default function AccountsPage() {
   }
 
   function logout() {
-    if (!window.confirm("确定要退出当前云端账户吗？")) return;
     cloudLogout();
     setCloudUser(null);
-    window.location.replace("/");
+    setLogoutConfirmOpen(false);
+    router.replace("/");
+  }
+
+  function requestLogout() {
+    setLogoutConfirmOpen(true);
+  }
+
+  function openModeSwitch() {
+    router.replace("/");
   }
 
   async function prepareBillImport(file: File) {
@@ -353,7 +365,25 @@ export default function AccountsPage() {
         <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
 
-      {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={logout}>退出登录</button> : null}
+      {mode === "LOCAL" ? (
+        <section className="settings-center-group">
+          <SettingsRow type="MODE" title="切换数据模式" value="当前：本地模式" onClick={openModeSwitch} />
+        </section>
+      ) : null}
+
+      {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={requestLogout}>退出登录</button> : null}
+
+      {logoutConfirmOpen ? (
+        <div className="account-confirm-mask" role="presentation" onClick={() => setLogoutConfirmOpen(false)}>
+          <section className="account-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="account-logout-title" onClick={(event) => event.stopPropagation()}>
+            <strong id="account-logout-title">确定要退出当前云端账户吗？</strong>
+            <div className="account-confirm-actions">
+              <button type="button" className="account-confirm-cancel" onClick={() => setLogoutConfirmOpen(false)}>取消</button>
+              <button type="button" className="account-confirm-primary" onClick={logout}>确定</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {activePanel ? (
         <BottomSheet

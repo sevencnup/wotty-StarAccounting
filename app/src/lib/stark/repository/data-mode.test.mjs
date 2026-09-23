@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { loanRepaymentClassificationsPath, savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "./remote-paths.ts";
-import { selectDataRepository } from "./data-mode.ts";
+import { createModeAwareRepository, selectDataRepository } from "./data-mode.ts";
 
 test("cloud mode propagates remote read failures without reading local demo data", async () => {
   let localReads = 0;
@@ -28,6 +28,17 @@ test("local mode selects the IndexedDB repository", () => {
   const local = { source: "local" };
 
   assert.equal(selectDataRepository("LOCAL", remote, local), local);
+});
+
+test("long-lived repository references follow the latest data mode", async () => {
+  let mode = "LOCAL";
+  const remote = { getTransactions: async () => ["cloud"] };
+  const local = { getTransactions: async () => ["local"] };
+  const repository = createModeAwareRepository(() => selectDataRepository(mode, remote, local));
+
+  assert.deepEqual(await repository.getTransactions(), ["local"]);
+  mode = "CLOUD";
+  assert.deepEqual(await repository.getTransactions(), ["cloud"]);
 });
 
 test("builds a targeted endpoint for remote savings plans", () => {
