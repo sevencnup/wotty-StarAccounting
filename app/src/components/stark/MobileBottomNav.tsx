@@ -2,8 +2,54 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { appRoute, shouldRecoverNavigation } from "@/lib/stark/navigation/routes";
+
+const BACKGROUNDED_AT_STORAGE_KEY = "wotty:navigation-backgrounded-at";
+const PENDING_NAVIGATION_STORAGE_KEY = "wotty:pending-navigation";
+
+function readPersistedBackgroundedAt() {
+  try {
+    const value = Number(window.localStorage.getItem(BACKGROUNDED_AT_STORAGE_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistBackgroundedAt(value: number | null) {
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(BACKGROUNDED_AT_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(BACKGROUNDED_AT_STORAGE_KEY, String(value));
+    }
+  } catch {
+    // Navigation recovery still works in memory when storage is unavailable.
+  }
+}
+
+function readPendingNavigation() {
+  try {
+    const value = window.localStorage.getItem(PENDING_NAVIGATION_STORAGE_KEY);
+    return value === "/app/" || value?.startsWith("/app/") ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistPendingNavigation(value: string | null) {
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(PENDING_NAVIGATION_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(PENDING_NAVIGATION_STORAGE_KEY, value);
+    }
+  } catch {
+    // A reload still restores the router even if the destination cannot be saved.
+  }
+}
 
 export const NAV_ITEMS = [
   { href: "/app", label: "首页", icon: "/nav-icons/home.png" },
@@ -18,6 +64,52 @@ export function MobileBottomNav() {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const visiblePathname = pathname;
+  const backgroundedAtRef = useRef<number | null>(null);
+  const recoverOnNextNavigationRef = useRef(false);
+
+  useEffect(() => {
+    const markBackgrounded = () => {
+      const backgroundedAt = Date.now();
+      backgroundedAtRef.current = backgroundedAt;
+      persistBackgroundedAt(backgroundedAt);
+    };
+    const markResumed = (restoredFromPageCache = false) => {
+      if (shouldRecoverNavigation(backgroundedAtRef.current, Date.now(), restoredFromPageCache)) {
+        recoverOnNextNavigationRef.current = true;
+      }
+      backgroundedAtRef.current = null;
+      persistBackgroundedAt(null);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        markBackgrounded();
+      } else if (document.visibilityState === "visible") {
+        markResumed();
+      }
+    };
+    const handlePageShow = (event: PageTransitionEvent) => {
+      markResumed(event.persisted);
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", markBackgrounded);
+    window.addEventListener("pageshow", handlePageShow);
+
+    backgroundedAtRef.current = readPersistedBackgroundedAt();
+    if (document.visibilityState === "visible") markResumed();
+
+    const pendingNavigation = readPendingNavigation();
+    if (pendingNavigation) {
+      persistPendingNavigation(null);
+      router.replace(pendingNavigation);
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", markBackgrounded);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [router]);
 
   useEffect(() => {
     const prefetchRoutes = () => {
@@ -56,6 +148,13 @@ export function MobileBottomNav() {
               onClick={(event) => {
                 if (active) {
                   event.preventDefault();
+                  return;
+                }
+                if (recoverOnNextNavigationRef.current) {
+                  event.preventDefault();
+                  recoverOnNextNavigationRef.current = false;
+                  persistPendingNavigation(appRoute(item.href));
+                  window.location.replace(appRoute("/app"));
                 }
               }}
             >
