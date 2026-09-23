@@ -70,6 +70,7 @@ export function AppAccessGate() {
   const destinationRef = useRef("/app");
   const mountedRef = useRef(true);
   const stableShellHeightRef = useRef(0);
+  const cloudCheckSequenceRef = useRef(0);
 
   function completeAccess() {
     const destination = new URL(destinationRef.current, window.location.origin);
@@ -78,6 +79,8 @@ export function AppAccessGate() {
   }
 
   async function checkCloud(urlValue: string, resumeIfAuthenticated: boolean) {
+    const checkSequence = ++cloudCheckSequenceRef.current;
+    const canUpdateCloud = () => mountedRef.current && cloudCheckSequenceRef.current === checkSequence;
     const url = normalizeUrl(urlValue);
     setApiUrl(url);
     setPhase("AUTH");
@@ -87,7 +90,7 @@ export function AppAccessGate() {
     setAuthError("");
     try {
       await verifyCloudConnection(url);
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       manager.setCloudApiUrl(url);
       setCloudApiUrl(url);
       let registrationOpen = false;
@@ -96,14 +99,14 @@ export function AppAccessGate() {
       } catch {
         // Do not reveal a registration option unless the API explicitly permits it.
       }
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       setRegistrationEnabled(registrationOpen);
       if (!registrationOpen) setAuthMode((current) => current === "REGISTER" ? "LOGIN" : current);
       setConnectionState("SUCCESS");
       setConnectionMessage("API 和数据库连接正常");
       setApiVerified(true);
       const user = await cloudMe(url);
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       setCloudUser(user);
       if (user && resumeIfAuthenticated) {
         await manager.switchMode("CLOUD");
@@ -112,7 +115,7 @@ export function AppAccessGate() {
       }
       setPhase("AUTH");
     } catch (error) {
-      if (!mountedRef.current) return;
+      if (!canUpdateCloud()) return;
       setConnectionState("ERROR");
       setConnectionMessage(error instanceof Error && error.message ? error.message : "连接失败，请检查 API 地址和网络权限");
       setApiVerified(false);
@@ -164,6 +167,7 @@ export function AppAccessGate() {
 
     return () => {
       mountedRef.current = false;
+      cloudCheckSequenceRef.current += 1;
       window.removeEventListener("orientationchange", updateShellHeightForOrientation);
       visualViewport?.removeEventListener("resize", updateKeyboardLayout);
     };
@@ -171,6 +175,7 @@ export function AppAccessGate() {
 
   async function enterLocalMode() {
     if (!native) return;
+    cloudCheckSequenceRef.current += 1;
     await manager.switchMode("LOCAL");
     completeAccess();
   }
@@ -232,6 +237,7 @@ export function AppAccessGate() {
   }
 
   function changeApiUrl(value: string) {
+    cloudCheckSequenceRef.current += 1;
     setApiUrl(value);
     setApiVerified(false);
     setConnectionState("IDLE");
@@ -251,6 +257,7 @@ export function AppAccessGate() {
   }
 
   function logoutCloud() {
+    cloudCheckSequenceRef.current += 1;
     cloudLogout();
     setCloudUser(null);
     setAuthError("");
@@ -281,9 +288,11 @@ export function AppAccessGate() {
     setKeyboardOpen(false);
     setMode("LOCAL");
     setPhase("LOCAL");
+    void enterLocalMode();
   }
 
   function switchToCloud() {
+    cloudCheckSequenceRef.current += 1;
     setKeyboardOpen(false);
     setMode("CLOUD");
     setPhase("AUTH");
