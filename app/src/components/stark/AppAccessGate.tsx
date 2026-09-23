@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { DataMode } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudLogin, cloudLogout, cloudMe, cloudRecoverPassword, cloudRegister, cloudRegistrationStatus } from "@/lib/stark/repository/cloud-auth";
-import { getCloudAuthUser, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
+import { getCloudAuthUser, getRememberedCloudCredentials, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
@@ -127,6 +127,12 @@ export function AppAccessGate() {
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
     const initialUrl = getCloudApiUrl();
+    const rememberedCredentials = getRememberedCloudCredentials();
+    if (rememberedCredentials) {
+      setEmail(rememberedCredentials.email);
+      setPassword(rememberedCredentials.password);
+      setRememberLogin(true);
+    }
     setNative(nativeRuntime);
     setMode(initialMode);
     setApiUrl(initialUrl);
@@ -319,7 +325,7 @@ export function AppAccessGate() {
                     </div>
                     <label className="app-access-field app-access-login-field"><span>邮箱</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete="email" /></label>
                     <label className="app-access-field app-access-login-field"><span>密码</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} autoComplete={authMode === "LOGIN" ? "current-password" : "new-password"} /></label>
-                    {authMode === "LOGIN" ? <div className="app-access-login-options"><label className="app-access-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>记住密码</span><small>仅保留登录状态</small></label><button type="button" className="app-access-link" onClick={() => selectAuthMode("RECOVER")}>忘记密码？</button></div> : null}
+                    {authMode === "LOGIN" ? <div className="app-access-login-options"><label className="app-access-remember"><input type="checkbox" checked={rememberLogin} onChange={(event) => setRememberLogin(event.target.checked)} /><span>记住账密</span><small>保存在本机</small></label><button type="button" className="app-access-link" onClick={() => selectAuthMode("RECOVER")}>忘记密码？</button></div> : null}
                   </>}
                   {authError ? <div className="app-access-status error">{authError}</div> : null}
                   {authMessage ? <div className="app-access-status success">{authMessage}</div> : null}
