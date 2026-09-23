@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { DataMode } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudLogin, cloudLogout, cloudMe, cloudRecoverPassword, cloudRegister, cloudRegistrationStatus } from "@/lib/stark/repository/cloud-auth";
-import { getCloudAuthUser, getRememberedCloudCredentials, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
+import { getCloudAuthToken, getCloudAuthUser, getRememberedCloudCredentials, isCloudAuthRemembered, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
@@ -157,6 +157,13 @@ export function AppAccessGate() {
 
     if (nativeRuntime && initialMode === "LOCAL") {
       setPhase("LOCAL");
+    } else if (nativeRuntime && getCloudAuthToken() && getCloudAuthUser()) {
+      manager.setCloudApiUrl(initialUrl);
+      void manager.switchMode("CLOUD").then(() => {
+        if (mountedRef.current) completeAccess();
+      }).catch(() => {
+        if (mountedRef.current) void checkCloud(initialUrl, true);
+      });
     } else {
       void checkCloud(initialUrl, true);
     }

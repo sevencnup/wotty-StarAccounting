@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudMe } from "@/lib/stark/repository/cloud-auth";
+import { getCloudAuthToken, getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime } from "@/lib/stark/storage/local-config";
 
 const manager = new DataModeManager();
@@ -19,6 +20,7 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     mountedRef.current = true;
+    let cloudValidationTimer: number | null = null;
 
     async function authorize() {
       try {
@@ -27,10 +29,20 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
           await manager.switchMode("LOCAL");
         } else {
           const url = getCloudApiUrl();
+          const token = getCloudAuthToken();
+          const cachedUser = getCloudAuthUser();
+          if (!token || !cachedUser) throw new Error("未登录云端账户");
           manager.setCloudApiUrl(url);
-          const user = await cloudMe(url);
-          if (!user) throw new Error("未登录云端账户");
           await manager.switchMode("CLOUD");
+          if (mountedRef.current) setAuthorized(true);
+          cloudValidationTimer = window.setTimeout(() => {
+            void cloudMe(url).then((user) => {
+              if (!user && mountedRef.current) window.location.replace(getEntryUrl());
+            }).catch(() => {
+              // A sleeping Android network must not turn a valid cached login into a logout.
+            });
+          }, 500);
+          return;
         }
         if (mountedRef.current) setAuthorized(true);
       } catch {
@@ -41,6 +53,7 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
     void authorize();
     return () => {
       mountedRef.current = false;
+      if (cloudValidationTimer !== null) window.clearTimeout(cloudValidationTimer);
     };
   }, []);
 

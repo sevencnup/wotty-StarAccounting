@@ -66,6 +66,9 @@ export function MobileBottomNav() {
   const visiblePathname = pathname;
   const backgroundedAtRef = useRef<number | null>(null);
   const recoverOnNextNavigationRef = useRef(false);
+  const visiblePathnameRef = useRef(visiblePathname);
+  const recoveryTimerRef = useRef<number | null>(null);
+  visiblePathnameRef.current = visiblePathname;
 
   useEffect(() => {
     const markBackgrounded = () => {
@@ -108,6 +111,7 @@ export function MobileBottomNav() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", markBackgrounded);
       window.removeEventListener("pageshow", handlePageShow);
+      if (recoveryTimerRef.current !== null) window.clearTimeout(recoveryTimerRef.current);
     };
   }, [router]);
 
@@ -153,8 +157,15 @@ export function MobileBottomNav() {
                 if (recoverOnNextNavigationRef.current) {
                   event.preventDefault();
                   recoverOnNextNavigationRef.current = false;
-                  persistPendingNavigation(appRoute(item.href));
-                  window.location.replace(appRoute("/app"));
+                  const target = appRoute(item.href);
+                  router.replace(target);
+                  if (recoveryTimerRef.current !== null) window.clearTimeout(recoveryTimerRef.current);
+                  recoveryTimerRef.current = window.setTimeout(() => {
+                    recoveryTimerRef.current = null;
+                    if (appRoute(visiblePathnameRef.current) === target) return;
+                    persistPendingNavigation(target);
+                    window.location.replace(appRoute("/app"));
+                  }, 800);
                 }
               }}
             >

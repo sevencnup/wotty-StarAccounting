@@ -1,5 +1,6 @@
 import { clearCloudAuth, getCloudAuthToken, isCloudAuthRemembered, setCloudAuth, setRememberedCloudCredentials, type CloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCurrentAccountId, setCurrentAccountId } from "@/lib/stark/storage/local-config";
+import { CloudRequestError, isCloudAuthenticationFailure } from "@/lib/stark/repository/cloud-request-error";
 
 type AuthResponse = { token: string; user: CloudAuthUser };
 type RegistrationStatusResponse = { registrationEnabled: boolean };
@@ -23,7 +24,7 @@ async function request<T>(baseUrl: string, path: string, init?: RequestInit): Pr
       },
     });
     const body = await response.json().catch(() => ({})) as { error?: string };
-    if (!response.ok) throw new Error(body.error || `云端请求失败（${response.status}）`);
+    if (!response.ok) throw new CloudRequestError(body.error || `云端请求失败（${response.status}）`, response.status);
     return body as T;
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
@@ -105,9 +106,12 @@ export async function cloudMe(baseUrl: string) {
     if (user.defaultAccountId) setCurrentAccountId(user.defaultAccountId);
     await syncCurrentAccountId(baseUrl, user.defaultAccountId, user.id);
     return user;
-  } catch {
-    clearCloudAuth();
-    return null;
+  } catch (error) {
+    if (isCloudAuthenticationFailure(error)) {
+      clearCloudAuth();
+      return null;
+    }
+    throw error;
   }
 }
 

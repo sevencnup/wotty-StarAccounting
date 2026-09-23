@@ -1,5 +1,5 @@
-export const CURRENT_APP_VERSION_CODE = 118;
-export const CURRENT_APP_VERSION_NAME = "0.0.118";
+export const CURRENT_APP_VERSION_CODE = 119;
+export const CURRENT_APP_VERSION_NAME = "0.0.119";
 export const APP_UPDATE_BASE_URL = "https://StarAccounting.wotty.app";
 
 export type AppVersionInfo = {
