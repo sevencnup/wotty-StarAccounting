@@ -29,12 +29,14 @@ function getDestination() {
 }
 
 /** 检测后端和数据库；根入口与受保护路由共用。 */
-export async function verifyCloudConnection(urlValue: string) {
+export async function verifyCloudConnection(urlValue: string, signal?: AbortSignal) {
   const url = normalizeUrl(urlValue);
   if (!url) throw new Error("请输入云端 API 地址");
 
   const controller = new AbortController();
+  const abort = () => controller.abort();
   const timer = window.setTimeout(() => controller.abort(), 5000);
+  signal?.addEventListener("abort", abort, { once: true });
   try {
     const response = await fetch(`${url}/api/health`, { signal: controller.signal });
     const payload = await response.json() as { status?: string; db?: boolean };
@@ -42,6 +44,7 @@ export async function verifyCloudConnection(urlValue: string) {
     if (!payload.db) throw new Error("后端服务可访问，但数据库尚未连接");
   } finally {
     window.clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
   }
 }
 
@@ -71,6 +74,13 @@ export function AppAccessGate() {
   const mountedRef = useRef(true);
   const stableShellHeightRef = useRef(0);
   const cloudCheckSequenceRef = useRef(0);
+  const cloudCheckAbortRef = useRef<AbortController | null>(null);
+
+  function cancelCloudCheck() {
+    cloudCheckSequenceRef.current += 1;
+    cloudCheckAbortRef.current?.abort();
+    cloudCheckAbortRef.current = null;
+  }
 
   function completeAccess() {
     const destination = new URL(destinationRef.current, window.location.origin);
@@ -79,6 +89,9 @@ export function AppAccessGate() {
   }
 
   async function checkCloud(urlValue: string, resumeIfAuthenticated: boolean) {
+    cancelCloudCheck();
+    const controller = new AbortController();
+    cloudCheckAbortRef.current = controller;
     const checkSequence = ++cloudCheckSequenceRef.current;
     const canUpdateCloud = () => mountedRef.current && cloudCheckSequenceRef.current === checkSequence;
     const url = normalizeUrl(urlValue);
@@ -89,7 +102,7 @@ export function AppAccessGate() {
     setApiVerified(false);
     setAuthError("");
     try {
-      await verifyCloudConnection(url);
+      await verifyCloudConnection(url, controller.signal);
       if (!canUpdateCloud()) return;
       manager.setCloudApiUrl(url);
       setCloudApiUrl(url);
@@ -120,6 +133,8 @@ export function AppAccessGate() {
       setConnectionMessage(error instanceof Error && error.message ? error.message : "连接失败，请检查 API 地址和网络权限");
       setApiVerified(false);
       setPhase("AUTH");
+    } finally {
+      if (cloudCheckAbortRef.current === controller) cloudCheckAbortRef.current = null;
     }
   }
 
@@ -167,7 +182,7 @@ export function AppAccessGate() {
 
     return () => {
       mountedRef.current = false;
-      cloudCheckSequenceRef.current += 1;
+      cancelCloudCheck();
       window.removeEventListener("orientationchange", updateShellHeightForOrientation);
       visualViewport?.removeEventListener("resize", updateKeyboardLayout);
     };
@@ -175,7 +190,7 @@ export function AppAccessGate() {
 
   async function enterLocalMode() {
     if (!native) return;
-    cloudCheckSequenceRef.current += 1;
+    cancelCloudCheck();
     await manager.switchMode("LOCAL");
     completeAccess();
   }
@@ -237,7 +252,7 @@ export function AppAccessGate() {
   }
 
   function changeApiUrl(value: string) {
-    cloudCheckSequenceRef.current += 1;
+    cancelCloudCheck();
     setApiUrl(value);
     setApiVerified(false);
     setConnectionState("IDLE");
@@ -257,7 +272,7 @@ export function AppAccessGate() {
   }
 
   function logoutCloud() {
-    cloudCheckSequenceRef.current += 1;
+    cancelCloudCheck();
     cloudLogout();
     setCloudUser(null);
     setAuthError("");
@@ -292,16 +307,21 @@ export function AppAccessGate() {
   }
 
   function switchToCloud() {
-    cloudCheckSequenceRef.current += 1;
+    cancelCloudCheck();
     setKeyboardOpen(false);
     setMode("CLOUD");
     setPhase("AUTH");
+    void checkCloud(apiUrl, true);
   }
 
   return (
     <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`}>
       <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
-        {mode === "LOCAL" && native ? (
+        {phase === "BOOTING" ? (
+          <section className="app-access-local-panel" aria-live="polite">
+            <strong>正在准备账本...</strong>
+          </section>
+        ) : mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
             <strong>本地模式</strong>
             <p>数据只保存在这台设备，不需要服务器或登录。</p>

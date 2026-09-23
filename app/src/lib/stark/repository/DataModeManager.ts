@@ -3,7 +3,7 @@ import { getCurrentDataMode, setCurrentDataMode } from "@/lib/stark/storage/loca
 import { LocalRepository } from "@/lib/stark/repository/LocalRepository";
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { RemoteRepository } from "@/lib/stark/repository/RemoteRepository";
-import { selectDataRepository } from "@/lib/stark/repository/data-mode";
+import { createModeAwareRepository, selectDataRepository } from "@/lib/stark/repository/data-mode";
 import { getCloudAuthToken } from "@/lib/stark/storage/cloud-auth";
 
 // 页面切换会创建新的 DataModeManager。仓库本身保持共享，才能复用短期
@@ -15,6 +15,9 @@ export class DataModeManager {
   private readonly localRepo = sharedLocalRepo;
   private readonly remoteRepo = sharedRemoteRepo;
   private currentMode: DataMode = "LOCAL";
+  private readonly modeAwareRepo = createModeAwareRepository<DataRepository>(() =>
+    selectDataRepository<DataRepository>(this.resolveCurrentMode(), this.remoteRepo, this.localRepo),
+  );
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -23,7 +26,7 @@ export class DataModeManager {
   }
 
   getRepository(): DataRepository {
-    return selectDataRepository<DataRepository>(this.currentMode, this.remoteRepo, this.localRepo);
+    return this.modeAwareRepo;
   }
 
   getLocalRepository(): DataRepository {
@@ -31,7 +34,7 @@ export class DataModeManager {
   }
 
   getMode(): DataMode {
-    return this.currentMode;
+    return this.resolveCurrentMode();
   }
 
   setCloudApiUrl(url: string) {
@@ -45,5 +48,12 @@ export class DataModeManager {
     this.remoteRepo.clearCache();
     this.currentMode = mode;
     setCurrentDataMode(mode);
+  }
+
+  private resolveCurrentMode(): DataMode {
+    if (typeof window !== "undefined") {
+      this.currentMode = getCurrentDataMode() as DataMode;
+    }
+    return this.currentMode;
   }
 }
