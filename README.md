@@ -133,7 +133,7 @@ app\android\gradlew.bat -p api-server run
 
 ```bash
 cp .env.example .env
-# 编辑 .env，替换数据库密码、JWT_SECRET 和管理员恢复密钥
+# 编辑 .env，设置数据库密码、JWT_SECRET 和管理员恢复密钥；首次部署将 DATABASE_URL 留空
 docker compose up -d --build
 ```
 
@@ -141,9 +141,11 @@ docker compose up -d --build
 
 - Web：`12366`
 - API：`12367`
-- MySQL：仅在 Compose 内部网络使用
+- MySQL：宿主机回环地址 `127.0.0.1:3307`，不直接暴露到公网；可通过 `MYSQL_HOST_PORT` 修改
 
-MySQL 数据保存在 `mysql-data` 数据卷中。普通停止或重启不会删除数据。
+MySQL 首次启动会创建空数据库和应用账号，API 会在数据库可用后自动创建业务表。账单保存在
+`mysql-data` 命名数据卷中，普通停止、重启或更新镜像不会删除数据。已有 MySQL 用户可在
+`.env` 中填写 `DATABASE_URL`，API 会继续使用指定数据库而不是内置数据库。
 
 > `docker compose down -v` 会删除 MySQL 数据卷和全部云端账本。只有确认已经备份且确实要
 > 清空数据库时才能执行。

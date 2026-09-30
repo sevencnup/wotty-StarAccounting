@@ -46,6 +46,11 @@ function getDefaultCloudApiUrl() {
 
   const hostname = window.location.hostname || DEFAULT_CLOUD_API_HOST;
   const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+  const standardWebPort = window.location.port === ""
+    || (protocol === "https:" && window.location.port === "443")
+    || (protocol === "http:" && window.location.port === "80");
+  if (!isNativeAppRuntime() && standardWebPort) return window.location.origin;
+
   return `${protocol}//${hostname}:${DEFAULT_CLOUD_API_PORT}`;
 }
 
@@ -59,6 +64,19 @@ function migrateCloudApiUrl(url: string) {
 export function getCloudApiUrl() {
   const saved = readValue("cloud-api-url");
   if (!saved) return getDefaultCloudApiUrl();
+
+  if (typeof window !== "undefined" && !isNativeAppRuntime()) {
+    try {
+      const savedUrl = new URL(saved);
+      if (savedUrl.hostname === window.location.hostname && savedUrl.port === String(DEFAULT_CLOUD_API_PORT)) {
+        const origin = window.location.origin;
+        writeValue("cloud-api-url", origin);
+        return origin;
+      }
+    } catch {
+      // Keep invalid values editable on the API connection screen.
+    }
+  }
 
   const migrated = migrateCloudApiUrl(saved);
   if (migrated !== saved) writeValue("cloud-api-url", migrated);
