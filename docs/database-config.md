@@ -16,7 +16,7 @@
 
 ## 1. 准备 MySQL
 
-应用不会安装 MySQL，也不会自动执行 `CREATE DATABASE`。首次部署前需要先创建数据库和用户：
+API 服务本身不会安装 MySQL，也不会自动执行 `CREATE DATABASE`。使用外部 MySQL 时，需要先创建数据库和用户：
 
 ```sql
 CREATE DATABASE star_accounting
@@ -64,10 +64,10 @@ JWT_SECRET=请替换为至少 32 位的随机字符串
 ACCOUNT_ADMIN_KEY=请替换为至少 12 位的随机管理员恢复密钥
 ```
 
-容器连接同一 Compose 网络中的 MySQL 时，将 `127.0.0.1` 改为 MySQL 服务名，例如：
+Docker Compose 新部署可以留空 `DATABASE_URL`，由项目附带的 MySQL 容器自动创建数据库。API 使用 host 网络，因此连接地址为宿主机回环地址 `127.0.0.1:3307`，而不是 Compose 服务名。已有 MySQL 部署则可填写外部数据库连接串，例如：
 
 ```text
-DATABASE_URL=jdbc:mysql://mysql:3306/star_accounting
+DATABASE_URL=jdbc:mysql://<host>:3306/star_accounting
 ```
 
 不要把真实密码写入 Dockerfile、镜像或 Git 仓库，应通过部署环境变量、Compose 的 `.env` 文件或密钥管理服务注入。
@@ -109,20 +109,22 @@ curl http://127.0.0.1:12367/api/health
 
 ## 5. Docker Compose 首次部署
 
-项目根目录提供了 `docker-compose.yml`、`Dockerfile.api` 和 `Dockerfile.web`，可以同时启动 MySQL、API 和 Web：
+项目根目录提供了 `docker-compose.yml`、`Dockerfile.api` 和 `Dockerfile.web`，可以同时启动 MySQL、API 和 Web。首次部署按以下步骤执行：
 
 ```bash
 cp .env.example .env
-# 编辑 .env，替换两个密码
+# 设置强密码和密钥；首次部署将 DATABASE_URL 留空
 docker compose up -d --build
 ```
 
 Compose 的首次启动顺序如下：
 
-1. MySQL 在空数据卷中创建 `MYSQL_DATABASE`、`DB_USER` 和 `DB_PASSWORD` 指定的数据库账号。
+1. MySQL 在空数据卷中创建 `MYSQL_DATABASE` 指定的数据库，以及 `DB_USER` 应用账号。
 2. MySQL 健康检查通过后，API 容器才会启动。
 3. API 连接 MySQL，并自动创建业务表和缺失字段。
 4. Web 容器监听 `12366`，API 容器监听 `12367`。
+
+MySQL 宿主机端口默认是 `127.0.0.1:3307`，只供本机 API 连接，避免与宿主机常见的 `3306` 冲突，也不会直接暴露到公网。需要更换端口时设置 `MYSQL_HOST_PORT`。API 保持 host 网络模式，故该 Compose 部署面向 Linux Docker 主机。
 
 访问地址：
 
@@ -131,7 +133,7 @@ Compose 的首次启动顺序如下：
 
 首次打开根入口会自动检测云端 API，再进行注册或登录；Android App 还可在登录页选择本地模式。不同账户只能看到自己拥有的账本。已登录后可在“设置 → 账户设置”修改密码，并用管理员恢复密钥控制是否允许新用户注册。
 
-MySQL 数据保存在 `mysql-data` 数据卷中。`MYSQL_DATABASE`、`MYSQL_USER` 和 `MYSQL_PASSWORD` 只会在该数据卷首次为空时初始化；普通重启不会删除数据或重新初始化账号。
+MySQL 数据保存在 `mysql-data` 数据卷中。`MYSQL_DATABASE`、`DB_USER` 和 `DB_PASSWORD` 只会在该数据卷首次为空时初始化；普通重启不会删除数据或重新初始化账号。若使用已有外部 MySQL，在 `.env` 中填写 `DATABASE_URL` 即可继续使用外部库；API 仍会等待 Compose 中 MySQL 健康后启动。
 
 如果确实要重置整个数据库，确认已备份后再执行：
 
