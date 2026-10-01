@@ -64,6 +64,10 @@ function migrateCloudApiUrl(url: string) {
   );
 }
 
+function isLocalDevelopmentHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
+}
+
 export function getCloudApiUrl() {
   const saved = readValue("cloud-api-url");
   if (!saved) return getDefaultCloudApiUrl();
@@ -72,6 +76,10 @@ export function getCloudApiUrl() {
     try {
       const savedUrl = new URL(saved);
       const isCurrentHost = savedUrl.hostname === window.location.hostname;
+      const isLocalDevelopment = isLocalDevelopmentHost(window.location.hostname)
+        && isLocalDevelopmentHost(savedUrl.hostname)
+        && window.location.protocol === "http:"
+        && savedUrl.protocol === "http:";
       const shouldUseSameOrigin = isCurrentHost
         && isStandardWebOrigin(window.location.protocol, window.location.port)
         && savedUrl.port === String(DEFAULT_CLOUD_API_PORT);
@@ -83,6 +91,14 @@ export function getCloudApiUrl() {
       // Earlier builds incorrectly rewrote the development Web port (12366)
       // into the API address. Repair that persisted value automatically.
       if (isCurrentHost && savedUrl.port === window.location.port && !isStandardWebOrigin(window.location.protocol, window.location.port)) {
+        const apiUrl = `${window.location.protocol}//${window.location.hostname}:${DEFAULT_CLOUD_API_PORT}`;
+        writeValue("cloud-api-url", apiUrl);
+        return apiUrl;
+      }
+      // The development launcher may choose a new API port after Windows
+      // restarts. A saved localhost API port from the previous run is stale;
+      // follow the current Web origin's adjacent API port instead.
+      if (isLocalDevelopment && savedUrl.port !== String(DEFAULT_CLOUD_API_PORT)) {
         const apiUrl = `${window.location.protocol}//${window.location.hostname}:${DEFAULT_CLOUD_API_PORT}`;
         writeValue("cloud-api-url", apiUrl);
         return apiUrl;

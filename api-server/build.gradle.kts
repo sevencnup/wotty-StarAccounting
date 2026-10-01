@@ -23,6 +23,7 @@ dependencies {
     implementation("io.ktor:ktor-server-status-pages:3.0.3")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.0.3")
     implementation("com.auth0:java-jwt:4.4.0")
+    implementation("de.mkammerer:argon2-jvm:2.11")
 
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.12")

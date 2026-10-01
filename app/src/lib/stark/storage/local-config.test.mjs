@@ -37,3 +37,18 @@ test("keeps a standard-port deployment on its same-origin API", async () => {
   assert.equal(getCloudApiUrl(), "https://star-accounting.example");
   assert.equal(storage.get("wotty-stark:cloud-api-url"), "https://star-accounting.example");
 });
+
+test("repairs a stale adjacent localhost API port after the Web port changes", async () => {
+  const previousApiPort = process.env.NEXT_PUBLIC_API_PORT;
+  process.env.NEXT_PUBLIC_API_PORT = "12462";
+  const storage = installBrowser("http://localhost:12461", "http://localhost:12367");
+  try {
+    const { getCloudApiUrl } = await import(`./local-config.ts?stale-dev-port=${Date.now()}`);
+
+    assert.equal(getCloudApiUrl(), "http://localhost:12462");
+    assert.equal(storage.get("wotty-stark:cloud-api-url"), "http://localhost:12462");
+  } finally {
+    if (previousApiPort === undefined) delete process.env.NEXT_PUBLIC_API_PORT;
+    else process.env.NEXT_PUBLIC_API_PORT = previousApiPort;
+  }
+});

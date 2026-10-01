@@ -6,6 +6,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
+import de.mkammerer.argon2.Argon2Factory
 import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 
@@ -60,6 +61,7 @@ object AccountAdminKey {
 /** PBKDF2 is available in the JDK and avoids storing user passwords in plain text. */
 object PasswordHasher {
     private val random = SecureRandom()
+    private val legacyArgon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id)
 
     fun hash(password: String): String {
         require(password.length >= 8) { "Password must contain at least 8 characters" }
@@ -83,6 +85,12 @@ object PasswordHasher {
             val expected = runCatching { Base64.getUrlDecoder().decode(parts[3]) }.getOrNull() ?: return false
             val actual = derive(password, salt, iterations)
             return MessageDigest.isEqual(actual, expected)
+        }
+        // Users created by the previous Node/Prisma service use Argon2id. Keep
+        // those accounts compatible; AuthRoutes upgrades a successful login to
+        // the current PBKDF2 format immediately afterwards.
+        if (stored.startsWith("\$argon2id\$")) {
+            return runCatching { legacyArgon2.verify(stored, password.toCharArray()) }.getOrDefault(false)
         }
         // Existing development databases may contain a legacy plain-text password.
         // A successful login is upgraded to PBKDF2 by the login route.
