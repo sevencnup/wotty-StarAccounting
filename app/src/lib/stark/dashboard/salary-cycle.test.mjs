@@ -110,3 +110,28 @@ test("calculates what remains from a verified pre-payday balance without adding 
   assert.equal(Math.round(afterBaseline.balance * 100) / 100, 1725.08);
   assert.equal(Math.round(calculateBalanceFromBaseline(798.15, afterBaseline) * 100) / 100, 2523.23);
 });
+
+test("allows a baseline at the current cutoff with no later cashflow", () => {
+  const cutoff = new Date(2026, 9, 1, 12);
+  const cashflow = calculateCashflowSinceBalanceBaseline([], [], "2026-10-01 12:00:00", cutoff);
+
+  assert.ok(cashflow);
+  assert.equal(cashflow.balance, 0);
+  assert.equal(calculateBalanceFromBaseline(916.35, cashflow), 916.35);
+});
+
+test("keeps the verified current balance separate from salary-cycle net change", () => {
+  const current = new Date(2026, 9, 1, 20);
+  const transactions = [
+    transaction("october-expense", "EXPENSE", "2026-10-01 09:30:00", 178.12),
+  ];
+  const sinceBaseline = calculateCashflowSinceBalanceBaseline(
+    transactions,
+    [],
+    "2026-10-01 00:00:00",
+    current,
+  );
+
+  assert.equal(sinceBaseline.balance, -178.12);
+  assert.equal(calculateBalanceFromBaseline(1094.47, sinceBaseline), 916.35);
+});

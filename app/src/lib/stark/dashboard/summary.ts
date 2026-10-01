@@ -65,6 +65,8 @@ export interface HomeForecast {
   projectedExpense: number;
   projectedBalance: number;
   monthBalance: number;
+  /** Current account balance after the verified baseline and all later cashflow. */
+  currentBalance: number | null;
   /** Current amount remaining after a verified account-balance baseline. */
   salaryCycleBalance: number;
   /** Net income minus outflows within the payday-to-payday detail range only. */
@@ -408,6 +410,12 @@ function buildForecast(
   const baselineAmount = account?.openingBalance;
   const baselineDate = account?.openingBalanceDate ?? null;
   const hasBalanceBaseline = typeof baselineAmount === "number" && Number.isFinite(baselineAmount) && Boolean(baselineDate);
+  const cashflowThroughNow = hasBalanceBaseline && baselineDate
+    ? calculateCashflowSinceBalanceBaseline(transactions, savingsPlans, baselineDate, referenceDate)
+    : null;
+  const currentBalance = hasBalanceBaseline
+    ? calculateBalanceFromBaseline(baselineAmount, cashflowThroughNow)
+    : null;
   const cashflowSinceBaseline = hasBalanceBaseline && baselineDate
     ? calculateCashflowSinceBalanceBaseline(transactions, savingsPlans, baselineDate, cashflow.range.endExclusive)
     : null;
@@ -419,11 +427,12 @@ function buildForecast(
     projectedExpense: expense,
     projectedBalance: monthBalance,
     monthBalance,
+    currentBalance,
     salaryCycleBalance: balanceFromBaseline ?? cashflow.balance,
     salaryCycleNetChange: cashflow.balance,
-    hasBalanceBaseline: balanceFromBaseline !== null,
-    balanceBaselineAmount: balanceFromBaseline === null ? null : baselineAmount ?? null,
-    balanceBaselineDate: balanceFromBaseline === null ? null : baselineDate,
+    hasBalanceBaseline: currentBalance !== null,
+    balanceBaselineAmount: currentBalance === null ? null : baselineAmount ?? null,
+    balanceBaselineDate: currentBalance === null ? null : baselineDate,
     salaryCycleRangeLabel: cashflow.range.label,
     salaryDay,
     daysLeft: 0,

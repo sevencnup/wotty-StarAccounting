@@ -254,7 +254,7 @@ function StarkCrystalHero({
 
   const displayAmount =
     activeMetric === "balance"
-      ? (balanceMode === "month" ? summary.forecast.monthBalance : summary.forecast.salaryCycleBalance)
+      ? (summary.forecast.currentBalance ?? (balanceMode === "month" ? summary.forecast.monthBalance : summary.forecast.salaryCycleBalance))
       : activeMetric === "expense"
         ? summary.expense
         : summary.income;
@@ -262,7 +262,7 @@ function StarkCrystalHero({
   const displayTitle =
     activeMetric === "balance"
         ? (balanceMode === "month"
-          ? (isReportingYearKey(reportingMonth) ? "全年结余" : "本月结余")
+          ? (summary.forecast.currentBalance !== null ? "当前结余" : (isReportingYearKey(reportingMonth) ? "全年净变动" : "本月净变动"))
           : summary.forecast.hasBalanceBaseline ? "当前结余" : "本期净变动")
       : activeMetric === "expense"
         ? (isReportingYearKey(reportingMonth) ? "全年支出" : "本月支出")

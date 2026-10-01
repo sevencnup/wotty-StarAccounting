@@ -1,12 +1,16 @@
 import { isReportingMonthKey, isReportingYearKey, nextMonthKey, previousMonthKey, reportingMonthDate, reportingMonthSequence, reportingPeriodMonths } from "../utils/format";
 
 function balanceBaselineTransactionMonths(reportingMonth: string, balanceBaselineDate?: string | null) {
-  if (isReportingYearKey(reportingMonth)) return [];
   const baselineMonth = balanceBaselineDate?.slice(0, 7) ?? "";
   if (!isReportingMonthKey(baselineMonth)) return [];
 
   const start = reportingMonthDate(baselineMonth);
-  const end = reportingMonthDate(reportingMonth);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  // The hero always shows the current account balance once a baseline exists,
+  // even while the user inspects an older reporting month. Load through today,
+  // never through a selected future month.
+  const end = reportingMonthDate(currentMonth);
   if (start > end) return [];
 
   const months: string[] = [];

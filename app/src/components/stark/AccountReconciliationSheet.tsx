@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { Account, Transaction } from "@/lib/stark/models";
-import { calculateLedgerCashflow, earliestTransactionDate } from "@/lib/stark/ledger/balance";
+import { calculateLedgerCashflow } from "@/lib/stark/ledger/balance";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
@@ -45,7 +45,9 @@ export function AccountReconciliationSheet() {
         if (!active) return;
         setTransactions(items);
         setAccount(currentAccount);
-        setOpeningDate((current) => current || currentAccount?.openingBalanceDate?.slice(0, 10) || earliestTransactionDate(items) || todayDate());
+        // Default to today; the oldest imported transaction is not a reliable
+        // opening date when historical statements may be incomplete.
+        setOpeningDate((current) => current || currentAccount?.openingBalanceDate?.slice(0, 10) || todayDate());
         setActualBalance((current) => current || (currentAccount?.openingBalanceDate ? String(currentAccount.openingBalance ?? "") : ""));
         setLoadError(false);
       })

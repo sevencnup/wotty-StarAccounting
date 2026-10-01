@@ -139,7 +139,9 @@ export function calculateCashflowSinceBalanceBaseline(
   endExclusive: Date,
 ) {
   const start = parseDate(baselineDate);
-  if (!start || Number.isNaN(endExclusive.getTime()) || start >= endExclusive) return null;
+  // A baseline recorded at the current moment is valid even when there are no
+  // transactions after it yet. Only a future baseline is unusable.
+  if (!start || Number.isNaN(endExclusive.getTime()) || start > endExclusive) return null;
   return calculateCashflowForRange(transactions, savingsPlans, {
     start,
     endExclusive,
