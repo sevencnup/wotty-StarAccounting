@@ -346,6 +346,11 @@ function StarkCrystalHero({
         </div>
         {activeMetric === "balance" ? (
           <div className="stark-cycle-breakdown" aria-label={translateValue("发薪周期资金明细", locale)}>
+            {balanceMode === "salary" ? (
+              <span className="stark-cycle-carryover">
+                {translateValue("上期结余", locale)} {summary.forecast.previousSalaryCycleBalance < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.previousSalaryCycleBalance))}
+              </span>
+            ) : null}
             <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
             <span>{translateValue(balanceMode === "salary" ? "消费" : "月消费", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
             <span>{translateValue("储蓄", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
@@ -355,7 +360,10 @@ function StarkCrystalHero({
 
         <div className="stark-hero-footer-row">
           <div className="stark-hero-footer-left">
-            <span className="stark-tx-count">{locale === "en-US" ? `${transactionCount} entries` : `共 ${transactionCount} 笔记账`}</span>
+            <span className="stark-tx-count">
+              {locale === "en-US" ? `${transactionCount} entries` : `共 ${transactionCount} 笔记账`}
+              {activeMetric === "balance" && balanceMode === "salary" ? ` · ${summary.forecast.salaryCycleRangeLabel}` : ""}
+            </span>
             {activeMetric === "balance" && balanceMode === "salary" ? (
               <button
                 type="button"

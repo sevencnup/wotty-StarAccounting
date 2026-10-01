@@ -30,19 +30,51 @@ export function normalizeSalaryDay(value: number | null | undefined) {
   return Number.isFinite(parsed) ? Math.max(1, Math.min(28, Math.round(parsed))) : 15;
 }
 
-export function salaryCycleRange(reportingMonth: string, salaryDay = 15): SalaryCycleRange {
+function rangeFromSalaryCycleStart(start: Date): SalaryCycleRange {
+  const endExclusive = new Date(start.getFullYear(), start.getMonth() + 1, start.getDate());
+  return {
+    start,
+    endExclusive,
+    label: `${formatDate(start)} 至 ${formatDate(new Date(endExclusive.getTime() - 86_400_000))}`,
+  };
+}
+
+/**
+ * Returns the salary cycle for a selected reporting month. When the selected month is
+ * the current month and the payday has not arrived yet, the active cycle began on the
+ * previous month's payday rather than on an upcoming payday.
+ */
+export function salaryCycleRange(reportingMonth: string, salaryDay = 15, referenceDate = new Date()): SalaryCycleRange {
   const day = normalizeSalaryDay(salaryDay);
   const reportingDate = isReportingYearKey(reportingMonth) ? new Date(Number(reportingMonth), 0, 1) : reportingMonthDate(reportingMonth);
-  const start = isReportingYearKey(reportingMonth)
-    ? reportingDate
-    : new Date(reportingDate.getFullYear(), reportingDate.getMonth(), day);
-  const endExclusive = isReportingYearKey(reportingMonth)
-    ? new Date(Number(reportingMonth) + 1, 0, 1)
-    : new Date(start.getFullYear(), start.getMonth() + 1, day);
-  const label = isReportingYearKey(reportingMonth)
-    ? `${reportingMonth}-01-01`
-    : `${formatDate(start)} 至 ${formatDate(new Date(endExclusive.getTime() - 86_400_000))}`;
-  return { start, endExclusive, label };
+  if (isReportingYearKey(reportingMonth)) {
+    return {
+      start: reportingDate,
+      endExclusive: new Date(Number(reportingMonth) + 1, 0, 1),
+      label: `${reportingMonth}-01-01`,
+    };
+  }
+
+  const validReferenceDate = Number.isNaN(referenceDate.getTime()) ? new Date() : referenceDate;
+  const selectedIsCurrentMonth = reportingDate.getFullYear() === validReferenceDate.getFullYear()
+    && reportingDate.getMonth() === validReferenceDate.getMonth();
+  const startMonthOffset = selectedIsCurrentMonth && validReferenceDate.getDate() < day ? -1 : 0;
+  const start = new Date(reportingDate.getFullYear(), reportingDate.getMonth() + startMonthOffset, day);
+  return rangeFromSalaryCycleStart(start);
+}
+
+/** The complete salary cycle immediately before the resolved reporting cycle. */
+export function previousSalaryCycleRange(reportingMonth: string, salaryDay = 15, referenceDate = new Date()): SalaryCycleRange {
+  if (isReportingYearKey(reportingMonth)) {
+    return salaryCycleRange(String(Number(reportingMonth) - 1), salaryDay, referenceDate);
+  }
+  const currentRange = salaryCycleRange(reportingMonth, salaryDay, referenceDate);
+  const day = normalizeSalaryDay(salaryDay);
+  return rangeFromSalaryCycleStart(new Date(
+    currentRange.start.getFullYear(),
+    currentRange.start.getMonth() - 1,
+    day,
+  ));
 }
 
 function formatDate(value: Date) {
@@ -82,8 +114,20 @@ export function calculateSalaryCycleCashflow(
   savingsPlans: SavingsPlan[] = [],
   reportingMonth: string,
   salaryDay = 15,
+  referenceDate = new Date(),
 ) {
-  const range = salaryCycleRange(reportingMonth, salaryDay);
+  const range = salaryCycleRange(reportingMonth, salaryDay, referenceDate);
+  return calculateCashflowForRange(transactions, savingsPlans, range);
+}
+
+export function calculatePreviousSalaryCycleCashflow(
+  transactions: Transaction[],
+  savingsPlans: SavingsPlan[] = [],
+  reportingMonth: string,
+  salaryDay = 15,
+  referenceDate = new Date(),
+) {
+  const range = previousSalaryCycleRange(reportingMonth, salaryDay, referenceDate);
   return calculateCashflowForRange(transactions, savingsPlans, range);
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateSalaryCycleCashflow, salaryCycleRange } from "./salary-cycle.ts";
+import { calculatePreviousSalaryCycleCashflow, calculateSalaryCycleCashflow, salaryCycleRange } from "./salary-cycle.ts";
 
 const transaction = (id, type, date, amount, loanId = null) => ({
   id,
@@ -20,6 +20,21 @@ test("salary cycle runs from the selected payday through the day before the next
   const range = salaryCycleRange("2026-01", 15);
   assert.deepEqual([range.start.getFullYear(), range.start.getMonth() + 1, range.start.getDate()], [2026, 1, 15]);
   assert.deepEqual([range.endExclusive.getFullYear(), range.endExclusive.getMonth() + 1, range.endExclusive.getDate()], [2026, 2, 15]);
+});
+
+test("uses the previous payday for the active current-month cycle before payday", () => {
+  const range = salaryCycleRange("2026-10", 15, new Date(2026, 9, 1, 9));
+
+  assert.deepEqual([range.start.getFullYear(), range.start.getMonth() + 1, range.start.getDate()], [2026, 9, 15]);
+  assert.deepEqual([range.endExclusive.getFullYear(), range.endExclusive.getMonth() + 1, range.endExclusive.getDate()], [2026, 10, 15]);
+});
+
+test("starts a new active cycle on payday and keeps historical month ranges stable", () => {
+  const currentRange = salaryCycleRange("2026-10", 15, new Date(2026, 9, 15, 0));
+  const historicalRange = salaryCycleRange("2026-09", 15, new Date(2026, 9, 1, 9));
+
+  assert.deepEqual([currentRange.start.getFullYear(), currentRange.start.getMonth() + 1, currentRange.start.getDate()], [2026, 10, 15]);
+  assert.deepEqual([historicalRange.start.getFullYear(), historicalRange.start.getMonth() + 1, historicalRange.start.getDate()], [2026, 9, 15]);
 });
 
 test("salary cycle assigns transactions by actual date across a month boundary", () => {
@@ -52,4 +67,21 @@ test("planned savings and unpaid loans do not reduce salary-cycle cashflow", () 
   assert.equal(result.balance, 10000);
   assert.equal(result.savings, 0);
   assert.equal(result.repayment, 0);
+});
+
+test("reports the completed cycle immediately before the active salary cycle", () => {
+  const referenceDate = new Date(2026, 9, 1, 9);
+  const transactions = [
+    transaction("previous-income", "INCOME", "2026-08-16 09:00:00", 5000),
+    transaction("previous-expense", "EXPENSE", "2026-09-14 22:00:00", 1200),
+    transaction("current-income", "INCOME", "2026-09-15 09:00:00", 6000),
+    transaction("current-expense", "EXPENSE", "2026-09-20 09:00:00", 800),
+  ];
+
+  const current = calculateSalaryCycleCashflow(transactions, [], "2026-10", 15, referenceDate);
+  const previous = calculatePreviousSalaryCycleCashflow(transactions, [], "2026-10", 15, referenceDate);
+
+  assert.equal(current.balance, 5200);
+  assert.equal(previous.balance, 3800);
+  assert.equal(previous.range.label, "2026-08-15 至 2026-09-14");
 });

@@ -6,7 +6,7 @@ import {
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
 import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
-import { calculateCalendarPeriodCashflow, calculateSalaryCycleCashflow } from "./salary-cycle";
+import { calculateCalendarPeriodCashflow, calculatePreviousSalaryCycleCashflow, calculateSalaryCycleCashflow } from "./salary-cycle";
 
 export interface HomeTrend {
   labels: string[];
@@ -66,7 +66,8 @@ export interface HomeForecast {
   projectedBalance: number;
   monthBalance: number;
   salaryCycleBalance: number;
-  salaryCycleStartLabel: string;
+  salaryCycleRangeLabel: string;
+  previousSalaryCycleBalance: number;
   salaryDay: number;
   daysLeft: number;
   statusLabel: string;
@@ -385,17 +386,27 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
   return tasks.slice(0, 4);
 }
 
-function buildForecast(transactions: Transaction[], savingsPlans: SavingsPlan[], income: number, expense: number, salaryDay: number, reportingMonth: string): HomeForecast {
+function buildForecast(
+  transactions: Transaction[],
+  savingsPlans: SavingsPlan[],
+  income: number,
+  expense: number,
+  salaryDay: number,
+  reportingMonth: string,
+  referenceDate: Date,
+): HomeForecast {
   const periodCashflow = calculateCalendarPeriodCashflow(transactions, savingsPlans, reportingMonth);
   const monthBalance = periodCashflow.balance;
-  const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay);
+  const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
+  const previousCashflow = calculatePreviousSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
   return {
     projectedIncome: income,
     projectedExpense: expense,
     projectedBalance: monthBalance,
     monthBalance,
     salaryCycleBalance: cashflow.balance,
-    salaryCycleStartLabel: formatMonthDay(cashflow.range.start),
+    salaryCycleRangeLabel: cashflow.range.label,
+    previousSalaryCycleBalance: previousCashflow.balance,
     salaryDay,
     daysLeft: 0,
     statusLabel: monthBalance >= 0 ? "本月当前结余" : "本月当前已超支",
@@ -474,9 +485,12 @@ export function buildHomeSummary(input: {
   savingsPlans?: SavingsPlan[];
   salaryDay?: number;
   reportingMonth?: string;
+  /** Testable reference time for resolving the currently active salary cycle. */
+  referenceDate?: Date;
 }) {
   const currentMonth = input.reportingMonth ?? REPORTING_MONTH_KEY;
   const salaryDay = Math.max(1, Math.min(28, Math.round(input.salaryDay ?? 15)));
+  const referenceDate = input.referenceDate ?? new Date();
   const { current: currentMonthTransactions, previous: previousMonthTransactions } = splitReportingMonthTransactions(
     input.transactions,
     currentMonth,
@@ -495,7 +509,7 @@ export function buildHomeSummary(input: {
   const assetTotal = input.assets.reduce((sum, item) => sum + item.balance, 0) + totalSavings;
   const liabilityTotal = loanTotal;
   const budgetAlerts = buildBudgetAlerts(input.transactions, input.budgets, expense, currentMonth);
-  const forecast = buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth);
+  const forecast = buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth, referenceDate);
   const budgetAllocation = calculateBudgetAllocation({
     income,
     expense,

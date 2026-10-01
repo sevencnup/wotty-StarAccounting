@@ -1,8 +1,18 @@
 import { isReportingYearKey, nextMonthKey, previousMonthKey, reportingMonthSequence, reportingPeriodMonths } from "../utils/format";
 
 export function homeCoreTransactionMonths(reportingMonth: string) {
+  if (isReportingYearKey(reportingMonth)) {
+    return [...new Set([
+      ...reportingPeriodMonths(previousMonthKey(reportingMonth)),
+      ...reportingPeriodMonths(reportingMonth),
+    ])];
+  }
+
+  const previousMonth = previousMonthKey(reportingMonth);
   return [...new Set([
-    ...reportingPeriodMonths(previousMonthKey(reportingMonth)),
+    // The previous completed salary cycle can span two preceding calendar months.
+    ...reportingPeriodMonths(previousMonthKey(previousMonth)),
+    ...reportingPeriodMonths(previousMonth),
     ...reportingPeriodMonths(reportingMonth),
   ])];
 }
