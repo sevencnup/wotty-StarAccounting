@@ -39,7 +39,7 @@ function loadDotEnv(filePath) {
 
 loadDotEnv(path.join(repositoryDirectory, ".env"));
 
-const webPort = 12366;
+const webPort = Number.parseInt(process.env.WEB_PORT ?? "12366", 10);
 const tabRoutes = ["/", "/consumption/", "/savings/", "/loans/", "/assets/", "/accounts/"];
 
 function prefixOutput(name, stream) {
