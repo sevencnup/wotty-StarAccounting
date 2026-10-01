@@ -39,6 +39,12 @@ export function isNativeAppRuntime() {
   return typeof window !== "undefined" && Capacitor.isNativePlatform();
 }
 
+function isStandardWebOrigin(protocol: string, port: string) {
+  return port === ""
+    || (protocol === "https:" && port === "443")
+    || (protocol === "http:" && port === "80");
+}
+
 function getDefaultCloudApiUrl() {
   if (typeof window === "undefined") {
     return `http://${DEFAULT_CLOUD_API_HOST}:${DEFAULT_CLOUD_API_PORT}`;
@@ -46,10 +52,7 @@ function getDefaultCloudApiUrl() {
 
   const hostname = window.location.hostname || DEFAULT_CLOUD_API_HOST;
   const protocol = window.location.protocol === "https:" ? "https:" : "http:";
-  const standardWebPort = window.location.port === ""
-    || (protocol === "https:" && window.location.port === "443")
-    || (protocol === "http:" && window.location.port === "80");
-  if (!isNativeAppRuntime() && standardWebPort) return window.location.origin;
+  if (!isNativeAppRuntime() && isStandardWebOrigin(protocol, window.location.port)) return window.location.origin;
 
   return `${protocol}//${hostname}:${DEFAULT_CLOUD_API_PORT}`;
 }
@@ -68,10 +71,21 @@ export function getCloudApiUrl() {
   if (typeof window !== "undefined" && !isNativeAppRuntime()) {
     try {
       const savedUrl = new URL(saved);
-      if (savedUrl.hostname === window.location.hostname && savedUrl.port === String(DEFAULT_CLOUD_API_PORT)) {
+      const isCurrentHost = savedUrl.hostname === window.location.hostname;
+      const shouldUseSameOrigin = isCurrentHost
+        && isStandardWebOrigin(window.location.protocol, window.location.port)
+        && savedUrl.port === String(DEFAULT_CLOUD_API_PORT);
+      if (shouldUseSameOrigin) {
         const origin = window.location.origin;
         writeValue("cloud-api-url", origin);
         return origin;
+      }
+      // Earlier builds incorrectly rewrote the development Web port (12366)
+      // into the API address. Repair that persisted value automatically.
+      if (isCurrentHost && savedUrl.port === window.location.port && !isStandardWebOrigin(window.location.protocol, window.location.port)) {
+        const apiUrl = `${window.location.protocol}//${window.location.hostname}:${DEFAULT_CLOUD_API_PORT}`;
+        writeValue("cloud-api-url", apiUrl);
+        return apiUrl;
       }
     } catch {
       // Keep invalid values editable on the API connection screen.
