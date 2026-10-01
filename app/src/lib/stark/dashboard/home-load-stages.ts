@@ -1,6 +1,22 @@
-import { isReportingYearKey, nextMonthKey, previousMonthKey, reportingMonthSequence, reportingPeriodMonths } from "../utils/format";
+import { isReportingMonthKey, isReportingYearKey, nextMonthKey, previousMonthKey, reportingMonthDate, reportingMonthSequence, reportingPeriodMonths } from "../utils/format";
 
-export function homeCoreTransactionMonths(reportingMonth: string) {
+function balanceBaselineTransactionMonths(reportingMonth: string, balanceBaselineDate?: string | null) {
+  if (isReportingYearKey(reportingMonth)) return [];
+  const baselineMonth = balanceBaselineDate?.slice(0, 7) ?? "";
+  if (!isReportingMonthKey(baselineMonth)) return [];
+
+  const start = reportingMonthDate(baselineMonth);
+  const end = reportingMonthDate(reportingMonth);
+  if (start > end) return [];
+
+  const months: string[] = [];
+  for (let cursor = start; cursor <= end; cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)) {
+    months.push(`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return months;
+}
+
+export function homeCoreTransactionMonths(reportingMonth: string, balanceBaselineDate?: string | null) {
   if (isReportingYearKey(reportingMonth)) {
     return [...new Set([
       ...reportingPeriodMonths(previousMonthKey(reportingMonth)),
@@ -14,14 +30,16 @@ export function homeCoreTransactionMonths(reportingMonth: string) {
     ...reportingPeriodMonths(previousMonthKey(previousMonth)),
     ...reportingPeriodMonths(previousMonth),
     ...reportingPeriodMonths(reportingMonth),
+    ...balanceBaselineTransactionMonths(reportingMonth, balanceBaselineDate),
   ])];
 }
 
-export function homeSupplementalTransactionMonths(reportingMonth: string, hasYearlyBudget: boolean) {
-  if (isReportingYearKey(reportingMonth)) return homeCoreTransactionMonths(reportingMonth);
+export function homeSupplementalTransactionMonths(reportingMonth: string, hasYearlyBudget: boolean, balanceBaselineDate?: string | null) {
+  if (isReportingYearKey(reportingMonth)) return homeCoreTransactionMonths(reportingMonth, balanceBaselineDate);
 
   const reportingYearMonths = reportingPeriodMonths(reportingMonth.slice(0, 4));
   return [...new Set([
+    ...homeCoreTransactionMonths(reportingMonth, balanceBaselineDate),
     ...reportingMonthSequence(reportingMonth, 5),
     nextMonthKey(reportingMonth),
     ...(hasYearlyBudget ? reportingYearMonths : []),

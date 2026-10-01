@@ -20,7 +20,7 @@ import {
 import { homeCoreTransactionMonths, homeSupplementalTransactionMonths } from "@/lib/stark/dashboard/home-load-stages";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { formatMoney, isReportingYearKey, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
-import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
+import type { Account, Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
 
 const manager = new DataModeManager();
@@ -261,7 +261,9 @@ function StarkCrystalHero({
 
   const displayTitle =
     activeMetric === "balance"
-        ? (balanceMode === "month" ? (isReportingYearKey(reportingMonth) ? "全年结余" : "本月结余") : "当前结余")
+        ? (balanceMode === "month"
+          ? (isReportingYearKey(reportingMonth) ? "全年结余" : "本月结余")
+          : summary.forecast.hasBalanceBaseline ? "当前结余" : "本期净变动")
       : activeMetric === "expense"
         ? (isReportingYearKey(reportingMonth) ? "全年支出" : "本月支出")
         : (isReportingYearKey(reportingMonth) ? "全年收入" : "本月收入");
@@ -348,14 +350,16 @@ function StarkCrystalHero({
           <div className="stark-cycle-breakdown" aria-label={translateValue("发薪周期资金明细", locale)}>
             {balanceMode === "salary" ? (
               <span className="stark-cycle-carryover">
-                {translateValue("发薪前收支", locale)} {summary.forecast.salaryCycleOpeningBalance < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.salaryCycleOpeningBalance))}
+                {summary.forecast.hasBalanceBaseline
+                  ? <>{translateValue("余额基准", locale)} ¥{formatMoney(summary.forecast.balanceBaselineAmount ?? 0)} · {summary.forecast.balanceBaselineDate?.slice(0, 10)}</>
+                  : translateValue("未设置余额基准", locale)}
               </span>
             ) : null}
             <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
             <span>{translateValue(balanceMode === "salary" ? "消费" : "月消费", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
             <span>{translateValue("储蓄", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
             <span>{translateValue("还款", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
-            {balanceMode === "salary" ? (
+            {balanceMode === "salary" && summary.forecast.hasBalanceBaseline ? (
               <span>{translateValue("本期净变动", locale)} {summary.forecast.salaryCycleNetChange < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.salaryCycleNetChange))}</span>
             ) : null}
           </div>
@@ -973,6 +977,7 @@ function StarkCashflowTrend({ transactions, reportingMonth, locale }: { transact
 export function HomeDashboard() {
   const locale = useAppLocale();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [account, setAccount] = useState<Account | null>(null);
   const [assets, setAssets] = useState<Asset[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -1017,8 +1022,9 @@ export function HomeDashboard() {
       setHistoryStatus("loading");
       try {
         const accountId = getCurrentAccountId();
+        const loadedAccount = await repo.getAccount(accountId);
         const [coreTransactions, loadedAvailableMonths] = await Promise.all([
-          repo.getTransactionsByMonths(accountId, homeCoreTransactionMonths(reportingMonth)),
+          repo.getTransactionsByMonths(accountId, homeCoreTransactionMonths(reportingMonth, loadedAccount?.openingBalanceDate)),
           loadAvailableTransactionMonths(repo, accountId),
         ]);
         if (!canUpdate()) return;
@@ -1029,6 +1035,7 @@ export function HomeDashboard() {
           setAvailableMonths(loadedAvailableMonths);
           return;
         }
+        setAccount(loadedAccount);
         setTransactions(coreTransactions);
         setAvailableMonths(loadedAvailableMonths);
         setLoading(false);
@@ -1041,7 +1048,7 @@ export function HomeDashboard() {
         const historyRequest = budgetsRequest
           .then((loadedBudgets) => repo.getTransactionsByMonths(
             accountId,
-            homeSupplementalTransactionMonths(reportingMonth, loadedBudgets.some((budget) => budget.period === "YEARLY")),
+            homeSupplementalTransactionMonths(reportingMonth, loadedBudgets.some((budget) => budget.period === "YEARLY"), loadedAccount?.openingBalanceDate),
           ));
 
         void assetsRequest.then(
@@ -1153,11 +1160,13 @@ export function HomeDashboard() {
     };
     window.addEventListener("stark:transaction-saved", load);
     window.addEventListener("stark:savings-saved", load);
+    window.addEventListener("stark:account-saved", load);
     window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     return () => {
       active = false;
       window.removeEventListener("stark:transaction-saved", load);
       window.removeEventListener("stark:savings-saved", load);
+      window.removeEventListener("stark:account-saved", load);
       window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     };
   }, [loadVersion, monthReady, reportingMonth]);
@@ -1170,8 +1179,8 @@ export function HomeDashboard() {
     [reportingMonth, transactions],
   );
   const summary = useMemo(
-    () => buildHomeSummary({ transactions: analysisTransactions, assets, budgets, loans, savingsGoals, savingsPlans, salaryDay, reportingMonth }),
-    [analysisTransactions, assets, budgets, loans, reportingMonth, savingsGoals, savingsPlans, salaryDay],
+    () => buildHomeSummary({ transactions: analysisTransactions, assets, budgets, loans, savingsGoals, savingsPlans, salaryDay, reportingMonth, account }),
+    [account, analysisTransactions, assets, budgets, loans, reportingMonth, savingsGoals, savingsPlans, salaryDay],
   );
   const budgetAllocationStatus = combinedHomeModuleStatus(assetStatus, budgetStatus, savingsStatus);
   const diagnosticStatus = budgetStatus;

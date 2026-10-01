@@ -1,4 +1,4 @@
-import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
+import type { Account, Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import {
   buildReportingMonthTrendRanges,
   splitReportingMonthTransactions,
@@ -6,7 +6,7 @@ import {
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
 import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
-import { calculateCalendarPeriodCashflow, calculateSalaryCycleAvailableBalance, calculateSalaryCycleCashflow, calculateSalaryCycleOpeningCashflow } from "./salary-cycle";
+import { calculateBalanceFromBaseline, calculateCalendarPeriodCashflow, calculateCashflowSinceBalanceBaseline, calculateSalaryCycleCashflow } from "./salary-cycle";
 
 export interface HomeTrend {
   labels: string[];
@@ -65,12 +65,13 @@ export interface HomeForecast {
   projectedExpense: number;
   projectedBalance: number;
   monthBalance: number;
-  /** Current amount remaining after carrying pre-payday cashflow into this cycle. */
+  /** Current amount remaining after a verified account-balance baseline. */
   salaryCycleBalance: number;
   /** Net income minus outflows within the payday-to-payday detail range only. */
   salaryCycleNetChange: number;
-  /** Cashflow before payday in the selected calendar month, carried into the amount remaining. */
-  salaryCycleOpeningBalance: number;
+  hasBalanceBaseline: boolean;
+  balanceBaselineAmount: number | null;
+  balanceBaselineDate: string | null;
   salaryCycleRangeLabel: string;
   salaryDay: number;
   daysLeft: number;
@@ -399,19 +400,30 @@ function buildForecast(
   salaryDay: number,
   reportingMonth: string,
   referenceDate: Date,
+  account?: Pick<Account, "openingBalance" | "openingBalanceDate"> | null,
 ): HomeForecast {
   const periodCashflow = calculateCalendarPeriodCashflow(transactions, savingsPlans, reportingMonth);
   const monthBalance = periodCashflow.balance;
   const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
-  const openingCashflow = calculateSalaryCycleOpeningCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
+  const baselineAmount = account?.openingBalance;
+  const baselineDate = account?.openingBalanceDate ?? null;
+  const hasBalanceBaseline = typeof baselineAmount === "number" && Number.isFinite(baselineAmount) && Boolean(baselineDate);
+  const cashflowSinceBaseline = hasBalanceBaseline && baselineDate
+    ? calculateCashflowSinceBalanceBaseline(transactions, savingsPlans, baselineDate, cashflow.range.endExclusive)
+    : null;
+  const balanceFromBaseline = hasBalanceBaseline
+    ? calculateBalanceFromBaseline(baselineAmount, cashflowSinceBaseline)
+    : null;
   return {
     projectedIncome: income,
     projectedExpense: expense,
     projectedBalance: monthBalance,
     monthBalance,
-    salaryCycleBalance: calculateSalaryCycleAvailableBalance(openingCashflow.balance, cashflow),
+    salaryCycleBalance: balanceFromBaseline ?? cashflow.balance,
     salaryCycleNetChange: cashflow.balance,
-    salaryCycleOpeningBalance: openingCashflow.balance,
+    hasBalanceBaseline: balanceFromBaseline !== null,
+    balanceBaselineAmount: balanceFromBaseline === null ? null : baselineAmount ?? null,
+    balanceBaselineDate: balanceFromBaseline === null ? null : baselineDate,
     salaryCycleRangeLabel: cashflow.range.label,
     salaryDay,
     daysLeft: 0,
@@ -490,6 +502,7 @@ export function buildHomeSummary(input: {
   loans: Loan[];
   savingsGoals: SavingsGoal[];
   savingsPlans?: SavingsPlan[];
+  account?: Pick<Account, "openingBalance" | "openingBalanceDate"> | null;
   salaryDay?: number;
   reportingMonth?: string;
   /** Testable reference time for resolving the currently active salary cycle. */
@@ -516,7 +529,7 @@ export function buildHomeSummary(input: {
   const assetTotal = input.assets.reduce((sum, item) => sum + item.balance, 0) + totalSavings;
   const liabilityTotal = loanTotal;
   const budgetAlerts = buildBudgetAlerts(input.transactions, input.budgets, expense, currentMonth);
-  const forecast = buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth, referenceDate);
+  const forecast = buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth, referenceDate, input.account);
   const budgetAllocation = calculateBudgetAllocation({
     income,
     expense,

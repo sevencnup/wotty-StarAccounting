@@ -77,21 +77,6 @@ export function previousSalaryCycleRange(reportingMonth: string, salaryDay = 15,
   ));
 }
 
-/**
- * The cash already changed during the calendar month before this salary cycle
- * began. It stays outside the salary-cycle detail rows, but affects how much
- * remains after payday.
- */
-export function salaryCycleOpeningBalanceRange(reportingMonth: string, salaryDay = 15, referenceDate = new Date()): SalaryCycleRange {
-  const cycle = salaryCycleRange(reportingMonth, salaryDay, referenceDate);
-  const start = new Date(cycle.start.getFullYear(), cycle.start.getMonth(), 1);
-  return {
-    start,
-    endExclusive: cycle.start,
-    label: `${formatDate(start)} 至 ${formatDate(new Date(cycle.start.getTime() - 86_400_000))}`,
-  };
-}
-
 function formatDate(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
@@ -146,25 +131,28 @@ export function calculatePreviousSalaryCycleCashflow(
   return calculateCashflowForRange(transactions, savingsPlans, range);
 }
 
-export function calculateSalaryCycleOpeningCashflow(
+/** Cashflow after a verified account-balance baseline, through an explicit cutoff. */
+export function calculateCashflowSinceBalanceBaseline(
   transactions: Transaction[],
   savingsPlans: SavingsPlan[] = [],
-  reportingMonth: string,
-  salaryDay = 15,
-  referenceDate = new Date(),
+  baselineDate: string | null | undefined,
+  endExclusive: Date,
 ) {
-  const range = salaryCycleOpeningBalanceRange(reportingMonth, salaryDay, referenceDate);
-  return calculateCashflowForRange(transactions, savingsPlans, range);
+  const start = parseDate(baselineDate);
+  if (!start || Number.isNaN(endExclusive.getTime()) || start >= endExclusive) return null;
+  return calculateCashflowForRange(transactions, savingsPlans, {
+    start,
+    endExclusive,
+    label: `${formatDate(start)} 至 ${formatDate(new Date(endExclusive.getTime() - 86_400_000))}`,
+  });
 }
 
 /**
- * Combines the balance already on hand when a salary cycle began with that
- * cycle's net cashflow. The opening balance is deliberately separate from the
- * cycle details: transactions before payday affect what remains in the account,
- * but do not become this cycle's income or spending.
+ * Combines a verified account balance with the cashflow recorded after its
+ * baseline date. It never invents an income or expense to force a reconciliation.
  */
-export function calculateSalaryCycleAvailableBalance(openingBalance: number, cycleCashflow: Pick<ReturnType<typeof calculateSalaryCycleCashflow>, "balance">) {
-  return openingBalance + cycleCashflow.balance;
+export function calculateBalanceFromBaseline(baselineBalance: number, cashflow: Pick<ReturnType<typeof calculateSalaryCycleCashflow>, "balance"> | null) {
+  return cashflow ? baselineBalance + cashflow.balance : null;
 }
 
 export function calculateCalendarPeriodCashflow(

@@ -436,7 +436,7 @@ export default function AccountsPage() {
             </div> : null}
 
             {activePanel === "RECONCILIATION" ? <div className="settings-sheet-body reconciliation-sheet-body">
-              <AccountReconciliationSheet onTransactionSaved={() => window.dispatchEvent(new Event("stark:transaction-saved"))} />
+              <AccountReconciliationSheet />
             </div> : null}
 
             {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}

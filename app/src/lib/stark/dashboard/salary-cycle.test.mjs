@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculatePreviousSalaryCycleCashflow, calculateSalaryCycleAvailableBalance, calculateSalaryCycleCashflow, calculateSalaryCycleOpeningCashflow, salaryCycleRange } from "./salary-cycle.ts";
+import { calculateBalanceFromBaseline, calculateCashflowSinceBalanceBaseline, calculatePreviousSalaryCycleCashflow, calculateSalaryCycleCashflow, salaryCycleRange } from "./salary-cycle.ts";
 
 const transaction = (id, type, date, amount, loanId = null) => ({
   id,
@@ -86,7 +86,7 @@ test("reports the completed cycle immediately before the active salary cycle", (
   assert.equal(previous.range.label, "2026-08-15 至 2026-09-14");
 });
 
-test("keeps pre-payday cashflow out of salary details but includes it in what remains", () => {
+test("calculates what remains from a verified pre-payday balance without adding old records", () => {
   const referenceDate = new Date(2026, 9, 1, 20);
   const transactions = [
     transaction("pre-payday-income", "INCOME", "2026-09-11 23:38:20", 0.5),
@@ -98,10 +98,15 @@ test("keeps pre-payday cashflow out of salary details but includes it in what re
   const savingsPlans = [{ status: "COMPLETED", amount: 1500, actualAmount: 1500, actualDate: "2026-09-30 18:06:00", updatedAt: "2026-09-30 18:06:00" }];
 
   const cycle = calculateSalaryCycleCashflow(transactions, savingsPlans, "2026-10", 15, referenceDate);
-  const opening = calculateSalaryCycleOpeningCashflow(transactions, savingsPlans, "2026-10", 15, referenceDate);
+  const afterBaseline = calculateCashflowSinceBalanceBaseline(
+    transactions,
+    savingsPlans,
+    "2026-09-15 00:00:00",
+    new Date(2026, 9, 2),
+  );
 
   assert.equal(cycle.expense, 3696.72);
   assert.equal(Math.round(cycle.balance * 100) / 100, 1725.08);
-  assert.equal(Math.round(opening.balance * 100) / 100, -808.73);
-  assert.equal(Math.round(calculateSalaryCycleAvailableBalance(opening.balance, cycle) * 100) / 100, 916.35);
+  assert.equal(Math.round(afterBaseline.balance * 100) / 100, 1725.08);
+  assert.equal(Math.round(calculateBalanceFromBaseline(798.15, afterBaseline) * 100) / 100, 2523.23);
 });
