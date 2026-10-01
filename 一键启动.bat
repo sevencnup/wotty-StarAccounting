@@ -9,18 +9,27 @@ if errorlevel 1 (
     exit /b 1
 )
 
-powershell -NoProfile -Command "$ports = 12366,12367; $busy = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -in $ports }; if ($busy) { $busy | ForEach-Object { Write-Host ('端口 {0} 已被 PID {1} 占用。' -f $_.LocalPort, $_.OwningProcess) }; exit 1 }"
-if errorlevel 1 (
-    echo 请先释放 Wotty Stark 所需的 12366 或 12367 端口，再重新启动。
+for /f "tokens=1,2" %%A in ('powershell -NoProfile -Command "function Test-Port($port) { try { $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Any, $port); $listener.Start(); $listener.Stop(); return $true } catch { return $false } }; $web = $null; for ($port = 12366; $port -le 65535; $port++) { if (Test-Port $port) { $web = $port; break } }; $api = $null; for ($port = [Math]::Max(12367, $web + 1); $port -le 65535; $port++) { if (Test-Port $port) { $api = $port; break } }; if ($null -eq $web -or $null -eq $api) { exit 1 }; Write-Output ("{0} {1}" -f $web, $api)"') do (
+    set "WEB_PORT=%%A"
+    set "API_PORT=%%B"
+)
+if not defined WEB_PORT (
+    echo 未找到可用的网页端口。
     pause
     exit /b 1
 )
+if not defined API_PORT (
+    echo 未找到可用的 API 端口。
+    pause
+    exit /b 1
+)
+echo 使用 Web 端口 %WEB_PORT%，API 端口 %API_PORT%。
 
 echo 正在启动 Wotty Stark 网页和 API...
 echo 等待网页就绪后将自动打开浏览器。
 start "Wotty Stark Dev" /D "%PROJECT_DIR%" cmd /k "pnpm dev"
 
-powershell -NoProfile -Command "$url = 'http://127.0.0.1:12366'; $deadline = (Get-Date).AddMinutes(3); while ((Get-Date) -lt $deadline) { try { $response = Invoke-WebRequest -Uri $url -TimeoutSec 2 -UseBasicParsing; if ($response.StatusCode -lt 500) { Start-Process $url; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Write-Error 'Wotty Stark 网页未能在 3 分钟内启动，请检查服务窗口中的错误。'; exit 1"
+powershell -NoProfile -Command "$url = 'http://127.0.0.1:%WEB_PORT%'; $deadline = (Get-Date).AddMinutes(3); while ((Get-Date) -lt $deadline) { try { $response = Invoke-WebRequest -Uri $url -TimeoutSec 2 -UseBasicParsing; if ($response.StatusCode -lt 500) { Start-Process $url; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Write-Error 'Wotty Stark 网页未能在 3 分钟内启动，请检查服务窗口中的错误。'; exit 1"
 
 if errorlevel 1 (
     echo.

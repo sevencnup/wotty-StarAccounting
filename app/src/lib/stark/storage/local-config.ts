@@ -2,7 +2,7 @@ import { Capacitor } from "@capacitor/core";
 
 const CONFIG_PREFIX = "wotty-stark:";
 const DEFAULT_REPORTING_MONTH = "2026-01";
-const DEFAULT_CLOUD_API_PORT = 12367;
+const DEFAULT_CLOUD_API_PORT = Number.parseInt(process.env.NEXT_PUBLIC_API_PORT ?? "12367", 10);
 const DEFAULT_CLOUD_API_HOST = "localhost";
 const REPORTING_MONTH_PATTERN = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const REPORTING_YEAR_PATTERN = /^\d{4}$/;

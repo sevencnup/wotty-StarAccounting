@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -43,8 +44,45 @@ loadDotEnv(path.join(repositoryDirectory, ".env"));
 // the remote schema comparison is disproportionately expensive.
 process.env.DB_AUTO_MIGRATE ??= "false";
 
-const webPort = Number.parseInt(process.env.WEB_PORT ?? "12366", 10);
-const apiPort = Number.parseInt(process.env.API_PORT ?? "12367", 10);
+const requestedWebPort = Number.parseInt(process.env.WEB_PORT ?? "12366", 10);
+const requestedApiPort = Number.parseInt(process.env.API_PORT ?? "12367", 10);
+
+function canListen(port) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once("error", (error) => {
+      server.close();
+      if (error.code === "EADDRINUSE" || error.code === "EACCES") {
+        resolve(false);
+        return;
+      }
+      reject(error);
+    });
+    server.listen({ host: "0.0.0.0", port }, () => {
+      server.close(() => resolve(true));
+    });
+  });
+}
+
+async function findAvailablePort(startPort) {
+  for (let port = startPort; port <= 65535; port += 1) {
+    if (await canListen(port)) return port;
+  }
+  throw new Error(`No available development port found from ${startPort}.`);
+}
+
+const webPort = await findAvailablePort(requestedWebPort);
+const apiPort = await findAvailablePort(Math.max(requestedApiPort, webPort + 1));
+process.env.WEB_PORT = String(webPort);
+process.env.API_PORT = String(apiPort);
+// Next.js inlines NEXT_PUBLIC_* values into the browser bundle. Keep the
+// client-side default API address aligned when Windows requires a fallback port.
+process.env.NEXT_PUBLIC_API_PORT = String(apiPort);
+if (webPort !== requestedWebPort || apiPort !== requestedApiPort) {
+  process.stdout.write(
+    `[dev] Default ports ${requestedWebPort}/${requestedApiPort} are unavailable; using ${webPort}/${apiPort}.\n`,
+  );
+}
 const tabRoutes = ["/app/", "/app/consumption/", "/app/savings/", "/app/loans/", "/app/assets/", "/app/accounts/"];
 
 function prefixOutput(name, stream) {
