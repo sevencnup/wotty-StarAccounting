@@ -261,7 +261,7 @@ function StarkCrystalHero({
 
   const displayTitle =
     activeMetric === "balance"
-        ? (balanceMode === "month" ? (isReportingYearKey(reportingMonth) ? "全年结余" : "本月结余") : "薪资周期结余")
+        ? (balanceMode === "month" ? (isReportingYearKey(reportingMonth) ? "全年结余" : "本月结余") : "当前结余")
       : activeMetric === "expense"
         ? (isReportingYearKey(reportingMonth) ? "全年支出" : "本月支出")
         : (isReportingYearKey(reportingMonth) ? "全年收入" : "本月收入");
@@ -348,20 +348,25 @@ function StarkCrystalHero({
           <div className="stark-cycle-breakdown" aria-label={translateValue("发薪周期资金明细", locale)}>
             {balanceMode === "salary" ? (
               <span className="stark-cycle-carryover">
-                {translateValue("上期结余", locale)} {summary.forecast.previousSalaryCycleBalance < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.previousSalaryCycleBalance))}
+                {translateValue("发薪前收支", locale)} {summary.forecast.salaryCycleOpeningBalance < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.salaryCycleOpeningBalance))}
               </span>
             ) : null}
             <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
             <span>{translateValue(balanceMode === "salary" ? "消费" : "月消费", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
             <span>{translateValue("储蓄", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
             <span>{translateValue("还款", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleRepayment : summary.forecast.monthRepayment)}</span>
+            {balanceMode === "salary" ? (
+              <span>{translateValue("本期净变动", locale)} {summary.forecast.salaryCycleNetChange < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.salaryCycleNetChange))}</span>
+            ) : null}
           </div>
         ) : null}
 
         <div className="stark-hero-footer-row">
           <div className="stark-hero-footer-left">
             <span className="stark-tx-count">
-              {locale === "en-US" ? `${transactionCount} entries` : `共 ${transactionCount} 笔记账`}
+              {locale === "en-US"
+                ? `${activeMetric === "balance" && balanceMode === "salary" ? summary.forecast.cycleTransactionCount : transactionCount} entries`
+                : `共 ${activeMetric === "balance" && balanceMode === "salary" ? summary.forecast.cycleTransactionCount : transactionCount} 笔记账`}
               {activeMetric === "balance" && balanceMode === "salary" ? ` · ${summary.forecast.salaryCycleRangeLabel}` : ""}
             </span>
             {activeMetric === "balance" && balanceMode === "salary" ? (

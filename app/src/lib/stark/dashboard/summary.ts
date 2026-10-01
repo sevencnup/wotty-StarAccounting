@@ -6,7 +6,7 @@ import {
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
 import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
-import { calculateCalendarPeriodCashflow, calculatePreviousSalaryCycleCashflow, calculateSalaryCycleCashflow } from "./salary-cycle";
+import { calculateCalendarPeriodCashflow, calculateSalaryCycleAvailableBalance, calculateSalaryCycleCashflow, calculateSalaryCycleOpeningCashflow } from "./salary-cycle";
 
 export interface HomeTrend {
   labels: string[];
@@ -65,9 +65,13 @@ export interface HomeForecast {
   projectedExpense: number;
   projectedBalance: number;
   monthBalance: number;
+  /** Current amount remaining after carrying pre-payday cashflow into this cycle. */
   salaryCycleBalance: number;
+  /** Net income minus outflows within the payday-to-payday detail range only. */
+  salaryCycleNetChange: number;
+  /** Cashflow before payday in the selected calendar month, carried into the amount remaining. */
+  salaryCycleOpeningBalance: number;
   salaryCycleRangeLabel: string;
-  previousSalaryCycleBalance: number;
   salaryDay: number;
   daysLeft: number;
   statusLabel: string;
@@ -75,6 +79,7 @@ export interface HomeForecast {
   cycleExpense: number;
   cycleSavings: number;
   cycleRepayment: number;
+  cycleTransactionCount: number;
   monthSavings: number;
   monthRepayment: number;
 }
@@ -398,15 +403,16 @@ function buildForecast(
   const periodCashflow = calculateCalendarPeriodCashflow(transactions, savingsPlans, reportingMonth);
   const monthBalance = periodCashflow.balance;
   const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
-  const previousCashflow = calculatePreviousSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
+  const openingCashflow = calculateSalaryCycleOpeningCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
   return {
     projectedIncome: income,
     projectedExpense: expense,
     projectedBalance: monthBalance,
     monthBalance,
-    salaryCycleBalance: cashflow.balance,
+    salaryCycleBalance: calculateSalaryCycleAvailableBalance(openingCashflow.balance, cashflow),
+    salaryCycleNetChange: cashflow.balance,
+    salaryCycleOpeningBalance: openingCashflow.balance,
     salaryCycleRangeLabel: cashflow.range.label,
-    previousSalaryCycleBalance: previousCashflow.balance,
     salaryDay,
     daysLeft: 0,
     statusLabel: monthBalance >= 0 ? "本月当前结余" : "本月当前已超支",
@@ -414,6 +420,7 @@ function buildForecast(
     cycleExpense: cashflow.expense,
     cycleSavings: cashflow.savings,
     cycleRepayment: cashflow.repayment,
+    cycleTransactionCount: cashflow.transactions.length,
     monthSavings: periodCashflow.savings,
     monthRepayment: periodCashflow.repayment,
   };

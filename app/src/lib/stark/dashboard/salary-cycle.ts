@@ -77,6 +77,21 @@ export function previousSalaryCycleRange(reportingMonth: string, salaryDay = 15,
   ));
 }
 
+/**
+ * The cash already changed during the calendar month before this salary cycle
+ * began. It stays outside the salary-cycle detail rows, but affects how much
+ * remains after payday.
+ */
+export function salaryCycleOpeningBalanceRange(reportingMonth: string, salaryDay = 15, referenceDate = new Date()): SalaryCycleRange {
+  const cycle = salaryCycleRange(reportingMonth, salaryDay, referenceDate);
+  const start = new Date(cycle.start.getFullYear(), cycle.start.getMonth(), 1);
+  return {
+    start,
+    endExclusive: cycle.start,
+    label: `${formatDate(start)} 至 ${formatDate(new Date(cycle.start.getTime() - 86_400_000))}`,
+  };
+}
+
 function formatDate(value: Date) {
   return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
 }
@@ -129,6 +144,27 @@ export function calculatePreviousSalaryCycleCashflow(
 ) {
   const range = previousSalaryCycleRange(reportingMonth, salaryDay, referenceDate);
   return calculateCashflowForRange(transactions, savingsPlans, range);
+}
+
+export function calculateSalaryCycleOpeningCashflow(
+  transactions: Transaction[],
+  savingsPlans: SavingsPlan[] = [],
+  reportingMonth: string,
+  salaryDay = 15,
+  referenceDate = new Date(),
+) {
+  const range = salaryCycleOpeningBalanceRange(reportingMonth, salaryDay, referenceDate);
+  return calculateCashflowForRange(transactions, savingsPlans, range);
+}
+
+/**
+ * Combines the balance already on hand when a salary cycle began with that
+ * cycle's net cashflow. The opening balance is deliberately separate from the
+ * cycle details: transactions before payday affect what remains in the account,
+ * but do not become this cycle's income or spending.
+ */
+export function calculateSalaryCycleAvailableBalance(openingBalance: number, cycleCashflow: Pick<ReturnType<typeof calculateSalaryCycleCashflow>, "balance">) {
+  return openingBalance + cycleCashflow.balance;
 }
 
 export function calculateCalendarPeriodCashflow(
