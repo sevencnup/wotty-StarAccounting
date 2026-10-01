@@ -87,6 +87,15 @@ internal fun loadDatabaseSettings(
     )
 }
 
+/**
+ * Schema comparison is intentionally opt-out. It is needed for a newly provisioned
+ * database, but querying every column, key and constraint across a remote MySQL
+ * connection adds tens of seconds to every ordinary development restart.
+ */
+internal fun shouldAutoMigrateSchema(
+    environment: Map<String, String> = System.getenv(),
+): Boolean = environment["DB_AUTO_MIGRATE"]?.trim()?.lowercase() !in setOf("false", "0", "no", "off")
+
 object Users : Table("user") {
     val id = varchar("id", 191)
     val email = varchar("email", 191).uniqueIndex("User_email_key")
@@ -349,21 +358,23 @@ object DatabaseFactory {
     fun init() {
         Database.connect(dataSource)
         transaction {
-            SchemaUtils.createMissingTablesAndColumns(
-                Users,
-                AuthSettings,
-                Accounts,
-                Assets,
-                Budgets,
-                ExchangeRates,
-                ImportErrorLogs,
-                Loans,
-                SavingsGoals,
-                SavingsPlans,
-                ThemeConfigs,
-                Transactions,
-                TransactionCategoryRules,
-            )
+            if (shouldAutoMigrateSchema()) {
+                SchemaUtils.createMissingTablesAndColumns(
+                    Users,
+                    AuthSettings,
+                    Accounts,
+                    Assets,
+                    Budgets,
+                    ExchangeRates,
+                    ImportErrorLogs,
+                    Loans,
+                    SavingsGoals,
+                    SavingsPlans,
+                    ThemeConfigs,
+                    Transactions,
+                    TransactionCategoryRules,
+                )
+            }
             removeLegacySavingsDemoRecords()
         }
     }

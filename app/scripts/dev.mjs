@@ -38,9 +38,14 @@ function loadDotEnv(filePath) {
 }
 
 loadDotEnv(path.join(repositoryDirectory, ".env"));
+// The deployed API keeps automatic schema creation enabled. For local frontend
+// iteration, the existing development database is normally already current and
+// the remote schema comparison is disproportionately expensive.
+process.env.DB_AUTO_MIGRATE ??= "false";
 
 const webPort = Number.parseInt(process.env.WEB_PORT ?? "12366", 10);
-const tabRoutes = ["/", "/consumption/", "/savings/", "/loans/", "/assets/", "/accounts/"];
+const apiPort = Number.parseInt(process.env.API_PORT ?? "12367", 10);
+const tabRoutes = ["/app/", "/app/consumption/", "/app/savings/", "/app/loans/", "/app/assets/", "/app/accounts/"];
 
 function prefixOutput(name, stream) {
   let pending = "";
@@ -131,7 +136,33 @@ async function prewarmTabRoutes() {
   );
 }
 
+async function reportApiReadiness() {
+  const url = `http://127.0.0.1:${apiPort}/api/health`;
+  for (let attempt = 0; attempt < 240 && !shuttingDown; attempt += 1) {
+    try {
+      const response = await fetch(url);
+      const health = await response.json();
+      if (response.ok && health.status === "ok") {
+        process.stdout.write(
+          health.db
+            ? `[api] Ready: http://127.0.0.1:${apiPort}\n`
+            : "[api] Started, but the database is not ready.\n",
+        );
+        return;
+      }
+    } catch {
+      // The Ktor process is still starting. Keep the normal development output quiet.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  if (!shuttingDown) {
+    process.stdout.write(`[api] Still starting; check http://127.0.0.1:${apiPort}/api/health if needed.\n`);
+  }
+}
+
 function startApi() {
+  process.stdout.write("[api] Starting Kotlin API...\n");
   if (process.platform === "win32") {
     const gradleWrappers = [
       path.join(repositoryDirectory, "gradlew.bat"),
@@ -146,7 +177,7 @@ function startApi() {
 
     return spawn(
       process.env.ComSpec || "cmd.exe",
-      ["/d", "/c", gradleWrapper, "-p", "api-server", "run", "--no-daemon", "--configuration-cache"],
+      ["/d", "/q", "/c", gradleWrapper, "-p", "api-server", "run", "--configuration-cache", "--quiet", "--console=plain", "--warning-mode=none"],
       {
         cwd: repositoryDirectory,
         stdio: ["inherit", "pipe", "pipe"],
@@ -161,7 +192,7 @@ function startApi() {
     throw new Error(`Gradle wrapper not found: ${gradleWrappers.join(", ")}`);
   }
 
-  return spawn("sh", [gradleWrapper, "-p", "api-server", "run", "--no-daemon", "--configuration-cache"], {
+  return spawn("sh", [gradleWrapper, "-p", "api-server", "run", "--configuration-cache", "--quiet", "--console=plain", "--warning-mode=none"], {
     cwd: repositoryDirectory,
     stdio: ["inherit", "pipe", "pipe"],
   });
@@ -265,8 +296,9 @@ process.once("SIGBREAK", () => void shutdown(0));
 try {
   registerChild("web", startWeb());
   registerChild("api", startApi());
-  void prewarmTabRoutes();
-  process.stdout.write("Web and API development servers are starting.\n");
+  if (process.env.DEV_PREWARM_ROUTES === "true") void prewarmTabRoutes();
+  void reportApiReadiness();
+  process.stdout.write("Web and API development servers are starting. Set DEV_PREWARM_ROUTES=true to prewarm tabs.\n");
 } catch (error) {
   process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
   void shutdown(1);

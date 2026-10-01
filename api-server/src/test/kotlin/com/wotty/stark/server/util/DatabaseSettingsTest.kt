@@ -69,4 +69,12 @@ class DatabaseSettingsTest {
         assertEquals("Missing database setting: DB_PASSWORD", error.message)
         assertFalse(error.stackTraceToString().contains(jdbcUrl))
     }
+
+    @Test
+    fun enablesSchemaMigrationUnlessExplicitlyDisabled() {
+        assertEquals(true, shouldAutoMigrateSchema(emptyMap()))
+        assertEquals(true, shouldAutoMigrateSchema(mapOf("DB_AUTO_MIGRATE" to "true")))
+        assertEquals(false, shouldAutoMigrateSchema(mapOf("DB_AUTO_MIGRATE" to "false")))
+        assertEquals(false, shouldAutoMigrateSchema(mapOf("DB_AUTO_MIGRATE" to "0")))
+    }
 }

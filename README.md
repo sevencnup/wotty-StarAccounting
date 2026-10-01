@@ -89,7 +89,13 @@ pnpm dev
 {"status":"ok","db":true}
 ```
 
-开发脚本会读取根目录 `.env` 并同时启动 Web 与 API；退出命令时会停止它启动的两个服务。
+开发脚本会读取根目录 `.env` 并同时启动 Web 与 API；退出命令时会停止它启动的两个服务。日常
+开发默认会设置 `DB_AUTO_MIGRATE=false`，避免每次重启都向远端 MySQL 查询完整表结构。
+首次建库或后端表模型变更后，临时改为 `DB_AUTO_MIGRATE=true` 启动一次，确认完成后再改回
+`false`。
+
+`pnpm dev` 默认只输出 Web/API 的启动状态；如需提前编译全部标签页以便演示或测试，可设置
+`DEV_PREWARM_ROUTES=true` 后再启动。
 
 ### 单独启动前端
 
