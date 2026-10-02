@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   BACKGROUND_NAVIGATION_RECOVERY_MS,
   appRoute,
+  planBackgroundResume,
   planTabNavigation,
   shouldRecoverNavigation,
 } from "./routes.ts";
@@ -32,6 +33,18 @@ test("keeps client navigation after a short background pause", () => {
 
 test("recovers navigation when a page is restored from the back-forward cache", () => {
   assert.equal(shouldRecoverNavigation(null, 20_000, true), true);
+});
+
+test("refreshes the current route immediately after a long background resume", () => {
+  const backgroundedAt = 10_000;
+  assert.deepEqual(
+    planBackgroundResume(backgroundedAt, backgroundedAt + BACKGROUND_NAVIGATION_RECOVERY_MS),
+    { mode: "reload-current" },
+  );
+});
+
+test("does not reload the current route after a short background pause", () => {
+  assert.deepEqual(planBackgroundResume(10_000, 10_001), { mode: "none" });
 });
 
 test("reloads the selected tab directly after a background recovery", () => {

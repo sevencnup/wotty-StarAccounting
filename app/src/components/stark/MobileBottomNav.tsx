@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { planTabNavigation, shouldRecoverNavigation } from "@/lib/stark/navigation/routes";
+import { planBackgroundResume, planTabNavigation } from "@/lib/stark/navigation/routes";
 
 const BACKGROUNDED_AT_STORAGE_KEY = "wotty:navigation-backgrounded-at";
 
@@ -44,6 +44,7 @@ export function MobileBottomNav() {
   const visiblePathname = pathname;
   const backgroundedAtRef = useRef<number | null>(null);
   const recoverOnNextNavigationRef = useRef(false);
+  const reloadStartedRef = useRef(false);
 
   useEffect(() => {
     const markBackgrounded = () => {
@@ -52,11 +53,18 @@ export function MobileBottomNav() {
       persistBackgroundedAt(backgroundedAt);
     };
     const markResumed = (restoredFromPageCache = false) => {
-      if (shouldRecoverNavigation(backgroundedAtRef.current, Date.now(), restoredFromPageCache)) {
-        recoverOnNextNavigationRef.current = true;
-      }
+      const resume = planBackgroundResume(backgroundedAtRef.current, Date.now(), restoredFromPageCache);
       backgroundedAtRef.current = null;
       persistBackgroundedAt(null);
+      if (resume.mode === "reload-current") {
+        recoverOnNextNavigationRef.current = true;
+        if (!reloadStartedRef.current) {
+          reloadStartedRef.current = true;
+          // Android WebView can resume with a live DOM but a stale Next router.
+          // Reloading this exact URL rebuilds the router before the user taps.
+          window.location.reload();
+        }
+      }
     };
     const handleVisibilityChange = () => {
       if (document.visibilityState === "hidden") {

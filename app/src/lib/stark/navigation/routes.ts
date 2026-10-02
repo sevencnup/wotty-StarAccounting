@@ -12,6 +12,16 @@ export function planTabNavigation(path: string, recovering: boolean) {
   };
 }
 
+export function planBackgroundResume(
+  backgroundedAt: number | null,
+  resumedAt: number,
+  restoredFromPageCache = false,
+) {
+  return shouldRecoverNavigation(backgroundedAt, resumedAt, restoredFromPageCache)
+    ? { mode: "reload-current" as const }
+    : { mode: "none" as const };
+}
+
 export function shouldRecoverNavigation(
   backgroundedAt: number | null,
   resumedAt: number,
