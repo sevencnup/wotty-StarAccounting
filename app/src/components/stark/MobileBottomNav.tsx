@@ -4,10 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { appRoute, shouldRecoverNavigation } from "@/lib/stark/navigation/routes";
+import { planTabNavigation, shouldRecoverNavigation } from "@/lib/stark/navigation/routes";
 
 const BACKGROUNDED_AT_STORAGE_KEY = "wotty:navigation-backgrounded-at";
-const PENDING_NAVIGATION_STORAGE_KEY = "wotty:pending-navigation";
 
 function readPersistedBackgroundedAt() {
   try {
@@ -30,27 +29,6 @@ function persistBackgroundedAt(value: number | null) {
   }
 }
 
-function readPendingNavigation() {
-  try {
-    const value = window.localStorage.getItem(PENDING_NAVIGATION_STORAGE_KEY);
-    return value === "/app/" || value?.startsWith("/app/") ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function persistPendingNavigation(value: string | null) {
-  try {
-    if (value === null) {
-      window.localStorage.removeItem(PENDING_NAVIGATION_STORAGE_KEY);
-    } else {
-      window.localStorage.setItem(PENDING_NAVIGATION_STORAGE_KEY, value);
-    }
-  } catch {
-    // A reload still restores the router even if the destination cannot be saved.
-  }
-}
-
 export const NAV_ITEMS = [
   { href: "/app", label: "首页", icon: "/nav-icons/home.png" },
   { href: "/app/consumption", label: "消费", icon: "/nav-icons/Consumption.png" },
@@ -66,9 +44,6 @@ export function MobileBottomNav() {
   const visiblePathname = pathname;
   const backgroundedAtRef = useRef<number | null>(null);
   const recoverOnNextNavigationRef = useRef(false);
-  const visiblePathnameRef = useRef(visiblePathname);
-  const recoveryTimerRef = useRef<number | null>(null);
-  visiblePathnameRef.current = visiblePathname;
 
   useEffect(() => {
     const markBackgrounded = () => {
@@ -101,19 +76,12 @@ export function MobileBottomNav() {
     backgroundedAtRef.current = readPersistedBackgroundedAt();
     if (document.visibilityState === "visible") markResumed();
 
-    const pendingNavigation = readPendingNavigation();
-    if (pendingNavigation) {
-      persistPendingNavigation(null);
-      router.replace(pendingNavigation);
-    }
-
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", markBackgrounded);
       window.removeEventListener("pageshow", handlePageShow);
-      if (recoveryTimerRef.current !== null) window.clearTimeout(recoveryTimerRef.current);
     };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const prefetchRoutes = () => {
@@ -148,24 +116,19 @@ export function MobileBottomNav() {
               className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}
               aria-label={item.label}
               aria-current={active ? "page" : undefined}
-              onPointerDown={() => router.prefetch(item.href)}
+              onPointerDown={() => {
+                if (!recoverOnNextNavigationRef.current) router.prefetch(item.href);
+              }}
               onClick={(event) => {
                 if (active) {
                   event.preventDefault();
                   return;
                 }
-                if (recoverOnNextNavigationRef.current) {
+                const navigation = planTabNavigation(item.href, recoverOnNextNavigationRef.current);
+                if (navigation.mode === "reload") {
                   event.preventDefault();
                   recoverOnNextNavigationRef.current = false;
-                  const target = appRoute(item.href);
-                  router.replace(target);
-                  if (recoveryTimerRef.current !== null) window.clearTimeout(recoveryTimerRef.current);
-                  recoveryTimerRef.current = window.setTimeout(() => {
-                    recoveryTimerRef.current = null;
-                    if (appRoute(visiblePathnameRef.current) === target) return;
-                    persistPendingNavigation(target);
-                    window.location.replace(appRoute("/app"));
-                  }, 800);
+                  window.location.replace(navigation.target);
                 }
               }}
             >

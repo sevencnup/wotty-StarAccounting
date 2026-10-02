@@ -5,6 +5,13 @@ export function appRoute(path: string) {
   return normalized.endsWith("/") ? normalized : `${normalized}/`;
 }
 
+export function planTabNavigation(path: string, recovering: boolean) {
+  return {
+    mode: recovering ? "reload" as const : "client" as const,
+    target: appRoute(path),
+  };
+}
+
 export function shouldRecoverNavigation(
   backgroundedAt: number | null,
   resumedAt: number,
