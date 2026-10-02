@@ -3,6 +3,7 @@ package com.wotty.stark.nativeapp
 import android.os.Bundle
 import android.content.Context
 import android.graphics.Typeface
+import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
@@ -69,7 +70,10 @@ import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,6 +83,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -119,16 +124,43 @@ import org.json.JSONObject
 import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.time.YearMonth
 import android.graphics.BitmapFactory
 
 class MainActivity : ComponentActivity() {
+    @Suppress("DEPRECATION")
+    private fun hideNavigationHandle() {
+        window.navigationBarColor = android.graphics.Color.WHITE
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
+        window.decorView.systemUiVisibility = (
+            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            window.insetsController?.let { controller ->
+                controller.hide(android.view.WindowInsets.Type.navigationBars())
+                controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        hideNavigationHandle()
+        window.decorView.setOnSystemUiVisibilityChangeListener { hideNavigationHandle() }
         setContent {
             StarkNativeTheme {
                 StarkNativeApp()
             }
         }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) hideNavigationHandle()
     }
 }
 
@@ -164,6 +196,20 @@ private enum class HomeMetric(val label: String) {
     INCOME("收入"),
 }
 
+private enum class BalancePeriod(val label: String) {
+    MONTH("自然月"),
+    SALARY("发薪周期"),
+}
+
+private enum class HomeOverlay {
+    MONTH,
+    SALARY_DAY,
+    SEARCH,
+    BUDGET,
+    DIAGNOSTIC,
+    CATEGORIES,
+}
+
 private data class LedgerEntry(
     val id: Long,
     val title: String,
@@ -171,11 +217,18 @@ private data class LedgerEntry(
     val amount: Double,
     val type: EntryType,
     val dayLabel: String,
+    val transactionDate: String = LocalDate.now().toString(),
 )
 
 private data class NativeLedgerSnapshot(
     val actualBalance: Double,
     val entries: List<LedgerEntry>,
+)
+
+private data class NativeHomePreferences(
+    val selectedMonth: String,
+    val salaryDay: Int,
+    val monthlyBudget: Double,
 )
 
 private class NativeLedgerStore(context: Context) {
@@ -194,6 +247,7 @@ private class NativeLedgerStore(context: Context) {
                     amount = item.getDouble("amount"),
                     type = EntryType.valueOf(item.getString("type")),
                     dayLabel = item.getString("dayLabel"),
+                    transactionDate = item.optString("transactionDate", LocalDate.now().toString()),
                 )
             }
             NativeLedgerSnapshot(preferences.getString("actualBalance", "916.35")?.toDoubleOrNull() ?: 916.35, entries)
@@ -210,7 +264,8 @@ private class NativeLedgerStore(context: Context) {
                     .put("category", entry.category)
                     .put("amount", entry.amount)
                     .put("type", entry.type.name)
-                    .put("dayLabel", entry.dayLabel),
+                    .put("dayLabel", entry.dayLabel)
+                    .put("transactionDate", entry.transactionDate),
             )
         }
         preferences.edit()
@@ -218,14 +273,33 @@ private class NativeLedgerStore(context: Context) {
             .putString("entries", rows.toString())
             .apply()
     }
+
+    fun loadHomePreferences(): NativeHomePreferences {
+        return NativeHomePreferences(
+            selectedMonth = preferences.getString("selectedMonth", YearMonth.now().toString()) ?: YearMonth.now().toString(),
+            salaryDay = (preferences.getInt("salaryDay", 15)).coerceIn(1, 28),
+            monthlyBudget = preferences.getString("monthlyBudget", "0")?.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+        )
+    }
+
+    fun saveHomePreferences(selectedMonth: String, salaryDay: Int, monthlyBudget: Double) {
+        preferences.edit()
+            .putString("selectedMonth", selectedMonth)
+            .putInt("salaryDay", salaryDay.coerceIn(1, 28))
+            .putString("monthlyBudget", monthlyBudget.coerceAtLeast(0.0).toString())
+            .apply()
+    }
 }
 
-private fun sampleEntries() = listOf(
-    LedgerEntry(1, "工资入账", "工资收入 · 银行卡", 6917.18, EntryType.INCOME, "今天 09:01"),
-    LedgerEntry(2, "午餐", "餐饮美食 · 微信", 28.00, EntryType.EXPENSE, "今天 12:26"),
-    LedgerEntry(3, "地铁出行", "交通出行 · 支付宝", 4.00, EntryType.EXPENSE, "昨天 18:32"),
-    LedgerEntry(4, "超市采购", "生活消费 · 微信", 86.50, EntryType.EXPENSE, "昨天 17:06"),
-)
+private fun sampleEntries(): List<LedgerEntry> {
+    val today = LocalDate.now()
+    return listOf(
+        LedgerEntry(1, "工资入账", "工资收入 · 银行卡", 6917.18, EntryType.INCOME, "今天 09:01", today.toString()),
+        LedgerEntry(2, "午餐", "餐饮美食 · 微信", 28.00, EntryType.EXPENSE, "今天 12:26", today.toString()),
+        LedgerEntry(3, "地铁出行", "交通出行 · 支付宝", 4.00, EntryType.EXPENSE, "昨天 18:32", today.minusDays(1).toString()),
+        LedgerEntry(4, "超市采购", "生活消费 · 微信", 86.50, EntryType.EXPENSE, "昨天 17:06", today.minusDays(1).toString()),
+    )
+}
 
 private val moneyFormat = DecimalFormat("#,##0.00")
 
@@ -260,19 +334,34 @@ private fun StarkNativeTheme(content: @Composable () -> Unit) {
 private fun StarkNativeApp() {
     var selectedTab by remember { mutableStateOf(RootTab.HOME) }
     var entrySheetOpen by remember { mutableStateOf(false) }
+    var homeOverlay by remember { mutableStateOf<HomeOverlay?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val ledgerStore = remember { NativeLedgerStore(context.applicationContext) }
+    val homePreferences = remember { ledgerStore.loadHomePreferences() }
+    var selectedMonth by remember { mutableStateOf(homePreferences.selectedMonth) }
+    var salaryDay by remember { mutableStateOf(homePreferences.salaryDay) }
+    var monthlyBudget by remember { mutableDoubleStateOf(homePreferences.monthlyBudget) }
     val snapshot = remember { ledgerStore.load() }
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
 
     Scaffold(
         containerColor = Canvas,
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
+            androidx.compose.material3.ExtendedFloatingActionButton(
+                onClick = { entrySheetOpen = true },
+                icon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                text = { Text("记账", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
+                containerColor = Color.White,
+                contentColor = Blue,
+                elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
+            )
+        },
         bottomBar = {
             NativeBottomBar(
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
-                onQuickEntry = { entrySheetOpen = true },
             )
         },
     ) { insets ->
@@ -281,11 +370,71 @@ private fun StarkNativeApp() {
             label = "Native tab switch",
         ) { tab ->
             when (tab) {
-                RootTab.HOME -> HomeScreen(Modifier.padding(insets), entries, actualBalance)
-                RootTab.ASSETS -> JournalScreen(Modifier.padding(insets), entries)
+                RootTab.HOME -> HomeScreen(
+                    modifier = Modifier.padding(insets),
+                    entries = entries,
+                    actualBalance = actualBalance,
+                    selectedMonth = selectedMonth,
+                    salaryDay = salaryDay,
+                    monthlyBudget = monthlyBudget,
+                    onSalaryDayClick = { homeOverlay = HomeOverlay.SALARY_DAY },
+                    onOpenOverlay = { homeOverlay = it },
+                    onSelectTab = { selectedTab = it },
+                )
+                RootTab.CONSUMPTION, RootTab.ASSETS -> JournalScreen(Modifier.padding(insets), entries)
                 else -> PlaceholderScreen(Modifier.padding(insets), tab)
             }
         }
+    }
+
+    when (homeOverlay) {
+        HomeOverlay.MONTH -> MonthPickerDialog(
+            selectedMonth = selectedMonth,
+            onSelect = {
+                selectedMonth = it
+                ledgerStore.saveHomePreferences(it, salaryDay, monthlyBudget)
+                homeOverlay = null
+            },
+            onDismiss = { homeOverlay = null },
+        )
+        HomeOverlay.SALARY_DAY -> SalaryDayPickerDialog(
+            selectedDay = salaryDay,
+            onSelect = {
+                salaryDay = it
+                ledgerStore.saveHomePreferences(selectedMonth, it, monthlyBudget)
+                homeOverlay = null
+            },
+            onDismiss = { homeOverlay = null },
+        )
+        HomeOverlay.SEARCH -> TransactionSearchDialog(entries, onDismiss = { homeOverlay = null })
+        HomeOverlay.BUDGET -> HomeSummaryDialog(
+            title = "本月资金分配",
+            description = "预算管理",
+            income = entries.filter { it.type == EntryType.INCOME && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
+            expense = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
+            budget = monthlyBudget,
+            onBudgetChange = {
+                monthlyBudget = it
+                ledgerStore.saveHomePreferences(selectedMonth, salaryDay, it)
+            },
+            onDismiss = { homeOverlay = null },
+            onOpenTransactions = { homeOverlay = null; selectedTab = RootTab.CONSUMPTION },
+        )
+        HomeOverlay.DIAGNOSTIC -> HomeSummaryDialog(
+            title = "财务诊断",
+            description = "本期收支概览",
+            income = entries.filter { it.type == EntryType.INCOME && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
+            expense = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
+            budget = monthlyBudget,
+            onBudgetChange = null,
+            onDismiss = { homeOverlay = null },
+            onOpenTransactions = { homeOverlay = null; selectedTab = RootTab.CONSUMPTION },
+        )
+        HomeOverlay.CATEGORIES -> ExpenseCategoriesDialog(
+            entries = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) },
+            onDismiss = { homeOverlay = null },
+        )
+        null -> Unit
     }
 
     if (entrySheetOpen) {
@@ -315,49 +464,30 @@ private fun StarkNativeApp() {
 private fun NativeBottomBar(
     selectedTab: RootTab,
     onTabSelected: (RootTab) -> Unit,
-    onQuickEntry: () -> Unit,
 ) {
     Surface(
         color = Color.White,
-        shadowElevation = 0.dp,
-        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+        shadowElevation = 8.dp,
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Box(Modifier.fillMaxWidth().height(77.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(55.dp).align(Alignment.BottomCenter).padding(horizontal = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceAround,
-            ) {
-                RootTab.entries.forEach { tab ->
-                    val active = selectedTab == tab
-                    Box(
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onTabSelected(tab) }.padding(vertical = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        WebNavIcon(
-                            resourceId = tab.iconResource,
-                            contentDescription = tab.label,
-                            active = active,
-                            modifier = Modifier.size(27.dp),
-                        )
-                    }
+        Row(
+            modifier = Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceAround,
+        ) {
+            RootTab.entries.forEach { tab ->
+                val active = selectedTab == tab
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(12.dp)).clickable { onTabSelected(tab) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    WebNavIcon(
+                        resourceId = tab.iconResource,
+                        contentDescription = tab.label,
+                        active = active,
+                        modifier = Modifier.size(27.dp),
+                    )
                 }
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(y = 2.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(Color.White)
-                    .clickable(onClick = onQuickEntry)
-                    .padding(horizontal = 15.dp, vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Box(Modifier.size(29.dp).clip(CircleShape).background(Blue), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(19.dp))
-                }
-                Text("记账", color = Blue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -377,19 +507,40 @@ private fun WebNavIcon(resourceId: Int, contentDescription: String, active: Bool
 }
 
 @Composable
-private fun HomeScreen(modifier: Modifier, entries: List<LedgerEntry>, actualBalance: Double) {
+private fun HomeScreen(
+    modifier: Modifier,
+    entries: List<LedgerEntry>,
+    actualBalance: Double,
+    selectedMonth: String,
+    salaryDay: Int,
+    monthlyBudget: Double,
+    onSalaryDayClick: () -> Unit,
+    onOpenOverlay: (HomeOverlay) -> Unit,
+    onSelectTab: (RootTab) -> Unit,
+) {
     var metric by remember { mutableStateOf(HomeMetric.EXPENSE) }
-    val income = entries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
-    val expense = entries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
+    var balancePeriod by remember { mutableStateOf(BalancePeriod.MONTH) }
+    val month = runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
+    val periodEntries = entries.filter { entry ->
+        val date = runCatching { LocalDate.parse(entry.transactionDate) }.getOrNull()
+        date != null && if (metric == HomeMetric.BALANCE && balancePeriod == BalancePeriod.SALARY) {
+            date >= month.atDay(salaryDay) && date < month.atDay(salaryDay).plusMonths(1)
+        } else {
+            date.year == month.year && date.monthValue == month.monthValue
+        }
+    }
+    val income = periodEntries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
+    val expense = periodEntries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
     val value = when (metric) {
         HomeMetric.BALANCE -> actualBalance
         HomeMetric.EXPENSE -> expense
         HomeMetric.INCOME -> income
     }
+    val monthLabel = "${month.year}年${month.monthValue}月"
     val label = when (metric) {
-        HomeMetric.BALANCE -> "当前结余"
-        HomeMetric.EXPENSE -> "本月支出"
-        HomeMetric.INCOME -> "本月收入"
+        HomeMetric.BALANCE -> "账户当前结余"
+        HomeMetric.EXPENSE -> if (balancePeriod == BalancePeriod.SALARY) "本期支出" else "本月支出"
+        HomeMetric.INCOME -> if (balancePeriod == BalancePeriod.SALARY) "本期收入" else "本月收入"
     }
 
     LazyColumn(
@@ -397,24 +548,40 @@ private fun HomeScreen(modifier: Modifier, entries: List<LedgerEntry>, actualBal
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 76.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { WebReplicaHeader() }
+        item { WebReplicaHeader(onSearch = { onOpenOverlay(HomeOverlay.SEARCH) }) }
         item {
-            WebReplicaMetricControl(metric = metric, onMetricChange = { metric = it })
+            WebReplicaMetricControl(
+                metric = metric,
+                monthLabel = monthLabel,
+                onMonthClick = { onOpenOverlay(HomeOverlay.MONTH) },
+                onMetricChange = { metric = it },
+            )
             Spacer(Modifier.height(11.dp))
-            WebReplicaHero(metric = metric, label = label, value = value, count = entries.size)
+            WebReplicaHero(
+                metric = metric,
+                period = balancePeriod,
+                label = label,
+                value = value,
+                count = periodEntries.size,
+                monthLabel = monthLabel,
+                salaryDay = salaryDay,
+                onPeriodChange = { balancePeriod = it },
+                onSalaryDayClick = onSalaryDayClick,
+                onDetails = { onSelectTab(RootTab.CONSUMPTION) },
+            )
         }
-        item { WebReplicaBudgetCard(income, expense) }
-        item { WebReplicaDiagnosticBanner(income, expense) }
-        item { WebReplicaCompass(income, expense) }
-        item { WebReplicaExpenseStructure(entries) }
+        item { WebReplicaBudgetCard(income, expense, actualBalance, monthlyBudget, monthLabel) { onOpenOverlay(HomeOverlay.BUDGET) } }
+        item { WebReplicaDiagnosticBanner(income, expense) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
+        item { WebReplicaCompass(income, expense, actualBalance, onOpenOverlay, onSelectTab) }
+        item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense) }
         item { WebReplicaCashflowTrend(entries) }
-        item { WebReplicaRecentTransactions(entries) }
+        item { WebReplicaRecentTransactions(periodEntries.take(3), onAll = { onSelectTab(RootTab.CONSUMPTION) }) }
     }
 }
 
 @Composable
-private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>) {
+private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>, monthLabel: String, onCategoryDetails: () -> Unit) {
     val expenses = entries.filter { it.type == EntryType.EXPENSE }
     val categories = expenses
         .groupBy { it.category.substringBefore(" ·") }
@@ -424,10 +591,10 @@ private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>) {
     WebReplicaCard(padding = 14.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("本月支出结构", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("${monthLabel}支出结构", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text("共 ${categories.size} 个分类", color = Color(0xFF94A3B8), fontSize = 10.sp)
             }
-            Text("分类明细  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text("分类明细  ›", modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onCategoryDetails() }.padding(6.dp), color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(10.dp))
         if (categories.isEmpty()) {
@@ -515,7 +682,7 @@ private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, tota
     val data = categories.take(5).mapIndexed { index, (name, amount) ->
         RoseChartSegment(name, amount, colors[index])
     }
-    Box(Modifier.fillMaxWidth().height(248.dp)) {
+    Box(Modifier.fillMaxWidth().height(198.dp)) {
         NativeRoseChart(data, Modifier.fillMaxSize())
         Text(
             "¥ ${moneyFormat.format(total)}",
@@ -544,8 +711,8 @@ private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = M
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val total = data.sumOf { it.value }.coerceAtLeast(0.01)
         val center = Offset(size.width / 2f, size.height / 2f)
-        val baseRadius = size.minDimension * .12f
-        val maxRadius = size.minDimension * .35f
+        val baseRadius = size.minDimension * .14f
+        val maxRadius = size.minDimension * .38f
         var startAngle = -90f
         data.forEach { segment ->
             val sweep = ((segment.value / total) * 360f).toFloat().coerceAtLeast(7f)
@@ -623,11 +790,11 @@ private fun Color.toAndroidColorInt(): Int = android.graphics.Color.argb(
 )
 
 @Composable
-private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>) {
+private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>, onAll: () -> Unit) {
     WebReplicaCard {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text("最近流水", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-            Text("全部账单  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            Text("全部账单  ›", modifier = Modifier.clickable { onAll() }.padding(4.dp), color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(7.dp))
         entries.take(3).forEach { LedgerRow(it) }
@@ -635,7 +802,7 @@ private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>) {
 }
 
 @Composable
-private fun WebReplicaHeader() {
+private fun WebReplicaHeader(onSearch: () -> Unit) {
     Row(
         modifier = Modifier.fillMaxWidth().height(34.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -643,15 +810,15 @@ private fun WebReplicaHeader() {
     ) {
         Spacer(Modifier.size(38.dp))
         Text("首页", color = Color(0xFF101827), fontSize = 18.sp, fontWeight = FontWeight.Medium)
-        IconButton(onClick = {}) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
+        IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
     }
 }
 
 @Composable
-private fun WebReplicaMetricControl(metric: HomeMetric, onMetricChange: (HomeMetric) -> Unit) {
+private fun WebReplicaMetricControl(metric: HomeMetric, monthLabel: String, onMonthClick: () -> Unit, onMetricChange: (HomeMetric) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
-            Text("2026年1月", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onMonthClick).padding(vertical = 8.dp, horizontal = 4.dp)) {
+            Text(monthLabel, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.width(4.dp))
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "选择月份", tint = Ink, modifier = Modifier.size(16.dp))
         }
@@ -678,34 +845,48 @@ private fun WebReplicaMetricControl(metric: HomeMetric, onMetricChange: (HomeMet
 }
 
 @Composable
-private fun WebReplicaHero(metric: HomeMetric, label: String, value: Double, count: Int) {
+private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: String, value: Double, count: Int, monthLabel: String, salaryDay: Int, onPeriodChange: (BalancePeriod) -> Unit, onSalaryDayClick: () -> Unit, onDetails: () -> Unit) {
     WebReplicaCard(padding = 0.dp) {
         Box(Modifier.fillMaxWidth().height(146.dp).padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text("1月", modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
+            Text(monthLabel.substringAfter("年"), modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
             Column(Modifier.align(Alignment.TopStart)) {
-                Text(label, color = Color(0xFF64748B), fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(8.dp))
-                Text("¥ ${moneyFormat.format(value)}", color = Color(0xFF0F172A), fontSize = 32.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(13.dp))
-                Text("共 $count 笔记账", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text(label, color = Color(0xFF64748B), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    if (metric == HomeMetric.BALANCE) {
+                        Row(Modifier.clip(CircleShape).background(Color(0xFFF1F5F9)).padding(2.dp)) {
+                            BalancePeriod.entries.forEach { option ->
+                                Text(option.label, modifier = Modifier.clip(CircleShape).background(if (period == option) Color.White else Color.Transparent).clickable { onPeriodChange(option) }.padding(horizontal = 8.dp, vertical = 4.dp), color = if (period == option) Blue else Muted, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(5.dp))
+                Text("¥ " + moneyFormat.format(value), color = Color(0xFF0F172A), fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(7.dp))
+                Text("共 " + count + " 笔记账", color = Color(0xFF94A3B8), fontSize = 11.sp)
                 Spacer(Modifier.height(3.dp))
-                Text(if (metric == HomeMetric.EXPENSE) "查看明细分析  ›" else "查看明细  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (metric == HomeMetric.EXPENSE) "查看明细分析  ›" else "查看明细  ›", modifier = Modifier.clickable(onClick = onDetails), color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                    if (metric == HomeMetric.BALANCE && period == BalancePeriod.SALARY) {
+                        Text("发薪日 " + salaryDay + " 号 ›", modifier = Modifier.clickable(onClick = onSalaryDayClick), color = Blue, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun WebReplicaBudgetCard(income: Double, expense: Double) {
-    val available = income - expense
+private fun WebReplicaBudgetCard(income: Double, expense: Double, actualBalance: Double, monthlyBudget: Double, monthLabel: String, onManageBudget: () -> Unit) {
+    val available = if (monthlyBudget > 0.0) monthlyBudget - expense else income - expense
     WebReplicaCard {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onManageBudget).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE2F3FF)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.PieChart, contentDescription = null, tint = Color(0xFF0EA5E9), modifier = Modifier.size(17.dp))
             }
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text("本月资金分配", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(monthLabel + "资金分配", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text("收入扣除实际消费、还款和储蓄后的安排金额", color = Color(0xFF7B8CA3), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text("预算管理  ›", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
@@ -734,7 +915,7 @@ private fun WebReplicaBudgetCard(income: Double, expense: Double) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
             Spacer(Modifier.width(6.dp))
-            Text("¥ ${moneyFormat.format(available.coerceAtLeast(0.0))}", color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text("¥ " + moneyFormat.format(actualBalance), color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
             Text("余额单独展示，不重复计入本月扣减", color = Color(0xFF8492A7), fontSize = 9.sp)
         }
@@ -766,9 +947,9 @@ private fun BudgetSegment(label: String, value: Double, color: Color, modifier: 
 }
 
 @Composable
-private fun WebReplicaDiagnosticBanner(income: Double, expense: Double) {
+private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, onOpen: () -> Unit) {
     val warning = expense > income && income > 0
-    WebReplicaCard(padding = 12.dp) {
+    WebReplicaCard(modifier = Modifier.clickable(onClick = onOpen), padding = 12.dp) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFFEAF6FF)), contentAlignment = Alignment.Center) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
@@ -784,23 +965,24 @@ private fun WebReplicaDiagnosticBanner(income: Double, expense: Double) {
 }
 
 @Composable
-private fun WebReplicaCompass(income: Double, expense: Double) {
-    val netWorth = income - expense
+private fun WebReplicaCompass(income: Double, expense: Double, actualBalance: Double, onOpenOverlay: (HomeOverlay) -> Unit, onSelectTab: (RootTab) -> Unit) {
+    val netWorth = actualBalance
+    val usedPercent = if (income > 0) (expense / income * 100).toInt().coerceIn(0, 100) else 0
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CompassTile("净资产", "¥ ${moneyFormat.format(netWorth)}", "结构健康", Green, Icons.Default.CheckCircle, Modifier.weight(1f))
-            CompassTile("预算余量", "100%", "已用 0%", Blue, Icons.Default.PieChart, Modifier.weight(1f))
+            CompassTile("净资产", "¥ " + moneyFormat.format(netWorth), "账户当前余额", Green, Icons.Default.CheckCircle, Modifier.weight(1f)) { onSelectTab(RootTab.ASSETS) }
+            CompassTile("预算余量", (100 - usedPercent).toString() + "%", "已用 " + usedPercent + "%", Blue, Icons.Default.PieChart, Modifier.weight(1f)) { onOpenOverlay(HomeOverlay.BUDGET) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CompassTile("待还贷款", "无待还", "状态良好", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f))
-            CompassTile("储蓄达成", "0%", "计划进行中", Amber, Icons.Default.Savings, Modifier.weight(1f))
+            CompassTile("待还贷款", "查看贷款", "贷款账户", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f)) { onSelectTab(RootTab.LOANS) }
+            CompassTile("储蓄达成", "查看储蓄", "储蓄计划", Amber, Icons.Default.Savings, Modifier.weight(1f)) { onSelectTab(RootTab.SAVINGS) }
         }
     }
 }
 
 @Composable
-private fun CompassTile(label: String, value: String, badge: String, color: Color, icon: ImageVector, modifier: Modifier) {
-    WebReplicaCard(modifier = modifier, padding = 12.dp) {
+private fun CompassTile(label: String, value: String, badge: String, color: Color, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    WebReplicaCard(modifier = modifier.clickable(onClick = onClick), padding = 12.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(color.copy(alpha = .11f)), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
@@ -920,6 +1102,179 @@ private fun PlaceholderScreen(modifier: Modifier, tab: RootTab) {
         Spacer(Modifier.height(7.dp))
         Text("该模块已接入原生导航。下一步会把 Web 端的数据模型和操作逐项迁移到这里。", color = Muted, fontSize = 13.sp, textAlign = TextAlign.Center, lineHeight = 20.sp)
     }
+}
+
+@Composable
+private fun MonthPickerDialog(
+    selectedMonth: String,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val current = runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
+    val options = (-5..5).map { current.plusMonths(it.toLong()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择月份", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                options.forEach { month ->
+                    val key = month.toString()
+                    Text(
+                        "${month.year}年${month.monthValue}月",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (key == selectedMonth) SoftBlue else Color.Transparent)
+                            .clickable { onSelect(key) }
+                            .padding(horizontal = 14.dp, vertical = 11.dp),
+                        color = if (key == selectedMonth) Blue else Ink,
+                        fontWeight = if (key == selectedMonth) FontWeight.Bold else FontWeight.Normal,
+                    )
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+    )
+}
+
+@Composable
+private fun SalaryDayPickerDialog(
+    selectedDay: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var dayText by remember(selectedDay) { mutableStateOf(selectedDay.toString()) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("发薪日设置", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("按每月固定日期划分薪资周期（1～28号）。账户当前结余不会因切换周期而改变。", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+                OutlinedTextField(
+                    value = dayText,
+                    onValueChange = { dayText = it.filter(Char::isDigit).take(2) },
+                    label = { Text("发薪日") },
+                    suffix = { Text("号") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                )
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } },
+        confirmButton = {
+            TextButton(onClick = {
+                onSelect((dayText.toIntOrNull() ?: selectedDay).coerceIn(1, 28))
+            }) { Text("保存") }
+        },
+    )
+}
+
+@Composable
+private fun TransactionSearchDialog(entries: List<LedgerEntry>, onDismiss: () -> Unit) {
+    var query by remember { mutableStateOf("") }
+    val results = entries.filter {
+        query.isBlank() || it.title.contains(query, ignoreCase = true) || it.category.contains(query, ignoreCase = true)
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("搜索流水", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    label = { Text("关键词") },
+                    placeholder = { Text("备注或分类") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (results.isEmpty()) {
+                    Text("没有找到匹配流水", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
+                } else {
+                    results.take(4).forEach { entry ->
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(entry.title, modifier = Modifier.weight(1f), color = Ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(if (entry.type == EntryType.INCOME) "+${moneyFormat.format(entry.amount)}" else "-${moneyFormat.format(entry.amount)}", color = if (entry.type == EntryType.INCOME) Green else Red, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
+    )
+}
+
+@Composable
+private fun HomeSummaryDialog(
+    title: String,
+    description: String,
+    income: Double,
+    expense: Double,
+    budget: Double,
+    onBudgetChange: ((Double) -> Unit)?,
+    onDismiss: () -> Unit,
+    onOpenTransactions: () -> Unit,
+) {
+    var budgetText by remember(budget) { mutableStateOf(if (budget > 0) moneyFormat.format(budget) else "") }
+    val net = income - expense
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(description, color = Muted, fontSize = 12.sp)
+                SummaryMetric("收入", income, Green)
+                SummaryMetric("支出", expense, Red)
+                SummaryMetric("净变动", net, if (net >= 0) Blue else Red)
+                if (onBudgetChange != null) {
+                    OutlinedTextField(
+                        value = budgetText,
+                        onValueChange = { budgetText = it.filter { char -> char.isDigit() || char == '.' } },
+                        label = { Text("月预算") },
+                        prefix = { Text("¥ ") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    )
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onOpenTransactions) { Text("查看账单") }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onBudgetChange?.invoke(budgetText.toDoubleOrNull() ?: 0.0)
+                onDismiss()
+            }) { Text("关闭") }
+        },
+    )
+}
+
+@Composable
+private fun SummaryMetric(label: String, value: Double, color: Color) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = Muted, fontSize = 12.sp)
+        Text("¥ ${moneyFormat.format(value)}", color = color, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun ExpenseCategoriesDialog(entries: List<LedgerEntry>, onDismiss: () -> Unit) {
+    val categories = entries.groupBy { it.category.substringBefore(" ·") }.mapValues { (_, rows) -> rows.sumOf { it.amount } }.toList().sortedByDescending { it.second }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("分类明细", fontWeight = FontWeight.Bold) },
+        text = {
+            if (categories.isEmpty()) {
+                Text("本月暂无支出记录", color = Muted)
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    categories.forEach { (category, amount) -> SummaryMetric(category, amount, Ink) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
