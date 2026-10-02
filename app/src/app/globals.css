@@ -9497,6 +9497,8 @@ img[src$="/qita.webp"] {
 }
 
 .bill-platform-picker button.alipay > span { background: #2e91e9; }
+.bill-platform-picker button.backup { grid-column: 1 / -1; }
+.bill-platform-picker button.backup > span { background: #5f6d83; }
 .bill-platform-picker button > div { display: grid; gap: 5px; min-width: 0; }
 .bill-platform-picker strong { font-size: calc(11px * var(--user-font-scale)); font-weight: 600; }
 .bill-platform-picker small { overflow: hidden; color: #7d899c; font-size: calc(8px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }

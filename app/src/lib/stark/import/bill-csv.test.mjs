@@ -79,6 +79,27 @@ test("keeps WeChat files with a transaction number classified as WeChat", () => 
   assert.equal(parseBillCsv(content, "微信")[0].orderId, "wx-order-2");
 });
 
+test("parses this app's exported CSV backup without treating it as a payment-platform bill", () => {
+  const content = `流水ID,日期,类型,分类,备注归类,商户,平台,金额,支付方式,状态,订单号,说明,贷款ID\ntx-1,2026-09-15 08:30:00,支出,餐饮,工作餐,示例餐厅,银行卡,35.50,储蓄卡,已完成,order-1,早餐,loan-old`;
+  const rows = parseBillCsv(content, "本应用导出");
+
+  assert.equal(detectBillPlatform(content), "本应用导出");
+  assert.deepEqual(rows, [{
+    amount: 35.5,
+    type: "EXPENSE",
+    category: "餐饮",
+    remarkCategory: "工作餐",
+    platform: "银行卡",
+    merchant: "示例餐厅",
+    date: "2026-09-15 08:30:00",
+    description: "早餐",
+    paymentMethod: "储蓄卡",
+    status: "已完成",
+    orderId: "order-1",
+  }]);
+  assert.deepEqual(parseBillCsv(content, "微信"), []);
+});
+
 test("parses an XLSX workbook through the file entry point", async () => {
   const workbook = XLSX.utils.book_new();
   const sheet = XLSX.utils.json_to_sheet([

@@ -2,18 +2,20 @@ import * as XLSX from "xlsx";
 import type { TransactionType } from "@/lib/stark/models";
 
 export type BillPlatform = "微信" | "支付宝";
+export type BillImportSource = BillPlatform | "本应用导出";
 
 export type BillImportRow = {
   amount: number;
   type: TransactionType;
   category: string;
-  platform: BillPlatform;
+  platform: string;
   merchant: string | null;
   date: string;
   description: string | null;
   paymentMethod: string | null;
   status: string | null;
   orderId: string | null;
+  remarkCategory?: string | null;
 };
 
 type BillRecord = Record<string, unknown>;
@@ -175,6 +177,22 @@ function detectType(direction: string, category: string): TransactionType {
   return "EXPENSE";
 }
 
+const STARK_EXPORT_HEADERS = ["流水ID", "日期", "类型", "平台", "金额"] as const;
+
+function hasStarkExportHeaders(headers: string[]) {
+  const normalized = new Set(headers.map(normalizeHeader));
+  return STARK_EXPORT_HEADERS.every((header) => normalized.has(normalizeHeader(header)));
+}
+
+function detectStarkExportType(value: string): TransactionType | null {
+  const normalized = normalizeHeader(value).toUpperCase();
+  if (normalized === "收入" || normalized === "INCOME") return "INCOME";
+  if (normalized === "支出" || normalized === "EXPENSE") return "EXPENSE";
+  if (normalized === "转账" || normalized === "TRANSFER") return "TRANSFER";
+  if (normalized === "还款" || normalized === "REPAYMENT") return "REPAYMENT";
+  return null;
+}
+
 function platformHeaders(platform: BillPlatform) {
   return platform === "微信"
     ? {
@@ -239,6 +257,33 @@ function normalizeRows(rows: BillRecord[], platform: BillPlatform): BillImportRo
   });
 }
 
+function normalizeStarkExportRows(rows: BillRecord[]): BillImportRow[] {
+  if (!rows.length) return [];
+  const headers = Object.keys(rows[0]);
+  if (!hasStarkExportHeaders(headers)) return [];
+
+  return rows.flatMap((row) => {
+    const amount = parseAmount(valueAt(row, headers, ["金额"]));
+    const date = parseDateValue(valueAt(row, headers, ["日期"]));
+    const type = detectStarkExportType(valueAt(row, headers, ["类型"]));
+    if (!Number.isFinite(amount) || amount <= 0 || !date || !type) return [];
+
+    return [{
+      amount,
+      type,
+      category: valueAt(row, headers, ["分类"]) || (type === "INCOME" ? "收入" : type === "TRANSFER" ? "转账" : type === "REPAYMENT" ? "还款" : "其他"),
+      remarkCategory: valueAt(row, headers, ["备注归类"]) || null,
+      platform: valueAt(row, headers, ["平台"]) || "其他",
+      merchant: valueAt(row, headers, ["商户"]) || null,
+      date,
+      description: valueAt(row, headers, ["说明"]) || null,
+      paymentMethod: valueAt(row, headers, ["支付方式"]) || null,
+      status: valueAt(row, headers, ["状态"]) || null,
+      orderId: normalizeOrderId(valueAt(row, headers, ["订单号"])),
+    }];
+  });
+}
+
 function recordsFromCsv(content: string): BillRecord[] {
   const records = parseCsvRecords(content.replace(/^﻿/, ""));
   return recordsFromCells(records);
@@ -247,8 +292,10 @@ function recordsFromCsv(content: string): BillRecord[] {
 function recordsFromCells(records: unknown[][]): BillRecord[] {
   const headerIndexInRecords = records.findIndex((record) => {
     const headers = record.map((cell) => normalizeHeader(normalizeText(cell)));
-    return headers.some((header) => /交易时间|交易日期|交易创建时间/.test(header))
-      && headers.some((header) => /金额/.test(header));
+    return hasStarkExportHeaders(headers) || (
+      headers.some((header) => /交易时间|交易日期|交易创建时间/.test(header))
+      && headers.some((header) => /金额/.test(header))
+    );
   });
   if (headerIndexInRecords < 0) return [];
   const headers = records[headerIndexInRecords].map((header) => normalizeText(header).replace(/^﻿/, "").trim());
@@ -267,16 +314,19 @@ function hasExactHeaderMarker(source: string, marker: string) {
   return normalized.includes(marker);
 }
 
-function detectRowsPlatform(rows: BillRecord[], filename = ""): BillPlatform {
+function detectRowsPlatform(rows: BillRecord[], filename = ""): BillImportSource {
   const headers = rows.slice(0, 3).flatMap((row) => Object.keys(row).map(normalizeHeader));
+  if (hasStarkExportHeaders(headers)) return "本应用导出";
   const source = `${filename}\n${headers.join(",")}`;
   return source.includes("支付宝") || headers.includes("交易创建时间") || headers.includes("交易号")
     ? "支付宝"
     : "微信";
 }
 
-export function detectBillPlatform(content: string, filename = ""): BillPlatform {
+export function detectBillPlatform(content: string, filename = ""): BillImportSource {
   const source = `${filename}\n${content.slice(0, 1200)}`;
+  const headers = source.replace(/[\r\n]/g, ",").split(",").map(normalizeHeader);
+  if (hasStarkExportHeaders(headers)) return "本应用导出";
   return source.includes("支付宝")
     || source.includes("交易创建时间")
     || hasExactHeaderMarker(source, "交易号")
@@ -292,8 +342,16 @@ export function parseAlipayBillCsv(content: string) {
   return normalizeRows(recordsFromCsv(content), "支付宝");
 }
 
+export function parseStarkExportCsv(content: string) {
+  return normalizeStarkExportRows(recordsFromCsv(content));
+}
+
 export function parseBillCsv(content: string, platform = detectBillPlatform(content)) {
   const detected = detectBillPlatform(content);
+  if (platform === "本应用导出") {
+    return detected === "本应用导出" ? parseStarkExportCsv(content) : [];
+  }
+  if (detected === "本应用导出") return [];
   const hasPlatformMarker = /微信|支付宝|交易创建时间|交易号/.test(content.slice(0, 1200));
   if (hasPlatformMarker && detected !== platform) return [];
   return platform === "支付宝" ? parseAlipayBillCsv(content) : parseWechatBillCsv(content);
@@ -304,7 +362,7 @@ function decodeCsv(bytes: Uint8Array) {
   return utf8.includes("�") ? new TextDecoder("gb18030").decode(bytes) : utf8;
 }
 
-export async function detectBillFilePlatform(file: File): Promise<BillPlatform> {
+export async function detectBillFilePlatform(file: File): Promise<BillImportSource> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (/\.csv$/i.test(file.name)) return detectBillPlatform(decodeCsv(bytes), file.name);
   const workbook = XLSX.read(bytes, { type: "array", cellDates: true });
@@ -313,9 +371,9 @@ export async function detectBillFilePlatform(file: File): Promise<BillPlatform> 
   return detectRowsPlatform(rows, file.name);
 }
 
-export async function parseBillFile(file: File, platform?: BillPlatform): Promise<BillImportRow[]> {
+export async function parseBillFile(file: File, platform?: BillImportSource): Promise<BillImportRow[]> {
   const bytes = new Uint8Array(await file.arrayBuffer());
-  let detected: BillPlatform;
+  let detected: BillImportSource;
   let rows: BillImportRow[];
 
   if (/\.csv$/i.test(file.name)) {
@@ -327,7 +385,8 @@ export async function parseBillFile(file: File, platform?: BillPlatform): Promis
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rawRows = recordsFromWorkbook(sheet);
     detected = detectRowsPlatform(rawRows, file.name);
-    rows = normalizeRows(rawRows, platform ?? detected);
+    const source = platform ?? detected;
+    rows = source === "本应用导出" ? normalizeStarkExportRows(rawRows) : normalizeRows(rawRows, source);
   } else {
     return [];
   }

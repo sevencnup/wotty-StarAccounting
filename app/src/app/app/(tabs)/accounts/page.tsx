@@ -16,21 +16,18 @@ import { serializeTransactionsToCsv } from "@/lib/stark/export/transaction-csv";
 import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
 import { matchImportedLoanRepayments } from "@/lib/stark/import/loan-repayment";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
-import { AccountReconciliationSheet } from "@/components/stark/AccountReconciliationSheet";
 import { BottomSheet } from "@/components/stark/BottomSheet";
-import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type ThemeChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
-
-type BillPlatform = "微信" | "支付宝";
+import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
+import type { BillImportSource } from "@/lib/stark/import/bill-csv";
 
 const manager = new DataModeManager();
-type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "RECONCILIATION" | "THEME" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "UPDATE" | "MODE";
-const themeLabels: Record<ThemeChoice, string> = { BLUE: "默认蓝", GREEN: "清新绿", AMBER: "暖阳橙" };
+type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "MODE";
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
 
 type PendingBillImport = {
   fileName: string;
-  platform: BillPlatform;
+  platform: BillImportSource;
   transactions: Transaction[];
 };
 
@@ -40,13 +37,10 @@ function SettingIcon({ type }: { type: PanelKey }) {
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
     REMARK: <><path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4-7 4V3a1 1 0 0 1 1-1Z" /><path d="M9 8h6" /><path d="M9 12h4" /></>,
-    RECONCILIATION: <><path d="M4 6h16M4 12h10M4 18h16" /><circle cx="17" cy="12" r="3" /></>,
-    THEME: <><path d="M12 3a9 9 0 1 0 0 18h1.4a2 2 0 0 0 0-4H12a2 2 0 0 1 0-4h3a6 6 0 0 0 0-12Z" /><circle cx="7.5" cy="10" r=".7" /><circle cx="9" cy="6.5" r=".7" /><circle cx="14" cy="6" r=".7" /></>,
     LANGUAGE: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" /></>,
     FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
     HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
     ABOUT: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
-    UPDATE: <><path d="M20 12a8 8 0 1 1-2.3-5.7" /><path d="M20 4v6h-6" /><path d="M12 8v4l2.5 1.5" /></>,
     MODE: <><path d="M7 7h10" /><path d="m13 3 4 4-4 4" /><path d="M17 17H7" /><path d="m11 13-4 4 4 4" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[type]}</svg>;
@@ -85,8 +79,8 @@ export default function AccountsPage() {
   const [cloudUser, setCloudUser] = useState(() => getCloudAuthUser());
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
-  const [importPlatform, setImportPlatform] = useState<BillPlatform>("微信");
-  const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单");
+  const [importPlatform, setImportPlatform] = useState<BillImportSource>("微信");
+  const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单，以及本应用导出的 CSV 账单");
   const [importing, setImporting] = useState(false);
   const [readingBill, setReadingBill] = useState(false);
   const [pendingBillImport, setPendingBillImport] = useState<PendingBillImport | null>(null);
@@ -166,10 +160,10 @@ export default function AccountsPage() {
     }
   }
 
-  function selectImportPlatform(platform: BillPlatform) {
+  function selectImportPlatform(platform: BillImportSource) {
     setImportPlatform(platform);
     setPendingBillImport(null);
-    setImportMessage(`请选择${platform}官方导出的 CSV / Excel 账单`);
+    setImportMessage(platform === "本应用导出" ? "请选择本应用导出的 CSV 账单" : `请选择${platform}官方导出的 CSV / Excel 账单`);
   }
 
   async function submitPasswordReset() {
@@ -224,11 +218,10 @@ export default function AccountsPage() {
     setPendingBillImport(null);
     setImportMessage("正在读取账单...");
     try {
-      const { detectBillFilePlatform, parseBillFile } = await import("@/lib/stark/import/bill-csv");
-      const detectedPlatform = await detectBillFilePlatform(file);
-      const rows = await parseBillFile(file, detectedPlatform);
+      const { parseBillFile } = await import("@/lib/stark/import/bill-csv");
+      const rows = await parseBillFile(file, importPlatform);
       if (!rows.length) {
-        setImportMessage(`没有识别到有效${detectedPlatform}流水，请确认这是官方导出的 CSV / Excel 账单`);
+        setImportMessage(importPlatform === "本应用导出" ? "没有识别到本应用导出的有效流水，请确认选择的是导出的 CSV 账单" : `没有识别到有效${importPlatform}流水，请确认这是官方导出的 CSV / Excel 账单`);
         return;
       }
 
@@ -237,12 +230,11 @@ export default function AccountsPage() {
         id: createId("transaction"), userId: "local-user", accountId: getCurrentAccountId(),
         amount: row.amount, type: row.type, category: row.category, platform: row.platform,
         merchant: row.merchant, date: row.date, description: row.description,
-        orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null,
+        orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null, remarkCategory: row.remarkCategory ?? null,
         createdAt: now, updatedAt: now,
       }));
-      setImportPlatform(detectedPlatform);
-      setPendingBillImport({ fileName: file.name, platform: detectedPlatform, transactions });
-      setImportMessage(`已识别 ${file.name}：${detectedPlatform}账单，共 ${transactions.length} 笔。确认后才会导入。`);
+      setPendingBillImport({ fileName: file.name, platform: importPlatform, transactions });
+      setImportMessage(`已识别 ${file.name}：${importPlatform}账单，共 ${transactions.length} 笔。确认后才会导入。`);
     } catch (error) {
       const detail = error instanceof Error && error.message ? `：${error.message}` : "";
       setImportMessage(`读取账单失败${detail}。请确认文件未损坏且为 CSV / XLS / XLSX 格式。`);
@@ -349,11 +341,9 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
-        <SettingsRow type="RECONCILIATION" title="账户对账" value="核对实际余额与账面余额" onClick={() => setActivePanel("RECONCILIATION")} />
       </section>
 
       <section className="settings-center-group">
-        <SettingsRow type="THEME" title="主题" value={themeLabels[uiSettings.theme]} onClick={() => setActivePanel("THEME")} />
         <SettingsRow type="LANGUAGE" title="语言" value={languageLabels[uiSettings.language]} onClick={() => setActivePanel("LANGUAGE")} />
         <SettingsRow type="FONT" title="字体大小" value={fontLabels[uiSettings.font]} onClick={() => setActivePanel("FONT")} />
         {mode === "CLOUD" && cloudUser ? <SettingsRow type="ACCOUNT" title="账户设置" value="密码与注册" onClick={openAccountSettings} /> : null}
@@ -361,7 +351,6 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="HELP" title="帮助与反馈" onClick={() => setActivePanel("HELP")} />
-        <SettingsRow type="UPDATE" title="检查更新" value="检查 App 版本" onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} />
         <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
 
@@ -387,7 +376,7 @@ export default function AccountsPage() {
 
       {activePanel ? (
         <BottomSheet
-          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "RECONCILIATION" ? "账户对账" : activePanel === "THEME" ? "主题" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
           className="settings-sheet"
           overlayClassName="settings-sheet-overlay"
           onClose={() => setActivePanel(null)}
@@ -415,12 +404,13 @@ export default function AccountsPage() {
               <div className="bill-platform-picker">
                 <button type="button" className={importPlatform === "微信" ? "active wechat" : "wechat"} onClick={() => selectImportPlatform("微信")}><span>微</span><div><strong>微信账单</strong><small>微信支付 CSV / Excel 格式</small></div></button>
                 <button type="button" className={importPlatform === "支付宝" ? "active alipay" : "alipay"} onClick={() => selectImportPlatform("支付宝")}><span>支</span><div><strong>支付宝账单</strong><small>支付宝交易记录 CSV / Excel</small></div></button>
+                <button type="button" className={importPlatform === "本应用导出" ? "active backup" : "backup"} onClick={() => selectImportPlatform("本应用导出")}><span>备</span><div><strong>本应用导出账单</strong><small>导出的 CSV 备份文件</small></div></button>
               </div>
               <div className={`bill-import-message ${importMessage.startsWith("已导入") ? "success" : ""}`}>{importMessage}</div>
-              <input ref={fileInputRef} type="file" hidden accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { const file = event.target.files?.[0]; if (file) void prepareBillImport(file); }} />
+              <input ref={fileInputRef} type="file" hidden accept={importPlatform === "本应用导出" ? ".csv,text/csv" : ".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void prepareBillImport(file); }} />
               <button type="button" className="settings-sheet-primary" disabled={readingBill || importing} onClick={() => fileInputRef.current?.click()}>{readingBill ? "正在读取..." : pendingBillImport ? "重新选择账单文件" : "选择账单文件"}</button>
               {pendingBillImport ? <button type="button" className="settings-confirm-button bill-import-confirm" disabled={importing} onClick={() => void confirmBillImport()}>{importing ? "导入中..." : `确认导入 ${pendingBillImport.transactions.length} 笔`}</button> : null}
-              <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件；选择后会自动识别平台，确认导入前不会写入数据。</p>
+              <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件，以及本应用导出的 CSV 备份；请选择对应来源，确认导入前不会写入数据。</p>
               {importErrors.length ? <div className="import-error-list"><strong>最近导入问题</strong>{importErrors.slice(0, 5).map((item) => <div key={item.id}><span>{item.fileName}{item.lineNumber > 0 ? ` · 第 ${item.lineNumber} 行` : ""}</span><small>{item.resolved ? "已解决" : item.errorMessage}</small></div>)}</div> : null}
             </div> : null}
 
@@ -435,14 +425,9 @@ export default function AccountsPage() {
               <BillRemarkSheet />
             </div> : null}
 
-            {activePanel === "RECONCILIATION" ? <div className="settings-sheet-body reconciliation-sheet-body">
-              <AccountReconciliationSheet />
-            </div> : null}
-
-            {activePanel === "THEME" ? <div className="settings-option-list">{(["BLUE", "GREEN", "AMBER"] as ThemeChoice[]).map((item) => <button type="button" key={item} className={uiSettings.theme === item ? "active" : ""} onClick={() => updateUiSetting("theme", item)}><i className={`theme-dot ${item.toLowerCase()}`} /><span><strong>{themeLabels[item]}</strong><small>{item === "BLUE" ? "清爽、稳定的默认配色" : item === "GREEN" ? "更柔和的自然配色" : "温暖醒目的强调配色"}</small></span><em>{uiSettings.theme === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN", "EN_US"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : item === "ZH_CN" ? "固定使用简体中文" : "固定使用英文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
-            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>请返回根登录入口确认云端服务与数据库状态，再重新登录。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件。</p></div><div><strong>Web 端和 App 有何不同？</strong><p>目前暂时只开发安卓客户端，Web 端适用于 PC、iOS、鸿蒙等设备。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">国际站点端反馈 <ChevronIcon /></a><a href="https://sevencn.com/software/staraccounting" target="_blank" rel="noreferrer">国内站点端反馈 <ChevronIcon /></a></div> : null}
+            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>请返回根登录入口确认云端服务与数据库状态，再重新登录。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件，也支持本应用导出的 CSV 账单。</p></div><div><strong>Web 端和 App 有何不同？</strong><p>目前暂时只开发安卓客户端，Web 端适用于 PC、iOS、鸿蒙等设备。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">国际站点端反馈 <ChevronIcon /></a><a href="https://sevencn.com/software/staraccounting" target="_blank" rel="noreferrer">国内站点端反馈 <ChevronIcon /></a></div> : null}
             {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星会计</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div><nav className="settings-about-links" aria-label="相关网站"><a href="https://sevencn.com" target="_blank" rel="noreferrer"><span>博客</span><strong>sevencn.com</strong><ChevronIcon /></a><a href="https://s.wotty.app" target="_blank" rel="noreferrer"><span>项目网站</span><strong>s.wotty.app</strong><ChevronIcon /></a><a href="https://github.com/sevencnup/wotty-StarAccounting" target="_blank" rel="noreferrer"><span>开源地址</span><strong>github.com/sevencnup/wotty-StarAccounting</strong><ChevronIcon /></a></nav></div> : null}
         </BottomSheet>
       ) : null}
