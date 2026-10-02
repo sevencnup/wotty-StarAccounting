@@ -140,28 +140,42 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
-    private fun hideNavigationHandle() {
-        window.navigationBarColor = android.graphics.Color.WHITE
+    private fun configureSystemBars() {
+        // Keep Android's navigation gesture handle visible. The app draws edge-to-edge
+        // behind it, while the bottom bar reserves the safe area for its touch targets.
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
-        window.decorView.systemUiVisibility = (
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            )
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            window.insetsController?.let { controller ->
-                controller.hide(android.view.WindowInsets.Type.navigationBars())
-                controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            window.setDecorFitsSystemWindows(false)
+            // DecorView may not be attached during onCreate; defer controller access
+            // until the window is attached to avoid a startup NPE on some Android 15 ROMs.
+            window.decorView.post {
+                window.insetsController?.let { controller ->
+                    controller.show(android.view.WindowInsets.Type.navigationBars())
+                    controller.setSystemBarsAppearance(
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                        android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS,
+                    )
+                }
             }
+        } else {
+            window.decorView.systemUiVisibility = (
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                    View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN or
+                    View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or
+                    View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                )
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        hideNavigationHandle()
-        window.decorView.setOnSystemUiVisibilityChangeListener { hideNavigationHandle() }
+        configureSystemBars()
         setContent {
             StarkNativeTheme {
                 StarkNativeApp()
@@ -171,7 +185,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) hideNavigationHandle()
+        if (hasFocus) configureSystemBars()
     }
 }
 
@@ -660,7 +674,7 @@ private fun NativeBottomBar(
     Surface(
         color = Color.White,
         shadowElevation = 10.dp,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 4.dp),
