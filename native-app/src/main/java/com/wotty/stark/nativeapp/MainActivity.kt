@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -248,6 +250,12 @@ private data class LedgerEntry(
     val transactionDate: String = LocalDate.now().toString(),
 )
 
+private fun LedgerEntry.isRepayment(): Boolean =
+    type == EntryType.EXPENSE && (category.contains("还款") || title.contains("还款") || title.contains("贷款"))
+
+private fun LedgerEntry.isSavings(): Boolean =
+    type == EntryType.EXPENSE && (category.contains("储蓄") || category.contains("存款") || title.contains("储蓄") || title.contains("存款"))
+
 private data class NativeLedgerSnapshot(
     val actualBalance: Double,
     val entries: List<LedgerEntry>,
@@ -270,6 +278,10 @@ private data class NativeRemoteSnapshot(
     val entries: List<LedgerEntry>,
     val actualBalance: Double?,
 )
+
+private data class NativeBudget(val amount: Double, val category: String, val period: String)
+private data class NativeLoan(val platform: String, val remainingAmount: Double, val monthlyPayment: Double, val dueDate: Int, val status: String)
+private data class NativeSavingsGoal(val name: String, val targetAmount: Double, val currentAmount: Double, val status: String)
 
 private class NativeLedgerStore(context: Context) {
     private val preferences = context.getSharedPreferences("native-ledger", Context.MODE_PRIVATE)
@@ -422,6 +434,34 @@ private class NativeApiClient {
         }
     }
 
+    private suspend fun getJsonArray(config: NativeApiPreferences, path: String): JSONArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + path)
+            .header("Authorization", "Bearer ${config.token}")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException(JSONObject(raw).optString("error", "云端数据读取失败"))
+            JSONArray(raw)
+        }
+    }
+
+    suspend fun loadBudgets(config: NativeApiPreferences): List<NativeBudget> = withContext(Dispatchers.IO) {
+        val rows = getJsonArray(config, "/api/budgets?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+        buildList { for (i in 0 until rows.length()) rows.optJSONObject(i)?.let { add(NativeBudget(it.optDouble("amount"), it.optString("category", "全局预算"), it.optString("period", "MONTHLY"))) } }
+    }
+
+    suspend fun loadLoans(config: NativeApiPreferences): List<NativeLoan> = withContext(Dispatchers.IO) {
+        val rows = getJsonArray(config, "/api/loans?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+        buildList { for (i in 0 until rows.length()) rows.optJSONObject(i)?.let { add(NativeLoan(it.optString("platform", "贷款"), it.optDouble("remainingAmount"), it.optDouble("monthlyPayment"), it.optInt("dueDate"), it.optString("status", "ACTIVE"))) } }
+    }
+
+    suspend fun loadSavingsGoals(config: NativeApiPreferences): List<NativeSavingsGoal> = withContext(Dispatchers.IO) {
+        val rows = getJsonArray(config, "/api/savings-goals?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+        buildList { for (i in 0 until rows.length()) rows.optJSONObject(i)?.let { add(NativeSavingsGoal(it.optString("name", "储蓄计划"), it.optDouble("targetAmount"), it.optDouble("currentAmount"), it.optString("status", "ACTIVE"))) } }
+    }
+
     suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry): Boolean = withContext(Dispatchers.IO) {
         val now = java.time.LocalDateTime.now().toString().replace('T', ' ')
         val payload = JSONObject()
@@ -503,6 +543,9 @@ private fun StarkNativeApp() {
     val snapshot = remember { ledgerStore.load() }
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
+    var remoteBudgets by remember { mutableStateOf<List<NativeBudget>>(emptyList()) }
+    var remoteLoans by remember { mutableStateOf<List<NativeLoan>>(emptyList()) }
+    var remoteSavings by remember { mutableStateOf<List<NativeSavingsGoal>>(emptyList()) }
 
     LaunchedEffect(apiPreferences.token, apiPreferences.baseUrl, apiPreferences.accountId) {
         if (apiPreferences.token.isBlank()) {
@@ -513,9 +556,15 @@ private fun StarkNativeApp() {
         runCatching {
             val remote = apiClient.loadSnapshot(apiPreferences)
             val balance = apiClient.loadBalance(apiPreferences)
+            val budgets = apiClient.loadBudgets(apiPreferences)
+            val loans = apiClient.loadLoans(apiPreferences)
+            val savings = apiClient.loadSavingsGoals(apiPreferences)
             entries.clear()
             entries.addAll(remote.entries)
             if (balance != null) actualBalance = balance
+            remoteBudgets = budgets
+            remoteLoans = loans
+            remoteSavings = savings
             apiStatus = "已同步 ${remote.entries.size} 笔"
         }.onFailure { error ->
             apiStatus = error.message ?: "云端同步失败"
@@ -524,21 +573,11 @@ private fun StarkNativeApp() {
 
     Scaffold(
         containerColor = Canvas,
-        floatingActionButtonPosition = FabPosition.Center,
-        floatingActionButton = {
-            androidx.compose.material3.ExtendedFloatingActionButton(
-                onClick = { entrySheetOpen = true },
-                icon = { Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                text = { Text("记账", fontSize = 15.sp, fontWeight = FontWeight.Bold) },
-                containerColor = Color.White,
-                contentColor = Blue,
-                elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(defaultElevation = 3.dp),
-            )
-        },
         bottomBar = {
             NativeBottomBar(
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
+                onAddEntry = { entrySheetOpen = true },
             )
         },
     ) { insets ->
@@ -554,6 +593,9 @@ private fun StarkNativeApp() {
                     selectedMonth = selectedMonth,
                     salaryDay = salaryDay,
                     monthlyBudget = monthlyBudget,
+                    remoteBudgets = remoteBudgets,
+                    remoteLoans = remoteLoans,
+                    remoteSavings = remoteSavings,
                     onSalaryDayClick = { homeOverlay = HomeOverlay.SALARY_DAY },
                     onOpenOverlay = { homeOverlay = it },
                     onSelectTab = { selectedTab = it },
@@ -672,6 +714,7 @@ private fun StarkNativeApp() {
 private fun NativeBottomBar(
     selectedTab: RootTab,
     onTabSelected: (RootTab) -> Unit,
+    onAddEntry: () -> Unit,
 ) {
     // Keep the visible icon row at the Web height; the gesture safe-area is a separate white strip.
     Column(
@@ -687,23 +730,52 @@ private fun NativeBottomBar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
-            RootTab.entries.forEach { tab ->
-                val active = selectedTab == tab
-                Box(
-                    modifier = Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(12.dp)).clickable { onTabSelected(tab) },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    WebNavIcon(
-                        resourceId = tab.iconResource,
-                        contentDescription = tab.label,
-                        active = active,
-                        modifier = Modifier.size(27.dp),
-                    )
+            RootTab.entries.take(3).forEach { tab ->
+                NativeBottomTab(tab, selectedTab, onTabSelected)
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(onClick = onAddEntry),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                    Icon(Icons.Default.Add, contentDescription = "记账", tint = Blue, modifier = Modifier.size(23.dp))
+                    Text("记账", color = Blue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
+            }
+            RootTab.entries.drop(3).forEach { tab ->
+                NativeBottomTab(tab, selectedTab, onTabSelected)
             }
         }
         // Pure white behind Android's visible gesture handle.
         Spacer(Modifier.fillMaxWidth().navigationBarsPadding())
+    }
+}
+
+@Composable
+private fun RowScope.NativeBottomTab(
+    tab: RootTab,
+    selectedTab: RootTab,
+    onTabSelected: (RootTab) -> Unit,
+) {
+    val active = selectedTab == tab
+    Box(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onTabSelected(tab) },
+        contentAlignment = Alignment.Center,
+    ) {
+        WebNavIcon(
+            resourceId = tab.iconResource,
+            contentDescription = tab.label,
+            active = active,
+            modifier = Modifier.size(27.dp),
+        )
     }
 }
 
@@ -728,6 +800,9 @@ private fun HomeScreen(
     selectedMonth: String,
     salaryDay: Int,
     monthlyBudget: Double,
+    remoteBudgets: List<NativeBudget>,
+    remoteLoans: List<NativeLoan>,
+    remoteSavings: List<NativeSavingsGoal>,
     onSalaryDayClick: () -> Unit,
     onOpenOverlay: (HomeOverlay) -> Unit,
     onSelectTab: (RootTab) -> Unit,
@@ -749,6 +824,8 @@ private fun HomeScreen(
     }
     val income = periodEntries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
     val expense = periodEntries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
+    val repayment = periodEntries.filter { it.isRepayment() }.sumOf { it.amount }
+    val savings = periodEntries.filter { it.isSavings() }.sumOf { it.amount }
     val value = when (metric) {
         HomeMetric.BALANCE -> actualBalance
         HomeMetric.EXPENSE -> expense
@@ -756,7 +833,7 @@ private fun HomeScreen(
     }
     val monthLabel = if (selectedYear != null) "${selectedYear}年" else "${month.year}年${month.monthValue}月"
     val label = when (metric) {
-        HomeMetric.BALANCE -> "账户当前结余"
+        HomeMetric.BALANCE -> "当前结余"
         HomeMetric.EXPENSE -> if (balancePeriod == BalancePeriod.SALARY) "本期支出" else "本月支出"
         HomeMetric.INCOME -> if (balancePeriod == BalancePeriod.SALARY) "本期收入" else "本月收入"
     }
@@ -788,12 +865,12 @@ private fun HomeScreen(
                 onDetails = { onSelectTab(RootTab.CONSUMPTION) },
             )
         }
-        item { WebReplicaBudgetCard(income, expense, actualBalance, monthlyBudget, monthLabel) { onOpenOverlay(HomeOverlay.BUDGET) } }
-        item { WebReplicaDiagnosticBanner(income, expense) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
-        item { WebReplicaCompass(income, expense, actualBalance, onOpenOverlay, onSelectTab) }
+        item { WebReplicaBudgetCard(income, expense, repayment, savings, actualBalance, monthlyBudget, remoteBudgets, monthLabel) { onOpenOverlay(HomeOverlay.BUDGET) } }
+        item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
+        item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteLoans, remoteSavings, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
-        item { WebReplicaAdvisoryCard(income, expense) }
-        item { WebReplicaCashflowTrend(entries, month) }
+        item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
+        item { WebReplicaCashflowTrend(entries, month, selectedYear) }
     }
 }
 
@@ -823,9 +900,10 @@ private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>, monthLabel: S
 }
 
 @Composable
-private fun WebReplicaAdvisoryCard(income: Double, expense: Double) {
-    val dailyExpense = expense / 31
+private fun WebReplicaAdvisoryCard(income: Double, expense: Double, monthlyBudget: Double, month: YearMonth) {
+    val dailyExpense = expense / month.lengthOfMonth().toDouble()
     val healthy = income >= expense
+    val remainingBudget = (if (monthlyBudget > 0) monthlyBudget else income) - expense
     WebReplicaCard(padding = 14.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -844,7 +922,7 @@ private fun WebReplicaAdvisoryCard(income: Double, expense: Double) {
         Spacer(Modifier.height(10.dp))
         AdvisoryRow("1", "当前日均支出 ¥ ${moneyFormat.format(dailyExpense)}，若保持当前速率，预计月底可结余 ¥ ${moneyFormat.format((income - expense).coerceAtLeast(0.0))}。")
         Spacer(Modifier.height(8.dp))
-        AdvisoryRow("2", "剩余总预算 ¥ ${moneyFormat.format((income - expense).coerceAtLeast(0.0))}，建议将富余资金分配至储蓄计划。")
+        AdvisoryRow("2", "剩余总预算 ¥ ${moneyFormat.format(remainingBudget.coerceAtLeast(0.0))}，建议将富余资金分配至储蓄计划。")
     }
 }
 
@@ -865,13 +943,13 @@ private fun AdvisoryRow(index: String, text: String) {
 }
 
 @Composable
-private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>, selectedMonth: YearMonth) {
-    val monthly = (-4..0).map { selectedMonth.plusMonths(it.toLong()) }
+private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>, selectedMonth: YearMonth, selectedYear: Int? = null) {
+    val monthly = if (selectedYear != null) (1..12).map { YearMonth.of(selectedYear, it) } else (-4..0).map { selectedMonth.plusMonths(it.toLong()) }
     val monthlyValues = monthly.map { month ->
         val rows = entries.filter { runCatching { LocalDate.parse(it.transactionDate) }.getOrNull()?.let { date -> date.year == month.year && date.monthValue == month.monthValue } == true }
         rows.filter { it.type == EntryType.INCOME }.sumOf { it.amount } to rows.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
     }
-    WebReplicaCard(padding = 14.dp) {
+    WebReplicaCard(padding = 14.dp, radius = 22.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("收支动态走势", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -899,10 +977,13 @@ private fun TrendLegend(label: String, color: Color) {
 @Composable
 private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, total: Double) {
     val colors = listOf(Color(0xFF0EA5E9), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFFB7185), Color(0xFF8B5CF6))
-    val data = categories.take(5).mapIndexed { index, (name, amount) ->
-        RoseChartSegment(name, amount, colors[index])
+    val visible = categories.take(4).toMutableList()
+    val other = categories.drop(4).sumOf { it.second }
+    if (other > 0) visible += "其他" to other
+    val data = visible.mapIndexed { index, (name, amount) ->
+        RoseChartSegment(name, amount, colors[index % colors.size])
     }
-    Box(Modifier.fillMaxWidth().height(198.dp)) {
+    Box(Modifier.fillMaxWidth().height(248.dp)) {
         NativeRoseChart(data, Modifier.fillMaxSize())
         Text(
             "¥ ${moneyFormat.format(total)}",
@@ -1028,9 +1109,7 @@ private fun WebReplicaHeader(onSearch: () -> Unit, onApi: () -> Unit, apiStatus:
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        IconButton(onClick = onApi) {
-            Icon(Icons.Default.CloudSync, contentDescription = "云端同步", tint = if (apiStatus.startsWith("已同步")) Green else Muted, modifier = Modifier.size(22.dp))
-        }
+        Spacer(Modifier.size(26.dp))
         Text("首页", color = Color(0xFF101827), fontSize = 18.sp, fontWeight = FontWeight.Medium)
         IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
     }
@@ -1070,7 +1149,7 @@ private fun WebReplicaMetricControl(metric: HomeMetric, monthLabel: String, onMo
 private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: String, value: Double, count: Int, monthLabel: String, salaryDay: Int, onPeriodChange: (BalancePeriod) -> Unit, onSalaryDayClick: () -> Unit, onDetails: () -> Unit) {
     WebReplicaCard(padding = 0.dp) {
         Box(Modifier.fillMaxWidth().height(146.dp).padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Text(monthLabel.substringAfter("年"), modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
+            Text(monthLabel.substringBefore("年").substringAfterLast("年"), modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
             Column(Modifier.align(Alignment.TopStart)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(label, color = Color(0xFF64748B), fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -1099,12 +1178,16 @@ private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: Str
 }
 
 @Composable
-private fun WebReplicaBudgetCard(income: Double, expense: Double, actualBalance: Double, monthlyBudget: Double, monthLabel: String, onManageBudget: () -> Unit) {
-    val available = if (monthlyBudget > 0.0) monthlyBudget - expense else income - expense
+private fun WebReplicaBudgetCard(income: Double, expense: Double, repayment: Double, savings: Double, actualBalance: Double, monthlyBudget: Double, remoteBudgets: List<NativeBudget>, monthLabel: String, onManageBudget: () -> Unit) {
+    val allocationIncome = if (monthlyBudget > 0.0) monthlyBudget else income
+    val configuredBudget = remoteBudgets.filter { it.period == "MONTHLY" }.sumOf { it.amount }
+    val allocationBase = if (configuredBudget > 0.0) configuredBudget else allocationIncome
+    val allocated = expense + repayment + savings
+    val available = allocationIncome - allocated
     WebReplicaCard {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onManageBudget).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE2F3FF)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.PieChart, contentDescription = null, tint = Color(0xFF0EA5E9), modifier = Modifier.size(17.dp))
+                Icon(Icons.Default.Category, contentDescription = null, tint = Color(0xFF0060C0), modifier = Modifier.size(17.dp))
             }
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
@@ -1117,20 +1200,25 @@ private fun WebReplicaBudgetCard(income: Double, expense: Double, actualBalance:
         Row(Modifier.fillMaxWidth()) {
             BudgetAmount("可支配预算", available, "可继续安排 ¥ ${moneyFormat.format(available)}", Modifier.weight(1f))
             Box(Modifier.width(1.dp).height(64.dp).background(Line))
-            BudgetAmount("收入", income, "已分配 ¥ ${moneyFormat.format(expense)}", Modifier.weight(1f).padding(start = 14.dp))
+            BudgetAmount("收入", allocationBase, "已分配 ¥ ${moneyFormat.format(allocated)}", Modifier.weight(1f).padding(start = 14.dp))
         }
         Spacer(Modifier.height(15.dp))
         Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color(0xFFEAF0F7))) {
-            if (income > 0) Box(Modifier.fillMaxWidth((expense / income).toFloat().coerceIn(0f, 1f)).height(7.dp).background(Color(0xFF0EA5E9)))
+            if (allocationBase > 0) {
+                Row(Modifier.fillMaxWidth().height(7.dp)) {
+                    val denominator = allocationBase.coerceAtLeast(0.01)
+                    if (expense > 0) Box(Modifier.fillMaxWidth((expense / denominator).toFloat().coerceIn(0f, 1f)).height(7.dp).background(Color(0xFF0EA5E9)))
+                }
+            }
         }
         Spacer(Modifier.height(14.dp))
         Row(Modifier.fillMaxWidth()) {
             BudgetSegment("消费", expense, Color(0xFF0EA5E9), Modifier.weight(1f))
-            BudgetSegment("还款", 0.0, Color(0xFFF59E0B), Modifier.weight(1f))
+            BudgetSegment("还款", repayment, Color(0xFFF59E0B), Modifier.weight(1f))
         }
         Spacer(Modifier.height(13.dp))
         Row(Modifier.fillMaxWidth()) {
-            BudgetSegment("储蓄", 0.0, Color(0xFF10B981), Modifier.weight(1f))
+            BudgetSegment("储蓄", savings, Color(0xFF10B981), Modifier.weight(1f))
             BudgetSegment("剩余", available, Blue, Modifier.weight(1f), blueValue = true)
         }
         HorizontalDivider(Modifier.padding(vertical = 15.dp), color = Line)
@@ -1169,42 +1257,54 @@ private fun BudgetSegment(label: String, value: Double, color: Color, modifier: 
 }
 
 @Composable
-private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, onOpen: () -> Unit) {
+private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, monthlyBudget: Double, remoteBudgets: List<NativeBudget>, onOpen: () -> Unit) {
+    val configuredBudget = remoteBudgets.filter { it.period == "MONTHLY" }.sumOf { it.amount }
     val warning = expense > income && income > 0
-    WebReplicaCard(modifier = Modifier.clickable(onClick = onOpen), padding = 12.dp) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFFEAF6FF)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
-            }
-            Spacer(Modifier.width(9.dp))
-            Column(Modifier.weight(1f)) {
-                Text("财务诊断", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (warning) "本月支出偏高，建议关注预算" else "本月现金流平稳，无超支或临近违约风险", color = Color(0xFF64748B), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Text("查看  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFFEAF6FF)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
         }
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text("财务诊断", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (warning || (monthlyBudget > 0 && expense > monthlyBudget) || (configuredBudget > 0 && expense > configuredBudget)) "本月支出偏高，建议关注预算" else "本月现金流平稳，无超支或临近违约风险", color = Color(0xFF64748B), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Text("查看  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-private fun WebReplicaCompass(income: Double, expense: Double, actualBalance: Double, onOpenOverlay: (HomeOverlay) -> Unit, onSelectTab: (RootTab) -> Unit) {
+private fun WebReplicaCompass(income: Double, expense: Double, actualBalance: Double, monthlyBudget: Double, remoteLoans: List<NativeLoan>, remoteSavings: List<NativeSavingsGoal>, onOpenOverlay: (HomeOverlay) -> Unit, onSelectTab: (RootTab) -> Unit) {
     val netWorth = actualBalance
-    val usedPercent = if (income > 0) (expense / income * 100).toInt().coerceIn(0, 100) else 0
+    val base = if (monthlyBudget > 0) monthlyBudget else income
+    val usedPercent = if (base > 0) (expense / base * 100).toInt().coerceIn(0, 100) else 0
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             CompassTile("净资产", "¥ " + moneyFormat.format(netWorth), "账户当前余额", Green, Icons.Default.CheckCircle, Modifier.weight(1f)) { onSelectTab(RootTab.ASSETS) }
             CompassTile("预算余量", (100 - usedPercent).toString() + "%", "已用 " + usedPercent + "%", Blue, Icons.Default.PieChart, Modifier.weight(1f)) { onOpenOverlay(HomeOverlay.BUDGET) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CompassTile("待还贷款", "查看贷款", "贷款账户", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f)) { onSelectTab(RootTab.LOANS) }
-            CompassTile("储蓄达成", "查看储蓄", "储蓄计划", Amber, Icons.Default.Savings, Modifier.weight(1f)) { onSelectTab(RootTab.SAVINGS) }
+            val loan = remoteLoans.filter { it.status == "ACTIVE" }.sumOf { it.remainingAmount }
+            val savingsTarget = remoteSavings.filter { it.status == "ACTIVE" }.sumOf { it.targetAmount }
+            val savingsCurrent = remoteSavings.filter { it.status == "ACTIVE" }.sumOf { it.currentAmount }
+            val savingsPercent = if (savingsTarget > 0) (savingsCurrent / savingsTarget * 100).toInt().coerceIn(0, 100) else 0
+            CompassTile("待还贷款", if (loan > 0) "¥ ${moneyFormat.format(loan)}" else "无待还", if (loan > 0) "近期还款" else "状态良好", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f)) { onSelectTab(RootTab.LOANS) }
+            CompassTile("储蓄达成", "${savingsPercent}%", if (remoteSavings.isEmpty()) "暂无计划" else "计划进行中", Amber, Icons.Default.Savings, Modifier.weight(1f)) { onSelectTab(RootTab.SAVINGS) }
         }
     }
 }
 
 @Composable
 private fun CompassTile(label: String, value: String, badge: String, color: Color, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    WebReplicaCard(modifier = modifier.clickable(onClick = onClick), padding = 12.dp) {
+    WebReplicaCard(modifier = modifier.clickable(onClick = onClick), padding = 12.dp, radius = 16.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(color.copy(alpha = .11f)), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
@@ -1223,13 +1323,13 @@ private fun CompassTile(label: String, value: String, badge: String, color: Colo
 }
 
 @Composable
-private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
+private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, radius: Dp = 22.dp, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(radius),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = null,
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(Modifier.padding(padding), content = content)
     }
