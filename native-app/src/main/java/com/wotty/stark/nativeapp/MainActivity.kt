@@ -2,6 +2,7 @@ package com.wotty.stark.nativeapp
 
 import android.os.Bundle
 import android.content.Context
+import android.graphics.Typeface
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
@@ -16,6 +17,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +30,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -59,6 +62,9 @@ import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
@@ -82,19 +88,24 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
@@ -108,6 +119,7 @@ import org.json.JSONObject
 import java.text.DecimalFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import android.graphics.BitmapFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,14 +142,15 @@ private val Green = Color(0xFF0A966B)
 private val Red = Color(0xFFD94D5D)
 private val Amber = Color(0xFFF0A329)
 private val Line = Color(0xFFE5EBF3)
+private val StarkFontFamily = FontFamily(Typeface.create("sans-serif-medium", Typeface.NORMAL))
 
-private enum class RootTab(val label: String, val icon: ImageVector) {
-    HOME("首页", Icons.Default.Home),
-    CONSUMPTION("消费", Icons.Default.CreditCard),
-    SAVINGS("储蓄", Icons.Default.Savings),
-    LOANS("贷款", Icons.Default.Payments),
-    ASSETS("资产", Icons.Default.PieChart),
-    SETTINGS("设置", Icons.Default.Settings),
+private enum class RootTab(val label: String, val iconResource: Int) {
+    HOME("首页", R.drawable.nav_home),
+    CONSUMPTION("消费", R.drawable.nav_consumption),
+    SAVINGS("储蓄", R.drawable.nav_savings),
+    LOANS("贷款", R.drawable.nav_loan),
+    ASSETS("资产", R.drawable.nav_assets),
+    SETTINGS("设置", R.drawable.nav_settings),
 }
 
 private enum class EntryType(val label: String, val color: Color) {
@@ -228,9 +241,16 @@ private fun StarkNativeTheme(content: @Composable () -> Unit) {
             onSurface = Ink,
         ),
     ) {
-        // CSS text has a content-sized line box. Material's 24sp default line
-        // height made small Web-replica labels consume a full native row.
-        CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)) {
+        // Web uses Microsoft YaHei UI around 400/500. Use Android's medium
+        // system face as the device-safe counterpart rather than the thin
+        // generic `sans` fallback Compose selected before.
+        CompositionLocalProvider(
+            androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(
+                fontFamily = StarkFontFamily,
+                fontWeight = FontWeight.Normal,
+                lineHeight = TextUnit.Unspecified,
+            ),
+        ) {
             content()
         }
     }
@@ -302,9 +322,9 @@ private fun NativeBottomBar(
         shadowElevation = 0.dp,
         modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
     ) {
-        Box(Modifier.fillMaxWidth().height(55.dp)) {
+        Box(Modifier.fillMaxWidth().height(77.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth().height(55.dp).padding(horizontal = 6.dp),
+                modifier = Modifier.fillMaxWidth().height(55.dp).align(Alignment.BottomCenter).padding(horizontal = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceAround,
             ) {
@@ -314,11 +334,11 @@ private fun NativeBottomBar(
                         modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onTabSelected(tab) }.padding(vertical = 12.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            tab.icon,
+                        WebNavIcon(
+                            resourceId = tab.iconResource,
                             contentDescription = tab.label,
-                            tint = if (active) Color(0xFF202A39) else Color(0xFFA8AAAD),
-                            modifier = Modifier.size(26.dp),
+                            active = active,
+                            modifier = Modifier.size(27.dp),
                         )
                     }
                 }
@@ -326,7 +346,7 @@ private fun NativeBottomBar(
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .offset(y = (-28).dp)
+                    .offset(y = 2.dp)
                     .clip(RoundedCornerShape(28.dp))
                     .background(Color.White)
                     .clickable(onClick = onQuickEntry)
@@ -341,6 +361,19 @@ private fun NativeBottomBar(
             }
         }
     }
+}
+
+@Composable
+private fun WebNavIcon(resourceId: Int, contentDescription: String, active: Boolean, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val bitmap = remember(resourceId) {
+        BitmapFactory.decodeResource(context.resources, resourceId).asImageBitmap()
+    }
+    Image(
+        bitmap = bitmap,
+        contentDescription = contentDescription,
+        modifier = modifier.alpha(if (active) 1f else .48f),
+    )
 }
 
 @Composable
@@ -373,16 +406,231 @@ private fun HomeScreen(modifier: Modifier, entries: List<LedgerEntry>, actualBal
         item { WebReplicaBudgetCard(income, expense) }
         item { WebReplicaDiagnosticBanner(income, expense) }
         item { WebReplicaCompass(income, expense) }
-        item {
-            WebReplicaCard {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("最近流水", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    Text("全部账单  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                }
-                Spacer(Modifier.height(7.dp))
-                entries.take(3).forEach { LedgerRow(it) }
+        item { WebReplicaExpenseStructure(entries) }
+        item { WebReplicaAdvisoryCard(income, expense) }
+        item { WebReplicaCashflowTrend(entries) }
+        item { WebReplicaRecentTransactions(entries) }
+    }
+}
+
+@Composable
+private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>) {
+    val expenses = entries.filter { it.type == EntryType.EXPENSE }
+    val categories = expenses
+        .groupBy { it.category.substringBefore(" ·") }
+        .map { (category, rows) -> category to rows.sumOf { it.amount } }
+        .sortedByDescending { it.second }
+    val total = expenses.sumOf { it.amount }
+    WebReplicaCard(padding = 14.dp) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("本月支出结构", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("共 ${categories.size} 个分类", color = Color(0xFF94A3B8), fontSize = 10.sp)
+            }
+            Text("分类明细  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        }
+        Spacer(Modifier.height(10.dp))
+        if (categories.isEmpty()) {
+            Text("本月暂无支出记录", modifier = Modifier.fillMaxWidth().padding(vertical = 25.dp), color = Color(0xFF94A3B8), fontSize = 12.sp, textAlign = TextAlign.Center)
+        } else {
+            EChartsExpenseRoseChart(categories, total)
+        }
+    }
+}
+
+@Composable
+private fun WebReplicaAdvisoryCard(income: Double, expense: Double) {
+    val dailyExpense = expense / 31
+    val healthy = income >= expense
+    WebReplicaCard(padding = 14.dp) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("财务行动建议", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                if (healthy) "节律健康" else "需控制支出",
+                modifier = Modifier.clip(CircleShape).background(Color(0xFFE0F2FE)).padding(horizontal = 7.dp, vertical = 3.dp),
+                color = Blue,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        AdvisoryRow("1", "当前日均支出 ¥ ${moneyFormat.format(dailyExpense)}，若保持当前速率，预计月底可结余 ¥ ${moneyFormat.format((income - expense).coerceAtLeast(0.0))}。")
+        Spacer(Modifier.height(8.dp))
+        AdvisoryRow("2", "剩余总预算 ¥ ${moneyFormat.format((income - expense).coerceAtLeast(0.0))}，建议将富余资金分配至储蓄计划。")
+    }
+}
+
+@Composable
+private fun AdvisoryRow(index: String, text: String) {
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            index,
+            modifier = Modifier.size(16.dp).clip(CircleShape).background(Blue).padding(top = 1.dp),
+            color = Color.White,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(text, color = Color(0xFF475569), fontSize = 11.sp, lineHeight = 16.sp)
+    }
+}
+
+@Composable
+private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>) {
+    val income = entries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
+    val expense = entries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
+    WebReplicaCard(padding = 14.dp) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("收支动态走势", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("近 5 个月对比", color = Color(0xFF94A3B8), fontSize = 10.sp)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TrendLegend("收入", Color(0xFF38BDF8))
+                TrendLegend("支出", Color(0xFFFB7185))
             }
         }
+        Spacer(Modifier.height(8.dp))
+        EChartsCashflowTrend(income, expense)
+    }
+}
+
+@Composable
+private fun TrendLegend(label: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(7.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.width(4.dp))
+        Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
+    }
+}
+
+@Composable
+private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, total: Double) {
+    val colors = listOf(Color(0xFF0EA5E9), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFFB7185), Color(0xFF8B5CF6))
+    val data = categories.take(5).mapIndexed { index, (name, amount) ->
+        RoseChartSegment(name, amount, colors[index])
+    }
+    Box(Modifier.fillMaxWidth().height(248.dp)) {
+        NativeRoseChart(data, Modifier.fillMaxSize())
+        Text(
+            "¥ ${moneyFormat.format(total)}",
+            modifier = Modifier.align(Alignment.Center),
+            color = Ink,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
+    }
+}
+
+@Composable
+private fun EChartsCashflowTrend(income: Double, expense: Double) {
+    NativeCashflowChart(
+        incomes = listOf(0.0, 0.0, 0.0, 0.0, income),
+        expenses = listOf(0.0, 0.0, 0.0, 0.0, expense),
+        labels = listOf("9月", "10月", "11月", "12月", "1月"),
+        modifier = Modifier.fillMaxWidth().height(124.dp),
+    )
+}
+
+private data class RoseChartSegment(val label: String, val value: Double, val color: Color)
+
+@Composable
+private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val total = data.sumOf { it.value }.coerceAtLeast(0.01)
+        val center = Offset(size.width / 2f, size.height / 2f)
+        val baseRadius = size.minDimension * .12f
+        val maxRadius = size.minDimension * .35f
+        var startAngle = -90f
+        data.forEach { segment ->
+            val sweep = ((segment.value / total) * 360f).toFloat().coerceAtLeast(7f)
+            val radius = baseRadius + ((segment.value / data.maxOf { it.value }.coerceAtLeast(.01)) * (maxRadius - baseRadius)).toFloat()
+            drawArc(
+                color = segment.color,
+                startAngle = startAngle + 2f,
+                sweepAngle = (sweep - 4f).coerceAtLeast(3f),
+                useCenter = true,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2f, radius * 2f),
+            )
+            val middle = Math.toRadians((startAngle + sweep / 2f).toDouble())
+            val lineStart = Offset(
+                center.x + kotlin.math.cos(middle).toFloat() * (radius + 3.dp.toPx()),
+                center.y + kotlin.math.sin(middle).toFloat() * (radius + 3.dp.toPx()),
+            )
+            val lineEnd = Offset(
+                center.x + kotlin.math.cos(middle).toFloat() * (radius + 17.dp.toPx()),
+                center.y + kotlin.math.sin(middle).toFloat() * (radius + 17.dp.toPx()),
+            )
+            drawLine(segment.color, lineStart, lineEnd, strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round)
+            drawIntoCanvas { canvas -> canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = segment.color.toAndroidColorInt()
+                    textSize = 10.sp.toPx()
+                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    textAlign = if (lineEnd.x >= center.x) android.graphics.Paint.Align.LEFT else android.graphics.Paint.Align.RIGHT
+                }
+                drawText(segment.label, lineEnd.x + if (lineEnd.x >= center.x) 3.dp.toPx() else -3.dp.toPx(), lineEnd.y + 3.dp.toPx(), paint)
+            } }
+            startAngle += sweep
+        }
+        drawCircle(Color.White, radius = baseRadius * .84f, center = center)
+    }
+}
+
+@Composable
+private fun NativeCashflowChart(incomes: List<Double>, expenses: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier = modifier) {
+        val left = 6.dp.toPx()
+        val right = size.width - 5.dp.toPx()
+        val top = 7.dp.toPx()
+        val baseline = size.height - 22.dp.toPx()
+        val max = (incomes + expenses).maxOrNull()?.coerceAtLeast(1.0) ?: 1.0
+        drawLine(Color(0xFFE8EEF5), Offset(left, baseline), Offset(right, baseline), strokeWidth = 1.dp.toPx())
+        val groupWidth = (right - left) / labels.size
+        labels.forEachIndexed { index, label ->
+            val groupStart = left + groupWidth * index
+            val incomeHeight = (((baseline - top) * incomes[index] / max).toFloat())
+            val expenseHeight = (((baseline - top) * expenses[index] / max).toFloat())
+            val barWidth = (groupWidth * .25f).coerceAtMost(16.dp.toPx())
+            val incomeLeft = groupStart + groupWidth * .21f
+            val expenseLeft = groupStart + groupWidth * .54f
+            if (incomeHeight > 0f) drawRoundRect(Color(0xFF0060C0), Offset(incomeLeft, baseline - incomeHeight), Size(barWidth, incomeHeight), CornerRadius(3.dp.toPx(), 3.dp.toPx()))
+            if (expenseHeight > 0f) drawRoundRect(Color(0xFFF43F5E), Offset(expenseLeft, baseline - expenseHeight), Size(barWidth, expenseHeight), CornerRadius(3.dp.toPx(), 3.dp.toPx()))
+            drawIntoCanvas { canvas -> canvas.nativeCanvas.apply {
+                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                    color = Color(0xFF94A3B8).toAndroidColorInt()
+                    textSize = 10.sp.toPx()
+                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                    textAlign = android.graphics.Paint.Align.CENTER
+                }
+                drawText(label, groupStart + groupWidth / 2f, size.height - 5.dp.toPx(), paint)
+            } }
+        }
+    }
+}
+
+private fun Color.toAndroidColorInt(): Int = android.graphics.Color.argb(
+    (alpha * 255).toInt(),
+    (red * 255).toInt(),
+    (green * 255).toInt(),
+    (blue * 255).toInt(),
+)
+
+@Composable
+private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>) {
+    WebReplicaCard {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("最近流水", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            Text("全部账单  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        }
+        Spacer(Modifier.height(7.dp))
+        entries.take(3).forEach { LedgerRow(it) }
     }
 }
 
@@ -665,7 +913,7 @@ private fun PlaceholderScreen(modifier: Modifier, tab: RootTab) {
         verticalArrangement = Arrangement.Center,
     ) {
         Box(Modifier.size(68.dp).clip(CircleShape).background(SoftBlue), contentAlignment = Alignment.Center) {
-            Icon(tab.icon, contentDescription = null, tint = Blue, modifier = Modifier.size(32.dp))
+            WebNavIcon(tab.iconResource, tab.label, active = true, modifier = Modifier.size(32.dp))
         }
         Spacer(Modifier.height(18.dp))
         Text(tab.label, color = Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
