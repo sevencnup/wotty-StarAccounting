@@ -54,6 +54,8 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -87,6 +89,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -126,6 +130,13 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.YearMonth
 import android.graphics.BitmapFactory
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
@@ -208,6 +219,7 @@ private enum class HomeOverlay {
     BUDGET,
     DIAGNOSTIC,
     CATEGORIES,
+    API,
 }
 
 private data class LedgerEntry(
@@ -229,6 +241,18 @@ private data class NativeHomePreferences(
     val selectedMonth: String,
     val salaryDay: Int,
     val monthlyBudget: Double,
+)
+
+private data class NativeApiPreferences(
+    val baseUrl: String,
+    val token: String,
+    val accountId: String,
+    val userId: String,
+)
+
+private data class NativeRemoteSnapshot(
+    val entries: List<LedgerEntry>,
+    val actualBalance: Double?,
 )
 
 private class NativeLedgerStore(context: Context) {
@@ -289,6 +313,121 @@ private class NativeLedgerStore(context: Context) {
             .putString("monthlyBudget", monthlyBudget.coerceAtLeast(0.0).toString())
             .apply()
     }
+
+    fun loadApiPreferences(): NativeApiPreferences = NativeApiPreferences(
+        baseUrl = preferences.getString("apiBaseUrl", "http://10.0.2.2:12367") ?: "http://10.0.2.2:12367",
+        token = preferences.getString("apiToken", "") ?: "",
+        accountId = preferences.getString("apiAccountId", "") ?: "",
+        userId = preferences.getString("apiUserId", "") ?: "",
+    )
+
+    fun saveApiPreferences(baseUrl: String, token: String, accountId: String, userId: String) {
+        preferences.edit()
+            .putString("apiBaseUrl", baseUrl.trim().trimEnd('/'))
+            .putString("apiToken", token.trim())
+            .putString("apiAccountId", accountId.trim())
+            .putString("apiUserId", userId.trim())
+            .apply()
+    }
+
+    fun clearApiPreferences() {
+        preferences.edit().remove("apiToken").remove("apiAccountId").apply()
+    }
+}
+
+private class NativeApiClient {
+    private val client = OkHttpClient.Builder().build()
+
+    suspend fun login(baseUrl: String, email: String, password: String): NativeApiPreferences = withContext(Dispatchers.IO) {
+        val body = JSONObject().put("email", email.trim()).put("password", password).toString()
+        val request = Request.Builder()
+            .url(baseUrl.trim().trimEnd('/') + "/api/auth/login")
+            .post(body.toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val payload = JSONObject(response.body?.string().orEmpty())
+            if (!response.isSuccessful) throw IllegalStateException(payload.optString("error", "云端登录失败"))
+            val user = payload.optJSONObject("user") ?: JSONObject()
+            NativeApiPreferences(
+                baseUrl = baseUrl.trim().trimEnd('/'),
+                token = payload.getString("token"),
+                accountId = user.optString("defaultAccountId", ""),
+                userId = user.optString("id", ""),
+            )
+        }
+    }
+
+    suspend fun loadSnapshot(config: NativeApiPreferences): NativeRemoteSnapshot = withContext(Dispatchers.IO) {
+        require(config.token.isNotBlank()) { "请先登录云端账户" }
+        require(config.accountId.isNotBlank()) { "云端账户没有可用账本" }
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/transactions?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8") + "&page=1&pageSize=500")
+            .header("Authorization", "Bearer ${config.token}")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException(JSONObject(raw).optString("error", "云端流水读取失败"))
+            val rows = JSONArray(raw)
+            val entries = buildList {
+                for (index in 0 until rows.length()) {
+                    val row = rows.optJSONObject(index) ?: continue
+                    val type = runCatching { EntryType.valueOf(row.optString("type", "EXPENSE")) }.getOrDefault(EntryType.EXPENSE)
+                    val date = row.optString("date", LocalDate.now().toString()).take(10)
+                    add(
+                        LedgerEntry(
+                            id = row.optString("id").hashCode().toLong(),
+                            title = row.optString("merchant").ifBlank { row.optString("description").ifBlank { row.optString("category", "未命名流水") } },
+                            category = row.optString("category", "未分类") + " · " + row.optString("platform", "云端"),
+                            amount = row.optDouble("amount", 0.0),
+                            type = type,
+                            dayLabel = date,
+                            transactionDate = date,
+                        ),
+                    )
+                }
+            }
+            NativeRemoteSnapshot(entries = entries, actualBalance = null)
+        }
+    }
+
+    suspend fun loadBalance(config: NativeApiPreferences): Double? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/assets?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+            .header("Authorization", "Bearer ${config.token}")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return@withContext null
+            val rows = JSONArray(response.body?.string().orEmpty())
+            var total = 0.0
+            for (index in 0 until rows.length()) total += rows.optJSONObject(index)?.optDouble("balance", 0.0) ?: 0.0
+            total
+        }
+    }
+
+    suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry): Boolean = withContext(Dispatchers.IO) {
+        val now = java.time.LocalDateTime.now().toString().replace('T', ' ')
+        val payload = JSONObject()
+            .put("id", "native-${entry.id}")
+            .put("userId", config.userId)
+            .put("accountId", config.accountId)
+            .put("amount", entry.amount)
+            .put("type", entry.type.name)
+            .put("category", entry.category.substringBefore(" ·"))
+            .put("platform", entry.category.substringAfter(" ·", "现金"))
+            .put("merchant", entry.title)
+            .put("date", "${entry.transactionDate} 12:00:00")
+            .put("description", entry.title)
+            .put("createdAt", now)
+            .put("updatedAt", now)
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/transactions")
+            .header("Authorization", "Bearer ${config.token}")
+            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { it.isSuccessful }
+    }
 }
 
 private fun sampleEntries(): List<LedgerEntry> {
@@ -337,6 +476,10 @@ private fun StarkNativeApp() {
     var homeOverlay by remember { mutableStateOf<HomeOverlay?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val ledgerStore = remember { NativeLedgerStore(context.applicationContext) }
+    val apiClient = remember { NativeApiClient() }
+    val coroutineScope = rememberCoroutineScope()
+    var apiPreferences by remember { mutableStateOf(ledgerStore.loadApiPreferences()) }
+    var apiStatus by remember { mutableStateOf(if (apiPreferences.token.isBlank()) "未连接云端" else "正在同步…") }
     val homePreferences = remember { ledgerStore.loadHomePreferences() }
     var selectedMonth by remember { mutableStateOf(homePreferences.selectedMonth) }
     var salaryDay by remember { mutableStateOf(homePreferences.salaryDay) }
@@ -344,6 +487,24 @@ private fun StarkNativeApp() {
     val snapshot = remember { ledgerStore.load() }
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
+
+    LaunchedEffect(apiPreferences.token, apiPreferences.baseUrl, apiPreferences.accountId) {
+        if (apiPreferences.token.isBlank()) {
+            apiStatus = "未连接云端"
+            return@LaunchedEffect
+        }
+        apiStatus = "正在同步…"
+        runCatching {
+            val remote = apiClient.loadSnapshot(apiPreferences)
+            val balance = apiClient.loadBalance(apiPreferences)
+            entries.clear()
+            entries.addAll(remote.entries)
+            if (balance != null) actualBalance = balance
+            apiStatus = "已同步 ${remote.entries.size} 笔"
+        }.onFailure { error ->
+            apiStatus = error.message ?: "云端同步失败"
+        }
+    }
 
     Scaffold(
         containerColor = Canvas,
@@ -380,6 +541,7 @@ private fun StarkNativeApp() {
                     onSalaryDayClick = { homeOverlay = HomeOverlay.SALARY_DAY },
                     onOpenOverlay = { homeOverlay = it },
                     onSelectTab = { selectedTab = it },
+                    apiStatus = apiStatus,
                 )
                 RootTab.CONSUMPTION, RootTab.ASSETS -> JournalScreen(Modifier.padding(insets), entries)
                 else -> PlaceholderScreen(Modifier.padding(insets), tab)
@@ -434,19 +596,40 @@ private fun StarkNativeApp() {
             entries = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) },
             onDismiss = { homeOverlay = null },
         )
+        HomeOverlay.API -> ApiLoginDialog(
+            preferences = apiPreferences,
+            status = apiStatus,
+            onDismiss = { homeOverlay = null },
+            onLogout = {
+                ledgerStore.clearApiPreferences()
+                apiPreferences = apiPreferences.copy(token = "", accountId = "", userId = "")
+                apiStatus = "未连接云端"
+                homeOverlay = null
+            },
+            onLogin = { baseUrl, email, password ->
+                coroutineScope.launch {
+                    runCatching { apiClient.login(baseUrl, email, password) }.onSuccess { config ->
+                        ledgerStore.saveApiPreferences(config.baseUrl, config.token, config.accountId, config.userId)
+                        apiPreferences = config
+                        apiStatus = "正在同步…"
+                        homeOverlay = null
+                    }.onFailure { apiStatus = it.message ?: "登录失败" }
+                }
+            },
+        )
         null -> Unit
     }
 
     if (entrySheetOpen) {
         QuickEntrySheet(
             onClose = { entrySheetOpen = false },
-            onSave = { title, amount, type ->
+            onSave = { title, amount, type, category, platform ->
                 entries.add(
                     0,
                     LedgerEntry(
                         id = System.nanoTime(),
                         title = title.ifBlank { if (type == EntryType.INCOME) "新增收入" else "新增支出" },
-                        category = if (type == EntryType.INCOME) "手动记录 · 现金" else "日常消费 · 现金",
+                        category = "$category · $platform",
                         amount = amount,
                         type = type,
                         dayLabel = "刚刚",
@@ -454,6 +637,15 @@ private fun StarkNativeApp() {
                 )
                 actualBalance += if (type == EntryType.INCOME) amount else -amount
                 ledgerStore.save(actualBalance, entries)
+                if (apiPreferences.token.isNotBlank()) {
+                    val saved = entries.firstOrNull()
+                    if (saved != null) {
+                        coroutineScope.launch {
+                            runCatching { apiClient.saveEntry(apiPreferences, saved) }
+                                .onFailure { apiStatus = "本地已保存，云端同步失败" }
+                        }
+                    }
+                }
                 entrySheetOpen = false
             },
         )
@@ -467,11 +659,11 @@ private fun NativeBottomBar(
 ) {
     Surface(
         color = Color.White,
-        shadowElevation = 8.dp,
+        shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 4.dp),
+            modifier = Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
@@ -517,6 +709,7 @@ private fun HomeScreen(
     onSalaryDayClick: () -> Unit,
     onOpenOverlay: (HomeOverlay) -> Unit,
     onSelectTab: (RootTab) -> Unit,
+    apiStatus: String,
 ) {
     var metric by remember { mutableStateOf(HomeMetric.EXPENSE) }
     var balancePeriod by remember { mutableStateOf(BalancePeriod.MONTH) }
@@ -548,7 +741,7 @@ private fun HomeScreen(
         contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 76.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { WebReplicaHeader(onSearch = { onOpenOverlay(HomeOverlay.SEARCH) }) }
+        item { WebReplicaHeader(onSearch = { onOpenOverlay(HomeOverlay.SEARCH) }, onApi = { onOpenOverlay(HomeOverlay.API) }, apiStatus = apiStatus) }
         item {
             WebReplicaMetricControl(
                 metric = metric,
@@ -575,8 +768,7 @@ private fun HomeScreen(
         item { WebReplicaCompass(income, expense, actualBalance, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense) }
-        item { WebReplicaCashflowTrend(entries) }
-        item { WebReplicaRecentTransactions(periodEntries.take(3), onAll = { onSelectTab(RootTab.CONSUMPTION) }) }
+        item { WebReplicaCashflowTrend(entries, month) }
     }
 }
 
@@ -648,14 +840,17 @@ private fun AdvisoryRow(index: String, text: String) {
 }
 
 @Composable
-private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>) {
-    val income = entries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
-    val expense = entries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
+private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>, selectedMonth: YearMonth) {
+    val monthly = (-4..0).map { selectedMonth.plusMonths(it.toLong()) }
+    val monthlyValues = monthly.map { month ->
+        val rows = entries.filter { runCatching { LocalDate.parse(it.transactionDate) }.getOrNull()?.let { date -> date.year == month.year && date.monthValue == month.monthValue } == true }
+        rows.filter { it.type == EntryType.INCOME }.sumOf { it.amount } to rows.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
+    }
     WebReplicaCard(padding = 14.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("收支动态走势", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text("近 5 个月对比", color = Color(0xFF94A3B8), fontSize = 10.sp)
+        Text("${monthly.first().monthValue}月-${monthly.last().monthValue}月真实流水", color = Color(0xFF94A3B8), fontSize = 10.sp)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TrendLegend("收入", Color(0xFF38BDF8))
@@ -663,7 +858,7 @@ private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>) {
             }
         }
         Spacer(Modifier.height(8.dp))
-        EChartsCashflowTrend(income, expense)
+        EChartsCashflowTrend(monthlyValues.map { it.first }, monthlyValues.map { it.second }, monthly.map { "${it.monthValue}月" })
     }
 }
 
@@ -695,11 +890,11 @@ private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, tota
 }
 
 @Composable
-private fun EChartsCashflowTrend(income: Double, expense: Double) {
+private fun EChartsCashflowTrend(incomes: List<Double>, expenses: List<Double>, labels: List<String>) {
     NativeCashflowChart(
-        incomes = listOf(0.0, 0.0, 0.0, 0.0, income),
-        expenses = listOf(0.0, 0.0, 0.0, 0.0, expense),
-        labels = listOf("9月", "10月", "11月", "12月", "1月"),
+        incomes = incomes,
+        expenses = expenses,
+        labels = labels,
         modifier = Modifier.fillMaxWidth().height(124.dp),
     )
 }
@@ -802,13 +997,15 @@ private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>, onAll: () -
 }
 
 @Composable
-private fun WebReplicaHeader(onSearch: () -> Unit) {
+private fun WebReplicaHeader(onSearch: () -> Unit, onApi: () -> Unit, apiStatus: String) {
     Row(
         modifier = Modifier.fillMaxWidth().height(34.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Spacer(Modifier.size(38.dp))
+        IconButton(onClick = onApi) {
+            Icon(Icons.Default.CloudSync, contentDescription = "云端同步", tint = if (apiStatus.startsWith("已同步")) Green else Muted, modifier = Modifier.size(22.dp))
+        }
         Text("首页", color = Color(0xFF101827), fontSize = 18.sp, fontWeight = FontWeight.Medium)
         IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
     }
@@ -1006,7 +1203,8 @@ private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, c
         modifier = modifier,
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = null,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(Modifier.padding(padding), content = content)
     }
@@ -1114,6 +1312,8 @@ private fun MonthPickerDialog(
     val options = (-5..5).map { current.plusMonths(it.toLong()) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = Color(0xFFFBFCFE),
         title = { Text("选择月份", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1146,6 +1346,8 @@ private fun SalaryDayPickerDialog(
     var dayText by remember(selectedDay) { mutableStateOf(selectedDay.toString()) }
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = Color(0xFFFBFCFE),
         title = { Text("发薪日设置", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1177,6 +1379,8 @@ private fun TransactionSearchDialog(entries: List<LedgerEntry>, onDismiss: () ->
     }
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = Color(0xFFFBFCFE),
         title = { Text("搜索流水", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1219,6 +1423,8 @@ private fun HomeSummaryDialog(
     val net = income - expense
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = Color(0xFFFBFCFE),
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1263,6 +1469,8 @@ private fun ExpenseCategoriesDialog(entries: List<LedgerEntry>, onDismiss: () ->
     val categories = entries.groupBy { it.category.substringBefore(" ·") }.mapValues { (_, rows) -> rows.sumOf { it.amount } }.toList().sortedByDescending { it.second }
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = Color(0xFFFBFCFE),
         title = { Text("分类明细", fontWeight = FontWeight.Bold) },
         text = {
             if (categories.isEmpty()) {
@@ -1277,31 +1485,73 @@ private fun ExpenseCategoriesDialog(entries: List<LedgerEntry>, onDismiss: () ->
     )
 }
 
+@Composable
+private fun ApiLoginDialog(
+    preferences: NativeApiPreferences,
+    status: String,
+    onDismiss: () -> Unit,
+    onLogout: () -> Unit,
+    onLogin: (String, String, String) -> Unit,
+) {
+    var baseUrl by remember(preferences.baseUrl) { mutableStateOf(preferences.baseUrl) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(26.dp),
+        containerColor = Color(0xFFFBFCFE),
+        title = { Text("云端数据", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("接入 API 后，首页会读取云端真实流水和账户资产。", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
+                OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("邮箱") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("密码") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+                Text(status, color = if (status.startsWith("已同步")) Green else Muted, fontSize = 11.sp)
+            }
+        },
+        dismissButton = {
+            Row {
+                if (preferences.token.isNotBlank()) TextButton(onClick = onLogout) { Text("退出云端", color = Red) }
+                TextButton(onClick = onDismiss) { Text("取消") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { if (baseUrl.isNotBlank() && email.isNotBlank() && password.isNotBlank()) onLogin(baseUrl, email, password) }) { Text("登录并同步") }
+        },
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickEntrySheet(onClose: () -> Unit, onSave: (String, Double, EntryType) -> Unit) {
+private fun QuickEntrySheet(onClose: () -> Unit, onSave: (String, Double, EntryType, String, String) -> Unit) {
     var type by remember { mutableStateOf(EntryType.EXPENSE) }
     var title by remember { mutableStateOf("") }
     var amountText by remember { mutableStateOf("") }
+    var category by remember { mutableStateOf("日常消费") }
+    var platform by remember { mutableStateOf("现金") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = Color.White,
+        containerColor = Color(0xFFFBFCFE),
         dragHandle = { Box(Modifier.padding(top = 10.dp).width(36.dp).height(4.dp).clip(CircleShape).background(Color(0xFFD7DFEA))) },
     ) {
         Column(Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("快速记一笔", color = Ink, fontWeight = FontWeight.Black, fontSize = 21.sp)
+                Column {
+                    Text("记一笔", color = Ink, fontWeight = FontWeight.Black, fontSize = 23.sp)
+                    Text("记录真实的收入或支出，保存后立即更新余额", color = Muted, fontSize = 11.sp)
+                }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "关闭", tint = Muted) }
             }
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Canvas).padding(4.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFFEAF0F7)).padding(4.dp)) {
                 EntryType.entries.forEach { item ->
                     val selected = item == type
                     Text(
                         item.label,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (selected) Color.White else Color.Transparent).clickable { type = item }.padding(vertical = 10.dp),
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (selected) Color.White else Color.Transparent).clickable { type = item }.padding(vertical = 12.dp),
                         textAlign = TextAlign.Center,
                         color = if (selected) item.color else Muted,
                         fontWeight = FontWeight.Bold,
@@ -1311,14 +1561,37 @@ private fun QuickEntrySheet(onClose: () -> Unit, onSave: (String, Double, EntryT
             }
             NativeInput(label = "备注", value = title, onValueChange = { title = it }, placeholder = "例如：晚餐、工资")
             NativeInput(label = "金额", value = amountText, onValueChange = { amountText = it.filter { char -> char.isDigit() || char == '.' } }, placeholder = "0.00", isAmount = true)
+            Text("分类", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            ChoiceRow(listOf("日常消费", "餐饮美食", "交通出行", "购物消费", "工资收入"), category) { category = it }
+            Text("账户 / 平台", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            ChoiceRow(listOf("现金", "银行卡", "微信", "支付宝"), platform) { platform = it }
             val amount = amountText.toDoubleOrNull() ?: 0.0
             Text(
                 text = if (amount > 0) "保存 ¥ ${moneyFormat.format(amount)}" else "请输入金额",
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (amount > 0) type.color else Color(0xFFCCD5E2)).clickable(enabled = amount > 0) { onSave(title, amount, type) }.padding(vertical = 15.dp),
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (amount > 0) type.color else Color(0xFFCCD5E2)).clickable(enabled = amount > 0) { onSave(title, amount, type, if (type == EntryType.INCOME) "工资收入" else category, platform) }.padding(vertical = 16.dp),
                 textAlign = TextAlign.Center,
                 color = Color.White,
                 fontWeight = FontWeight.Black,
                 fontSize = 15.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChoiceRow(options: List<String>, selected: String, onSelect: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            Text(
+                option,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (selected == option) SoftBlue else Color.White)
+                    .clickable { onSelect(option) }
+                    .padding(horizontal = 12.dp, vertical = 9.dp),
+                color = if (selected == option) Blue else Muted,
+                fontSize = 11.sp,
+                fontWeight = if (selected == option) FontWeight.Bold else FontWeight.Medium,
             )
         }
     }

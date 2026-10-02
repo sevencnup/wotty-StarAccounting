@@ -58,6 +58,7 @@ dependencies {
     implementation(libs.compose.material3)
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.foundation)
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     debugImplementation(libs.compose.ui.tooling)
     testImplementation("junit:junit:4.13.2")
