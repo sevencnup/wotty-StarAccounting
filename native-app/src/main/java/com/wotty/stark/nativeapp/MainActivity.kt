@@ -123,6 +123,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.DecimalFormat
@@ -671,13 +673,17 @@ private fun NativeBottomBar(
     selectedTab: RootTab,
     onTabSelected: (RootTab) -> Unit,
 ) {
-    Surface(
-        color = Color.White,
-        shadowElevation = 10.dp,
-        modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
+    // Keep the visible icon row at the Web height; the gesture safe-area is a separate white strip.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(76.dp).padding(horizontal = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(55.dp)
+                .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround,
         ) {
@@ -696,6 +702,8 @@ private fun NativeBottomBar(
                 }
             }
         }
+        // Pure white behind Android's visible gesture handle.
+        Spacer(Modifier.fillMaxWidth().navigationBarsPadding())
     }
 }
 
@@ -728,9 +736,12 @@ private fun HomeScreen(
     var metric by remember { mutableStateOf(HomeMetric.EXPENSE) }
     var balancePeriod by remember { mutableStateOf(BalancePeriod.MONTH) }
     val month = runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
+    val selectedYear = selectedMonth.toIntOrNull()?.takeIf { selectedMonth.length == 4 }
     val periodEntries = entries.filter { entry ->
         val date = runCatching { LocalDate.parse(entry.transactionDate) }.getOrNull()
-        date != null && if (metric == HomeMetric.BALANCE && balancePeriod == BalancePeriod.SALARY) {
+        date != null && if (selectedYear != null) {
+            date.year == selectedYear
+        } else if (metric == HomeMetric.BALANCE && balancePeriod == BalancePeriod.SALARY) {
             date >= month.atDay(salaryDay) && date < month.atDay(salaryDay).plusMonths(1)
         } else {
             date.year == month.year && date.monthValue == month.monthValue
@@ -743,7 +754,7 @@ private fun HomeScreen(
         HomeMetric.EXPENSE -> expense
         HomeMetric.INCOME -> income
     }
-    val monthLabel = "${month.year}年${month.monthValue}月"
+    val monthLabel = if (selectedYear != null) "${selectedYear}年" else "${month.year}年${month.monthValue}月"
     val label = when (metric) {
         HomeMetric.BALANCE -> "账户当前结余"
         HomeMetric.EXPENSE -> if (balancePeriod == BalancePeriod.SALARY) "本期支出" else "本月支出"
@@ -1322,33 +1333,132 @@ private fun MonthPickerDialog(
     onSelect: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val current = runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
-    val options = (-5..5).map { current.plusMonths(it.toLong()) }
-    AlertDialog(
+    val selectedYearValue = selectedMonth.toIntOrNull()?.takeIf { selectedMonth.length == 4 }
+    val selected = if (selectedYearValue != null) {
+        YearMonth.of(selectedYearValue, 1)
+    } else {
+        runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
+    }
+    var visibleYear by remember(selected.year) { mutableStateOf(selected.year) }
+    val months = (1..12).toList()
+
+    Dialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(26.dp),
-        containerColor = Color(0xFFFBFCFE),
-        title = { Text("选择月份", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                options.forEach { month ->
-                    val key = month.toString()
-                    Text(
-                        "${month.year}年${month.monthValue}月",
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0x590F172A))
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 430.dp)
+                    .padding(horizontal = 12.dp, vertical = 20.dp)
+                    .clickable { /* consume taps inside the sheet */ },
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFFFAFCFF),
+                shadowElevation = 8.dp,
+            ) {
+                Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column {
+                            Text("统计范围", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                            Spacer(Modifier.height(2.dp))
+                            Text("选择月份", color = Ink, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                        }
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "关闭月份选择", tint = Muted)
+                        }
+                    }
+
+                    Spacer(Modifier.height(14.dp))
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (key == selectedMonth) SoftBlue else Color.Transparent)
-                            .clickable { onSelect(key) }
-                            .padding(horizontal = 14.dp, vertical = 11.dp),
-                        color = if (key == selectedMonth) Blue else Ink,
-                        fontWeight = if (key == selectedMonth) FontWeight.Bold else FontWeight.Normal,
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color(0xFFF1F5F9))
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        IconButton(
+                            onClick = { visibleYear = (visibleYear - 1).coerceAtLeast(1900) },
+                            enabled = visibleYear > 1900,
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Text("‹", color = if (visibleYear > 1900) Ink else Muted, fontSize = 25.sp, textAlign = TextAlign.Center)
+                        }
+                        Text(visibleYear.toString() + "年", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        IconButton(
+                            onClick = { visibleYear = (visibleYear + 1).coerceAtMost(2100) },
+                            enabled = visibleYear < 2100,
+                            modifier = Modifier.size(38.dp),
+                        ) {
+                            Text("›", color = if (visibleYear < 2100) Ink else Muted, fontSize = 25.sp, textAlign = TextAlign.Center)
+                        }
+                    }
+
+                    Spacer(Modifier.height(10.dp))
+                    val selectedYear = selectedYearValue == visibleYear
+                    Text(
+                        "全年",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (selectedYear) Blue else Color(0xFFF1F5F9))
+                            .clickable { onSelect(visibleYear.toString()) }
+                            .padding(vertical = 11.dp),
+                        color = if (selectedYear) Color.White else Ink,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center,
                     )
+
+                    Spacer(Modifier.height(10.dp))
+                    months.chunked(4).forEach { rowMonths ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            rowMonths.forEach { month ->
+                                val key = "%04d-%02d".format(visibleYear, month)
+                                val isSelected = key == selectedMonth
+                                Text(
+                                    month.toString() + "月",
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) Blue else Color(0xFFF1F5F9))
+                                        .clickable { onSelect(key) }
+                                        .padding(vertical = 12.dp),
+                                    color = if (isSelected) Color.White else Ink,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    textAlign = TextAlign.Center,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("取消", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } },
-    )
+        }
+    }
 }
 
 @Composable
