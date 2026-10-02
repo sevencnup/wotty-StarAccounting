@@ -20,6 +20,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -48,7 +50,9 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PieChart
@@ -71,6 +75,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -95,6 +100,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import org.json.JSONArray
@@ -127,16 +133,22 @@ private val Line = Color(0xFFE5EBF3)
 
 private enum class RootTab(val label: String, val icon: ImageVector) {
     HOME("首页", Icons.Default.Home),
-    CONSUMPTION("消费", Icons.Default.PieChart),
+    CONSUMPTION("消费", Icons.Default.CreditCard),
     SAVINGS("储蓄", Icons.Default.Savings),
-    ASSETS("资产", Icons.Default.AccountBalanceWallet),
-    JOURNAL("账单", Icons.AutoMirrored.Filled.Notes),
+    LOANS("贷款", Icons.Default.Payments),
+    ASSETS("资产", Icons.Default.PieChart),
     SETTINGS("设置", Icons.Default.Settings),
 }
 
 private enum class EntryType(val label: String, val color: Color) {
     EXPENSE("支出", Red),
     INCOME("收入", Green),
+}
+
+private enum class HomeMetric(val label: String) {
+    BALANCE("结余"),
+    EXPENSE("支出"),
+    INCOME("收入"),
 }
 
 private data class LedgerEntry(
@@ -215,8 +227,13 @@ private fun StarkNativeTheme(content: @Composable () -> Unit) {
             onBackground = Ink,
             onSurface = Ink,
         ),
-        content = content,
-    )
+    ) {
+        // CSS text has a content-sized line box. Material's 24sp default line
+        // height made small Web-replica labels consume a full native row.
+        CompositionLocalProvider(androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(lineHeight = TextUnit.Unspecified)) {
+            content()
+        }
+    }
 }
 
 @Composable
@@ -232,12 +249,11 @@ private fun StarkNativeApp() {
     Scaffold(
         containerColor = Canvas,
         bottomBar = {
-            NativeBottomBar(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
-        },
-        floatingActionButton = {
-            if (selectedTab != RootTab.SETTINGS) {
-                EntryFab(onClick = { entrySheetOpen = true })
-            }
+            NativeBottomBar(
+                selectedTab = selectedTab,
+                onTabSelected = { selectedTab = it },
+                onQuickEntry = { entrySheetOpen = true },
+            )
         },
     ) { insets ->
         AnimatedContent(
@@ -246,7 +262,7 @@ private fun StarkNativeApp() {
         ) { tab ->
             when (tab) {
                 RootTab.HOME -> HomeScreen(Modifier.padding(insets), entries, actualBalance)
-                RootTab.JOURNAL -> JournalScreen(Modifier.padding(insets), entries)
+                RootTab.ASSETS -> JournalScreen(Modifier.padding(insets), entries)
                 else -> PlaceholderScreen(Modifier.padding(insets), tab)
             }
         }
@@ -276,245 +292,293 @@ private fun StarkNativeApp() {
 }
 
 @Composable
-private fun NativeBottomBar(selectedTab: RootTab, onTabSelected: (RootTab) -> Unit) {
+private fun NativeBottomBar(
+    selectedTab: RootTab,
+    onTabSelected: (RootTab) -> Unit,
+    onQuickEntry: () -> Unit,
+) {
     Surface(
         color = Color.White,
-        shadowElevation = 14.dp,
+        shadowElevation = 0.dp,
         modifier = Modifier.fillMaxWidth().navigationBarsPadding(),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(68.dp).padding(horizontal = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceAround,
-        ) {
-            RootTab.entries.forEach { tab ->
-                val active = selectedTab == tab
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
-                        .clickable { onTabSelected(tab) }
-                        .padding(vertical = 7.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Icon(
-                        tab.icon,
-                        contentDescription = tab.label,
-                        tint = if (active) Blue else Color(0xFF93A0B4),
-                        modifier = Modifier.size(21.dp),
-                    )
-                    Text(
-                        tab.label,
-                        color = if (active) Blue else Color(0xFF8390A4),
-                        fontSize = 10.sp,
-                        fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                    )
+        Box(Modifier.fillMaxWidth().height(55.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().height(55.dp).padding(horizontal = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceAround,
+            ) {
+                RootTab.entries.forEach { tab ->
+                    val active = selectedTab == tab
+                    Box(
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).clickable { onTabSelected(tab) }.padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            tab.icon,
+                            contentDescription = tab.label,
+                            tint = if (active) Color(0xFF202A39) else Color(0xFFA8AAAD),
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
                 }
             }
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(y = (-28).dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .background(Color.White)
+                    .clickable(onClick = onQuickEntry)
+                    .padding(horizontal = 15.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(Modifier.size(29.dp).clip(CircleShape).background(Blue), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.White, modifier = Modifier.size(19.dp))
+                }
+                Text("记账", color = Blue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
         }
-    }
-}
-
-@Composable
-private fun EntryFab(onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(56.dp)
-            .clip(CircleShape)
-            .background(Brush.linearGradient(listOf(Blue, DeepBlue)))
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(Icons.Default.Add, contentDescription = "新增记账", tint = Color.White, modifier = Modifier.size(28.dp))
     }
 }
 
 @Composable
 private fun HomeScreen(modifier: Modifier, entries: List<LedgerEntry>, actualBalance: Double) {
+    var metric by remember { mutableStateOf(HomeMetric.EXPENSE) }
     val income = entries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
     val expense = entries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
-    val dateLabel = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy年MM月"))
+    val value = when (metric) {
+        HomeMetric.BALANCE -> actualBalance
+        HomeMetric.EXPENSE -> expense
+        HomeMetric.INCOME -> income
+    }
+    val label = when (metric) {
+        HomeMetric.BALANCE -> "当前结余"
+        HomeMetric.EXPENSE -> "本月支出"
+        HomeMetric.INCOME -> "本月收入"
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 108.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 76.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        item { WebReplicaHeader() }
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(top = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column {
-                    Text("星会计", color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                    Text("原生版 · 本地账本", color = Muted, fontSize = 12.sp)
+            WebReplicaMetricControl(metric = metric, onMetricChange = { metric = it })
+            Spacer(Modifier.height(11.dp))
+            WebReplicaHero(metric = metric, label = label, value = value, count = entries.size)
+        }
+        item { WebReplicaBudgetCard(income, expense) }
+        item { WebReplicaDiagnosticBanner(income, expense) }
+        item { WebReplicaCompass(income, expense) }
+        item {
+            WebReplicaCard {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("最近流水", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("全部账单  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                 }
-                IconButton(onClick = {}) {
-                    Icon(Icons.Default.Search, contentDescription = "搜索", tint = Ink)
-                }
-            }
-        }
-        item {
-            FinanceHero(dateLabel = dateLabel, balance = actualBalance, income = income, expense = expense)
-        }
-        item {
-            BalanceInsightCard(income = income, expense = expense)
-        }
-        item {
-            SectionHeader("本月资金分配", "明细")
-            AllocationCard(income = income, expense = expense)
-        }
-        item {
-            SectionHeader("最近流水", "全部账单")
-        }
-        items(entries.take(4), key = { it.id }) { entry ->
-            LedgerRow(entry)
-        }
-    }
-}
-
-@Composable
-private fun FinanceHero(dateLabel: String, balance: Double, income: Double, expense: Double) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-    ) {
-        Column(
-            modifier = Modifier
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(DeepBlue, Blue, Color(0xFF1591D5)),
-                        start = Offset.Zero,
-                        end = Offset(1000f, 900f),
-                    ),
-                )
-                .padding(21.dp),
-        ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text(dateLabel, color = Color.White.copy(alpha = .76f), fontSize = 12.sp)
-                    Spacer(Modifier.height(5.dp))
-                    Text("当前实际结余", color = Color.White.copy(alpha = .9f), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                }
-                Row(
-                    modifier = Modifier.clip(RoundedCornerShape(20.dp)).background(Color.White.copy(alpha = .16f)).padding(horizontal = 10.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("自然月", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            Text("¥ ${moneyFormat.format(balance)}", color = Color.White, fontSize = 35.sp, fontWeight = FontWeight.Black)
-            Spacer(Modifier.height(19.dp))
-            Row(Modifier.fillMaxWidth()) {
-                HeroMetric("收入", income, Green, Modifier.weight(1f))
-                HeroMetric("支出", expense, Color(0xFFFFD0D5), Modifier.weight(1f))
-                HeroMetric("本期净变动", income - expense, Color.White, Modifier.weight(1.18f))
+                Spacer(Modifier.height(7.dp))
+                entries.take(3).forEach { LedgerRow(it) }
             }
         }
     }
 }
 
 @Composable
-private fun HeroMetric(label: String, value: Double, accent: Color, modifier: Modifier) {
-    Column(modifier) {
-        Text(label, color = Color.White.copy(alpha = .68f), fontSize = 11.sp)
-        Spacer(Modifier.height(4.dp))
-        Text("¥ ${moneyFormat.format(value)}", color = accent, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-    }
-}
-
-@Composable
-private fun BalanceInsightCard(income: Double, expense: Double) {
-    val healthy = income >= expense
+private fun WebReplicaHeader() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (healthy) Color(0xFFE8F7F1) else Color(0xFFFFEEF0))
-            .padding(14.dp),
+        modifier = Modifier.fillMaxWidth().height(34.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Box(Modifier.size(37.dp).clip(CircleShape).background(if (healthy) Color(0xFFCBEEDC) else Color(0xFFFFD6DB)), contentAlignment = Alignment.Center) {
-            Icon(if (healthy) Icons.Default.TrendingUp else Icons.Default.TrendingDown, contentDescription = null, tint = if (healthy) Green else Red, modifier = Modifier.size(20.dp))
-        }
-        Spacer(Modifier.width(11.dp))
-        Column(Modifier.weight(1f)) {
-            Text(if (healthy) "现金流状态良好" else "本期支出需要关注", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text(if (healthy) "已记录收入大于支出，继续保持。" else "建议优先检查大额和高频消费。", color = Muted, fontSize = 11.sp)
-        }
-        Icon(Icons.Default.MoreHoriz, contentDescription = null, tint = Muted)
+        Spacer(Modifier.size(38.dp))
+        Text("首页", color = Color(0xFF101827), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+        IconButton(onClick = {}) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
     }
 }
 
 @Composable
-private fun SectionHeader(title: String, action: String) {
+private fun WebReplicaMetricControl(metric: HomeMetric, onMetricChange: (HomeMetric) -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(title, color = Ink, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
-        Text(action, color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun AllocationCard(income: Double, expense: Double) {
-    val safeIncome = income.coerceAtLeast(1.0)
-    val expenseRatio = (expense / safeIncome).toFloat().coerceIn(0f, 1f)
-    val savingsRatio = (1f - expenseRatio).coerceAtLeast(0f)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                AllocationRing(expenseRatio, savingsRatio)
-                Spacer(Modifier.width(18.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    AllocationLegend("日常支出", expense, Red)
-                    AllocationLegend("可支配结余", (income - expense).coerceAtLeast(0.0), Green)
-                    AllocationLegend("计划储蓄", 0.0, Blue)
-                }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
+            Text("2026年1月", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(4.dp))
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "选择月份", tint = Ink, modifier = Modifier.size(16.dp))
+        }
+        Row(
+            modifier = Modifier.clip(RoundedCornerShape(28.dp)).background(Color(0xFFF1F5F9)).padding(2.5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            HomeMetric.entries.forEach { item ->
+                val active = item == metric
+                Text(
+                    item.label,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(if (active) Color.White else Color.Transparent)
+                        .clickable { onMetricChange(item) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    color = if (active) Blue else Color(0xFF718096),
+                    fontSize = 11.sp,
+                    fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                )
             }
-            HorizontalDivider(color = Line)
-            Text("每一笔记录都会即时刷新首页结余，不受统计周期切换影响。", color = Muted, fontSize = 11.sp)
         }
     }
 }
 
 @Composable
-private fun AllocationRing(expenseRatio: Float, savingsRatio: Float) {
-    Box(
-        modifier = Modifier
-            .size(100.dp)
-            .drawBehind {
-                val stroke = 12.dp.toPx()
-                val inset = stroke / 2
-                drawArc(Color(0xFFEAF0F6), 0f, 360f, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
-                drawArc(Red, -90f, 360f * expenseRatio, false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
-                drawArc(Green, -90f + 360f * expenseRatio + 7f, 360f * savingsRatio.coerceAtMost(.95f), false, Offset(inset, inset), Size(size.width - stroke, size.height - stroke), style = Stroke(stroke, cap = StrokeCap.Round))
-            },
-        contentAlignment = Alignment.Center,
+private fun WebReplicaHero(metric: HomeMetric, label: String, value: Double, count: Int) {
+    WebReplicaCard(padding = 0.dp) {
+        Box(Modifier.fillMaxWidth().height(146.dp).padding(horizontal = 18.dp, vertical = 16.dp)) {
+            Text("1月", modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
+            Column(Modifier.align(Alignment.TopStart)) {
+                Text(label, color = Color(0xFF64748B), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+                Text("¥ ${moneyFormat.format(value)}", color = Color(0xFF0F172A), fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(13.dp))
+                Text("共 $count 笔记账", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                Spacer(Modifier.height(3.dp))
+                Text(if (metric == HomeMetric.EXPENSE) "查看明细分析  ›" else "查看明细  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun WebReplicaBudgetCard(income: Double, expense: Double) {
+    val available = income - expense
+    WebReplicaCard {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE2F3FF)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.PieChart, contentDescription = null, tint = Color(0xFF0EA5E9), modifier = Modifier.size(17.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text("本月资金分配", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("收入扣除实际消费、还款和储蓄后的安排金额", color = Color(0xFF7B8CA3), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text("预算管理  ›", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Spacer(Modifier.height(16.dp))
+        Row(Modifier.fillMaxWidth()) {
+            BudgetAmount("可支配预算", available, "可继续安排 ¥ ${moneyFormat.format(available)}", Modifier.weight(1f))
+            Box(Modifier.width(1.dp).height(64.dp).background(Line))
+            BudgetAmount("收入", income, "已分配 ¥ ${moneyFormat.format(expense)}", Modifier.weight(1f).padding(start = 14.dp))
+        }
+        Spacer(Modifier.height(15.dp))
+        Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color(0xFFEAF0F7))) {
+            if (income > 0) Box(Modifier.fillMaxWidth((expense / income).toFloat().coerceIn(0f, 1f)).height(7.dp).background(Color(0xFF0EA5E9)))
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(Modifier.fillMaxWidth()) {
+            BudgetSegment("消费", expense, Color(0xFF0EA5E9), Modifier.weight(1f))
+            BudgetSegment("还款", 0.0, Color(0xFFF59E0B), Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(13.dp))
+        Row(Modifier.fillMaxWidth()) {
+            BudgetSegment("储蓄", 0.0, Color(0xFF10B981), Modifier.weight(1f))
+            BudgetSegment("剩余", available, Blue, Modifier.weight(1f), blueValue = true)
+        }
+        HorizontalDivider(Modifier.padding(vertical = 15.dp), color = Line)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
+            Spacer(Modifier.width(6.dp))
+            Text("¥ ${moneyFormat.format(available.coerceAtLeast(0.0))}", color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Text("余额单独展示，不重复计入本月扣减", color = Color(0xFF8492A7), fontSize = 9.sp)
+        }
+    }
+}
+
+@Composable
+private fun BudgetAmount(label: String, value: Double, caption: String, modifier: Modifier) {
+    Column(modifier) {
+        Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
+        Spacer(Modifier.height(3.dp))
+        Text("¥ ${moneyFormat.format(value)}", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(2.dp))
+        Text(caption, color = Color(0xFF8D9CAF), fontSize = 10.sp, maxLines = 1)
+    }
+}
+
+@Composable
+private fun BudgetSegment(label: String, value: Double, color: Color, modifier: Modifier, blueValue: Boolean = false) {
+    Column(modifier) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(6.dp).clip(CircleShape).background(color))
+            Spacer(Modifier.width(4.dp))
+            Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
+        }
+        Spacer(Modifier.height(3.dp))
+        Text("¥ ${moneyFormat.format(value)}", color = if (blueValue) Blue else Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun WebReplicaDiagnosticBanner(income: Double, expense: Double) {
+    val warning = expense > income && income > 0
+    WebReplicaCard(padding = 12.dp) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFFEAF6FF)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
+            }
+            Spacer(Modifier.width(9.dp))
+            Column(Modifier.weight(1f)) {
+                Text("财务诊断", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (warning) "本月支出偏高，建议关注预算" else "本月现金流平稳，无超支或临近违约风险", color = Color(0xFF64748B), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text("查看  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun WebReplicaCompass(income: Double, expense: Double) {
+    val netWorth = income - expense
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CompassTile("净资产", "¥ ${moneyFormat.format(netWorth)}", "结构健康", Green, Icons.Default.CheckCircle, Modifier.weight(1f))
+            CompassTile("预算余量", "100%", "已用 0%", Blue, Icons.Default.PieChart, Modifier.weight(1f))
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CompassTile("待还贷款", "无待还", "状态良好", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f))
+            CompassTile("储蓄达成", "0%", "计划进行中", Amber, Icons.Default.Savings, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun CompassTile(label: String, value: String, badge: String, color: Color, icon: ImageVector, modifier: Modifier) {
+    WebReplicaCard(modifier = modifier, padding = 12.dp) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(color.copy(alpha = .11f)), contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            }
+            Spacer(Modifier.width(6.dp))
+            Text(label, color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        }
+        Spacer(Modifier.height(7.dp))
+        Text(value, color = Ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Spacer(Modifier.height(4.dp))
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+            Text(badge, color = color, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+            Text("›", color = Color(0xFF9AA7B8), fontSize = 16.sp)
+        }
+    }
+}
+
+@Composable
+private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, content: @Composable ColumnScope.() -> Unit) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("本月", color = Muted, fontSize = 10.sp)
-            Text("分配", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Black)
-        }
-    }
-}
-
-@Composable
-private fun AllocationLegend(label: String, amount: Double, color: Color) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(8.dp).clip(CircleShape).background(color))
-        Spacer(Modifier.width(7.dp))
-        Text(label, modifier = Modifier.weight(1f), color = Muted, fontSize = 12.sp)
-        Text("¥${moneyFormat.format(amount)}", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.padding(padding), content = content)
     }
 }
 
