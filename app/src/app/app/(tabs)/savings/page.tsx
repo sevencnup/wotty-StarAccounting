@@ -231,7 +231,7 @@ export default function SavingsPage() {
                   const progress = plan.amount > 0 ? clampPercent((recordedAmount / plan.amount) * 100) : 0;
                   return (
                     <div key={plan.id} className={`savings-recent-row ${plan.status.toLowerCase()}`}>
-                      <div className="savings-recent-icon">存</div>
+                      <div className="savings-recent-icon">{recorded ? "已" : "未"}</div>
                       <strong>{goal?.name || "储蓄计划"}</strong>
                       <div className="savings-recent-meta">
                         <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
