@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	defaultAPIHost = "0.0.0.0"
-	defaultAPIPort = 12367
+	defaultAPIHost   = "0.0.0.0"
+	defaultAPIPort   = 12367
+	defaultJWTSecret = "wotty-stark-development-secret-change-me"
 )
 
 // LookupEnv makes configuration parsing testable without changing process
@@ -19,6 +20,7 @@ type Config struct {
 	Host     string
 	Port     int
 	Database DatabaseConfig
+	Auth     AuthConfig
 	Version  AppVersion
 }
 
@@ -38,6 +40,11 @@ type AppVersion struct {
 	APKURL      *string
 	Changelog   *string
 	ForceUpdate bool
+}
+
+type AuthConfig struct {
+	JWTSecret       string
+	AccountAdminKey string
 }
 
 func (config Config) PortString() string {
@@ -99,10 +106,19 @@ func Load(lookup LookupEnv) (Config, error) {
 		versionName = "0.0.107"
 	}
 
+	jwtSecret := value("JWT_SECRET")
+	if len(jwtSecret) < 32 {
+		jwtSecret = defaultJWTSecret
+	}
+
 	return Config{
 		Host:     host,
 		Port:     port,
 		Database: databaseConfig,
+		Auth: AuthConfig{
+			JWTSecret:       jwtSecret,
+			AccountAdminKey: value("ACCOUNT_ADMIN_KEY"),
+		},
 		Version: AppVersion{
 			Code:        versionCode,
 			Name:        versionName,

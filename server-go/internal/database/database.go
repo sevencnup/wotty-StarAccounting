@@ -17,6 +17,8 @@ type Store struct {
 	db *sql.DB
 }
 
+var ErrUnavailable = errors.New("database unavailable")
+
 func Open(settings config.DatabaseConfig) (*Store, error) {
 	if !settings.Configured {
 		return nil, fmt.Errorf("missing database setting: %s", strings.Join(settings.MissingKeys, ", "))
@@ -58,6 +60,13 @@ func (store *Store) Close() error {
 		return nil
 	}
 	return store.db.Close()
+}
+
+func (store *Store) connection() (*sql.DB, error) {
+	if store == nil || store.db == nil {
+		return nil, ErrUnavailable
+	}
+	return store.db, nil
 }
 
 // BuildDSN converts the JDBC URL already used by the Ktor service into the

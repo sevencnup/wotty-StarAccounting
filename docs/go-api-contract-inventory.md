@@ -6,14 +6,14 @@
 | --- | --- | --- | --- |
 | 基础 | `GET /api/health` | 否 | 已实现 |
 | 基础 | `GET /api/app/version` | 否 | 已实现 |
-| 认证 | `GET /api/auth/registration` | 否 | 未迁移 |
-| 认证 | `POST /api/auth/register` | 否 | 未迁移 |
-| 认证 | `POST /api/auth/login` | 否 | 未迁移 |
-| 认证 | `POST /api/auth/password/recover` | 否 | 未迁移 |
-| 认证 | `POST /api/auth/registration` | JWT + 管理员密钥 | 未迁移 |
-| 认证 | `POST /api/auth/password` | JWT | 未迁移 |
-| 认证 | `GET /api/auth/me` | JWT | 未迁移 |
-| 认证 | `POST /api/auth/logout` | JWT | 未迁移 |
+| 认证 | `GET /api/auth/registration` | 否 | 已实现，数据库只读验证通过 |
+| 认证 | `POST /api/auth/register` | 否 | 已实现，待隔离库契约验证 |
+| 认证 | `POST /api/auth/login` | 否 | 已实现，待现有账户跨服务验证 |
+| 认证 | `POST /api/auth/password/recover` | 否 | 已实现，待隔离库契约验证 |
+| 认证 | `POST /api/auth/registration` | JWT + 管理员密钥 | 已实现，待隔离库契约验证 |
+| 认证 | `POST /api/auth/password` | JWT | 已实现，待隔离库契约验证 |
+| 认证 | `GET /api/auth/me` | JWT | 已实现，单元测试通过 |
+| 认证 | `POST /api/auth/logout` | JWT | 已实现，单元测试通过 |
 | 用户 | `GET /api/user/me` | JWT | 未迁移 |
 | 用户 | `POST /api/user` | JWT | 未迁移 |
 | 账本 | `GET /api/accounts` | JWT | 未迁移 |

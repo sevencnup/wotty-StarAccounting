@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/auth"
 	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/config"
 )
 
@@ -16,6 +17,7 @@ type HealthChecker interface {
 
 type Options struct {
 	Database HealthChecker
+	Auth     *auth.Service
 	Version  config.AppVersion
 	Logger   *log.Logger
 }
@@ -50,6 +52,7 @@ func NewHandler(options Options) http.Handler {
 			ForceUpdate: options.Version.ForceUpdate,
 		})
 	})
+	registerAuthRoutes(router, options.Auth)
 	router.NotFound(func(writer http.ResponseWriter, request *http.Request) {
 		writeJSON(writer, http.StatusNotFound, map[string]string{"error": "Not found"})
 	})
