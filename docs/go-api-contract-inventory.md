@@ -14,37 +14,37 @@
 | 认证 | `POST /api/auth/password` | JWT | 已实现，待隔离库契约验证 |
 | 认证 | `GET /api/auth/me` | JWT | 已实现，单元测试通过 |
 | 认证 | `POST /api/auth/logout` | JWT | 已实现，单元测试通过 |
-| 用户 | `GET /api/user/me` | JWT | 未迁移 |
-| 用户 | `POST /api/user` | JWT | 未迁移 |
-| 账本 | `GET /api/accounts` | JWT | 未迁移 |
-| 账本 | `GET /api/accounts/{id}` | JWT | 未迁移 |
-| 账本 | `POST /api/accounts` | JWT | 未迁移 |
-| 账本 | `DELETE /api/accounts/{id}` | JWT | 未迁移 |
-| 交易 | `GET /api/transactions` | JWT | 未迁移 |
-| 交易 | `GET /api/transactions/months` | JWT | 未迁移 |
-| 交易 | `GET /api/transactions/{id}` | JWT | 未迁移 |
-| 交易 | `POST /api/transactions` | JWT | 未迁移 |
-| 导入 | `POST /api/transactions/import` | JWT | 未迁移 |
-| 贷款 | `POST /api/transactions/loan-repayments` | JWT | 未迁移 |
-| 交易 | `DELETE /api/transactions/{id}` | JWT | 未迁移 |
-| 同步 | `GET /api/sync` | JWT | 未迁移 |
-| 同步 | `POST /api/sync` | JWT | 未迁移 |
-| 同步 | `POST /api/sync/demo` | JWT | 未迁移 |
-| 资产 | `GET/POST /api/assets` | JWT | 未迁移 |
-| 资产 | `DELETE /api/assets/{id}` | JWT | 未迁移 |
-| 预算 | `GET/POST /api/budgets` | JWT | 未迁移 |
-| 预算 | `DELETE /api/budgets/{id}` | JWT | 未迁移 |
-| 贷款 | `GET/POST /api/loans` | JWT | 未迁移 |
-| 贷款 | `DELETE /api/loans/{id}` | JWT | 未迁移 |
-| 储蓄 | `GET/POST /api/savings-goals` | JWT | 未迁移 |
-| 储蓄 | `DELETE /api/savings-goals/{id}` | JWT | 未迁移 |
-| 储蓄 | `GET/POST /api/savings-plans` | JWT | 未迁移 |
-| 储蓄 | `DELETE /api/savings-plans/{id}` | JWT | 未迁移 |
-| 分类 | `GET/POST /api/category-rules` | JWT | 未迁移 |
-| 导入错误 | `GET/POST /api/import-errors` | JWT | 未迁移 |
-| 汇率 | `GET /api/exchange-rates` | JWT | 未迁移 |
-| 主题 | `GET /api/theme-config/{userId}` | JWT | 未迁移 |
-| 主题 | `PUT /api/theme-config` | JWT | 未迁移 |
+| 用户 | `GET /api/user/me` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 用户 | `POST /api/user` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 账本 | `GET /api/accounts` | JWT | 已实现，隔离库验收通过 |
+| 账本 | `GET /api/accounts/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 账本 | `POST /api/accounts` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 账本 | `DELETE /api/accounts/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 交易 | `GET /api/transactions` | JWT | 已实现，隔离库验收通过 |
+| 交易 | `GET /api/transactions/months` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 交易 | `GET /api/transactions/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 交易 | `POST /api/transactions` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 导入 | `POST /api/transactions/import` | JWT | 已实现，隔离库验收通过 |
+| 贷款 | `POST /api/transactions/loan-repayments` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 交易 | `DELETE /api/transactions/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 同步 | `GET /api/sync` | JWT | 已实现，待完整表结构契约比对 |
+| 同步 | `POST /api/sync` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 同步 | `POST /api/sync/demo` | JWT | 暂不迁移：旧接口会覆写真实用户字段，需先安全重做 |
+| 资产 | `GET/POST /api/assets` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 资产 | `DELETE /api/assets/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 预算 | `GET/POST /api/budgets` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 预算 | `DELETE /api/budgets/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 贷款 | `GET/POST /api/loans` | JWT | 已实现，隔离库验收通过 |
+| 贷款 | `DELETE /api/loans/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 储蓄 | `GET/POST /api/savings-goals` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 储蓄 | `DELETE /api/savings-goals/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 储蓄 | `GET/POST /api/savings-plans` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 储蓄 | `DELETE /api/savings-plans/{id}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 分类 | `GET/POST /api/category-rules` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 导入错误 | `GET/POST /api/import-errors` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 汇率 | `GET /api/exchange-rates` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 主题 | `GET /api/theme-config/{userId}` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
+| 主题 | `PUT /api/theme-config` | JWT | 已实现，待 Ktor/Go 数据库契约比对 |
 
 ## 不变量
 

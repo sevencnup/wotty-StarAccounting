@@ -15,6 +15,7 @@ import (
 	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/config"
 	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/database"
 	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/httpapi"
+	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/ledger"
 )
 
 func main() {
@@ -37,10 +38,11 @@ func main() {
 		JWTSecret:       appConfig.Auth.JWTSecret,
 		AccountAdminKey: appConfig.Auth.AccountAdminKey,
 	})
+	ledgerService := ledger.NewService(store)
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort(appConfig.Host, appConfig.PortString()),
-		Handler:           httpapi.NewHandler(httpapi.Options{Database: store, Auth: authService, Version: appConfig.Version, Logger: logger}),
+		Handler:           httpapi.NewHandler(httpapi.Options{Database: store, Auth: authService, Ledger: ledgerService, Version: appConfig.Version, Logger: logger}),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}

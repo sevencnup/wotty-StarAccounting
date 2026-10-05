@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/auth"
 	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/config"
+	"github.com/sevencnup/wotty-StarAccounting/server-go/internal/ledger"
 )
 
 type HealthChecker interface {
@@ -18,6 +19,7 @@ type HealthChecker interface {
 type Options struct {
 	Database HealthChecker
 	Auth     *auth.Service
+	Ledger   *ledger.Service
 	Version  config.AppVersion
 	Logger   *log.Logger
 }
@@ -53,6 +55,7 @@ func NewHandler(options Options) http.Handler {
 		})
 	})
 	registerAuthRoutes(router, options.Auth)
+	registerLedgerRoutes(router, options.Auth, options.Ledger)
 	router.NotFound(func(writer http.ResponseWriter, request *http.Request) {
 		writeJSON(writer, http.StatusNotFound, map[string]string{"error": "Not found"})
 	})
