@@ -98,7 +98,10 @@ func (store *Store) RegisterUser(context context.Context, email, passwordHash st
 	if err != nil {
 		return auth.User{}, err
 	}
-	now := time.Now().UTC().Truncate(time.Second)
+	// Ktor stores LocalDateTime.now() at the database's microsecond precision.
+	// Keep that precision for both the stored value and the object returned by
+	// registration: MySQL DATETIME(6) cannot preserve Go's extra nanoseconds.
+	now := time.Now().UTC().Truncate(time.Microsecond)
 	name = trimmedName(name)
 	if _, err = transaction.ExecContext(context,
 		"INSERT INTO `user` (id, email, password, name, defaultAccountId, createdAt, updatedAt, role) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",

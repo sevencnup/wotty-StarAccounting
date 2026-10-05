@@ -21,21 +21,26 @@ func TestHealthUsesDatabaseReadiness(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/health", nil)
 	recorder := httptest.NewRecorder()
 	NewHandler(Options{Database: fakeDatabase(true)}).ServeHTTP(recorder, request)
-	if recorder.Code != http.StatusOK || strings.TrimSpace(recorder.Body.String()) != `{"status":"ok","db":true}` {
+	if recorder.Code != http.StatusOK || recorder.Body.String() != `{"status":"ok","db":true}` {
 		t.Fatalf("health response = %d %q", recorder.Code, recorder.Body.String())
 	}
 }
 
-func TestVersionMatchesExistingJSONFieldNames(t *testing.T) {
+func TestVersionOmitsKtorDefaultValues(t *testing.T) {
 	request := httptest.NewRequest(http.MethodGet, "/api/app/version", nil)
 	recorder := httptest.NewRecorder()
 	NewHandler(Options{Version: config.AppVersion{Code: 119, Name: "0.0.119"}}).ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("version status = %d", recorder.Code)
 	}
-	for _, field := range []string{`"versionCode":119`, `"versionName":"0.0.119"`, `"apkUrl":null`, `"changelog":null`, `"forceUpdate":false`} {
+	for _, field := range []string{`"versionCode":119`, `"versionName":"0.0.119"`} {
 		if !strings.Contains(recorder.Body.String(), field) {
 			t.Fatalf("version response %q does not contain %s", recorder.Body.String(), field)
+		}
+	}
+	for _, field := range []string{`"apkUrl"`, `"changelog"`, `"forceUpdate"`} {
+		if strings.Contains(recorder.Body.String(), field) {
+			t.Fatalf("version response should omit Ktor default %s: %q", field, recorder.Body.String())
 		}
 	}
 }
@@ -81,6 +86,9 @@ func TestAuthLoginAndProtectedMe(t *testing.T) {
 	handler.ServeHTTP(meRecorder, meRequest)
 	if meRecorder.Code != http.StatusOK || !strings.Contains(meRecorder.Body.String(), `"id":"user-1"`) {
 		t.Fatalf("me = %d %s", meRecorder.Code, meRecorder.Body.String())
+	}
+	if strings.Contains(meRecorder.Body.String(), `"name"`) || strings.Contains(meRecorder.Body.String(), `"defaultAccountId"`) {
+		t.Fatalf("me response should omit absent optional fields: %s", meRecorder.Body.String())
 	}
 }
 

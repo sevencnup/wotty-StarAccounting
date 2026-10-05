@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"log"
@@ -32,9 +33,9 @@ type healthResponse struct {
 type versionResponse struct {
 	VersionCode int     `json:"versionCode"`
 	VersionName string  `json:"versionName"`
-	APKURL      *string `json:"apkUrl"`
-	Changelog   *string `json:"changelog"`
-	ForceUpdate bool    `json:"forceUpdate"`
+	APKURL      *string `json:"apkUrl,omitempty"`
+	Changelog   *string `json:"changelog,omitempty"`
+	ForceUpdate bool    `json:"forceUpdate,omitempty"`
 }
 
 func NewHandler(options Options) http.Handler {
@@ -92,9 +93,23 @@ func recoverer(logger *log.Logger) func(http.Handler) http.Handler {
 }
 
 func writeJSON(writer http.ResponseWriter, status int, value interface{}) {
+	var encoded bytes.Buffer
+	encoder := json.NewEncoder(&encoded)
+	encoder.SetEscapeHTML(false)
+	if err := encoder.Encode(value); err != nil {
+		writeJSONEncodingFailure(writer)
+		return
+	}
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writer.WriteHeader(status)
-	encoder := json.NewEncoder(writer)
-	encoder.SetEscapeHTML(false)
-	_ = encoder.Encode(value)
+	_, _ = writer.Write(bytes.TrimSuffix(encoded.Bytes(), []byte{'\n'}))
+}
+
+func writeJSONEncodingFailure(writer http.ResponseWriter) {
+	if writer.Header().Get("Content-Type") != "" {
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	writer.WriteHeader(http.StatusInternalServerError)
+	_, _ = writer.Write([]byte(`{"error":"Internal server error"}`))
 }

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -47,8 +48,38 @@ func TestSchemaCreateStatementsStayAdditive(t *testing.T) {
 	}
 }
 
+func TestSchemaUsesKtorCompatibleMicrosecondDateTimes(t *testing.T) {
+	for _, table := range schemaTables {
+		if strings.Contains(table.Create, "DATETIME(3)") || strings.Contains(table.Create, "CURRENT_TIMESTAMP(3)") {
+			t.Errorf("%s truncates new timestamps to milliseconds", table.Name)
+		}
+		for _, column := range table.Columns {
+			if strings.Contains(column.Definition, "DATETIME") && !strings.Contains(column.Definition, "DATETIME(6)") {
+				t.Errorf("%s.%s is not microsecond precision: %s", table.Name, column.Name, column.Definition)
+			}
+		}
+	}
+}
+
 func TestQuoteIdentifierEscapesBackticks(t *testing.T) {
 	if quoted := quoteIdentifier("strange`name"); quoted != "`strange``name`" {
 		t.Fatalf("quoteIdentifier() = %q", quoted)
+	}
+}
+
+func TestPayloadValueUsesKtorMissingFieldMessage(t *testing.T) {
+	_, err := payloadValue(map[string]json.RawMessage{}, entityField{JSON: "type", Kind: stringField})
+	if err == nil || err.Error() != "Key type is missing in the map." {
+		t.Fatalf("payloadValue() error = %v", err)
+	}
+}
+
+func TestDatabaseJSONNormalizesMySQLDecimalPaddingLikeKtor(t *testing.T) {
+	encoded, err := databaseJSON([]byte("12.340000000000000000000000000000"), decimalField)
+	if err != nil {
+		t.Fatalf("databaseJSON() error = %v", err)
+	}
+	if string(encoded) != "12.34" {
+		t.Fatalf("databaseJSON() = %s, want 12.34", encoded)
 	}
 }

@@ -65,6 +65,28 @@ func TestLedgerSyncScopesPayloadAndRejectsForeignAccount(t *testing.T) {
 	}
 }
 
+func TestLedgerSyncOmitsNullScopeFields(t *testing.T) {
+	repository := &httpLedgerRepository{
+		records: []ledger.Record{{
+			ID:         "plan-1",
+			EntityType: ledger.SavingsPlans,
+			Payload:    json.RawMessage(`{"id":"plan-1","goalId":"goal-1"}`),
+			UpdatedAt:  "2026-10-05 12:00:00",
+		}},
+	}
+	handler, token := newLedgerHandler(t, repository)
+	request := httptest.NewRequest(http.MethodGet, "/api/sync?accountId=account-1", nil)
+	request.Header.Set("Authorization", "Bearer "+token)
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("sync = %d %s", recorder.Code, recorder.Body.String())
+	}
+	if strings.Contains(recorder.Body.String(), `"accountId":null`) || strings.Contains(recorder.Body.String(), `"userId":null`) {
+		t.Fatalf("sync emitted null scope fields: %s", recorder.Body.String())
+	}
+}
+
 func TestLedgerTransactionRouteValidatesMonthAndBoundsPageSize(t *testing.T) {
 	repository := &httpLedgerRepository{}
 	handler, token := newLedgerHandler(t, repository)
@@ -103,6 +125,11 @@ func TestLedgerImportAndLoanRepaymentRoutesUseAuthenticatedAccount(t *testing.T)
 	handler.ServeHTTP(importRecorder, importRequest)
 	if importRecorder.Code != http.StatusOK || repository.importAccountID != "account-1" || repository.importUserID != "user-1" || len(repository.importItems) != 1 {
 		t.Fatalf("import = %d %s, call=%q/%q items=%d", importRecorder.Code, importRecorder.Body.String(), repository.importAccountID, repository.importUserID, len(repository.importItems))
+	}
+	for _, optionalField := range []string{`"failedRows"`, `"loanRepayments"`, `"loanRepaymentAmount"`} {
+		if strings.Contains(importRecorder.Body.String(), optionalField) {
+			t.Fatalf("successful import emitted empty optional field %s: %s", optionalField, importRecorder.Body.String())
+		}
 	}
 
 	loanRequest := httptest.NewRequest(http.MethodPost, "/api/transactions/loan-repayments?accountId=account-1", strings.NewReader(body))
@@ -148,6 +175,7 @@ func newLedgerHandler(t *testing.T, repository *httpLedgerRepository) (http.Hand
 
 type httpLedgerRepository struct {
 	accounts            []json.RawMessage
+	records             []ledger.Record
 	upsertedPayload     map[string]json.RawMessage
 	transactionPage     int
 	transactionPageSize int
@@ -188,7 +216,7 @@ func (repository *httpLedgerRepository) DeleteEntity(context.Context, ledger.Ent
 }
 
 func (repository *httpLedgerRepository) ListSyncRecords(context.Context, string, string) ([]ledger.Record, error) {
-	return []ledger.Record{}, nil
+	return repository.records, nil
 }
 
 func (repository *httpLedgerRepository) ListAccounts(context.Context, string) ([]json.RawMessage, error) {

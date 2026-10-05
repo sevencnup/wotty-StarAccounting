@@ -47,8 +47,8 @@ type User struct {
 type UserResponse struct {
 	ID               string  `json:"id"`
 	Email            string  `json:"email"`
-	Name             *string `json:"name"`
-	DefaultAccountID *string `json:"defaultAccountId"`
+	Name             *string `json:"name,omitempty"`
+	DefaultAccountID *string `json:"defaultAccountId,omitempty"`
 	Role             string  `json:"role"`
 	CreatedAt        string  `json:"createdAt"`
 	UpdatedAt        string  `json:"updatedAt"`
@@ -186,7 +186,13 @@ func (service *Service) Login(context context.Context, credentials Credentials) 
 		if err := service.repository.UpdatePassword(context, user.ID, upgraded); err != nil {
 			return AuthResponse{}, databaseError(err)
 		}
-		user.Password = upgraded
+		// Ktor reloads after upgrading a legacy hash so the response carries the
+		// database-written updatedAt value instead of the stale login snapshot.
+		refreshed, refreshErr := service.repository.FindUserByID(context, user.ID)
+		if refreshErr != nil {
+			return AuthResponse{}, databaseError(refreshErr)
+		}
+		user = refreshed
 	}
 	return service.responseFor(user)
 }
@@ -409,7 +415,22 @@ func normalizeName(name *string) *string {
 }
 
 func formatDateTime(value time.Time) string {
-	return value.Format("2006-01-02 15:04:05")
+	// AuthRoutes serialises Java's LocalDateTime with toString(), rather than
+	// the second-precision formatter used by the ledger endpoints. Preserve
+	// the same three/six/nine digit fractional-second behaviour so a client can
+	// switch between Ktor and Go without seeing an artificial user change.
+	base := value.Format("2006-01-02 15:04:05")
+	nanoseconds := value.Nanosecond()
+	switch {
+	case nanoseconds == 0:
+		return base
+	case nanoseconds%1_000_000 == 0:
+		return fmt.Sprintf("%s.%03d", base, nanoseconds/1_000_000)
+	case nanoseconds%1_000 == 0:
+		return fmt.Sprintf("%s.%06d", base, nanoseconds/1_000)
+	default:
+		return fmt.Sprintf("%s.%09d", base, nanoseconds)
+	}
 }
 
 func decodeRawURL(value string) ([]byte, error) {

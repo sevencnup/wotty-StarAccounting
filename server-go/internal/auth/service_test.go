@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -78,9 +79,68 @@ func TestRegisterAndRecoveryHonorExistingRules(t *testing.T) {
 	}
 }
 
+func TestLoginReloadsUserAfterLegacyPasswordUpgrade(t *testing.T) {
+	user := testUser("legacy-user", "legacy@example.com", "legacy-password")
+	repository := &memoryRepository{
+		users:               map[string]User{user.ID: user},
+		updatedAt:           time.Date(2026, time.October, 5, 8, 30, 0, 123_000_000, time.UTC),
+		registrationEnabled: true,
+	}
+	service := NewService(repository, Config{JWTSecret: "12345678901234567890123456789012"})
+
+	response, errorValue := service.Login(context.Background(), Credentials{Email: user.Email, Password: "legacy-password"})
+	if errorValue != nil {
+		t.Fatalf("Login() error = %#v", errorValue)
+	}
+	if response.User.UpdatedAt != "2026-10-05 08:30:00.123" {
+		t.Fatalf("updatedAt = %q", response.User.UpdatedAt)
+	}
+	if stored := repository.users[user.ID].Password; !strings.HasPrefix(stored, "pbkdf2-sha256$") {
+		t.Fatalf("legacy password was not upgraded: %q", stored)
+	}
+}
+
+func TestFormatDateTimeMatchesKtorAuthResponse(t *testing.T) {
+	cases := []struct {
+		name     string
+		value    time.Time
+		expected string
+	}{
+		{
+			name:     "whole seconds",
+			value:    time.Date(2026, time.October, 5, 7, 0, 0, 0, time.UTC),
+			expected: "2026-10-05 07:00:00",
+		},
+		{
+			name:     "milliseconds retain three digits",
+			value:    time.Date(2026, time.October, 5, 7, 0, 0, 120_000_000, time.UTC),
+			expected: "2026-10-05 07:00:00.120",
+		},
+		{
+			name:     "microseconds retain six digits",
+			value:    time.Date(2026, time.October, 5, 7, 0, 0, 120_456_000, time.UTC),
+			expected: "2026-10-05 07:00:00.120456",
+		},
+		{
+			name:     "nanoseconds retain nine digits",
+			value:    time.Date(2026, time.October, 5, 7, 0, 0, 120_456_789, time.UTC),
+			expected: "2026-10-05 07:00:00.120456789",
+		},
+	}
+
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			if actual := formatDateTime(testCase.value); actual != testCase.expected {
+				t.Fatalf("formatDateTime() = %q, want %q", actual, testCase.expected)
+			}
+		})
+	}
+}
+
 type memoryRepository struct {
 	users               map[string]User
 	registrationEnabled bool
+	updatedAt           time.Time
 }
 
 func (repository *memoryRepository) FindUserByID(_ context.Context, id string) (User, error) {
@@ -125,6 +185,9 @@ func (repository *memoryRepository) UpdatePassword(_ context.Context, id, passwo
 		return ErrNotFound
 	}
 	user.Password = password
+	if !repository.updatedAt.IsZero() {
+		user.UpdatedAt = repository.updatedAt
+	}
 	repository.users[id] = user
 	return nil
 }

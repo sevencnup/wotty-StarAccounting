@@ -29,8 +29,8 @@ const (
 type Record struct {
 	ID         string          `json:"id"`
 	EntityType EntityType      `json:"entityType"`
-	AccountID  *string         `json:"accountId"`
-	UserID     *string         `json:"userId"`
+	AccountID  *string         `json:"accountId,omitempty"`
+	UserID     *string         `json:"userId,omitempty"`
 	Payload    json.RawMessage `json:"payload"`
 	UpdatedAt  string          `json:"updatedAt"`
 }
@@ -46,9 +46,9 @@ type ImportResult struct {
 	Imported            int             `json:"imported"`
 	Skipped             int             `json:"skipped"`
 	Errors              int             `json:"errors"`
-	FailedRows          []ImportFailure `json:"failedRows"`
-	LoanRepayments      int             `json:"loanRepayments"`
-	LoanRepaymentAmount float64         `json:"loanRepaymentAmount"`
+	FailedRows          []ImportFailure `json:"failedRows,omitempty"`
+	LoanRepayments      int             `json:"loanRepayments,omitempty"`
+	LoanRepaymentAmount float64         `json:"loanRepaymentAmount,omitempty"`
 }
 
 type LoanRepaymentClassificationResult struct {
@@ -117,14 +117,18 @@ func (service *Service) UpsertRecord(context context.Context, userID string, rec
 	if errorValue := service.available(); errorValue != nil {
 		return errorValue
 	}
-	if !known(record.EntityType) {
-		// Ktor intentionally treats unrecognised sync entities as a no-op so an
-		// older server does not block a newer client during a rolling upgrade.
-		return nil
-	}
 	payload, errorValue := decodePayload(record.Payload)
 	if errorValue != nil {
 		return errorValue
+	}
+	if !known(record.EntityType) {
+		// Ktor retains rolling-upgrade compatibility for unknown records, but
+		// only after it has proved that their payload is scoped to an account the
+		// caller owns. The outer sync envelope is not trusted for this check.
+		if deleted(payload) {
+			return forbidden("You do not have access to this resource")
+		}
+		return service.authorizeUnknownSyncRecord(context, userID, payload)
 	}
 	if deleted(payload) {
 		return service.DeleteEntity(context, userID, record.EntityType, record.ID)
@@ -423,6 +427,24 @@ func (service *Service) requireAccountAccess(context context.Context, userID, ac
 	}
 	if !allowed {
 		return forbidden("无权访问该账本")
+	}
+	return nil
+}
+
+func (service *Service) authorizeUnknownSyncRecord(context context.Context, userID string, payload map[string]json.RawMessage) *Error {
+	if _, exists := stringValue(payload, "id"); !exists {
+		return forbidden("Missing entity id")
+	}
+	accountID, exists := stringValue(payload, "accountId")
+	if !exists {
+		return forbidden("You do not have access to this resource")
+	}
+	allowed, err := service.repository.AccountBelongsToUser(context, userID, accountID)
+	if err != nil {
+		return databaseError(err)
+	}
+	if !allowed {
+		return forbidden("You do not have access to this resource")
 	}
 	return nil
 }

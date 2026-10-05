@@ -73,6 +73,31 @@ func TestDeleteSavingsGoalDelegatesAfterOwnershipCheck(t *testing.T) {
 	}
 }
 
+func TestUnknownSyncRecordRetainsKtorPayloadOwnershipCheck(t *testing.T) {
+	repository := &serviceRepository{accountAllowed: true}
+	service := NewService(repository)
+
+	if errorValue := service.UpsertRecord(context.Background(), "user-1", Record{
+		ID:         "future-1",
+		EntityType: "futureEntity",
+		AccountID:  stringPointer("account-1"),
+		Payload:    json.RawMessage(`{"id":"future-1"}`),
+	}); errorValue == nil || errorValue.Status != 403 || errorValue.Message != "You do not have access to this resource" {
+		t.Fatalf("unscoped unknown record error = %#v", errorValue)
+	}
+
+	if errorValue := service.UpsertRecord(context.Background(), "user-1", Record{
+		ID:         "future-2",
+		EntityType: "futureEntity",
+		Payload:    json.RawMessage(`{"id":"future-2","accountId":"account-1"}`),
+	}); errorValue != nil {
+		t.Fatalf("authorised unknown record error = %#v", errorValue)
+	}
+	if repository.upsertedPayload != nil {
+		t.Fatalf("unknown record unexpectedly wrote payload %#v", repository.upsertedPayload)
+	}
+}
+
 type serviceRepository struct {
 	accountAllowed          bool
 	goalAllowed             bool
@@ -182,5 +207,7 @@ func payloadString(payload map[string]json.RawMessage, key string) (string, bool
 	}
 	return value, true
 }
+
+func stringPointer(value string) *string { return &value }
 
 var _ Repository = (*serviceRepository)(nil)

@@ -255,7 +255,9 @@ func upsertEntity(context context.Context, executor sqlExecutor, entityType ledg
 	for index, field := range specification.Fields {
 		value, err := payloadValue(payload, field)
 		if err != nil {
-			return fmt.Errorf("%s.%s: %w", entityType, field.JSON, err)
+			// Ktor's JsonObject.getValue() exposes its missing-field message to
+			// import callers. Retain it instead of adding a Go-only entity prefix.
+			return err
 		}
 		columns = append(columns, "`"+field.Column+"`")
 		arguments = append(arguments, value)
@@ -599,9 +601,15 @@ func nullablePayloadString(payload map[string]json.RawMessage, key string) (stri
 }
 
 func validateLoanRepayment(context context.Context, transaction *sql.Tx, payload map[string]json.RawMessage, accountID, userID string) error {
-	transactionType, _, err := nullablePayloadString(payload, "type")
-	if err != nil || transactionType != "REPAYMENT" {
+	transactionType, hasTransactionType, err := nullablePayloadString(payload, "type")
+	if err != nil {
 		return err
+	}
+	if !hasTransactionType {
+		return errors.New("Key type is missing in the map.")
+	}
+	if transactionType != "REPAYMENT" {
+		return nil
 	}
 	loanID, hasLoanID, err := nullablePayloadString(payload, "loanId")
 	if err != nil {
@@ -879,7 +887,7 @@ func payloadValue(payload map[string]json.RawMessage, field entityField) (interf
 		if nullable {
 			return nil, nil
 		}
-		return nil, errors.New("missing required value")
+		return nil, fmt.Errorf("Key %s is missing in the map.", field.JSON)
 	}
 	switch field.Kind {
 	case stringField, nullableStringField:
@@ -1031,10 +1039,18 @@ func databaseJSON(value interface{}, kind fieldKind) (json.RawMessage, error) {
 	}
 	if kind == decimalField || kind == nullableDecimalField || kind == nullableFloatField {
 		text := databaseText(value)
-		if _, err := strconv.ParseFloat(text, 64); err != nil {
+		// Ktor serialises DECIMAL values through BigDecimal.toDouble(). Keep the
+		// database's full precision on disk, but emit the same JSON number form
+		// instead of leaking MySQL's DECIMAL(65,30) padding to API clients.
+		parsed, err := strconv.ParseFloat(text, 64)
+		if err != nil {
 			return nil, err
 		}
-		return json.RawMessage(text), nil
+		encoded, err := json.Marshal(parsed)
+		if err != nil {
+			return nil, err
+		}
+		return encoded, nil
 	}
 	return json.Marshal(databaseText(value))
 }
