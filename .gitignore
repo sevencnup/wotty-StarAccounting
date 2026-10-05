@@ -17,6 +17,8 @@ out/
 app/android/app/src/main/res/
 .edge-profile/
 .next-stale-json-conflict/
+server-go/stark-api
+server-go/stark-api.exe
 
 # Misc
 local.properties
