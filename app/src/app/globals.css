@@ -14046,3 +14046,252 @@ body .budget-management-sheet .budget-management-save {
   color: #ffffff !important;
   background: #0068c9 !important;
 }
+
+/* Shared reporting date picker: an app-level sheet rather than a browser-like
+   dropdown. Home and consumption reuse this component, so the visual language
+   stays identical wherever a reporting period is selected. */
+body .reporting-month-picker-backdrop {
+  z-index: 500;
+  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(10px) saturate(115%);
+}
+
+body .reporting-month-picker-dialog {
+  width: min(100%, 400px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-bottom));
+  padding: 16px;
+  overflow: auto;
+  border: 0 !important;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.3);
+  scrollbar-width: none;
+}
+
+body .reporting-month-picker-dialog::-webkit-scrollbar {
+  display: none;
+}
+
+body .reporting-month-picker-head {
+  align-items: center;
+}
+
+body .reporting-month-picker-head > div {
+  gap: 3px;
+}
+
+body .reporting-month-picker-head span {
+  color: #7b8ba1;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+body .reporting-month-picker-head strong {
+  color: #17253a;
+  font-size: calc(20px * var(--user-font-scale));
+  letter-spacing: -0.02em;
+}
+
+body .reporting-month-picker-head > button {
+  width: 36px;
+  height: 36px;
+  border: 0 !important;
+  background: #f1f5f9;
+  color: #607089;
+  font-size: calc(25px * var(--user-font-scale));
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+body .reporting-month-picker-head > button:active {
+  transform: scale(0.92);
+  background: #e7edf4;
+}
+
+body .reporting-month-picker-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 11px 12px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #e8f2ff 0%, #f3f8ff 100%);
+  color: #183d67;
+}
+
+body .reporting-month-picker-current-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2872bb;
+  box-shadow: 0 3px 10px rgba(38, 105, 170, 0.12);
+}
+
+body .reporting-month-picker-current-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+body .reporting-month-picker-current > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+body .reporting-month-picker-current small {
+  color: #6680a0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+body .reporting-month-picker-current strong {
+  color: #245987;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 750;
+}
+
+body .reporting-year-picker {
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border-radius: 16px;
+  background: #f3f6fa;
+}
+
+body .reporting-year-picker button,
+body .reporting-year-picker select {
+  height: 40px;
+  border: 0 !important;
+  border-radius: 12px;
+  background: transparent;
+  color: #30455e;
+}
+
+body .reporting-year-picker button {
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.07);
+  font-size: calc(26px * var(--user-font-scale));
+  line-height: 1;
+}
+
+body .reporting-year-picker button:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+body .reporting-year-picker select {
+  padding: 0 28px 0 10px;
+  color: #1e3a5a;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 750;
+  text-align: center;
+  text-align-last: center;
+}
+
+body .reporting-year-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  margin-top: 12px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: #f3f6fa;
+  color: #53677f;
+  font-weight: 700;
+}
+
+body .reporting-year-option.selected {
+  background: #e4f0ff;
+  color: #2265a8;
+  box-shadow: none;
+}
+
+body .reporting-month-grid {
+  gap: 7px;
+  margin-top: 12px;
+}
+
+body .reporting-month-grid button {
+  min-height: 46px;
+  border: 0 !important;
+  border-radius: 14px;
+  background: #f4f7fb;
+  color: #50647d;
+  font-weight: 700;
+  transition: transform 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+body .reporting-month-grid button:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+body .reporting-month-grid button.selected {
+  background: linear-gradient(135deg, #2c79c7 0%, #145fae 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(25, 100, 177, 0.24);
+}
+
+body .reporting-month-grid button.unavailable,
+body .reporting-month-grid button.unavailable:disabled,
+body .reporting-year-option.unavailable,
+body .reporting-year-option.unavailable:disabled {
+  background: #f6f7f9;
+  color: #b8c2cf;
+}
+
+body .reporting-month-picker-cancel {
+  height: 40px;
+  margin-top: 12px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: transparent;
+  color: #718198;
+  font-weight: 700;
+}
+
+body .reporting-month-picker-dialog button:focus-visible,
+body .reporting-month-picker-dialog select:focus-visible {
+  outline: 2px solid rgba(32, 110, 187, 0.46);
+  outline-offset: 2px;
+}
+
+/* Native date controls are used in journal, savings and account settings.
+   Keep their platform picker intact while giving them the same neutral field
+   surface and readable calendar affordance. */
+body :where(input[type="date"], input[type="datetime-local"]) {
+  color-scheme: light;
+  background-color: #f3f6fa !important;
+  color: #2d4058 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+body :where(input[type="date"], input[type="datetime-local"])::-webkit-calendar-picker-indicator {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0.68;
+}
+
+body :where(input[type="date"], input[type="datetime-local"])::-webkit-datetime-edit,
+body :where(input[type="date"], input[type="datetime-local"])::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+@media (min-width: 700px) {
+  body .reporting-month-picker-backdrop {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .reporting-month-picker-dialog *,
+  body .reporting-month-picker-dialog *::before,
+  body .reporting-month-picker-dialog *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

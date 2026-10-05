@@ -12,6 +12,10 @@ function monthKey(year: number, month: number) {
   return `${year}-${String(month).padStart(2, "0")}`;
 }
 
+function selectedRangeLabel(year: number, month: number | null) {
+  return month === null ? `${year} 年全年` : `${year} 年 ${month} 月`;
+}
+
 export function MonthPicker({
   value,
   onChange,
@@ -35,6 +39,7 @@ export function MonthPicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedMonthRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const currentRange = selectedRangeLabel(selectedYear, selectedMonth);
   const years = useMemo(
     () => Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, index) => MIN_YEAR + index),
     [],
@@ -123,11 +128,24 @@ export function MonthPicker({
                 <div className="reporting-month-picker-head">
                   <div>
                     <span>统计范围</span>
-                    <strong id={titleId}>选择月份</strong>
+                    <strong id={titleId}>选择日期</strong>
                   </div>
                   <button type="button" aria-label="关闭月份选择" onClick={closePicker}>
                     ×
                   </button>
+                </div>
+
+                <div className="reporting-month-picker-current" aria-live="polite">
+                  <span className="reporting-month-picker-current-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3.5" y="5" width="17" height="15" rx="3" />
+                      <path d="M7.5 3.5v3M16.5 3.5v3M3.5 9.5h17M8 13h.01M12 13h.01M16 13h.01M8 16.5h.01M12 16.5h.01" />
+                    </svg>
+                  </span>
+                  <span>
+                    <small>当前统计范围</small>
+                    <strong>{currentRange}</strong>
+                  </span>
                 </div>
 
                 <div className="reporting-year-picker">
