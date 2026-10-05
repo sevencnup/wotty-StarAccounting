@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -145,7 +145,13 @@ test("historical savings templates copy structure while remapping months to the 
         ALTERNATE: ["2026-01", "2026-03", "2026-05"],
       },
     }),
-  }, [], 2027);
+  }, [{
+    month: "2026-03",
+    remark: "隔月存模式",
+    amount: 2600,
+    salary: 8000,
+    expenses: JSON.stringify({ 房租: 2200, 临时医疗: 300, [PREVIOUS_BALANCE_COLUMN]: 500 }),
+  }], 2027);
 
   assert.equal(template.sourceGoalName, "2026 年度储蓄");
   assert.equal(template.depositType, "HELP_DEPOSIT");
@@ -156,6 +162,12 @@ test("historical savings templates copy structure while remapping months to the 
   assert.deepEqual(template.monthsByFrequency, {
     MONTHLY: ["2027-02", "2027-04"],
     ALTERNATE: ["2027-01", "2027-03", "2027-05"],
+  });
+  assert.deepEqual(template.rowsByFrequency.ALTERNATE["2027-03"], {
+    salary: "8000",
+    previousBalance: "500",
+    expected: "2600",
+    expenses: { 房租: "2200", 临时医疗: "300" },
   });
 });
 
@@ -175,6 +187,18 @@ test("historical templates recover columns and previous balance from older plan 
   assert.deepEqual(template.columns, ["房租"]);
   assert.equal(template.previousBalanceEnabled, true);
   assert.deepEqual(template.monthsByFrequency.ALTERNATE, ["2027-03"]);
+});
+
+test("switching a draft to another year keeps matching planning rows and drops unsupported months", () => {
+  assert.deepEqual(remapSavingsMonthsToYear(["2026-01", "2026-02", "2026-03"], 2027, "ALTERNATE"), ["2027-01", "2027-03"]);
+  assert.deepEqual(remapSavingsRowsToYear({
+    "2026-01": { expected: "1000" },
+    "2026-02": { expected: "2000" },
+    "2026-03": { expected: "3000" },
+  }, 2027, "ALTERNATE"), {
+    "2027-01": { expected: "1000" },
+    "2027-03": { expected: "3000" },
+  });
 });
 
 test("savings goal selection uses the requested goal when editing", () => {

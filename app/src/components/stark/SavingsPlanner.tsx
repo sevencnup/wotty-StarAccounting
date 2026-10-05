@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency, type SavingsPlanTemplate } from "@/lib/stark/savings/planner";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency, type SavingsPlanTemplate } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -125,6 +125,28 @@ function defaultMonthsForConfig(year: number, config: PlanConfig, plans: Savings
   };
 }
 
+function remapSavingsDraftToYear(draft: SavingsDraft | undefined, targetYear: number) {
+  if (!draft) return undefined;
+  const sourceYear = draft.year;
+  const defaultGoalName = sourceYear ? `${sourceYear} 年度储蓄` : "";
+  const defaultDeadline = sourceYear ? `${sourceYear}-12-31` : "";
+  return {
+    ...draft,
+    year: targetYear,
+    goalName: draft.goalName === defaultGoalName ? `${targetYear} 年度储蓄` : draft.goalName,
+    deadline: draft.deadline === defaultDeadline ? `${targetYear}-12-31` : draft.deadline,
+    monthsByFrequency: {
+      MONTHLY: remapSavingsMonthsToYear(draft.monthsByFrequency?.MONTHLY ?? [], targetYear, "MONTHLY"),
+      ALTERNATE: remapSavingsMonthsToYear(draft.monthsByFrequency?.ALTERNATE ?? [], targetYear, "ALTERNATE"),
+    },
+    rows: remapSavingsRowsToYear(draft.rows, targetYear, draft.frequency ?? "MONTHLY"),
+    rowsByFrequency: draft.rowsByFrequency ? {
+      MONTHLY: remapSavingsRowsToYear(draft.rowsByFrequency.MONTHLY, targetYear, "MONTHLY"),
+      ALTERNATE: remapSavingsRowsToYear(draft.rowsByFrequency.ALTERNATE, targetYear, "ALTERNATE"),
+    } : undefined,
+  } satisfies SavingsDraft;
+}
+
 function monthLabel(month: string) {
   return `${Number(month.slice(5, 7))}月`;
 }
@@ -239,7 +261,9 @@ export function SavingsPlanner({
       persistedPlansRef.current = plans;
       const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
       const selectedDraft = selectSavingsDraft(rawDraft, activeGoal.updatedAt, Boolean(savingsGoalId));
-      const draft = selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined;
+      const draft = savingsGoalId
+        ? (selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined)
+        : remapSavingsDraftToYear(selectedDraft ?? undefined, year);
       if (savingsGoalId && rawDraft && !selectedDraft) clearNewEntryDraft("savings", draftScope);
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
@@ -313,7 +337,9 @@ export function SavingsPlanner({
       const fallbackGoal = createDefaultGoal(year);
       const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
       const selectedDraft = selectSavingsDraft(rawDraft, fallbackGoal.updatedAt, Boolean(savingsGoalId));
-      const draft = selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined;
+      const draft = savingsGoalId
+        ? (selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined)
+        : remapSavingsDraftToYear(selectedDraft ?? undefined, year);
       if (savingsGoalId && rawDraft && !selectedDraft) clearNewEntryDraft("savings", draftScope);
       setGoal(fallbackGoal);
       setGoalName(draft?.goalName ?? fallbackGoal.name);
@@ -507,16 +533,39 @@ export function SavingsPlanner({
   function importHistoricalTemplate(template: SavingsPlanTemplate) {
     const importedColumns = template.columns.length ? template.columns : [...DEFAULT_COLUMNS];
     const importedMonths = template.monthsByFrequency;
-    setDepositType(normalizeSavingsDepositType(template.depositType));
+    const importedDepositType = normalizeSavingsDepositType(template.depositType);
+    const importedTemporaryColumns = template.temporaryColumns.filter((column) => importedColumns.includes(column));
+    const importedRowsByFrequency: Record<SavingsFrequency, Record<string, PlannerRow>> = {
+      MONTHLY: Object.fromEntries(importedMonths.MONTHLY.map((month) => [
+        month,
+        normalizePlannerRow(template.rowsByFrequency.MONTHLY[month]),
+      ])),
+      ALTERNATE: Object.fromEntries(importedMonths.ALTERNATE.map((month) => [
+        month,
+        normalizePlannerRow(template.rowsByFrequency.ALTERNATE[month]),
+      ])),
+    };
+    setDepositType(importedDepositType);
     setFrequency(template.frequency);
     setColumns(importedColumns);
-    setTemporaryColumns(template.temporaryColumns.filter((column) => importedColumns.includes(column)));
+    setTemporaryColumns(importedTemporaryColumns);
     setPreviousBalanceEnabled(template.previousBalanceEnabled);
     setMonthsByFrequency(importedMonths);
-    setRowsByFrequency((current) => ({
-      MONTHLY: Object.fromEntries(importedMonths.MONTHLY.map((month) => [month, current.MONTHLY[month] ?? emptyPlannerRow()])),
-      ALTERNATE: Object.fromEntries(importedMonths.ALTERNATE.map((month) => [month, current.ALTERNATE[month] ?? emptyPlannerRow()])),
-    }));
+    setRowsByFrequency(importedRowsByFrequency);
+    saveNewEntryDraft<SavingsDraft>("savings", {
+      savedAt: nowText(),
+      year,
+      goalName,
+      targetAmount,
+      deadline,
+      depositType: importedDepositType,
+      frequency: template.frequency,
+      columns: importedColumns,
+      temporaryColumns: importedTemporaryColumns,
+      previousBalanceEnabled: template.previousBalanceEnabled,
+      monthsByFrequency: importedMonths,
+      rowsByFrequency: importedRowsByFrequency,
+    }, draftScope);
     setTemplatePickerOpen(false);
     setNotice(`已导入“${template.sourceGoalName}”模板`);
   }
@@ -679,7 +728,7 @@ export function SavingsPlanner({
               onClick={() => void openHistoricalTemplatePicker()}
             >
               <span>导入历史模板</span>
-              <small>复用支出列和计划设置</small>
+              <small>复用支出列、月度金额和计划设置</small>
             </button>
 
             {templatePickerOpen ? (
@@ -687,7 +736,7 @@ export function SavingsPlanner({
                 <div className="savings-template-picker-head">
                   <div>
                     <strong>选择历史计划</strong>
-                    <span>仅导入计划结构，不会复制名称、金额和已存进度</span>
+                    <span>导入月度预算，不会复制名称、实际已存和完成状态</span>
                   </div>
                   <button type="button" onClick={() => setTemplatePickerOpen(false)} aria-label="关闭历史模板">×</button>
                 </div>

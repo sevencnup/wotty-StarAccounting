@@ -17,6 +17,14 @@ export type SavingsPlanTemplate = {
   temporaryColumns: string[];
   previousBalanceEnabled: boolean;
   monthsByFrequency: Record<SavingsFrequency, string[]>;
+  rowsByFrequency: Record<SavingsFrequency, Record<string, SavingsPlanTemplateRow>>;
+};
+
+export type SavingsPlanTemplateRow = {
+  salary: string;
+  previousBalance: string;
+  expected: string;
+  expenses: Record<string, string>;
 };
 
 function isSavingsFrequency(value: unknown): value is SavingsFrequency {
@@ -37,7 +45,7 @@ function templatePlanBelongsToFrequency(plan: Pick<SavingsPlan, "remark">, frequ
   return legacyFrequency === frequency;
 }
 
-function remapTemplateMonths(months: readonly string[], targetYear: number, frequency: SavingsFrequency) {
+export function remapSavingsMonthsToYear(months: readonly string[], targetYear: number, frequency: SavingsFrequency) {
   const selectedMonths = new Set(
     months
       .map((month) => Number(month.slice(5, 7)))
@@ -48,13 +56,33 @@ function remapTemplateMonths(months: readonly string[], targetYear: number, freq
   return selected.length ? selected : supportedMonths;
 }
 
+export function remapSavingsRowsToYear<T>(
+  rows: Readonly<Record<string, T>> | null | undefined,
+  targetYear: number,
+  frequency: SavingsFrequency,
+) {
+  const supportedMonths = new Set(buildSavingsMonths(targetYear, frequency));
+  return Object.fromEntries(
+    Object.entries(rows ?? {}).flatMap(([month, row]) => {
+      const monthNumber = Number(month.slice(5, 7));
+      const targetMonth = `${targetYear}-${String(monthNumber).padStart(2, "0")}`;
+      return Number.isInteger(monthNumber) && supportedMonths.has(targetMonth) ? [[targetMonth, row]] : [];
+    }),
+  ) as Record<string, T>;
+}
+
+function templateAmount(value: number | string | null | undefined) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) && amount !== 0 ? String(amount) : "";
+}
+
 /**
- * Extracts only the reusable shape of a savings plan. Historical amounts,
- * deposits, name and progress deliberately stay out of the template.
+ * Extracts reusable planning data. Actual deposits, completion state, name and
+ * progress deliberately stay out of the template.
  */
 export function createSavingsPlanTemplate(
   goal: Pick<SavingsGoal, "id" | "name" | "depositType" | "planConfig">,
-  plans: readonly Pick<SavingsPlan, "month" | "remark" | "expenses">[],
+  plans: readonly Pick<SavingsPlan, "month" | "remark" | "expenses" | "amount" | "salary">[],
   targetYear: number,
 ): SavingsPlanTemplate {
   const config = parseSavingsJsonObject(goal.planConfig);
@@ -93,7 +121,28 @@ export function createSavingsPlanTemplate(
         : configuredFrequency === mode && legacyMonths.length
           ? legacyMonths
           : persistedMonths;
-    return remapTemplateMonths(sourceMonths, targetYear, mode);
+    return remapSavingsMonthsToYear(sourceMonths, targetYear, mode);
+  };
+  const latestPlanYear = plans
+    .map((plan) => plan.month.slice(0, 4))
+    .filter((year) => /^\d{4}$/.test(year))
+    .sort((left, right) => Number(right) - Number(left))[0];
+  const sourcePlans = latestPlanYear ? plans.filter((plan) => plan.month.startsWith(`${latestPlanYear}-`)) : plans;
+  const rowsFor = (mode: SavingsFrequency) => {
+    const sourceRows = Object.fromEntries(sourcePlans
+      .filter((plan) => templatePlanBelongsToFrequency(plan, mode, configuredFrequency ?? frequency))
+      .map((plan) => {
+        const expenses = parseSavingsExpenses(plan.expenses);
+        return [plan.month, {
+          salary: templateAmount(plan.salary),
+          previousBalance: expenses[PREVIOUS_BALANCE_COLUMN] ?? "",
+          expected: templateAmount(plan.amount),
+          expenses: Object.fromEntries(
+            Object.entries(expenses).filter(([column]) => column !== PREVIOUS_BALANCE_COLUMN && columns.includes(column)),
+          ),
+        } satisfies SavingsPlanTemplateRow];
+      }));
+    return remapSavingsRowsToYear(sourceRows, targetYear, mode);
   };
 
   return {
@@ -107,6 +156,10 @@ export function createSavingsPlanTemplate(
     monthsByFrequency: {
       MONTHLY: monthsFor("MONTHLY"),
       ALTERNATE: monthsFor("ALTERNATE"),
+    },
+    rowsByFrequency: {
+      MONTHLY: rowsFor("MONTHLY"),
+      ALTERNATE: rowsFor("ALTERNATE"),
     },
   };
 }
