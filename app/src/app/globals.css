@@ -5610,6 +5610,28 @@ button.stark-compass-card {
   gap: 5px;
 }
 
+.savings-recent-year {
+  display: grid;
+  gap: 5px;
+}
+
+.savings-recent-year + .savings-recent-year {
+  margin-top: 7px;
+}
+
+.savings-recent-year h3 {
+  margin: 2px 2px 0;
+  color: #65718a;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.savings-recent-year-plans {
+  display: grid;
+  gap: 5px;
+}
+
 .savings-dashboard-page .savings-recent-row {
   grid-template-columns: 30px minmax(0, 1fr) minmax(108px, 0.92fr);
   gap: 2px 7px;
