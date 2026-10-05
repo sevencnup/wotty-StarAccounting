@@ -110,7 +110,7 @@ export default function ConsumptionPage() {
   const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [accountId, setAccountId] = useState(() => getCurrentAccountId());
   const [monthReady, setMonthReady] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("expense");
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [categoryFilter, setCategoryFilter] = useState("全部分类");
   const [platformFilter, setPlatformFilter] = useState("全部账户");
   const [query, setQuery] = useState("");
@@ -422,7 +422,7 @@ export default function ConsumptionPage() {
 
       <section className={"consumption-filter-card" + (categoryOpen || accountOpen ? " is-category-open" : "")}>
         <div className="consumption-mode-tabs" role="tablist" aria-label={locale === "en-US" ? "Transaction type" : "收支类型"}>
-          {([["expense", locale === "en-US" ? "Expense" : "支出"], ["income", locale === "en-US" ? "Income" : "收入"], ["all", locale === "en-US" ? "All" : "全部"]] as const).map(([value, label]) => (
+          {([["all", locale === "en-US" ? "All" : "全部"], ["expense", locale === "en-US" ? "Expense" : "支出"], ["income", locale === "en-US" ? "Income" : "收入"]] as const).map(([value, label]) => (
             <button key={value} type="button" className={viewMode === value ? "active" : ""} onClick={() => setViewMode(value)}>
               {label}
             </button>
