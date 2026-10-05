@@ -12,6 +12,7 @@ import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
 import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
 import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
 import { categoryIconSrcForCategory, expenseCategoryOptions } from "@/lib/stark/utils/category-icon";
+import { DateTimePicker } from "@/components/stark/DateTimePicker";
 
 const SavingsPlanner = dynamic(
   () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
@@ -652,7 +653,7 @@ export function JournalPanel({
             </label>
             <label className="modern-form-group">
               <span>实际存入日期</span>
-              <input type="datetime-local" className="modern-form-input" value={recordedDate} onChange={(event) => setRecordedDate(event.target.value)} />
+              <DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际存入日期" value={recordedDate} onChange={setRecordedDate} />
             </label>
             <div className="modern-form-group">
               <span>图片凭证</span>
@@ -817,7 +818,7 @@ export function JournalPanel({
           <div className="modern-form-wrapper">
             <div className="modern-form-card">
               <div className="modern-form-group"><label>还款金额 (元)</label><div className="modern-amount-box"><span className="cur-sym">¥</span><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" className="modern-amount-field" /></div></div>
-              <div className="modern-form-group"><label>实际还款日期</label><input type="datetime-local" className="modern-form-input" value={date} onChange={(event) => setDate(event.target.value)} /></div>
+              <div className="modern-form-group"><label>实际还款日期</label><DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际还款日期" value={date} onChange={setDate} /></div>
               <div className="modern-form-group"><label>备注</label><input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="可选" className="modern-form-input" /></div>
             </div>
             <button type="button" className="modern-primary-submit" disabled={!amount || Number(amount) <= 0} onClick={() => void saveRepayment()}>保存还款</button>
@@ -948,11 +949,12 @@ export function JournalPanel({
             <div className="modern-section-block">
               <span className="section-mini-title">明细备注</span>
               <div className="modern-meta-grid">
-                <input
-                  type="datetime-local"
+                <DateTimePicker
+                  mode="datetime"
                   className="meta-input"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={setDate}
+                  ariaLabel="选择账单日期和时间"
                 />
                 <input
                   type="text"

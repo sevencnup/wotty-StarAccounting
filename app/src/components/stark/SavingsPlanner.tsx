@@ -9,6 +9,7 @@ import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 import { normalizeSavingsDepositType, SAVINGS_DEPOSIT_TYPE_OPTIONS } from "@/lib/stark/savings/deposit-type";
+import { DateTimePicker } from "@/components/stark/DateTimePicker";
 
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
@@ -793,10 +794,11 @@ export function SavingsPlanner({
           </label>
           <label className="savings-goal-field">
             <span>截止日期</span>
-            <input
-              type="date"
+            <DateTimePicker
+              className="savings-date-picker"
+              ariaLabel="选择储蓄截止日期"
               value={deadline}
-              onChange={(event) => setDeadline(event.target.value)}
+              onChange={setDeadline}
             />
           </label>
           <div className="savings-goal-field">
