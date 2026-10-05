@@ -135,7 +135,7 @@ app\android\gradlew.bat -p api-server run
 
 ## Docker Compose 部署
 
-根目录提供 `docker-compose.yml`，可同时启动 MySQL、API 和 Web：
+根目录提供 `docker-compose.yml`，可同时启动 MySQL、Go API 和 Web：
 
 ```bash
 cp .env.example .env
@@ -152,6 +152,9 @@ docker compose up -d --build
 MySQL 首次启动会创建空数据库和应用账号，API 会在数据库可用后自动创建业务表。账单保存在
 `mysql-data` 命名数据卷中，普通停止、重启或更新镜像不会删除数据。已有 MySQL 用户可在
 `.env` 中填写 `DATABASE_URL`，API 会继续使用指定数据库而不是内置数据库。
+
+当前 Compose 默认构建 Go API 镜像；旧的 Ktor Dockerfile 会暂时保留，便于在 Go API 健康检查
+失败时快速回滚。API 健康检查只有在数据库已连接时才会通过。
 
 > `docker compose down -v` 会删除 MySQL 数据卷和全部云端账本。只有确认已经备份且确实要
 > 清空数据库时才能执行。
