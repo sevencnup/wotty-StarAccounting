@@ -20,13 +20,15 @@ test("date picker accepts legacy spaced datetimes and emits local datetime input
 
 test("date picker creates a Monday-first grid including adjacent month days", () => {
   const grid = datePickerMonthGrid(2027, 2);
-  assert.equal(grid.length, 28);
+  assert.equal(grid.length, 42);
   assert.deepEqual(grid[0], {
     year: 2027, month: 2, day: 1, hour: 0, minute: 0, key: "2027-02-01", inCurrentMonth: true,
   });
+  assert.equal(grid.at(-1).key, "2027-03-14");
   const march = datePickerMonthGrid(2027, 3);
+  assert.equal(march.length, 42);
   assert.equal(march[0].key, "2027-03-01");
-  assert.equal(march.at(-1).key, "2027-04-04");
+  assert.equal(march.at(-1).key, "2027-04-11");
   assert.equal(march.at(-1).inCurrentMonth, false);
 });
 

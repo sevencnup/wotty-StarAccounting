@@ -82,9 +82,10 @@ export function datePickerDisplayLabel(value: DatePickerValue | null, mode: Date
 
 export function datePickerMonthGrid(year: number, month: number): DatePickerCalendarDay[] {
   const firstWeekday = (new Date(year, month - 1, 1).getDay() + 6) % 7;
-  const currentMonthDays = daysInDatePickerMonth(year, month);
-  const cellCount = Math.ceil((firstWeekday + currentMonthDays) / 7) * 7;
-  return Array.from({ length: cellCount }, (_, index) => {
+  // Always render six full weeks. Besides matching familiar calendar layouts,
+  // this keeps the picker height stable when switching between short and long
+  // months.
+  return Array.from({ length: 42 }, (_, index) => {
     const date = new Date(year, month - 1, index - firstWeekday + 1);
     const dateYear = date.getFullYear();
     const dateMonth = date.getMonth() + 1;
