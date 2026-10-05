@@ -30,6 +30,7 @@ type DatabaseConfig struct {
 	Password    string
 	MaxOpen     int
 	MaxIdle     int
+	AutoMigrate bool
 	Configured  bool
 	MissingKeys []string
 }
@@ -80,11 +81,12 @@ func Load(lookup LookupEnv) (Config, error) {
 	}
 
 	databaseConfig := DatabaseConfig{
-		JDBCURL:  value("DATABASE_URL"),
-		User:     value("DB_USER"),
-		Password: value("DB_PASSWORD"),
-		MaxOpen:  maxOpen,
-		MaxIdle:  maxIdle,
+		JDBCURL:     value("DATABASE_URL"),
+		User:        value("DB_USER"),
+		Password:    value("DB_PASSWORD"),
+		MaxOpen:     maxOpen,
+		MaxIdle:     maxIdle,
+		AutoMigrate: automaticSchemaMigration(value("DB_AUTO_MIGRATE")),
 	}
 	if databaseConfig.User == "" {
 		databaseConfig.User = "root"
@@ -127,6 +129,15 @@ func Load(lookup LookupEnv) (Config, error) {
 			ForceUpdate: strings.EqualFold(value("APP_FORCE_UPDATE"), "true"),
 		},
 	}, nil
+}
+
+func automaticSchemaMigration(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "false", "0", "no", "off":
+		return false
+	default:
+		return true
+	}
 }
 
 func integer(raw string, fallback, minimum, maximum int) (int, error) {

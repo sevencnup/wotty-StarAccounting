@@ -10,7 +10,7 @@ func TestLoadMatchesCurrentAPIConfigurationDefaults(t *testing.T) {
 	if config.Host != "0.0.0.0" || config.Port != 12367 {
 		t.Fatalf("server defaults = %q:%d", config.Host, config.Port)
 	}
-	if config.Database.Configured || len(config.Database.MissingKeys) != 2 {
+	if config.Database.Configured || len(config.Database.MissingKeys) != 2 || !config.Database.AutoMigrate {
 		t.Fatalf("database configuration = %#v", config.Database)
 	}
 	if config.Version.Code != 107 || config.Version.Name != "0.0.107" || config.Version.ForceUpdate {
@@ -35,10 +35,21 @@ func TestLoadUsesConfiguredValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
-	if !config.Database.Configured || config.Database.MaxOpen != 12 || config.Database.MaxIdle != 2 {
+	if !config.Database.Configured || config.Database.MaxOpen != 12 || config.Database.MaxIdle != 2 || !config.Database.AutoMigrate {
 		t.Fatalf("database configuration = %#v", config.Database)
 	}
 	if config.Host != "10.0.0.5" || config.Port != 12369 || !config.Version.ForceUpdate {
 		t.Fatalf("configured values = %#v", config)
+	}
+}
+
+func TestLoadCanDisableAutomaticSchemaMigration(t *testing.T) {
+	values := map[string]string{"DB_AUTO_MIGRATE": "off"}
+	config, err := Load(func(key string) (string, bool) { value, exists := values[key]; return value, exists })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Database.AutoMigrate {
+		t.Fatal("DB_AUTO_MIGRATE=off did not disable automatic migrations")
 	}
 }

@@ -37,11 +37,19 @@ func Open(settings config.DatabaseConfig) (*Store, error) {
 	db.SetConnMaxIdleTime(30 * time.Second)
 	db.SetConnMaxLifetime(10 * time.Minute)
 
-	context, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	pingContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := db.PingContext(context); err != nil {
+	if err := db.PingContext(pingContext); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("ping MySQL: %w", err)
+	}
+	if settings.AutoMigrate {
+		migrationContext, cancelMigration := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancelMigration()
+		if err := ensureSchema(migrationContext, db); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("initialise MySQL schema: %w", err)
+		}
 	}
 	return &Store{db: db}, nil
 }
