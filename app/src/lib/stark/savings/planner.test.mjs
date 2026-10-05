@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, selectSavingsPlannerYear, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -206,6 +206,18 @@ test("savings goal selection uses the requested goal when editing", () => {
   assert.deepEqual(selectSavingsGoal(goals, "goal-b"), { id: "goal-b" });
   assert.equal(selectSavingsGoal(goals, "missing"), null);
   assert.equal(selectSavingsGoal(goals), null);
+});
+
+test("editing a future savings goal opens the year that has persisted plans", () => {
+  const plans = [{ month: "2027-01" }, { month: "2027-02" }];
+  assert.equal(selectSavingsPlannerYear(2026, plans, {}), 2027);
+  assert.equal(selectSavingsPlannerYear(2027, plans, {}), 2027);
+});
+
+test("editing uses configured plan years when legacy goals have no saved rows", () => {
+  assert.equal(selectSavingsPlannerYear(2026, [], {
+    monthsByYear: { "2027": { MONTHLY: ["2027-01"] } },
+  }), 2027);
 });
 
 test("editing ignores legacy or older drafts but restores a newer draft", () => {

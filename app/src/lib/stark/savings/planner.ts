@@ -178,6 +178,51 @@ export function selectSavingsGoal<T extends { id: string }>(goals: readonly T[],
   return goals.find((goal) => goal.id === goalId) ?? null;
 }
 
+function savingsPlanYear(value: unknown) {
+  if (typeof value !== "string") return null;
+  const match = value.match(/^(\d{4})-\d{2}$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  return Number.isInteger(year) ? year : null;
+}
+
+function addSavingsPlanYears(value: unknown, years: Set<number>) {
+  stringArray(value).forEach((month) => {
+    const year = savingsPlanYear(month);
+    if (year !== null) years.add(year);
+  });
+}
+
+/**
+ * Chooses the first useful year when opening an existing goal. A goal can
+ * already contain a future year's rows, while the editor otherwise starts at
+ * the device's current year and would render a completely empty table.
+ */
+export function selectSavingsPlannerYear(
+  fallbackYear: number,
+  plans: readonly Pick<SavingsPlan, "month">[],
+  config: Record<string, unknown>,
+) {
+  const persistedYears = new Set<number>();
+  plans.forEach((plan) => {
+    const year = savingsPlanYear(plan.month);
+    if (year !== null) persistedYears.add(year);
+  });
+
+  const configuredYears = new Set<number>();
+  addSavingsPlanYears(config.months, configuredYears);
+  Object.values(objectRecord(config.monthsByFrequency)).forEach((months) => addSavingsPlanYears(months, configuredYears));
+  Object.entries(objectRecord(config.monthsByYear)).forEach(([yearValue, monthsByFrequency]) => {
+    if (/^\d{4}$/.test(yearValue)) configuredYears.add(Number(yearValue));
+    Object.values(objectRecord(monthsByFrequency)).forEach((months) => addSavingsPlanYears(months, configuredYears));
+  });
+
+  const candidates = persistedYears.size ? persistedYears : configuredYears;
+  if (!candidates.size || candidates.has(fallbackYear)) return fallbackYear;
+  const ordered = [...candidates].sort((left, right) => left - right);
+  return ordered.find((year) => year > fallbackYear) ?? ordered.at(-1) ?? fallbackYear;
+}
+
 export function selectSavingsDraft<T extends TimestampedSavingsDraft>(draft: T | null, goalUpdatedAt?: string, isEditing = false) {
   if (!draft) return null;
   if (!isEditing) return draft;

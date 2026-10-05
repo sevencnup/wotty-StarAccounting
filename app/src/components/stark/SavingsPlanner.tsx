@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency, type SavingsPlanTemplate } from "@/lib/stark/savings/planner";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, selectSavingsPlannerYear, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency, type SavingsPlanTemplate } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -204,6 +204,7 @@ export function SavingsPlanner({
   const [templatePlansLoading, setTemplatePlansLoading] = useState(false);
   const [templatePlansLoaded, setTemplatePlansLoaded] = useState(false);
   const loadStartedRef = useRef(false);
+  const selectInitialPlanYearRef = useRef(true);
   const columnInputRef = useRef<HTMLInputElement | null>(null);
   const [draftReady, setDraftReady] = useState(false);
   const draftSubmittedRef = useRef(false);
@@ -234,6 +235,7 @@ export function SavingsPlanner({
 
   function changeYear(nextYear: number) {
     if (nextYear === year || !Number.isFinite(nextYear)) return;
+    selectInitialPlanYearRef.current = false;
     setYear(Math.max(2000, Math.min(9999, Math.round(nextYear))));
     loadStartedRef.current = false;
     setDraftReady(false);
@@ -259,11 +261,16 @@ export function SavingsPlanner({
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
       persistedPlansRef.current = plans;
+      const plannerYear = savingsGoalId && selectInitialPlanYearRef.current
+        ? selectSavingsPlannerYear(year, plans, config)
+        : year;
+      selectInitialPlanYearRef.current = false;
+      if (plannerYear !== year) setYear(plannerYear);
       const rawDraft = readNewEntryDraft<SavingsDraft>("savings", draftScope);
       const selectedDraft = selectSavingsDraft(rawDraft, activeGoal.updatedAt, Boolean(savingsGoalId));
       const draft = savingsGoalId
-        ? (selectedDraft?.year === year || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined)
-        : remapSavingsDraftToYear(selectedDraft ?? undefined, year);
+        ? (selectedDraft?.year === plannerYear || selectedDraft?.year === undefined ? selectedDraft ?? undefined : undefined)
+        : remapSavingsDraftToYear(selectedDraft ?? undefined, plannerYear);
       if (savingsGoalId && rawDraft && !selectedDraft) clearNewEntryDraft("savings", draftScope);
       const legacyFrequency = config.frequency ?? "MONTHLY";
       const initialFrequency = draft?.frequency ?? legacyFrequency;
@@ -295,7 +302,7 @@ export function SavingsPlanner({
       const draftTemporaryColumns = Array.isArray(draft?.temporaryColumns)
         ? draft.temporaryColumns.filter((column) => draftColumns.includes(column))
         : configuredTemporaryColumns.filter((column) => expenseColumns.has(column));
-      const configuredMonths = defaultMonthsForConfig(year, config, plans);
+      const configuredMonths = defaultMonthsForConfig(plannerYear, config, plans);
       const draftMonths = draft?.monthsByFrequency;
       setGoal(activeGoal);
       setGoalName(draft?.goalName ?? activeGoal.name ?? "");
@@ -307,8 +314,8 @@ export function SavingsPlanner({
       setTemporaryColumns(draftTemporaryColumns);
       setPreviousBalanceEnabled(draft?.previousBalanceEnabled ?? config.previousBalance ?? plans.some((plan) => PREVIOUS_BALANCE_COLUMN in parseSavingsExpenses(plan.expenses)));
       setMonthsByFrequency({
-        MONTHLY: normalizeMonths(year, "MONTHLY", draftMonths?.MONTHLY ?? configuredMonths.MONTHLY),
-        ALTERNATE: normalizeMonths(year, "ALTERNATE", draftMonths?.ALTERNATE ?? configuredMonths.ALTERNATE),
+        MONTHLY: normalizeMonths(plannerYear, "MONTHLY", draftMonths?.MONTHLY ?? configuredMonths.MONTHLY),
+        ALTERNATE: normalizeMonths(plannerYear, "ALTERNATE", draftMonths?.ALTERNATE ?? configuredMonths.ALTERNATE),
       });
       const hydratedRows = Object.fromEntries((['MONTHLY', 'ALTERNATE'] as SavingsFrequency[]).map((mode) => [
         mode,
@@ -811,7 +818,7 @@ export function SavingsPlanner({
 
         <div className="savings-plan-toolbar">
           <div className="savings-plan-actions">
-            <label className="savings-year-picker"><span>计划年份</span><select aria-label="计划年份" value={year} onChange={(event) => changeYear(Number(event.target.value))}>{Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 3 + index).map((item) => <option key={item} value={item}>{item} 年</option>)}</select></label>
+            <label className="savings-year-picker"><span>计划年份</span><select aria-label="计划年份" value={year} onChange={(event) => changeYear(Number(event.target.value))}>{Array.from(new Set([...Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 3 + index), year])).sort((left, right) => left - right).map((item) => <option key={item} value={item}>{item} 年</option>)}</select></label>
             <div className="savings-month-restorer">
               <select value={monthToAdd} onChange={(event) => setMonthToAdd(event.target.value)} disabled={!removedMonths.length} aria-label="选择要添加的月份">
                 {removedMonths.length ? removedMonths.map((month) => <option key={month} value={month}>{monthLabel(month)}</option>) : <option value="">月份已完整</option>}
