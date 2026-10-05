@@ -12,6 +12,7 @@ build/
 # Local development
 .claude/
 .next/
+*.tsbuildinfo
 node_modules/
 out/
 app/android/app/src/main/res/

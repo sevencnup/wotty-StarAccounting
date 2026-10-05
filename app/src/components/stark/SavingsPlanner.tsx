@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency } from "@/lib/stark/savings/planner";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency, type SavingsPlanTemplate } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/stark/storage/new-entry-drafts";
@@ -51,6 +51,11 @@ type SavingsDraft = {
   monthsByFrequency: Record<SavingsFrequency, string[]>;
   rows?: Record<string, PlannerRow>;
   rowsByFrequency?: Partial<Record<SavingsFrequency, Record<string, PlannerRow>>>;
+};
+
+type HistoricalSavingsTemplate = {
+  goal: SavingsGoal;
+  template: SavingsPlanTemplate;
 };
 
 function parseConfig(raw?: string | null): PlanConfig {
@@ -171,6 +176,11 @@ export function SavingsPlanner({
   const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState("");
   const [goalMissing, setGoalMissing] = useState(false);
+  const [historicalGoals, setHistoricalGoals] = useState<SavingsGoal[]>([]);
+  const [historicalPlansByGoal, setHistoricalPlansByGoal] = useState<Record<string, SavingsPlan[]>>({});
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [templatePlansLoading, setTemplatePlansLoading] = useState(false);
+  const [templatePlansLoaded, setTemplatePlansLoaded] = useState(false);
   const loadStartedRef = useRef(false);
   const columnInputRef = useRef<HTMLInputElement | null>(null);
   const [draftReady, setDraftReady] = useState(false);
@@ -181,6 +191,14 @@ export function SavingsPlanner({
   const months = monthsByFrequency[frequency];
   const supportedMonths = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
   const removedMonths = useMemo(() => supportedMonths.filter((month) => !months.includes(month)), [months, supportedMonths]);
+  const historicalTemplates = useMemo<HistoricalSavingsTemplate[]>(() => (
+    historicalGoals
+      .map((historicalGoal) => ({
+        goal: historicalGoal,
+        template: createSavingsPlanTemplate(historicalGoal, historicalPlansByGoal[historicalGoal.id] ?? [], year),
+      }))
+      .sort((left, right) => right.goal.updatedAt.localeCompare(left.goal.updatedAt))
+  ), [historicalGoals, historicalPlansByGoal, year]);
 
   useEffect(() => {
     setMonthToAdd((current) => removedMonths.includes(current) ? current : (removedMonths[0] ?? ""));
@@ -210,6 +228,11 @@ export function SavingsPlanner({
         return;
       }
       const activeGoal = storedGoal ?? goal;
+
+      setHistoricalGoals(savingsGoalId ? [] : goals.filter((item) => item.id !== activeGoal.id));
+      setHistoricalPlansByGoal({});
+      setTemplatePlansLoaded(false);
+      setTemplatePickerOpen(false);
 
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
@@ -278,6 +301,10 @@ export function SavingsPlanner({
         : { ...hydratedRows, [initialFrequency]: Object.fromEntries(Object.entries(draft?.rows ?? hydratedRows[initialFrequency]).map(([month, row]) => [month, normalizePlannerRow(row)])) };
       setRowsByFrequency(nextRowsByFrequency);
     } catch {
+      setHistoricalGoals([]);
+      setHistoricalPlansByGoal({});
+      setTemplatePlansLoaded(false);
+      setTemplatePickerOpen(false);
       if (savingsGoalId) {
         setGoalMissing(true);
         setNotice("无法读取该储蓄目标");
@@ -455,6 +482,45 @@ export function SavingsPlanner({
     ) as Record<SavingsFrequency, Record<string, PlannerRow>>);
   }
 
+  async function openHistoricalTemplatePicker() {
+    if (savingsGoalId || !historicalGoals.length) return;
+    setTemplatePickerOpen(true);
+    if (templatePlansLoaded || templatePlansLoading) return;
+
+    setTemplatePlansLoading(true);
+    try {
+      const entries = await Promise.all(historicalGoals.map(async (historicalGoal) => {
+        try {
+          return [historicalGoal.id, await repo.getSavingsPlans(historicalGoal.id)] as const;
+        } catch {
+          // A saved plan configuration is still enough to create a template.
+          return [historicalGoal.id, []] as const;
+        }
+      }));
+      setHistoricalPlansByGoal(Object.fromEntries(entries));
+      setTemplatePlansLoaded(true);
+    } finally {
+      setTemplatePlansLoading(false);
+    }
+  }
+
+  function importHistoricalTemplate(template: SavingsPlanTemplate) {
+    const importedColumns = template.columns.length ? template.columns : [...DEFAULT_COLUMNS];
+    const importedMonths = template.monthsByFrequency;
+    setDepositType(normalizeSavingsDepositType(template.depositType));
+    setFrequency(template.frequency);
+    setColumns(importedColumns);
+    setTemporaryColumns(template.temporaryColumns.filter((column) => importedColumns.includes(column)));
+    setPreviousBalanceEnabled(template.previousBalanceEnabled);
+    setMonthsByFrequency(importedMonths);
+    setRowsByFrequency((current) => ({
+      MONTHLY: Object.fromEntries(importedMonths.MONTHLY.map((month) => [month, current.MONTHLY[month] ?? emptyPlannerRow()])),
+      ALTERNATE: Object.fromEntries(importedMonths.ALTERNATE.map((month) => [month, current.ALTERNATE[month] ?? emptyPlannerRow()])),
+    }));
+    setTemplatePickerOpen(false);
+    setNotice(`已导入“${template.sourceGoalName}”模板`);
+  }
+
   async function savePlans() {
     if (saving || deleting || goalMissing) return;
     setSaving(true);
@@ -601,6 +667,53 @@ export function SavingsPlanner({
               <strong className={totals.remaining < 0 ? "negative" : ""}>¥ {formatMoney(totals.remaining)}</strong>
             </div>
           </div>
+        ) : null}
+
+        {!savingsGoalId && historicalGoals.length ? (
+          <section className="savings-template-import">
+            <button
+              type="button"
+              className="savings-template-import-trigger"
+              aria-expanded={templatePickerOpen}
+              aria-controls="historical-savings-template-picker"
+              onClick={() => void openHistoricalTemplatePicker()}
+            >
+              <span>导入历史模板</span>
+              <small>复用支出列和计划设置</small>
+            </button>
+
+            {templatePickerOpen ? (
+              <div id="historical-savings-template-picker" className="savings-template-picker" role="region" aria-label="历史储蓄模板">
+                <div className="savings-template-picker-head">
+                  <div>
+                    <strong>选择历史计划</strong>
+                    <span>仅导入计划结构，不会复制名称、金额和已存进度</span>
+                  </div>
+                  <button type="button" onClick={() => setTemplatePickerOpen(false)} aria-label="关闭历史模板">×</button>
+                </div>
+                {templatePlansLoading ? (
+                  <p className="savings-template-picker-state" role="status">正在读取历史计划...</p>
+                ) : (
+                  <div className="savings-template-list">
+                    {historicalTemplates.map(({ goal: historicalGoal, template }) => (
+                      <button
+                        key={historicalGoal.id}
+                        type="button"
+                        className="savings-template-option"
+                        onClick={() => importHistoricalTemplate(template)}
+                      >
+                        <span>
+                          <strong>{historicalGoal.name || "未命名储蓄计划"}</strong>
+                          <small>{template.columns.length ? `支出列：${template.columns.join("、")}` : "使用默认支出列"}</small>
+                        </span>
+                        <em>{template.frequency === "ALTERNATE" ? "隔月存" : "单月存"}{template.previousBalanceEnabled ? " · 含上月结余" : ""}</em>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </section>
         ) : null}
 
         <div className="savings-goal-editor">

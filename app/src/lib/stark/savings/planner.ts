@@ -1,4 +1,4 @@
-import type { SavingsGoal, SavingsPlan } from "../models/types";
+import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "../models/types";
 
 export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 
@@ -7,6 +7,109 @@ export type TimestampedSavingsDraft = {
 };
 
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
+
+export type SavingsPlanTemplate = {
+  sourceGoalId: string;
+  sourceGoalName: string;
+  depositType: SavingsGoalDepositType;
+  frequency: SavingsFrequency;
+  columns: string[];
+  temporaryColumns: string[];
+  previousBalanceEnabled: boolean;
+  monthsByFrequency: Record<SavingsFrequency, string[]>;
+};
+
+function isSavingsFrequency(value: unknown): value is SavingsFrequency {
+  return value === "MONTHLY" || value === "ALTERNATE";
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function objectRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function templatePlanBelongsToFrequency(plan: Pick<SavingsPlan, "remark">, frequency: SavingsFrequency, legacyFrequency: SavingsFrequency) {
+  if (plan.remark === "单月存模式") return frequency === "MONTHLY";
+  if (plan.remark === "隔月存模式") return frequency === "ALTERNATE";
+  return legacyFrequency === frequency;
+}
+
+function remapTemplateMonths(months: readonly string[], targetYear: number, frequency: SavingsFrequency) {
+  const selectedMonths = new Set(
+    months
+      .map((month) => Number(month.slice(5, 7)))
+      .filter((month) => Number.isInteger(month) && month >= 1 && month <= 12),
+  );
+  const supportedMonths = buildSavingsMonths(targetYear, frequency);
+  const selected = supportedMonths.filter((month) => selectedMonths.has(Number(month.slice(5, 7))));
+  return selected.length ? selected : supportedMonths;
+}
+
+/**
+ * Extracts only the reusable shape of a savings plan. Historical amounts,
+ * deposits, name and progress deliberately stay out of the template.
+ */
+export function createSavingsPlanTemplate(
+  goal: Pick<SavingsGoal, "id" | "name" | "depositType" | "planConfig">,
+  plans: readonly Pick<SavingsPlan, "month" | "remark" | "expenses">[],
+  targetYear: number,
+): SavingsPlanTemplate {
+  const config = parseSavingsJsonObject(goal.planConfig);
+  const configuredFrequency = isSavingsFrequency(config.frequency) ? config.frequency : undefined;
+  const planRemarks = plans.map((plan) => plan.remark);
+  const frequency = configuredFrequency
+    ?? (planRemarks.includes("隔月存模式") && !planRemarks.includes("单月存模式") ? "ALTERNATE" : "MONTHLY");
+  const configuredColumns = sanitizeSavingsExpenseColumns([
+    ...stringArray(config.columns),
+    ...stringArray(config.fixedColumns),
+    ...stringArray(config.temporaryColumns),
+  ]).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+  const planColumns = sanitizeSavingsExpenseColumns(
+    plans.flatMap((plan) => Object.keys(parseSavingsExpenses(plan.expenses))),
+  ).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+  const columns = Array.from(new Set([...configuredColumns, ...planColumns]));
+  const temporaryColumns = sanitizeSavingsExpenseColumns(stringArray(config.temporaryColumns))
+    .filter((column) => columns.includes(column));
+  const monthsByFrequencyConfig = objectRecord(config.monthsByFrequency);
+  const monthsByYearConfig = objectRecord(config.monthsByYear);
+  const latestConfiguredYear = Object.keys(monthsByYearConfig)
+    .filter((year) => /^\d{4}$/.test(year))
+    .sort((left, right) => Number(right) - Number(left))[0];
+  const latestYearConfig = latestConfiguredYear ? objectRecord(monthsByYearConfig[latestConfiguredYear]) : {};
+  const legacyMonths = stringArray(config.months);
+  const monthsFor = (mode: SavingsFrequency) => {
+    const configuredMonths = stringArray(monthsByFrequencyConfig[mode]);
+    const yearMonths = stringArray(latestYearConfig[mode]);
+    const persistedMonths = plans
+      .filter((plan) => templatePlanBelongsToFrequency(plan, mode, configuredFrequency ?? frequency))
+      .map((plan) => plan.month);
+    const sourceMonths = configuredMonths.length
+      ? configuredMonths
+      : yearMonths.length
+        ? yearMonths
+        : configuredFrequency === mode && legacyMonths.length
+          ? legacyMonths
+          : persistedMonths;
+    return remapTemplateMonths(sourceMonths, targetYear, mode);
+  };
+
+  return {
+    sourceGoalId: goal.id,
+    sourceGoalName: goal.name,
+    depositType: goal.depositType,
+    frequency,
+    columns,
+    temporaryColumns,
+    previousBalanceEnabled: config.previousBalance === true || plans.some((plan) => PREVIOUS_BALANCE_COLUMN in parseSavingsExpenses(plan.expenses)),
+    monthsByFrequency: {
+      MONTHLY: monthsFor("MONTHLY"),
+      ALTERNATE: monthsFor("ALTERNATE"),
+    },
+  };
+}
 
 export function shouldShowSavingsPlannerLoading(hydrating: boolean, goalId?: string) {
   return hydrating && Boolean(goalId);
