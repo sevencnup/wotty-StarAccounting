@@ -88,7 +88,8 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
     }
 
     const closeFromHistory = () => {
-      if (!historyEntryRef.current) return;
+      const historyEntry = historyEntryRef.current;
+      if (!historyEntry || window.location.href === historyEntry.markerUrl) return;
       historyEntryRef.current = null;
       beginClose();
     };
