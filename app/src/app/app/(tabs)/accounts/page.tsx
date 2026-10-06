@@ -206,11 +206,14 @@ export default function AccountsPage() {
   }
 
   function logout() {
-    consumeLogoutHistory();
     cloudLogout();
     setCloudUser(null);
-    dismissLogoutConfirm();
-    router.replace("/");
+    // The confirmation dialog owns a temporary history entry. Calling
+    // history.back() and navigating away in the same event races in Android
+    // WebView, which can leave the protected route mounted with no session.
+    // A hard replacement drops that transient entry and always boots the
+    // access gate from a clean URL.
+    window.location.replace("/");
   }
 
   function requestLogout() {
