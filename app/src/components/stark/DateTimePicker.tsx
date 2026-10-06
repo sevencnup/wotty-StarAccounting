@@ -219,7 +219,11 @@ export function DateTimePicker({
           className="stark-date-picker-backdrop"
           onClick={(event) => {
             if (event.target === event.currentTarget) closePicker();
+            event.stopPropagation();
           }}
+          onTouchStart={(event) => event.stopPropagation()}
+          onTouchMove={(event) => event.stopPropagation()}
+          onTouchEnd={(event) => event.stopPropagation()}
         >
           <section className="stark-date-picker-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
             <header className="stark-date-picker-header">

@@ -144,13 +144,18 @@ export function MonthPicker({
               className="reporting-month-picker-backdrop"
               onClick={(event) => {
                 if (event.target === event.currentTarget) closePicker();
+                event.stopPropagation();
               }}
+              onTouchStart={(event) => event.stopPropagation()}
+              onTouchMove={(event) => event.stopPropagation()}
+              onTouchEnd={(event) => event.stopPropagation()}
             >
               <section
                 className="reporting-month-picker-dialog"
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
+                onClick={(event) => event.stopPropagation()}
               >
                 <div className="reporting-month-picker-head">
                   <div>

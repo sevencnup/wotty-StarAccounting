@@ -151,7 +151,16 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
   if (!mounted) return null;
 
   return createPortal(
-    <div className={`bottom-sheet-overlay ${closing ? "is-closing" : ""} ${overlayClassName}`.trim()} onClick={requestClose}>
+    <div
+      className={`bottom-sheet-overlay ${closing ? "is-closing" : ""} ${overlayClassName}`.trim()}
+      onClick={(event) => {
+        event.stopPropagation();
+        requestClose();
+      }}
+      onTouchStart={(event) => event.stopPropagation()}
+      onTouchMove={(event) => event.stopPropagation()}
+      onTouchEnd={(event) => event.stopPropagation()}
+    >
       <section className={`bottom-sheet ${enterReady ? "is-ready" : ""} ${closing ? "is-closing" : ""} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
         <div className="bottom-sheet-handle" aria-hidden="true" />
         <header className="bottom-sheet-header">
