@@ -5,9 +5,11 @@ import { usePathname } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { LazyJournalPanel as JournalPanel, preloadJournalPanel } from "@/components/stark/LazyJournalPanel";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
+import { usePrimaryTabBackGuard } from "@/components/stark/usePrimaryTabBackGuard";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
+  usePrimaryTabBackGuard(pathname);
   const isJournalRoute = pathname.startsWith("/app/journal");
   const isSavingsRoute = pathname.startsWith("/app/savings");
   const isAssetsRoute = pathname.startsWith("/app/assets");

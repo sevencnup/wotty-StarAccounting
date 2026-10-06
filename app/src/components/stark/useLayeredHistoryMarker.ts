@@ -5,6 +5,7 @@ import {
   createLayerHistoryState,
   createLayerMarkerUrl,
   releaseLayerHistoryEntry,
+  setLayerHistoryMarkerActive,
   shouldDismissLayerFromHistory,
   type LayerHistoryEntry,
 } from "@/lib/stark/navigation/layered-history";
@@ -25,6 +26,12 @@ export function useLayeredHistoryMarker(open: boolean, markerName: string, onHis
   useEffect(() => {
     onHistoryBackRef.current = onHistoryBack;
   }, [onHistoryBack]);
+
+  useEffect(() => {
+    if (!open) return;
+    setLayerHistoryMarkerActive(markerId, true);
+    return () => setLayerHistoryMarkerActive(markerId, false);
+  }, [markerId, open]);
 
   const consumeHistoryEntry = useCallback(() => {
     const release = releaseLayerHistoryEntry(historyEntryRef.current);

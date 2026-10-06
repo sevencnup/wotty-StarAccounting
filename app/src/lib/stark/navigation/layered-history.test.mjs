@@ -3,7 +3,9 @@ import test from "node:test";
 import {
   createLayerHistoryState,
   createLayerMarkerUrl,
+  hasActiveLayerHistoryMarker,
   releaseLayerHistoryEntry,
+  setLayerHistoryMarkerActive,
   shouldDismissLayerFromHistory,
 } from "./layered-history.ts";
 
@@ -28,4 +30,12 @@ test("manual close consumes only an owned layer history entry", () => {
     releaseLayerHistoryEntry({ markerUrl: "https://example.test/app#stark-layer" }),
     { entry: null, shouldGoBack: true },
   );
+});
+
+test("tracks active layers so primary-tab history recovery can yield to them", () => {
+  const markerId = "test-active-layer";
+  setLayerHistoryMarkerActive(markerId, true);
+  assert.equal(hasActiveLayerHistoryMarker(), true);
+  setLayerHistoryMarkerActive(markerId, false);
+  assert.equal(hasActiveLayerHistoryMarker(), false);
 });

@@ -3,8 +3,10 @@ import test from "node:test";
 import {
   BACKGROUND_NAVIGATION_RECOVERY_MS,
   appRoute,
+  isPrimaryTabPath,
   planBackgroundResume,
   planTabNavigation,
+  shouldRestorePrimaryTabAfterHistoryBack,
   shouldRecoverNavigation,
 } from "./routes.ts";
 
@@ -59,4 +61,33 @@ test("replaces the current history entry for normal tab switches", () => {
     mode: "replace",
     target: "/app/consumption/",
   });
+});
+
+test("recognizes only bottom-navigation routes as primary tabs", () => {
+  assert.equal(isPrimaryTabPath("/app/savings/"), true);
+  assert.equal(isPrimaryTabPath("/app/accounts"), true);
+  assert.equal(isPrimaryTabPath("/app/journal"), false);
+  assert.equal(isPrimaryTabPath("/app/budgets"), false);
+});
+
+test("restores the current primary tab when stale history lands on another tab", () => {
+  assert.equal(
+    shouldRestorePrimaryTabAfterHistoryBack("/app/savings/", "/app/consumption/", false),
+    true,
+  );
+});
+
+test("does not intercept a layer close, same tab entry, or independent route", () => {
+  assert.equal(
+    shouldRestorePrimaryTabAfterHistoryBack("/app/savings", "/app/consumption", true),
+    false,
+  );
+  assert.equal(
+    shouldRestorePrimaryTabAfterHistoryBack("/app/savings", "/app/savings/", false),
+    false,
+  );
+  assert.equal(
+    shouldRestorePrimaryTabAfterHistoryBack("/app/journal", "/app/savings", false),
+    false,
+  );
 });
