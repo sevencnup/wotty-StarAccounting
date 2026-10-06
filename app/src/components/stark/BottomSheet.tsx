@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type PropsWithChildren } from "react";
 import { createPortal } from "react-dom";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const CLOSE_SETTLE_MS = 240;
 
@@ -20,7 +21,6 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
   const [mounted, setMounted] = useState(false);
   const [enterReady, setEnterReady] = useState(false);
   const [closing, setClosing] = useState(false);
-  const historyEntryRef = useRef<{ markerUrl: string } | null>(null);
   const closingRef = useRef(false);
   const closeTimerRef = useRef<number | null>(null);
   const onCloseRef = useRef(onClose);
@@ -56,51 +56,23 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
     }, CLOSE_SETTLE_MS);
   }, []);
 
+  const consumeHistoryEntry = useLayeredHistoryMarker(
+    mounted && historyMode === "marker",
+    "starkBottomSheet",
+    beginClose,
+  );
+
   const requestClose = useCallback(() => {
     if (closingRef.current) return;
-    const ownsHistoryEntry = historyMode === "marker" && historyEntryRef.current !== null;
-    historyEntryRef.current = null;
     beginClose();
-    if (ownsHistoryEntry) window.history.back();
-  }, [beginClose, historyMode]);
+    consumeHistoryEntry();
+  }, [beginClose, consumeHistoryEntry]);
 
   useEffect(() => {
     if (closeRequest === undefined || closeRequest === handledCloseRequestRef.current) return;
     handledCloseRequestRef.current = closeRequest;
     requestClose();
   }, [closeRequest, requestClose]);
-
-  useEffect(() => {
-    if (!mounted || historyMode !== "marker") return;
-
-    // Give the sheet a distinct hash entry. Some WebViews coalesce same-URL
-    // state entries, while a hash entry is retained and consumed first by an
-    // edge-back gesture before the underlying page can be reached.
-    if (!historyEntryRef.current) {
-      const currentState = window.history.state;
-      const nextState = currentState && typeof currentState === "object"
-        ? { ...currentState, starkBottomSheet: true }
-        : { starkBottomSheet: true };
-      const markerUrl = new URL(window.location.href);
-      markerUrl.hash = "stark-bottom-sheet=" + encodeURIComponent(titleId) + "-" + Date.now();
-      window.history.pushState(nextState, "", markerUrl.href);
-      historyEntryRef.current = { markerUrl: markerUrl.href };
-    }
-
-    const closeFromHistory = () => {
-      const historyEntry = historyEntryRef.current;
-      if (!historyEntry || window.location.href === historyEntry.markerUrl) return;
-      historyEntryRef.current = null;
-      beginClose();
-    };
-
-    window.addEventListener("popstate", closeFromHistory);
-    window.addEventListener("hashchange", closeFromHistory);
-    return () => {
-      window.removeEventListener("popstate", closeFromHistory);
-      window.removeEventListener("hashchange", closeFromHistory);
-    };
-  }, [beginClose, historyMode, mounted]);
 
   useEffect(() => () => {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
 import type { EChartsCoreOption } from "echarts/core";
@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { BottomSheet } from "@/components/stark/BottomSheet";
 import { BudgetManagementSheet } from "@/components/stark/BudgetManagementSheet";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
@@ -183,19 +184,25 @@ function SalaryDayModal({
   onSave: (day: number) => void;
 }) {
   const [val, setVal] = useState(String(salaryDay));
+  const dismissModal = useCallback(() => onClose(), [onClose]);
+  const consumeModalHistory = useLayeredHistoryMarker(true, "starkSalaryDayModal", dismissModal);
+  const closeModal = useCallback(() => {
+    consumeModalHistory();
+    dismissModal();
+  }, [consumeModalHistory, dismissModal]);
 
   function handleConfirm() {
     const num = Math.max(1, Math.min(28, Math.round(Number(val) || 15)));
     onSave(num);
-    onClose();
+    closeModal();
   }
 
   return (
-    <div className="home-modal-mask" onClick={onClose}>
+    <div className="home-modal-mask" onClick={closeModal}>
       <div className="home-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="home-modal-head">
           <h3>薪资周期设置</h3>
-          <button type="button" className="home-modal-close" onClick={onClose}>×</button>
+          <button type="button" className="home-modal-close" onClick={closeModal}>×</button>
         </div>
         <p className="home-modal-desc">
           配置每月固定发薪日（1 ~ 28 日），自动同步薪资周期结余与流水统计。
@@ -213,7 +220,7 @@ function SalaryDayModal({
           <span>日</span>
         </div>
         <div className="home-modal-actions">
-          <button type="button" className="home-modal-btn cancel" onClick={onClose}>取消</button>
+          <button type="button" className="home-modal-btn cancel" onClick={closeModal}>取消</button>
           <button type="button" className="home-modal-btn confirm" onClick={handleConfirm}>保存</button>
         </div>
       </div>

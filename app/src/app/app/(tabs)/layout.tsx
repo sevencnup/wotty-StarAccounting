@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { usePathname } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { LazyJournalPanel as JournalPanel, preloadJournalPanel } from "@/components/stark/LazyJournalPanel";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
@@ -13,40 +14,18 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const isLoansRoute = pathname.startsWith("/app/loans");
   const isSettingsRoute = pathname.startsWith("/app/accounts");
   const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(null);
-  const journalHistoryRef = useRef(false);
-
-  useEffect(() => {
-    function handlePopState(event: PopStateEvent) {
-      if (!journalHistoryRef.current) return;
-      // A picker above this page has just been dismissed. Its history entry
-      // preserves starkJournal, so keep the parent form open until the user
-      // performs one more back action.
-      if (event.state && typeof event.state === "object" && event.state.starkJournal) return;
-      journalHistoryRef.current = false;
-      setJournalVariant(null);
-    }
-
-    window.addEventListener("popstate", handlePopState);
-    return () => window.removeEventListener("popstate", handlePopState);
-  }, []);
+  const dismissJournal = useCallback(() => setJournalVariant(null), []);
+  const consumeJournalHistory = useLayeredHistoryMarker(Boolean(journalVariant), "starkJournal", dismissJournal);
 
   function openJournal() {
     void preloadJournalPanel();
     const variant = isLoansRoute ? "loan" : isAssetsRoute ? "asset" : isSavingsRoute ? "savings" : "journal";
-    const currentState = window.history.state;
-    const nextState = currentState && typeof currentState === "object"
-      ? { ...currentState, starkJournal: true }
-      : { starkJournal: true };
-    window.history.pushState(nextState, "", window.location.href);
-    journalHistoryRef.current = true;
     setJournalVariant(variant);
   }
 
   function closeJournal() {
-    setJournalVariant(null);
-    if (!journalHistoryRef.current) return;
-    journalHistoryRef.current = false;
-    window.history.back();
+    consumeJournalHistory();
+    dismissJournal();
   }
 
   return (
@@ -74,6 +53,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
         <JournalPanel
           mode="page"
           variant={journalVariant}
+          historyMode="route"
           onClose={closeJournal}
           onSaved={closeJournal}
         />

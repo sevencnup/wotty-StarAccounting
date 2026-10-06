@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
@@ -13,6 +13,7 @@ import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys
 import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
 import { categoryIconSrcForCategory, expenseCategoryOptions } from "@/lib/stark/utils/category-icon";
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const SavingsPlanner = dynamic(
   () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
@@ -70,6 +71,7 @@ export type JournalPanelProps = {
   onClose: () => void;
   onSaved?: () => void;
   mode?: "sheet" | "page";
+  historyMode?: "marker" | "route";
   variant?: "journal" | "savings" | "savings-record" | "asset" | "loan" | "repayment";
   preset?: { type: TransactionType; category: string };
   savingsGoalId?: string;
@@ -84,6 +86,7 @@ export function JournalPanel({
   onClose,
   onSaved,
   mode = "sheet",
+  historyMode = "marker",
   variant = "journal",
   preset,
   savingsGoalId,
@@ -316,13 +319,19 @@ export function JournalPanel({
     if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
   }, []);
 
-  function handleClose() {
+  const beginClose = useCallback(() => {
     if (closingRef.current) return;
     if (isSavings) window.sessionStorage.removeItem("stark:journal-variant");
     closingRef.current = true;
     setVisible(false);
     closeTimerRef.current = setTimeout(onClose, 220);
-  }
+  }, [isSavings, onClose]);
+  const consumeHistoryEntry = useLayeredHistoryMarker(historyMode === "marker", "starkJournalPanel", beginClose);
+  const handleClose = useCallback(() => {
+    if (closingRef.current) return;
+    consumeHistoryEntry();
+    beginClose();
+  }, [beginClose, consumeHistoryEntry]);
 
   const keyboardViewportStyle: CSSProperties | undefined = keyboardViewport
     ? { height: `${keyboardViewport.height}px`, top: `${keyboardViewport.offsetTop}px`, bottom: "auto" }
@@ -630,7 +639,15 @@ export function JournalPanel({
         </div>
 
         {isSavings ? (
-          <SavingsPlanner key={savingsGoalId ?? "new-savings-goal"} embedded onSaved={onSaved ?? handleClose} savingsGoalId={savingsGoalId} />
+          <SavingsPlanner
+            key={savingsGoalId ?? "new-savings-goal"}
+            embedded
+            onSaved={() => {
+              onSaved?.();
+              handleClose();
+            }}
+            savingsGoalId={savingsGoalId}
+          />
         ) : isSavingsRecord ? (
           <div className="savings-record-form">
             <div className="savings-record-context">

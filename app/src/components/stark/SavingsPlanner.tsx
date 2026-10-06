@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, selectSavingsDraft, selectSavingsGoal, selectSavingsPlannerYear, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn, type SavingsFrequency, type SavingsPlanTemplate } from "@/lib/stark/savings/planner";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
@@ -11,6 +11,7 @@ import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/sta
 import { normalizeSavingsDepositType, SAVINGS_DEPOSIT_TYPE_OPTIONS } from "@/lib/stark/savings/deposit-type";
 import { ChoicePicker } from "@/components/stark/ChoicePicker";
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
@@ -212,6 +213,12 @@ export function SavingsPlanner({
   const draftSubmittedRef = useRef(false);
   const persistedPlansRef = useRef<SavingsPlan[]>([]);
   const draftScope = savingsGoalId ?? undefined;
+  const dismissTemplatePicker = useCallback(() => setTemplatePickerOpen(false), []);
+  const consumeTemplateHistory = useLayeredHistoryMarker(templatePickerOpen, "starkSavingsTemplate", dismissTemplatePicker);
+  const closeTemplatePicker = useCallback(() => {
+    consumeTemplateHistory();
+    dismissTemplatePicker();
+  }, [consumeTemplateHistory, dismissTemplatePicker]);
 
   const months = monthsByFrequency[frequency];
   const supportedMonths = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
@@ -268,7 +275,7 @@ export function SavingsPlanner({
       setHistoricalGoals(savingsGoalId ? [] : goals.filter((item) => item.id !== activeGoal.id));
       setHistoricalPlansByGoal({});
       setTemplatePlansLoaded(false);
-      setTemplatePickerOpen(false);
+      closeTemplatePicker();
 
       const config = parseConfig(activeGoal.planConfig);
       const plans = await repo.getSavingsPlans(activeGoal.id);
@@ -347,7 +354,7 @@ export function SavingsPlanner({
       setHistoricalGoals([]);
       setHistoricalPlansByGoal({});
       setTemplatePlansLoaded(false);
-      setTemplatePickerOpen(false);
+      closeTemplatePicker();
       if (savingsGoalId) {
         setGoalMissing(true);
         setNotice("无法读取该储蓄目标");
@@ -585,7 +592,7 @@ export function SavingsPlanner({
       monthsByFrequency: importedMonths,
       rowsByFrequency: importedRowsByFrequency,
     }, draftScope);
-    setTemplatePickerOpen(false);
+    closeTemplatePicker();
     setNotice(`已导入“${template.sourceGoalName}”模板`);
   }
 
@@ -757,7 +764,7 @@ export function SavingsPlanner({
                     <strong>选择历史计划</strong>
                     <span>导入月度预算，不会复制名称、实际已存和完成状态</span>
                   </div>
-                  <button type="button" onClick={() => setTemplatePickerOpen(false)} aria-label="关闭历史模板">×</button>
+                  <button type="button" onClick={closeTemplatePicker} aria-label="关闭历史模板">×</button>
                 </div>
                 {templatePlansLoading ? (
                   <p className="savings-template-picker-state" role="status">正在读取历史计划...</p>

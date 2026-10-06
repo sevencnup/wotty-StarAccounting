@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Budget } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { BottomSheet } from "@/components/stark/BottomSheet";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const manager = new DataModeManager();
 
@@ -27,16 +28,21 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    setBudgets(initialBudgets);
-  }, [initialBudgets]);
-
-  function closeEditor() {
+  const dismissEditor = useCallback(() => {
     setEditing(null);
     setAmount("");
     setEditorOpen(false);
     setMessage("");
-  }
+  }, []);
+  const consumeEditorHistory = useLayeredHistoryMarker(editorOpen, "starkBudgetEditor", dismissEditor);
+  const closeEditor = useCallback(() => {
+    consumeEditorHistory();
+    dismissEditor();
+  }, [consumeEditorHistory, dismissEditor]);
+
+  useEffect(() => {
+    setBudgets(initialBudgets);
+  }, [initialBudgets]);
 
   function beginCreate() {
     setEditing(null);

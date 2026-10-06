@@ -42,5 +42,5 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
     window.history.back();
   }
 
-  return <JournalPanel mode="page" variant={resolvedVariant} preset={preset} savingsGoalId={savingsGoalId} onClose={closePanel} onSaved={closePanel} />;
+  return <JournalPanel mode="page" variant={resolvedVariant} historyMode="route" preset={preset} savingsGoalId={savingsGoalId} onClose={closePanel} onSaved={closePanel} />;
 }

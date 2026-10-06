@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef } from "react";
-
-type HistoryEntry = {
-  markerUrl: string;
-};
+import {
+  createLayerHistoryState,
+  createLayerMarkerUrl,
+  releaseLayerHistoryEntry,
+  shouldDismissLayerFromHistory,
+  type LayerHistoryEntry,
+} from "@/lib/stark/navigation/layered-history";
 
 /**
  * Gives a portal-based transient layer its own browser-history entry.
@@ -13,9 +16,10 @@ type HistoryEntry = {
  * immediately reaching the page or sheet below it. The current history
  * state is preserved so parent layers can recognise that they are still open.
  */
-export function useLayeredHistoryMarker(open: boolean, markerName: string, onHistoryBack: () => void) {
+export function useLayeredHistoryMarker(open: boolean, markerName: string, onHistoryBack: () => void | false) {
   const markerId = useId();
-  const historyEntryRef = useRef<HistoryEntry | null>(null);
+  const historyEntryRef = useRef<LayerHistoryEntry | null>(null);
+  const markerSequenceRef = useRef(0);
   const onHistoryBackRef = useRef(onHistoryBack);
 
   useEffect(() => {
@@ -23,30 +27,34 @@ export function useLayeredHistoryMarker(open: boolean, markerName: string, onHis
   }, [onHistoryBack]);
 
   const consumeHistoryEntry = useCallback(() => {
-    const ownsHistoryEntry = historyEntryRef.current !== null;
-    historyEntryRef.current = null;
-    if (ownsHistoryEntry) window.history.back();
+    const release = releaseLayerHistoryEntry(historyEntryRef.current);
+    historyEntryRef.current = release.entry;
+    if (release.shouldGoBack) window.history.back();
   }, []);
+
+  const pushHistoryEntry = useCallback(() => {
+    if (historyEntryRef.current) return;
+    markerSequenceRef.current += 1;
+    const markerUrl = createLayerMarkerUrl(
+      window.location.href,
+      markerName,
+      markerId,
+      `${Date.now()}-${markerSequenceRef.current}`,
+    );
+    window.history.pushState(createLayerHistoryState(window.history.state, markerName, markerId), "", markerUrl);
+    historyEntryRef.current = { markerUrl };
+  }, [markerId, markerName]);
 
   useEffect(() => {
     if (!open) return;
 
-    if (!historyEntryRef.current) {
-      const currentState = window.history.state;
-      const nextState = currentState && typeof currentState === "object"
-        ? { ...currentState, [markerName]: markerId }
-        : { [markerName]: markerId };
-      const markerUrl = new URL(window.location.href);
-      markerUrl.hash = `${markerName}=${encodeURIComponent(markerId)}-${Date.now()}`;
-      window.history.pushState(nextState, "", markerUrl.href);
-      historyEntryRef.current = { markerUrl: markerUrl.href };
-    }
+    pushHistoryEntry();
 
     function dismissFromHistory() {
       const historyEntry = historyEntryRef.current;
-      if (!historyEntry || window.location.href === historyEntry.markerUrl) return;
+      if (!shouldDismissLayerFromHistory(historyEntry, window.location.href)) return;
       historyEntryRef.current = null;
-      onHistoryBackRef.current();
+      if (onHistoryBackRef.current() === false) pushHistoryEntry();
     }
 
     window.addEventListener("popstate", dismissFromHistory);
@@ -55,7 +63,7 @@ export function useLayeredHistoryMarker(open: boolean, markerName: string, onHis
       window.removeEventListener("popstate", dismissFromHistory);
       window.removeEventListener("hashchange", dismissFromHistory);
     };
-  }, [markerId, markerName, open]);
+  }, [open, pushHistoryEntry]);
 
   return consumeHistoryEntry;
 }

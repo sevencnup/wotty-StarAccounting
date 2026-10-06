@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import packageInfo from "../../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
@@ -17,6 +17,7 @@ import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/star
 import { matchImportedLoanRepayments } from "@/lib/stark/import/loan-repayment";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
 import { BottomSheet } from "@/components/stark/BottomSheet";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 import type { BillImportSource } from "@/lib/stark/import/bill-csv";
 
@@ -88,6 +89,12 @@ export default function AccountsPage() {
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dismissLogoutConfirm = useCallback(() => setLogoutConfirmOpen(false), []);
+  const consumeLogoutHistory = useLayeredHistoryMarker(logoutConfirmOpen, "starkLogoutConfirm", dismissLogoutConfirm);
+  const closeLogoutConfirm = useCallback(() => {
+    consumeLogoutHistory();
+    dismissLogoutConfirm();
+  }, [consumeLogoutHistory, dismissLogoutConfirm]);
 
   useEffect(() => {
     const saved = readUiSettings();
@@ -199,9 +206,10 @@ export default function AccountsPage() {
   }
 
   function logout() {
+    consumeLogoutHistory();
     cloudLogout();
     setCloudUser(null);
-    setLogoutConfirmOpen(false);
+    dismissLogoutConfirm();
     router.replace("/");
   }
 
@@ -363,11 +371,11 @@ export default function AccountsPage() {
       {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={requestLogout}>退出登录</button> : null}
 
       {logoutConfirmOpen ? (
-        <div className="account-confirm-mask" role="presentation" onClick={() => setLogoutConfirmOpen(false)}>
+        <div className="account-confirm-mask" role="presentation" onClick={closeLogoutConfirm}>
           <section className="account-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="account-logout-title" onClick={(event) => event.stopPropagation()}>
             <strong id="account-logout-title">确定要退出当前云端账户吗？</strong>
             <div className="account-confirm-actions">
-              <button type="button" className="account-confirm-cancel" onClick={() => setLogoutConfirmOpen(false)}>取消</button>
+              <button type="button" className="account-confirm-cancel" onClick={closeLogoutConfirm}>取消</button>
               <button type="button" className="account-confirm-primary" onClick={logout}>确定</button>
             </div>
           </section>
