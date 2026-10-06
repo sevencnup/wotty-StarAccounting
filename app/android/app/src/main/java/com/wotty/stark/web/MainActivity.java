@@ -4,6 +4,8 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebBackForwardList;
+import android.webkit.WebHistoryItem;
 import android.webkit.WebView;
 
 import androidx.core.view.WindowCompat;
@@ -15,11 +17,32 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onBackPressed() {
         WebView webView = this.bridge != null ? this.bridge.getWebView() : null;
-        if (webView != null && webView.canGoBack()) {
+        if (webView != null && shouldNavigateWebHistoryBack(webView)) {
             webView.goBack();
             return;
         }
         super.onBackPressed();
+    }
+
+    private boolean shouldNavigateWebHistoryBack(WebView webView) {
+        if (!webView.canGoBack()) return false;
+        try {
+            WebBackForwardList history = webView.copyBackForwardList();
+            int currentIndex = history.getCurrentIndex();
+            if (currentIndex <= 0) return true;
+
+            WebHistoryItem current = history.getItemAtIndex(currentIndex);
+            WebHistoryItem previous = history.getItemAtIndex(currentIndex - 1);
+            if (current == null || previous == null) return true;
+
+            return WebViewBackNavigationPolicy.shouldNavigateWebHistoryBack(
+                    current.getUrl(),
+                    previous.getUrl());
+        } catch (RuntimeException ignored) {
+            // Do not make Android Back unresponsive if WebView history is
+            // temporarily unavailable while the Activity is restoring.
+            return true;
+        }
     }
 
     @Override
