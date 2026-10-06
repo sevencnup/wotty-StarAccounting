@@ -7,7 +7,9 @@ export function appRoute(path: string) {
 
 export function planTabNavigation(path: string, recovering: boolean) {
   return {
-    mode: recovering ? "reload" as const : "client" as const,
+    // Main tabs are peers, not a drill-down route hierarchy. Replacing the
+    // current entry keeps Android edge-back from walking through every tab.
+    mode: recovering ? "reload" as const : "replace" as const,
     target: appRoute(path),
   };
 }

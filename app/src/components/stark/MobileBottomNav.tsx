@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { planBackgroundResume, planTabNavigation } from "@/lib/stark/navigation/routes";
+import { appRoute, planBackgroundResume, planTabNavigation } from "@/lib/stark/navigation/routes";
 
 const BACKGROUNDED_AT_STORAGE_KEY = "wotty:navigation-backgrounded-at";
 
@@ -119,7 +119,11 @@ export function MobileBottomNav() {
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={appRoute(item.href)}
+              // Main tabs are peers. Do not make an edge-back gesture walk
+              // through each prior tab; overlays and detail routes retain
+              // their own history entries.
+              replace
               prefetch={true}
               className={active ? "mobile-bottom-nav-item active" : "mobile-bottom-nav-item"}
               aria-label={item.label}

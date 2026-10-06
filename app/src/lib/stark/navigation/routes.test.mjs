@@ -54,9 +54,9 @@ test("reloads the selected tab directly after a background recovery", () => {
   });
 });
 
-test("keeps normal tab switches on the client router", () => {
+test("replaces the current history entry for normal tab switches", () => {
   assert.deepEqual(planTabNavigation("/app/consumption", false), {
-    mode: "client",
+    mode: "replace",
     target: "/app/consumption/",
   });
 });
