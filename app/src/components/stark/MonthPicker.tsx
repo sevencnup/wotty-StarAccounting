@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 const MIN_YEAR = 1900;
 const MAX_YEAR = 2100;
+const YEAR_PAGE_SIZE = 12;
 const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
 function monthKey(year: number, month: number) {
@@ -14,6 +15,10 @@ function monthKey(year: number, month: number) {
 
 function selectedRangeLabel(year: number, month: number | null) {
   return month === null ? `${year} 年全年` : `${year} 年 ${month} 月`;
+}
+
+function clampYearPageStart(year: number) {
+  return Math.max(MIN_YEAR, Math.min(MAX_YEAR - YEAR_PAGE_SIZE + 1, year));
 }
 
 export function MonthPicker({
@@ -35,15 +40,16 @@ export function MonthPicker({
   const selectedMonth = value.length === 7 ? Number(value.slice(5, 7)) : null;
   const [open, setOpen] = useState(false);
   const [visibleYear, setVisibleYear] = useState(selectedYear);
+  const [yearMenuOpen, setYearMenuOpen] = useState(false);
+  const [yearMenuStart, setYearMenuStart] = useState(() => clampYearPageStart(selectedYear - 5));
   const visibleYearRef = useRef(selectedYear);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const selectedMonthRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const yearMenuId = useId();
   const currentRange = selectedRangeLabel(selectedYear, selectedMonth);
-  const years = useMemo(
-    () => Array.from({ length: MAX_YEAR - MIN_YEAR + 1 }, (_, index) => MIN_YEAR + index),
-    [],
-  );
+  const yearOptions = Array.from({ length: YEAR_PAGE_SIZE }, (_, index) => yearMenuStart + index)
+    .filter((year) => year <= MAX_YEAR);
 
   useEffect(() => {
     if (!open) return;
@@ -75,12 +81,33 @@ export function MonthPicker({
 
   function openPicker() {
     updateVisibleYear(selectedYear);
+    setYearMenuStart(clampYearPageStart(selectedYear - 5));
+    setYearMenuOpen(false);
     setOpen(true);
   }
 
   function closePicker() {
+    setYearMenuOpen(false);
     setOpen(false);
     window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }
+
+  function moveYear(offset: number) {
+    const nextYear = Math.max(MIN_YEAR, Math.min(MAX_YEAR, visibleYearRef.current + offset));
+    updateVisibleYear(nextYear);
+    setYearMenuOpen(false);
+  }
+
+  function toggleYearMenu() {
+    setYearMenuOpen((current) => {
+      if (!current) setYearMenuStart(clampYearPageStart(visibleYearRef.current - 5));
+      return !current;
+    });
+  }
+
+  function selectVisibleYear(year: number) {
+    updateVisibleYear(year);
+    setYearMenuOpen(false);
   }
 
   function selectMonth(month: number) {
@@ -153,30 +180,44 @@ export function MonthPicker({
                     type="button"
                     aria-label="上一年"
                     disabled={visibleYear <= MIN_YEAR}
-                    onClick={() => updateVisibleYear(Math.max(MIN_YEAR, visibleYearRef.current - 1))}
+                    onClick={() => moveYear(-1)}
                   >
                     ‹
                   </button>
-                  <select
-                    value={visibleYear}
+                  <button
+                    type="button"
+                    className="reporting-year-value"
                     aria-label="选择年份"
-                    onChange={(event) => updateVisibleYear(Number(event.target.value))}
+                    aria-expanded={yearMenuOpen}
+                    aria-controls={yearMenuId}
+                    onClick={toggleYearMenu}
                   >
-                    {years.map((year) => (
-                      <option key={year} value={year}>
-                        {year}年
-                      </option>
-                    ))}
-                  </select>
+                    {visibleYear}年 <span aria-hidden="true">⌄</span>
+                  </button>
                   <button
                     type="button"
                     aria-label="下一年"
                     disabled={visibleYear >= MAX_YEAR}
-                    onClick={() => updateVisibleYear(Math.min(MAX_YEAR, visibleYearRef.current + 1))}
+                    onClick={() => moveYear(1)}
                   >
                     ›
                   </button>
                 </div>
+
+                {yearMenuOpen ? (
+                  <section id={yearMenuId} className="reporting-year-menu" aria-label="选择年份">
+                    <div className="reporting-year-menu-head">
+                      <button type="button" aria-label="更早年份" disabled={yearMenuStart <= MIN_YEAR} onClick={() => setYearMenuStart((year) => clampYearPageStart(year - YEAR_PAGE_SIZE))}>‹</button>
+                      <strong>{yearMenuStart} - {yearOptions.at(-1)} 年</strong>
+                      <button type="button" aria-label="更晚年份" disabled={yearOptions.at(-1) === MAX_YEAR} onClick={() => setYearMenuStart((year) => clampYearPageStart(year + YEAR_PAGE_SIZE))}>›</button>
+                    </div>
+                    <div className="reporting-year-menu-grid" role="listbox" aria-label="年份列表">
+                      {yearOptions.map((year) => (
+                        <button key={year} type="button" role="option" className={year === visibleYear ? "selected" : ""} aria-selected={year === visibleYear} onClick={() => selectVisibleYear(year)}>{year}年</button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
 
                 <button
                   type="button"

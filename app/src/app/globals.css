@@ -14759,3 +14759,237 @@ body .stark-date-picker-trigger:focus-visible {
     grid-template-columns: 38px minmax(0, 1fr) 38px;
   }
 }
+
+/* Project-owned choices for short lists such as plan years and months. Native
+   selects open an Android/Chrome dialog that cannot follow the app UI. */
+body .stark-choice-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px 0 10px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff !important;
+  color: #405268;
+  font: inherit;
+  font-size: calc(11px * var(--user-font-scale));
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+body .stark-choice-picker-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .stark-choice-picker-trigger > i {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #8090a3;
+}
+
+body .stark-choice-picker-trigger > i svg {
+  width: 100%;
+  height: 100%;
+}
+
+body .stark-choice-picker-trigger:active:not(:disabled) {
+  transform: scale(0.98);
+  background: #f3f6fa !important;
+}
+
+body .stark-choice-picker-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+body .savings-plan-toolbar .savings-year-picker .stark-choice-picker-trigger {
+  width: 88px;
+}
+
+body .savings-month-restorer .stark-choice-picker-trigger {
+  width: 76px;
+  min-width: 76px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff !important;
+  color: #405268;
+}
+
+body .choice-picker-sheet {
+  min-height: 0;
+  max-height: min(430px, calc(100dvh - 12px - env(safe-area-inset-bottom)));
+  padding: 10px 14px calc(16px + env(safe-area-inset-bottom));
+  border: 0 !important;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -14px 42px rgba(15, 23, 42, 0.16);
+}
+
+body .choice-picker-sheet .bottom-sheet-header {
+  min-height: 40px;
+}
+
+body .choice-picker-sheet .bottom-sheet-body {
+  gap: 10px;
+  padding: 2px;
+}
+
+body .choice-picker-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f3f6fa;
+}
+
+body .choice-picker-current span {
+  color: #718196;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+body .choice-picker-current strong {
+  color: #245987;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+body .choice-picker-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+body .choice-picker-options button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: #f3f6fa;
+  color: #4c6079;
+  font: inherit;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+body .choice-picker-options button.selected {
+  background: linear-gradient(135deg, #2c79c7 0%, #145fae 100%);
+  color: #ffffff;
+  box-shadow: 0 7px 15px rgba(25, 100, 177, 0.22);
+}
+
+body .choice-picker-options button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+body .choice-picker-options button:disabled {
+  color: #b8c2cf;
+  background: #f6f7f9;
+}
+
+body .stark-choice-picker-trigger:focus-visible,
+body .choice-picker-sheet button:focus-visible {
+  outline: 2px solid rgba(32, 111, 190, 0.48);
+  outline-offset: 2px;
+}
+
+/* The reporting-period sheet already owns its dialog. Its year control uses
+   an in-sheet paged grid instead of nesting another native select dialog. */
+body .reporting-year-picker .reporting-year-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 6px;
+  border: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  color: #1e3a5a;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 750;
+}
+
+body .reporting-year-picker .reporting-year-value span {
+  color: #6b7d93;
+  font-size: calc(14px * var(--user-font-scale));
+}
+
+body .reporting-year-menu {
+  margin-top: 9px;
+  padding: 10px;
+  border-radius: 17px;
+  background: #f3f6fa;
+}
+
+body .reporting-year-menu-head {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+body .reporting-year-menu-head strong {
+  color: #5c7189;
+  font-size: calc(11px * var(--user-font-scale));
+  text-align: center;
+}
+
+body .reporting-year-menu-head button {
+  display: grid;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 9px;
+  place-items: center;
+  background: #ffffff;
+  color: #5c7189;
+  font-size: calc(20px * var(--user-font-scale));
+  line-height: 1;
+}
+
+body .reporting-year-menu-head button:disabled {
+  opacity: 0.35;
+}
+
+body .reporting-year-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+body .reporting-year-menu-grid button {
+  height: 33px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #58708b;
+  font: inherit;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+body .reporting-year-menu-grid button.selected {
+  background: #dfeeff;
+  color: #2267ac;
+}

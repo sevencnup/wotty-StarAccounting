@@ -9,6 +9,7 @@ import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft } from "@/lib/
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 import { normalizeSavingsDepositType, SAVINGS_DEPOSIT_TYPE_OPTIONS } from "@/lib/stark/savings/deposit-type";
+import { ChoicePicker } from "@/components/stark/ChoicePicker";
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
 
 const repo = new DataModeManager().getRepository();
@@ -215,6 +216,16 @@ export function SavingsPlanner({
   const months = monthsByFrequency[frequency];
   const supportedMonths = useMemo(() => buildSavingsMonths(year, frequency), [frequency, year]);
   const removedMonths = useMemo(() => supportedMonths.filter((month) => !months.includes(month)), [months, supportedMonths]);
+  const planningYearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from(new Set([...Array.from({ length: 7 }, (_, index) => currentYear - 3 + index), year]))
+      .sort((left, right) => left - right)
+      .map((item) => ({ value: String(item), label: `${item} 年` }));
+  }, [year]);
+  const restorableMonthOptions = useMemo(
+    () => removedMonths.map((month) => ({ value: month, label: monthLabel(month) })),
+    [removedMonths],
+  );
   const historicalTemplates = useMemo<HistoricalSavingsTemplate[]>(() => (
     historicalGoals
       .map((historicalGoal) => ({
@@ -820,11 +831,28 @@ export function SavingsPlanner({
 
         <div className="savings-plan-toolbar">
           <div className="savings-plan-actions">
-            <label className="savings-year-picker"><span>计划年份</span><select aria-label="计划年份" value={year} onChange={(event) => changeYear(Number(event.target.value))}>{Array.from(new Set([...Array.from({ length: 7 }, (_, index) => new Date().getFullYear() - 3 + index), year])).sort((left, right) => left - right).map((item) => <option key={item} value={item}>{item} 年</option>)}</select></label>
+            <div className="savings-year-picker">
+              <span>计划年份</span>
+              <ChoicePicker
+                ariaLabel="计划年份"
+                title="选择计划年份"
+                value={String(year)}
+                options={planningYearOptions}
+                variant="year"
+                onChange={(nextYear) => changeYear(Number(nextYear))}
+              />
+            </div>
             <div className="savings-month-restorer">
-              <select value={monthToAdd} onChange={(event) => setMonthToAdd(event.target.value)} disabled={!removedMonths.length} aria-label="选择要添加的月份">
-                {removedMonths.length ? removedMonths.map((month) => <option key={month} value={month}>{monthLabel(month)}</option>) : <option value="">月份已完整</option>}
-              </select>
+              <ChoicePicker
+                ariaLabel="选择要添加的月份"
+                title="选择要添加的月份"
+                value={monthToAdd}
+                options={restorableMonthOptions}
+                placeholder="月份已完整"
+                disabled={!removedMonths.length}
+                variant="month"
+                onChange={setMonthToAdd}
+              />
               <button type="button" onClick={restoreMonth} disabled={!monthToAdd}>添加月份</button>
             </div>
           </div>

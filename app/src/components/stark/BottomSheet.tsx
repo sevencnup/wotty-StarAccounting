@@ -9,12 +9,13 @@ type BottomSheetProps = PropsWithChildren<{
   title: string;
   onClose: () => void;
   historyMode?: "marker" | "route";
+  closeRequest?: number;
   className?: string;
   overlayClassName?: string;
   bodyClassName?: string;
 }>;
 
-export function BottomSheet({ children, title, onClose, historyMode = "marker", className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
+export function BottomSheet({ children, title, onClose, historyMode = "marker", closeRequest, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   const [enterReady, setEnterReady] = useState(false);
@@ -23,6 +24,7 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
   const closingRef = useRef(false);
   const closeTimerRef = useRef<number | null>(null);
   const onCloseRef = useRef(onClose);
+  const handledCloseRequestRef = useRef(closeRequest);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -61,6 +63,12 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
     beginClose();
     if (ownsHistoryEntry) window.history.back();
   }, [beginClose, historyMode]);
+
+  useEffect(() => {
+    if (closeRequest === undefined || closeRequest === handledCloseRequestRef.current) return;
+    handledCloseRequestRef.current = closeRequest;
+    requestClose();
+  }, [closeRequest, requestClose]);
 
   useEffect(() => {
     if (!mounted || historyMode !== "marker") return;
