@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const MIN_YEAR = 1900;
 const MAX_YEAR = 2100;
@@ -51,6 +52,17 @@ export function MonthPicker({
   const yearOptions = Array.from({ length: YEAR_PAGE_SIZE }, (_, index) => yearMenuStart + index)
     .filter((year) => year <= MAX_YEAR);
 
+  const dismissPicker = useCallback(() => {
+    setYearMenuOpen(false);
+    setOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+  const consumeHistoryEntry = useLayeredHistoryMarker(open, "starkMonthPicker", dismissPicker);
+  const closePicker = useCallback(() => {
+    consumeHistoryEntry();
+    dismissPicker();
+  }, [consumeHistoryEntry, dismissPicker]);
+
   useEffect(() => {
     if (!open) return;
 
@@ -61,8 +73,8 @@ export function MonthPicker({
     });
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setOpen(false);
-        window.requestAnimationFrame(() => triggerRef.current?.focus());
+        event.preventDefault();
+        closePicker();
       }
     };
 
@@ -72,7 +84,7 @@ export function MonthPicker({
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [closePicker, open]);
 
   function updateVisibleYear(year: number) {
     visibleYearRef.current = year;
@@ -84,12 +96,6 @@ export function MonthPicker({
     setYearMenuStart(clampYearPageStart(selectedYear - 5));
     setYearMenuOpen(false);
     setOpen(true);
-  }
-
-  function closePicker() {
-    setYearMenuOpen(false);
-    setOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   function moveYear(offset: number) {
@@ -112,16 +118,16 @@ export function MonthPicker({
 
   function selectMonth(month: number) {
     if (availableMonths && !availableMonths.has(monthKey(visibleYearRef.current, month))) return;
-    setOpen(false);
-    onChange(monthKey(visibleYearRef.current, month));
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+    const nextMonth = monthKey(visibleYearRef.current, month);
+    closePicker();
+    onChange(nextMonth);
   }
 
   function selectYear() {
     if (availableMonths && !MONTHS.some((month) => availableMonths.has(monthKey(visibleYearRef.current, month)))) return;
-    setOpen(false);
-    onChange(String(visibleYearRef.current));
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
+    const nextYear = String(visibleYearRef.current);
+    closePicker();
+    onChange(nextYear);
   }
 
   return (

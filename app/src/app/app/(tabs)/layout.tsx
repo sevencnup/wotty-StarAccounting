@@ -16,8 +16,12 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const journalHistoryRef = useRef(false);
 
   useEffect(() => {
-    function handlePopState() {
+    function handlePopState(event: PopStateEvent) {
       if (!journalHistoryRef.current) return;
+      // A picker above this page has just been dismissed. Its history entry
+      // preserves starkJournal, so keep the parent form open until the user
+      // performs one more back action.
+      if (event.state && typeof event.state === "object" && event.state.starkJournal) return;
       journalHistoryRef.current = false;
       setJournalVariant(null);
     }
@@ -29,7 +33,11 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   function openJournal() {
     void preloadJournalPanel();
     const variant = isLoansRoute ? "loan" : isAssetsRoute ? "asset" : isSavingsRoute ? "savings" : "journal";
-    window.history.pushState({ starkJournal: true }, "", window.location.href);
+    const currentState = window.history.state;
+    const nextState = currentState && typeof currentState === "object"
+      ? { ...currentState, starkJournal: true }
+      : { starkJournal: true };
+    window.history.pushState(nextState, "", window.location.href);
     journalHistoryRef.current = true;
     setJournalVariant(variant);
   }

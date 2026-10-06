@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import {
   datePickerDisplayLabel,
   datePickerMonthGrid,
@@ -97,6 +98,17 @@ export function DateTimePicker({
   const currentDay = todayDatePickerValue();
   const selectedTime = draft ?? currentValueForView({ year: visibleYear, month: visibleMonth }, parsedValue);
 
+  const dismissPicker = useCallback(() => {
+    setOpen(false);
+    setYearMenuOpen(false);
+    window.requestAnimationFrame(() => triggerRef.current?.focus());
+  }, []);
+  const consumeHistoryEntry = useLayeredHistoryMarker(open, "starkDatePicker", dismissPicker);
+  const closePicker = useCallback(() => {
+    consumeHistoryEntry();
+    dismissPicker();
+  }, [consumeHistoryEntry, dismissPicker]);
+
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
@@ -113,7 +125,7 @@ export function DateTimePicker({
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [closePicker, open]);
 
   function openPicker() {
     const selected = parseDatePickerValue(value, mode);
@@ -124,12 +136,6 @@ export function DateTimePicker({
     setYearMenuStart(clampYearPageStart(initial.year - 5));
     setYearMenuOpen(false);
     setOpen(true);
-  }
-
-  function closePicker() {
-    setOpen(false);
-    setYearMenuOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
   }
 
   function moveMonth(offset: number) {
@@ -183,14 +189,14 @@ export function DateTimePicker({
 
   function confirmSelection() {
     if (!draft) return;
-    onChange(formatDatePickerValue(draft, mode));
     closePicker();
+    onChange(formatDatePickerValue(draft, mode));
   }
 
   function clearSelection() {
     if (!value) return;
-    onChange("");
     closePicker();
+    onChange("");
   }
 
   const canMoveBackward = visibleYear > MIN_YEAR || visibleMonth > 1;

@@ -76,7 +76,6 @@ export function ChoicePicker({
         <BottomSheet
           title={title}
           onClose={closePicker}
-          historyMode="route"
           closeRequest={closeRequest}
           className={`choice-picker-sheet choice-picker-sheet-${variant}`}
           bodyClassName="choice-picker-sheet-body"
