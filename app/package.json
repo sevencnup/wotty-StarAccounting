@@ -1,16 +1,17 @@
 {
   "name": "wotty-stark-web",
   "private": true,
-  "version": "0.0.119",
+  "version": "0.0.120",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:mobile": "node scripts/mobile-dev.mjs",
+    "sync:android": "node scripts/sync-android.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 12366",
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test src/**/*.test.mjs",
-    "apk": "pnpm build && pnpm exec cap sync android && cd android && .\\gradlew.bat assembleDebug",
-    "apk:linux": "pnpm build && pnpm exec cap sync android && cd android && ANDROID_HOME=/opt/android-sdk ANDROID_SDK_ROOT=/opt/android-sdk GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx1280m -Dfile.encoding=UTF-8' bash ./gradlew --no-daemon --max-workers=1 assembleDebug"
+    "apk": "pnpm build && pnpm run sync:android && cd android && .\\gradlew.bat assembleDebug",
+    "apk:linux": "pnpm build && pnpm run sync:android && cd android && ANDROID_HOME=/opt/android-sdk ANDROID_SDK_ROOT=/opt/android-sdk GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx1280m -Dfile.encoding=UTF-8' bash ./gradlew --no-daemon --max-workers=1 assembleDebug"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.1",

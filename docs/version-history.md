@@ -3,6 +3,10 @@
 > 本文件使用内部迭代编号记录细粒度开发变化，不代表 Android APK 的公开版本号。
 > 可安装版本及发布日期以根目录 [CHANGELOG.md](../CHANGELOG.md) 为准。
 
+## 0.0.99
+
+- 修复 pnpm workspace 下 Android APK 构建的 Capacitor 同步路径。
+
 ## 0.0.98
 
 - 为主标签返回策略补充浏览器与旧 WebView 的历史回退兜底。
