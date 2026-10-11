@@ -3975,6 +3975,7 @@ button.stark-compass-card {
 }
 
 .mobile-bottom-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4000,6 +4001,28 @@ button.stark-compass-card {
 
 .mobile-bottom-nav-item.active {
   color: #0060c0;
+}
+
+.mobile-bottom-nav-item.is-pending::after {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(0, 96, 192, 0.15);
+  border-top-color: #0060c0;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: nav-pending-spin 900ms linear infinite;
+}
+
+@keyframes nav-pending-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottom-nav-item.is-pending::after {
+    animation: none;
+  }
 }
 
 @media (max-width: 360px) {

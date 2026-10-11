@@ -48,6 +48,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        this.bridge.setWebViewClient(new StaticExportWebViewClient(this.bridge));
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
         // Edge-to-edge: let the app draw under the system status / navigation bars
