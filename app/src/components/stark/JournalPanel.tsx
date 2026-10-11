@@ -23,7 +23,7 @@ const SavingsPlanner = dynamic(
 const repo = new DataModeManager().getRepository();
 
 const expenseCategories = expenseCategoryOptions;
-const incomeCategories = ["工资", "奖金", "理财", "其他"];
+const incomeCategories = ["工资", "奖金", "兼职", "经营收入", "报销", "退款", "租金", "利息分红", "补贴", "二手转卖", "理财", "其他"];
 const transferCategories = ["转账"];
 const platforms = ["支付宝", "微信", "银行卡", "现金", "其他"];
 const assetTypes: AssetType[] = ["CASH", "BANK_CARD", "ALIPAY", "WECHAT", "INVESTMENT", "OTHER"];
