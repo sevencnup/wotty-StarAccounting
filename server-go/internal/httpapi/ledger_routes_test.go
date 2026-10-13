@@ -40,6 +40,45 @@ func TestLedgerAccountRoutesReturnOwnedAccountsAndScopeWrites(t *testing.T) {
 	}
 }
 
+func TestSubscriptionRoutesReadWriteAndDeleteOwnedRecords(t *testing.T) {
+	repository := &httpLedgerRepository{
+		accountEntities: []json.RawMessage{json.RawMessage(`{"id":"subscription-1","name":"音乐会员"}`)},
+		entityAllowed:   true,
+	}
+	handler, token := newLedgerHandler(t, repository)
+
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/subscriptions?accountId=account-1", nil)
+	listRequest.Header.Set("Authorization", "Bearer "+token)
+	listRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(listRecorder, listRequest)
+	if listRecorder.Code != http.StatusOK || !strings.Contains(listRecorder.Body.String(), `"name":"音乐会员"`) {
+		t.Fatalf("list subscriptions = %d %s", listRecorder.Code, listRecorder.Body.String())
+	}
+	if repository.listedEntityType != ledger.Subscriptions || repository.listedAccountID != "account-1" {
+		t.Fatalf("list subscriptions scope = %q/%q", repository.listedEntityType, repository.listedAccountID)
+	}
+
+	body := `{"id":"subscription-2","userId":"attacker","accountId":"account-1","name":"音乐会员","amount":18,"billingDay":9,"category":"会员订阅","platform":"支付宝","paymentMethod":null,"startDate":"2026-10-01","isActive":true,"createdAt":"2026-10-01 12:00:00","updatedAt":"2026-10-01 12:00:00"}`
+	saveRequest := httptest.NewRequest(http.MethodPost, "/api/subscriptions", strings.NewReader(body))
+	saveRequest.Header.Set("Authorization", "Bearer "+token)
+	saveRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(saveRecorder, saveRequest)
+	if saveRecorder.Code != http.StatusNoContent || repository.upsertedType != ledger.Subscriptions {
+		t.Fatalf("save subscription = %d %s type=%q", saveRecorder.Code, saveRecorder.Body.String(), repository.upsertedType)
+	}
+	if value := rawString(repository.upsertedPayload["userId"]); value != "user-1" {
+		t.Fatalf("subscription userId was not scoped to logged-in user: %q", value)
+	}
+
+	deleteRequest := httptest.NewRequest(http.MethodDelete, "/api/subscriptions/subscription-2", nil)
+	deleteRequest.Header.Set("Authorization", "Bearer "+token)
+	deleteRecorder := httptest.NewRecorder()
+	handler.ServeHTTP(deleteRecorder, deleteRequest)
+	if deleteRecorder.Code != http.StatusNoContent || repository.deletedType != ledger.Subscriptions || repository.deletedID != "subscription-2" {
+		t.Fatalf("delete subscription = %d %s type=%q id=%q", deleteRecorder.Code, deleteRecorder.Body.String(), repository.deletedType, repository.deletedID)
+	}
+}
+
 func TestLedgerSyncScopesPayloadAndRejectsForeignAccount(t *testing.T) {
 	repository := &httpLedgerRepository{}
 	handler, token := newLedgerHandler(t, repository)
@@ -175,8 +214,15 @@ func newLedgerHandler(t *testing.T, repository *httpLedgerRepository) (http.Hand
 
 type httpLedgerRepository struct {
 	accounts            []json.RawMessage
+	accountEntities     []json.RawMessage
+	listedEntityType    ledger.EntityType
+	listedAccountID     string
 	records             []ledger.Record
 	upsertedPayload     map[string]json.RawMessage
+	upsertedType        ledger.EntityType
+	deletedType         ledger.EntityType
+	deletedID           string
+	entityAllowed       bool
 	transactionPage     int
 	transactionPageSize int
 	transactionMonth    *string
@@ -198,20 +244,23 @@ func (repository *httpLedgerRepository) GoalBelongsToUser(context.Context, strin
 	return false, nil
 }
 
-func (repository *httpLedgerRepository) EntityBelongsToUser(context.Context, string, ledger.EntityType, string) (bool, error) {
-	return false, nil
+func (repository *httpLedgerRepository) EntityBelongsToUser(_ context.Context, _ string, _ ledger.EntityType, _ string) (bool, error) {
+	return repository.entityAllowed, nil
 }
 
 func (repository *httpLedgerRepository) EntityExists(context.Context, ledger.EntityType, string) (bool, error) {
 	return false, nil
 }
 
-func (repository *httpLedgerRepository) UpsertEntity(_ context.Context, _ ledger.EntityType, payload map[string]json.RawMessage) error {
+func (repository *httpLedgerRepository) UpsertEntity(_ context.Context, entityType ledger.EntityType, payload map[string]json.RawMessage) error {
+	repository.upsertedType = entityType
 	repository.upsertedPayload = payload
 	return nil
 }
 
-func (repository *httpLedgerRepository) DeleteEntity(context.Context, ledger.EntityType, string) error {
+func (repository *httpLedgerRepository) DeleteEntity(_ context.Context, entityType ledger.EntityType, id string) error {
+	repository.deletedType = entityType
+	repository.deletedID = id
 	return nil
 }
 
@@ -231,7 +280,12 @@ func (repository *httpLedgerRepository) GetUser(context.Context, string) (json.R
 	return nil, false, nil
 }
 
-func (repository *httpLedgerRepository) ListByAccount(context.Context, ledger.EntityType, string) ([]json.RawMessage, error) {
+func (repository *httpLedgerRepository) ListByAccount(_ context.Context, entityType ledger.EntityType, accountID string) ([]json.RawMessage, error) {
+	repository.listedEntityType = entityType
+	repository.listedAccountID = accountID
+	if repository.accountEntities != nil {
+		return repository.accountEntities, nil
+	}
 	return []json.RawMessage{}, nil
 }
 

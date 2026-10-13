@@ -20,6 +20,7 @@ const (
 	Loans           EntityType = "loans"
 	SavingsGoals    EntityType = "savingsGoals"
 	SavingsPlans    EntityType = "savingsPlans"
+	Subscriptions   EntityType = "subscriptions"
 	CategoryRules   EntityType = "categoryRules"
 	ImportErrorLogs EntityType = "importErrorLogs"
 	ExchangeRates   EntityType = "exchangeRates"
@@ -469,7 +470,7 @@ func normalizePayloadForUser(entityType EntityType, payload map[string]json.RawM
 	switch entityType {
 	case Accounts:
 		payload["ownerId"] = encodedUserID
-	case Users, ThemeConfigs, Transactions, Assets, Budgets, Loans, SavingsGoals, CategoryRules, ImportErrorLogs:
+	case Users, ThemeConfigs, Transactions, Assets, Budgets, Loans, SavingsGoals, Subscriptions, CategoryRules, ImportErrorLogs:
 		payload["userId"] = encodedUserID
 	}
 }
@@ -493,7 +494,7 @@ func stringValue(payload map[string]json.RawMessage, key string) (string, bool) 
 
 func known(entityType EntityType) bool {
 	switch entityType {
-	case Users, Accounts, Transactions, Assets, Budgets, Loans, SavingsGoals, SavingsPlans, CategoryRules, ImportErrorLogs, ExchangeRates, ThemeConfigs:
+	case Users, Accounts, Transactions, Assets, Budgets, Loans, SavingsGoals, SavingsPlans, Subscriptions, CategoryRules, ImportErrorLogs, ExchangeRates, ThemeConfigs:
 		return true
 	default:
 		return false
@@ -502,7 +503,7 @@ func known(entityType EntityType) bool {
 
 func accountScoped(entityType EntityType) bool {
 	switch entityType {
-	case Assets, Budgets, Loans, SavingsGoals, CategoryRules, ImportErrorLogs:
+	case Assets, Budgets, Loans, SavingsGoals, Subscriptions, CategoryRules, ImportErrorLogs:
 		return true
 	default:
 		return false

@@ -22,6 +22,22 @@ func TestUpsertPayloadScopesNewTransactionToAuthenticatedUser(t *testing.T) {
 	}
 }
 
+func TestUpsertSubscriptionScopesNewRecordToAuthenticatedUser(t *testing.T) {
+	repository := &serviceRepository{accountAllowed: true}
+	service := NewService(repository)
+	payload := json.RawMessage(`{"id":"subscription-1","accountId":"account-1","userId":"attacker"}`)
+
+	if errorValue := service.UpsertPayload(context.Background(), "user-1", Subscriptions, payload); errorValue != nil {
+		t.Fatalf("UpsertPayload() error = %#v", errorValue)
+	}
+	if repository.upsertedType != Subscriptions {
+		t.Fatalf("upserted type = %q", repository.upsertedType)
+	}
+	if value, ok := payloadString(repository.upsertedPayload, "userId"); !ok || value != "user-1" {
+		t.Fatalf("normalized userId = %q, %v", value, ok)
+	}
+}
+
 func TestListAccountEntitiesRejectsForeignAccountBeforeDataQuery(t *testing.T) {
 	repository := &serviceRepository{accountAllowed: false}
 	service := NewService(repository)
