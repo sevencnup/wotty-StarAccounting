@@ -9736,7 +9736,7 @@ img[src$="/qita.webp"] {
 
 .settings-sheet-primary:disabled { opacity: 0.55; }
 
-/* ── 订阅自动扣费 ── */
+/* ── 周期支出自动记账 ── */
 .subscription-management-sheet { gap: 10px; }
 .subscription-list { display: grid; gap: 7px; max-height: 34dvh; overflow-y: auto; }
 .subscription-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; padding: 11px 12px; border: 1px solid #e1e8f1; border-radius: 12px; background: #fbfcfe; }

@@ -32,7 +32,7 @@ function emptyForm(): FormState {
     name: "",
     amount: "",
     billingDay: "1",
-    category: "会员订阅",
+    category: "其他",
     platform: "其他",
     paymentMethod: "",
     startDate: localDateText(),
@@ -67,7 +67,7 @@ export function SubscriptionManagementSheet() {
       setItems(await manager.getRepository().getSubscriptions(accountId));
       setError("");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "订阅读取失败，请稍后重试");
+      setError(cause instanceof Error ? cause.message : "周期支出读取失败，请稍后重试");
     } finally {
       setLoading(false);
     }
@@ -108,9 +108,9 @@ export function SubscriptionManagementSheet() {
     const name = form.name.trim();
     const amount = Number(form.amount);
     const billingDay = Number(form.billingDay);
-    if (!name) { setError("请输入订阅名称"); return; }
-    if (!Number.isFinite(amount) || amount <= 0) { setError("请输入大于 0 的扣费金额"); return; }
-    if (!Number.isInteger(billingDay) || billingDay < 1 || billingDay > 31) { setError("扣费日请输入 1 到 31"); return; }
+    if (!name) { setError("请输入项目名称"); return; }
+    if (!Number.isFinite(amount) || amount <= 0) { setError("请输入大于 0 的每月金额"); return; }
+    if (!Number.isInteger(billingDay) || billingDay < 1 || billingDay > 31) { setError("记账日请输入 1 到 31"); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.startDate)) { setError("请选择开始日期"); return; }
 
     setSaving(true);
@@ -126,7 +126,7 @@ export function SubscriptionManagementSheet() {
         name,
         amount: Math.round(amount * 100) / 100,
         billingDay,
-        category: form.category || "会员订阅",
+        category: form.category || "其他",
         platform: form.platform || "其他",
         paymentMethod: form.paymentMethod.trim() || null,
         startDate: form.startDate,
@@ -138,7 +138,7 @@ export function SubscriptionManagementSheet() {
         name,
         amount: Math.round(amount * 100) / 100,
         billingDay,
-        category: form.category || "会员订阅",
+        category: form.category || "其他",
         platform: form.platform || "其他",
         paymentMethod: form.paymentMethod.trim() || null,
         startDate: form.startDate,
@@ -153,9 +153,9 @@ export function SubscriptionManagementSheet() {
       if (created > 0) window.dispatchEvent(new Event("stark:transaction-saved"));
       setEditingId(null);
       setForm(emptyForm());
-      setMessage(editing ? "订阅已更新" : created > 0 ? `订阅已保存，已自动记入 ${created} 笔消费` : "订阅已保存");
+      setMessage(editing ? "周期支出已更新" : created > 0 ? `周期支出已保存，已自动记入 ${created} 笔流水` : "周期支出已保存");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "订阅保存失败，请稍后重试");
+      setError(cause instanceof Error ? cause.message : "周期支出保存失败，请稍后重试");
     } finally {
       setSaving(false);
     }
@@ -173,40 +173,40 @@ export function SubscriptionManagementSheet() {
         if (user) {
           const created = await syncDueSubscriptionTransactions(repository, accountId, user, nextItems);
           if (created > 0) window.dispatchEvent(new Event("stark:transaction-saved"));
-          setMessage(created > 0 ? `订阅已启用，已自动记入 ${created} 笔消费` : "订阅已启用");
+          setMessage(created > 0 ? `周期支出已启用，已自动记入 ${created} 笔流水` : "周期支出已启用");
         } else {
-          setMessage("订阅已启用");
+          setMessage("周期支出已启用");
         }
       } else {
-        setMessage("订阅已停用，历史流水不会删除");
+        setMessage("周期支出已停用，历史流水不会删除");
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "订阅状态更新失败");
+      setError(cause instanceof Error ? cause.message : "周期支出状态更新失败");
     }
   }
 
   async function remove(subscription: Subscription) {
-    if (!window.confirm(`确定删除“${subscription.name}”吗？已生成的历史消费不会删除。`)) return;
+    if (!window.confirm(`确定删除“${subscription.name}”吗？已生成的历史流水不会删除。`)) return;
     try {
       await manager.getRepository().deleteSubscription(subscription.id);
       setItems((current) => current.filter((item) => item.id !== subscription.id));
       if (editingId === subscription.id) cancelEdit();
-      setMessage("订阅已删除，历史流水已保留");
+      setMessage("周期支出已删除，历史流水已保留");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "订阅删除失败");
+      setError(cause instanceof Error ? cause.message : "周期支出删除失败");
     }
   }
 
   return (
     <div className="settings-sheet-body subscription-management-sheet">
       <p className="settings-sheet-note">按月自动记账。应用启动或从后台恢复时，会补记已经到期的月份；31 日在短月份按当月最后一天入账。</p>
-      {loading ? <div className="subscription-empty">正在读取订阅…</div> : null}
-      {!loading && !items.length && editingId === null ? <div className="subscription-empty">还没有订阅，添加一个后就不用每月手工记账了。</div> : null}
+      {loading ? <div className="subscription-empty">正在读取周期支出…</div> : null}
+      {!loading && !items.length && editingId === null ? <div className="subscription-empty">还没有周期支出，添加保险费、房租等固定项目后，系统会按月自动记账。</div> : null}
       {!loading && items.length ? <div className="subscription-list">
         {items.map((subscription) => (
           <div key={subscription.id} className={`subscription-row${subscription.isActive ? "" : " disabled"}`}>
             <div className="subscription-row-main">
-              <div className="subscription-row-title"><strong>{subscription.name}</strong><span>{subscription.isActive ? "自动扣费中" : "已停用"}</span></div>
+              <div className="subscription-row-title"><strong>{subscription.name}</strong><span>{subscription.isActive ? "自动记账中" : "已停用"}</span></div>
               <small>每月 {subscription.billingDay} 日 · {subscription.category} · {subscription.platform}</small>
             </div>
             <strong className="subscription-row-amount">¥ {formatMoney(subscription.amount)}</strong>
@@ -218,23 +218,23 @@ export function SubscriptionManagementSheet() {
           </div>
         ))}
       </div> : null}
-      {editingId === null ? <button type="button" className="settings-sheet-primary" onClick={beginCreate}>新增订阅</button> : null}
+      {editingId === null ? <button type="button" className="settings-sheet-primary" onClick={beginCreate}>新增周期支出</button> : null}
       {editingId !== null ? <section className="subscription-editor">
-        <div className="subscription-editor-heading"><strong>{editing ? "编辑订阅" : "新增订阅"}</strong><button type="button" onClick={cancelEdit}>取消</button></div>
-        <label className="settings-url-field"><span>订阅名称</span><input value={form.name} onChange={(event) => updateForm("name", event.target.value)} placeholder="例如：视频会员" /></label>
+        <div className="subscription-editor-heading"><strong>{editing ? "编辑周期支出" : "新增周期支出"}</strong><button type="button" onClick={cancelEdit}>取消</button></div>
+        <label className="settings-url-field"><span>项目名称</span><input value={form.name} onChange={(event) => updateForm("name", event.target.value)} placeholder="例如：保险费、房租、视频会员" /></label>
         <div className="subscription-field-grid">
           <label className="settings-url-field"><span>每月金额（元）</span><input type="number" min="0.01" step="0.01" value={form.amount} onChange={(event) => updateForm("amount", event.target.value)} placeholder="0.00" /></label>
-          <label className="settings-url-field"><span>扣费日</span><input type="number" min="1" max="31" step="1" value={form.billingDay} onChange={(event) => updateForm("billingDay", event.target.value)} /></label>
+          <label className="settings-url-field"><span>记账日</span><input type="number" min="1" max="31" step="1" value={form.billingDay} onChange={(event) => updateForm("billingDay", event.target.value)} /></label>
         </div>
         <div className="subscription-field-grid">
           <label className="settings-url-field"><span>消费分类</span><select value={form.category} onChange={(event) => updateForm("category", event.target.value)}>{expenseCategoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
           <label className="settings-url-field"><span>支付平台</span><select value={form.platform} onChange={(event) => updateForm("platform", event.target.value)}>{platforms.map((platform) => <option key={platform} value={platform}>{platform}</option>)}</select></label>
         </div>
         <label className="settings-url-field"><span>支付方式（可选）</span><input value={form.paymentMethod} onChange={(event) => updateForm("paymentMethod", event.target.value)} placeholder="例如：招商银行储蓄卡" /></label>
-        <label className="settings-url-field"><span>开始自动记账日期</span><input type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} /></label>
+        <label className="settings-url-field"><span>开始记账日期</span><input type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} /></label>
         {error ? <div className="cloud-test-status error">{error}</div> : null}
         {message ? <div className="cloud-test-status success">{message}</div> : null}
-        <button type="button" className="settings-confirm-button" disabled={saving} onClick={() => void save()}>{saving ? "保存中…" : "保存订阅"}</button>
+        <button type="button" className="settings-confirm-button" disabled={saving} onClick={() => void save()}>{saving ? "保存中…" : "保存周期支出"}</button>
       </section> : null}
       {editingId === null && error ? <div className="cloud-test-status error">{error}</div> : null}
       {editingId === null && message ? <div className="cloud-test-status success">{message}</div> : null}
