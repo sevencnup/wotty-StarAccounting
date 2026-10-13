@@ -222,7 +222,7 @@ func (store *Store) EntityBelongsToUser(context context.Context, userID string, 
 	case ledger.CategoryRules:
 		query, arguments = "SELECT 1 FROM transactioncategoryrule WHERE id = ? AND accountId IN (SELECT id FROM account WHERE ownerId = ?) LIMIT 1", []interface{}{id, userID}
 	case ledger.Subscriptions:
-		query, arguments = "SELECT 1 FROM subscription WHERE id = ? AND accountId IN (SELECT id FROM account WHERE ownerId = ?) LIMIT 1", []interface{}{id, userID}
+		query, arguments = subscriptionOwnershipQuery, []interface{}{id, userID}
 	case ledger.ImportErrorLogs:
 		query, arguments = "SELECT 1 FROM importerrorlog WHERE id = ? AND accountId IN (SELECT id FROM account WHERE ownerId = ?) LIMIT 1", []interface{}{id, userID}
 	case ledger.ThemeConfigs:
@@ -232,6 +232,8 @@ func (store *Store) EntityBelongsToUser(context context.Context, userID string, 
 	}
 	return exists(context, database, query, arguments...)
 }
+
+const subscriptionOwnershipQuery = "SELECT 1 FROM subscription WHERE id = ? AND accountId COLLATE utf8mb4_unicode_ci IN (SELECT id COLLATE utf8mb4_unicode_ci FROM account WHERE ownerId = ?) LIMIT 1"
 
 func (store *Store) EntityExists(context context.Context, entityType ledger.EntityType, id string) (bool, error) {
 	specification, err := entitySpecification(entityType)
