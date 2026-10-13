@@ -29,7 +29,7 @@ func TestSchemaContainsEveryLedgerStorageColumn(t *testing.T) {
 			}
 		}
 	}
-	for _, required := range []string{"user", "authsetting", "account", "transaction"} {
+	for _, required := range []string{"user", "authsetting", "account", "transaction", "subscription"} {
 		if _, exists := tables[required]; !exists {
 			t.Errorf("schema misses required table %s", required)
 		}

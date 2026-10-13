@@ -146,6 +146,17 @@ var entitySpecs = map[ledger.EntityType]entitySpec{
 		},
 		UpdatedAtColumn: "updatedAt",
 	},
+	ledger.Subscriptions: {
+		Table: "subscription",
+		Fields: []entityField{
+			{"id", "id", stringField}, {"userId", "userId", stringField}, {"accountId", "accountId", stringField},
+			{"name", "name", stringField}, {"amount", "amount", decimalField}, {"billingDay", "billingDay", integerField},
+			{"category", "category", stringField}, {"platform", "platform", stringField}, {"paymentMethod", "paymentMethod", nullableStringField},
+			{"startDate", "startDate", stringField}, {"isActive", "isActive", booleanField},
+			{"createdAt", "createdAt", dateTimeField}, {"updatedAt", "updatedAt", dateTimeField},
+		},
+		UpdatedAtColumn: "updatedAt",
+	},
 	ledger.CategoryRules: {
 		Table: "transactioncategoryrule",
 		Fields: []entityField{
@@ -210,6 +221,8 @@ func (store *Store) EntityBelongsToUser(context context.Context, userID string, 
 		query, arguments = "SELECT 1 FROM savingsplan WHERE id = ? AND goalId IN (SELECT id FROM savingsgoal WHERE accountId IN (SELECT id FROM account WHERE ownerId = ?)) LIMIT 1", []interface{}{id, userID}
 	case ledger.CategoryRules:
 		query, arguments = "SELECT 1 FROM transactioncategoryrule WHERE id = ? AND accountId IN (SELECT id FROM account WHERE ownerId = ?) LIMIT 1", []interface{}{id, userID}
+	case ledger.Subscriptions:
+		query, arguments = "SELECT 1 FROM subscription WHERE id = ? AND accountId IN (SELECT id FROM account WHERE ownerId = ?) LIMIT 1", []interface{}{id, userID}
 	case ledger.ImportErrorLogs:
 		query, arguments = "SELECT 1 FROM importerrorlog WHERE id = ? AND accountId IN (SELECT id FROM account WHERE ownerId = ?) LIMIT 1", []interface{}{id, userID}
 	case ledger.ThemeConfigs:
@@ -320,7 +333,7 @@ func (store *Store) GetUser(context context.Context, userID string) (json.RawMes
 
 func (store *Store) ListByAccount(context context.Context, entityType ledger.EntityType, accountID string) ([]json.RawMessage, error) {
 	switch entityType {
-	case ledger.Assets, ledger.Budgets, ledger.Loans, ledger.SavingsGoals, ledger.CategoryRules, ledger.ImportErrorLogs:
+	case ledger.Assets, ledger.Budgets, ledger.Loans, ledger.SavingsGoals, ledger.Subscriptions, ledger.CategoryRules, ledger.ImportErrorLogs:
 		return store.listWhere(context, entityType, "`accountId` = ?", accountID)
 	default:
 		return nil, fmt.Errorf("entity type %s is not account-scoped", entityType)
@@ -800,7 +813,7 @@ func (store *Store) ListSyncRecords(context context.Context, accountID, userID s
 	if err := appendItems(ledger.Accounts, "`id` = ?", accountID); err != nil {
 		return nil, err
 	}
-	for _, entityType := range []ledger.EntityType{ledger.Transactions, ledger.Assets, ledger.Budgets, ledger.Loans, ledger.SavingsGoals, ledger.CategoryRules, ledger.ImportErrorLogs} {
+	for _, entityType := range []ledger.EntityType{ledger.Transactions, ledger.Assets, ledger.Budgets, ledger.Loans, ledger.SavingsGoals, ledger.Subscriptions, ledger.CategoryRules, ledger.ImportErrorLogs} {
 		if err := appendItems(entityType, "`accountId` = ?", accountID); err != nil {
 			return nil, err
 		}

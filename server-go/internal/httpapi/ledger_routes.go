@@ -200,6 +200,7 @@ func registerLedgerRoutes(router chi.Router, authService *auth.Service, service 
 		registerAccountEntityRoutes(protected, service, "/api/budgets", ledger.Budgets)
 		registerAccountEntityRoutes(protected, service, "/api/loans", ledger.Loans)
 		registerAccountEntityRoutes(protected, service, "/api/savings-goals", ledger.SavingsGoals)
+		registerAccountEntityRoutes(protected, service, "/api/subscriptions", ledger.Subscriptions)
 
 		protected.Get("/api/savings-plans", func(writer http.ResponseWriter, request *http.Request) {
 			user, ok := ledgerUser(writer, request)

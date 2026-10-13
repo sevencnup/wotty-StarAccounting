@@ -20,8 +20,9 @@ services:
       retries: 20
       start_period: 30s
 
-  api:
+  api-runtime:
     image: wotty-staraccounting-api:go
+    container_name: wotty-staraccounting-api-1
     build:
       context: .
       dockerfile: Dockerfile.api.go
@@ -56,7 +57,7 @@ services:
       dockerfile: Dockerfile.web
     restart: unless-stopped
     depends_on:
-      - api
+      - api-runtime
     ports:
       - "127.0.0.1:12366:80"
 

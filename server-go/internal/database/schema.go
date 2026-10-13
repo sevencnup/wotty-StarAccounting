@@ -343,6 +343,34 @@ var schemaTables = []schemaTable{
 		Indexes: []schemaIndex{{Name: "SavingsPlan_goalId_idx", Columns: []string{"`goalId`"}}},
 	},
 	{
+		Name: "subscription",
+		Create: `CREATE TABLE IF NOT EXISTS ` + "`subscription`" + ` (
+			` + "`id`" + ` VARCHAR(191) NOT NULL,
+			` + "`userId`" + ` VARCHAR(191) NOT NULL,
+			` + "`accountId`" + ` VARCHAR(191) NOT NULL,
+			` + "`name`" + ` VARCHAR(191) NOT NULL,
+			` + "`amount`" + ` DECIMAL(65,30) NOT NULL,
+			` + "`billingDay`" + ` INT NOT NULL,
+			` + "`category`" + ` VARCHAR(191) NOT NULL,
+			` + "`platform`" + ` VARCHAR(191) NOT NULL,
+			` + "`paymentMethod`" + ` VARCHAR(191) NULL,
+			` + "`startDate`" + ` VARCHAR(10) NOT NULL,
+			` + "`isActive`" + ` BOOLEAN NOT NULL,
+			` + "`createdAt`" + ` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+			` + "`updatedAt`" + ` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+			PRIMARY KEY (` + "`id`" + `),
+			KEY ` + "`Subscription_accountId_idx`" + ` (` + "`accountId`" + `)
+		) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+		Columns: []schemaColumn{
+			{"id", "VARCHAR(191) NOT NULL"}, {"userId", "VARCHAR(191) NOT NULL"}, {"accountId", "VARCHAR(191) NOT NULL"},
+			{"name", "VARCHAR(191) NOT NULL"}, {"amount", "DECIMAL(65,30) NOT NULL"}, {"billingDay", "INT NOT NULL"},
+			{"category", "VARCHAR(191) NOT NULL"}, {"platform", "VARCHAR(191) NOT NULL"}, {"paymentMethod", "VARCHAR(191) NULL"},
+			{"startDate", "VARCHAR(10) NOT NULL"}, {"isActive", "BOOLEAN NOT NULL"},
+			{"createdAt", "DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)"}, {"updatedAt", "DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)"},
+		},
+		Indexes: []schemaIndex{{Name: "Subscription_accountId_idx", Columns: []string{"`accountId`"}}},
+	},
+	{
 		Name: "themeconfig",
 		Create: `CREATE TABLE IF NOT EXISTS ` + "`themeconfig`" + ` (
 			` + "`id`" + ` VARCHAR(191) NOT NULL,

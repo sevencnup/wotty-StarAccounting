@@ -36,6 +36,8 @@
 | 预算 | `DELETE /api/budgets/{id}` | JWT | 已实现，统一删除路径单元测试通过 |
 | 贷款 | `GET/POST /api/loans` | JWT | 已实现，隔离环境契约验证通过 |
 | 贷款 | `DELETE /api/loans/{id}` | JWT | 已实现，统一删除路径单元测试通过 |
+| 订阅 | `GET/POST /api/subscriptions` | JWT | 已实现，账户隔离及字段契约验证通过 |
+| 订阅 | `DELETE /api/subscriptions/{id}` | JWT | 已实现，统一删除路径单元测试通过 |
 | 储蓄 | `GET/POST /api/savings-goals` | JWT | 已实现，隔离环境契约验证通过 |
 | 储蓄 | `DELETE /api/savings-goals/{id}` | JWT | 已实现，级联删除隔离验证通过 |
 | 储蓄 | `GET/POST /api/savings-plans` | JWT | 已实现，隔离环境契约验证通过 |
