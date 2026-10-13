@@ -36,3 +36,5 @@
 - `pnpm --dir app run typecheck` 通过。
 - `pnpm --dir app run build` 通过。
 - Kotlin 后端使用本机 Gradle 缓存执行 `compileKotlin` 通过。
+- 已发布 Android `0.0.125`（`versionCode 125`）；新归档包为 `releases/wotty-stark-web-debug-v0.0.125-c125-20261013-064116.apk`。
+- 已用 `aapt` 核验包名 `com.wotty.stark.web`、版本 `0.0.125 (125)`，并已覆盖安装到 `10.126.126.2:5555`，设备端版本核验通过。
