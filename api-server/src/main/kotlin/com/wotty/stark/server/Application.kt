@@ -89,6 +89,7 @@ fun Application.module() {
             loanRoutes()
             savingsRoutes()
             categoryRuleRoutes()
+            subscriptionRoutes()
             importErrorRoutes()
             exchangeRateRoutes()
             themeConfigRoutes()

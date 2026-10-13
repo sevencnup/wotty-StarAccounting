@@ -10,6 +10,7 @@ import type {
   LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
+  Subscription,
   ThemeConfig,
   Transaction,
   User,
@@ -32,14 +33,15 @@ type EntityType =
   | "categoryRules"
   | "importErrorLogs"
   | "exchangeRates"
-  | "themeConfigs";
+  | "themeConfigs"
+  | "subscriptions";
 
 type TimedValue<T> = {
   expiresAt: number;
   value: T;
 };
 
-type CachedResource = "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans";
+type CachedResource = "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans" | "subscriptions";
 
 export type RemoteCacheUpdate = {
   resource: CachedResource;
@@ -216,7 +218,7 @@ export class RemoteRepository implements DataRepository {
   }
 
   private clearEntityCaches(entityType: EntityType, accountId: string) {
-    if (entityType === "assets" || entityType === "budgets" || entityType === "loans" || entityType === "savingsGoals") {
+    if (entityType === "assets" || entityType === "budgets" || entityType === "loans" || entityType === "savingsGoals" || entityType === "subscriptions") {
       this.invalidateCachedResource(entityType, accountId);
     }
     if (entityType === "savingsGoals" || entityType === "savingsPlans") {
@@ -436,6 +438,17 @@ export class RemoteRepository implements DataRepository {
   async getCategoryRules(accountId: string) { return await this.request<CategoryRule[]>(`/api/category-rules?accountId=${encodeURIComponent(accountId)}`); }
   async saveCategoryRule(rule: CategoryRule) { await this.save("categoryRules", rule); }
   async deleteCategoryRule(id: string, accountId?: string) { await this.delete("categoryRules", id, accountId); }
+  getSubscriptions(accountId: string) {
+    const targetAccountId = String(accountId);
+    return this.readCachedResource(
+      "subscriptions",
+      targetAccountId,
+      () => this.request<Subscription[]>(`/api/subscriptions?accountId=${encodeURIComponent(targetAccountId)}`),
+      targetAccountId,
+    );
+  }
+  async saveSubscription(subscription: Subscription) { await this.save("subscriptions", subscription); }
+  async deleteSubscription(id: string, accountId?: string) { await this.delete("subscriptions", id, accountId); }
   async getImportErrorLogs(accountId: string) { return await this.request<ImportErrorLog[]>(`/api/import-errors?accountId=${encodeURIComponent(accountId)}`); }
   async saveImportErrorLog(log: ImportErrorLog) { await this.save("importErrorLogs", log); }
   async getExchangeRates() { return await this.request<ExchangeRate[]>("/api/exchange-rates"); }

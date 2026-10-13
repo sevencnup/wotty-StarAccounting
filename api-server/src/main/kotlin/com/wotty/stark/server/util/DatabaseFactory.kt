@@ -299,6 +299,24 @@ object TransactionCategoryRules : Table("transactioncategoryrule") {
     override val primaryKey = PrimaryKey(id)
 }
 
+object Subscriptions : Table("subscription") {
+    val id = varchar("id", 191)
+    val userId = varchar("userId", 191)
+    val accountId = varchar("accountId", 191).index("Subscription_accountId_idx")
+    val name = varchar("name", 191)
+    val amount = decimal("amount", 65, 30)
+    val billingDay = integer("billingDay")
+    val category = varchar("category", 191)
+    val platform = varchar("platform", 191)
+    val paymentMethod = varchar("paymentMethod", 191).nullable()
+    val startDate = varchar("startDate", 10)
+    val isActive = bool("isActive")
+    val createdAt = datetime("createdAt")
+    val updatedAt = datetime("updatedAt")
+
+    override val primaryKey = PrimaryKey(id)
+}
+
 data class SyncRecordRow(
     val id: String,
     val entityType: String,
@@ -373,6 +391,7 @@ object DatabaseFactory {
                     ThemeConfigs,
                     Transactions,
                     TransactionCategoryRules,
+                    Subscriptions,
                 )
             }
             removeLegacySavingsDemoRecords()
@@ -468,6 +487,7 @@ object DatabaseFactory {
                 (SavingsPlans.id eq id) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId))
             }.count() > 0
             "categoryRules" -> TransactionCategoryRules.selectAll().where { (TransactionCategoryRules.id eq id) and (TransactionCategoryRules.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "subscriptions" -> Subscriptions.selectAll().where { (Subscriptions.id eq id) and (Subscriptions.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
             "importErrorLogs" -> ImportErrorLogs.selectAll().where { (ImportErrorLogs.id eq id) and (ImportErrorLogs.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
             "themeConfigs" -> ThemeConfigs.selectAll().where { (ThemeConfigs.id eq id) and (ThemeConfigs.userId eq userId) }.count() > 0
             else -> false
@@ -492,6 +512,7 @@ object DatabaseFactory {
         "savingsGoals" -> SavingsGoals.selectAll().where { (SavingsGoals.id eq id) and (SavingsGoals.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
         "savingsPlans" -> SavingsPlans.selectAll().where { (SavingsPlans.id eq id) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId)) }.count() > 0
         "categoryRules" -> TransactionCategoryRules.selectAll().where { (TransactionCategoryRules.id eq id) and (TransactionCategoryRules.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "subscriptions" -> Subscriptions.selectAll().where { (Subscriptions.id eq id) and (Subscriptions.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
         "importErrorLogs" -> ImportErrorLogs.selectAll().where { (ImportErrorLogs.id eq id) and (ImportErrorLogs.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
         "themeConfigs" -> ThemeConfigs.selectAll().where { (ThemeConfigs.id eq id) and (ThemeConfigs.userId eq userId) }.count() > 0
         else -> false
@@ -536,6 +557,7 @@ object DatabaseFactory {
         "savingsGoals" -> SavingsGoals.selectAll().where { SavingsGoals.id eq id }.count() > 0
         "savingsPlans" -> SavingsPlans.selectAll().where { SavingsPlans.id eq id }.count() > 0
         "categoryRules" -> TransactionCategoryRules.selectAll().where { TransactionCategoryRules.id eq id }.count() > 0
+        "subscriptions" -> Subscriptions.selectAll().where { Subscriptions.id eq id }.count() > 0
         "importErrorLogs" -> ImportErrorLogs.selectAll().where { ImportErrorLogs.id eq id }.count() > 0
         "themeConfigs" -> ThemeConfigs.selectAll().where { ThemeConfigs.id eq id }.count() > 0
         else -> false
@@ -572,6 +594,7 @@ object DatabaseFactory {
                 addAll(SavingsPlans.selectAll().where { SavingsPlans.goalId inList goalIds }.map { it.toSavingsPlanRecord() })
             }
             addAll(TransactionCategoryRules.selectAll().where { TransactionCategoryRules.accountId eq accountId }.map { it.toCategoryRuleRecord() })
+            addAll(Subscriptions.selectAll().where { Subscriptions.accountId eq accountId }.map { it.toSubscriptionRecord() })
             addAll(ImportErrorLogs.selectAll().where { ImportErrorLogs.accountId eq accountId }.map { it.toImportErrorLogRecord() })
             addAll(ExchangeRates.selectAll().map { it.toExchangeRateRecord() })
             addAll(ThemeConfigs.selectAll().where { ThemeConfigs.accountId eq accountId }.map { it.toThemeConfigRecord() })
@@ -597,6 +620,7 @@ object DatabaseFactory {
                 "savingsGoals" -> upsertSavingsGoal(payload)
                 "savingsPlans" -> upsertSavingsPlan(payload)
                 "categoryRules" -> upsertCategoryRule(payload)
+                "subscriptions" -> upsertSubscription(payload)
                 "importErrorLogs" -> upsertImportErrorLog(payload)
                 "exchangeRates" -> upsertExchangeRate(payload)
                 "themeConfigs" -> upsertThemeConfig(payload)
@@ -621,6 +645,7 @@ object DatabaseFactory {
             }
             "savingsPlans" -> SavingsPlans.deleteWhere { SavingsPlans.id eq id }
             "categoryRules" -> TransactionCategoryRules.deleteWhere { TransactionCategoryRules.id eq id }
+            "subscriptions" -> Subscriptions.deleteWhere { Subscriptions.id eq id }
             "importErrorLogs" -> ImportErrorLogs.deleteWhere { ImportErrorLogs.id eq id }
             "exchangeRates" -> ExchangeRates.deleteWhere { ExchangeRates.id eq id }
             "themeConfigs" -> ThemeConfigs.deleteWhere { ThemeConfigs.id eq id }
@@ -653,7 +678,7 @@ object DatabaseFactory {
         when (entityType) {
             "accounts" -> values["ownerId"] = JsonPrimitive(userId)
             "users", "themeConfigs" -> values["userId"] = JsonPrimitive(userId)
-            "transactions", "assets", "budgets", "loans", "savingsGoals", "categoryRules", "importErrorLogs" -> {
+            "transactions", "assets", "budgets", "loans", "savingsGoals", "categoryRules", "subscriptions", "importErrorLogs" -> {
                 values["userId"] = JsonPrimitive(userId)
             }
         }
@@ -838,6 +863,10 @@ object DatabaseFactory {
 
     fun listCategoryRulesRest(accountId: String): List<JsonObject> = transaction {
         TransactionCategoryRules.selectAll().where { TransactionCategoryRules.accountId eq accountId }.map { it.toCategoryRuleRecord().toPayloadJson() }
+    }
+
+    fun listSubscriptionsRest(accountId: String): List<JsonObject> = transaction {
+        Subscriptions.selectAll().where { Subscriptions.accountId eq accountId }.map { it.toSubscriptionRecord().toPayloadJson() }
     }
 
     fun listImportErrorLogsRest(accountId: String): List<JsonObject> = transaction {
@@ -1058,6 +1087,29 @@ private fun ResultRow.toCategoryRuleRecord() = SyncRecordRow(
     updatedAt = formatDateTime(this[TransactionCategoryRules.updatedAt]),
 )
 
+private fun ResultRow.toSubscriptionRecord() = SyncRecordRow(
+    id = this[Subscriptions.id],
+    entityType = "subscriptions",
+    accountId = this[Subscriptions.accountId],
+    userId = this[Subscriptions.userId],
+    payload = jsonObject(
+        "id" to this[Subscriptions.id],
+        "userId" to this[Subscriptions.userId],
+        "accountId" to this[Subscriptions.accountId],
+        "name" to this[Subscriptions.name],
+        "amount" to this[Subscriptions.amount].toDouble(),
+        "billingDay" to this[Subscriptions.billingDay],
+        "category" to this[Subscriptions.category],
+        "platform" to this[Subscriptions.platform],
+        "paymentMethod" to this[Subscriptions.paymentMethod],
+        "startDate" to this[Subscriptions.startDate],
+        "isActive" to this[Subscriptions.isActive],
+        "createdAt" to formatDateTime(this[Subscriptions.createdAt]),
+        "updatedAt" to formatDateTime(this[Subscriptions.updatedAt]),
+    ),
+    updatedAt = formatDateTime(this[Subscriptions.updatedAt]),
+)
+
 private fun ResultRow.toImportErrorLogRecord() = SyncRecordRow(
     id = this[ImportErrorLogs.id],
     entityType = "importErrorLogs",
@@ -1270,6 +1322,21 @@ private fun upsertCategoryRule(payload: JsonObject) = upsertById(TransactionCate
         row[TransactionCategoryRules.isActive] = payload.getBoolean("isActive")
         row[TransactionCategoryRules.createdAt] = payload.getDateTime("createdAt")
         row[TransactionCategoryRules.updatedAt] = payload.getDateTime("updatedAt")
+    }
+
+private fun upsertSubscription(payload: JsonObject) = upsertById(Subscriptions, Subscriptions.id, payload.getString("id")) { row ->
+        row[Subscriptions.userId] = payload.getString("userId")
+        row[Subscriptions.accountId] = payload.getString("accountId")
+        row[Subscriptions.name] = payload.getString("name")
+        row[Subscriptions.amount] = payload.getDecimal("amount")
+        row[Subscriptions.billingDay] = payload.getInt("billingDay")
+        row[Subscriptions.category] = payload.getString("category")
+        row[Subscriptions.platform] = payload.getString("platform")
+        row[Subscriptions.paymentMethod] = payload.getNullableString("paymentMethod")
+        row[Subscriptions.startDate] = payload.getString("startDate")
+        row[Subscriptions.isActive] = payload.getBoolean("isActive")
+        row[Subscriptions.createdAt] = payload.getDateTime("createdAt")
+        row[Subscriptions.updatedAt] = payload.getDateTime("updatedAt")
     }
 
 private fun upsertImportErrorLog(payload: JsonObject) = upsertById(ImportErrorLogs, ImportErrorLogs.id, payload.getString("id")) { row ->

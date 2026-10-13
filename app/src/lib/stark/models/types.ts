@@ -173,6 +173,25 @@ export interface CategoryRule {
   updatedAt: string;
 }
 
+/** 按月自动生成消费流水的订阅配置。 */
+export interface Subscription {
+  id: string;
+  userId: string;
+  accountId: string;
+  name: string;
+  amount: number;
+  /** 每月扣费日，1-31；当月没有该日期时按当月最后一天入账。 */
+  billingDay: number;
+  category: string;
+  platform: string;
+  paymentMethod?: string | null;
+  /** 首次参与自动扣费的日期，格式 YYYY-MM-DD。 */
+  startDate: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ImportErrorLog {
   id: string;
   userId: string;

@@ -483,6 +483,24 @@ fun Route.categoryRuleRoutes() {
     }
 }
 
+fun Route.subscriptionRoutes() {
+    get("/api/subscriptions") {
+        val userId = call.currentUserId()
+        val accountId = call.request.queryParameters["accountId"] ?: "default"
+        if (!call.ensureAccountAccess(userId, accountId)) return@get
+        call.respond(DatabaseFactory.listSubscriptionsRest(accountId))
+    }
+    post("/api/subscriptions") {
+        val payload = call.receive<JsonElement>().jsonObject
+        DatabaseFactory.upsertEntityPayload("subscriptions", payload, call.currentUserId())
+        call.respond(HttpStatusCode.NoContent)
+    }
+    delete("/api/subscriptions/{id}") {
+        DatabaseFactory.deleteEntity("subscriptions", call.parameters["id"] ?: "", call.currentUserId())
+        call.respond(HttpStatusCode.NoContent)
+    }
+}
+
 fun Route.importErrorRoutes() {
     get("/api/import-errors") {
         val userId = call.currentUserId()
