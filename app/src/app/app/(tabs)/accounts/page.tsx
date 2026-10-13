@@ -354,7 +354,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
-        <SettingsRow type="SUBSCRIPTIONS" title="周期支出" value="按月自动记账" onClick={() => setActivePanel("SUBSCRIPTIONS")} />
+        <SettingsRow type="SUBSCRIPTIONS" title="订阅/扣费管理" value="按月自动记账" onClick={() => setActivePanel("SUBSCRIPTIONS")} />
       </section>
 
       <section className="settings-center-group">
@@ -390,7 +390,7 @@ export default function AccountsPage() {
 
       {activePanel ? (
         <BottomSheet
-          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "SUBSCRIPTIONS" ? "周期支出" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "SUBSCRIPTIONS" ? "订阅/扣费管理" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
           className="settings-sheet"
           overlayClassName="settings-sheet-overlay"
           onClose={() => setActivePanel(null)}
