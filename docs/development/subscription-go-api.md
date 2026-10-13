@@ -25,4 +25,9 @@ Android 订阅管理页打开后，云端模式报 `Cloud API 404: {"error":"Not
 - 已为 Go API 补齐 subscription 表结构、实体序列化、账本权限校验、同步读取及订阅 REST 路由。
 - 新增 HTTP 路由与用户范围测试、Go schema 表覆盖检查；`go test ./...` 全部通过。
 - `docker compose -f docker-compose.yml config --quiet` 通过。
-- 本地构建镜像 `wotty-staraccounting-api:subscriptions-0.0.103-20261013` 成功；YHK 安装与手机复查待完成。
+- 本地构建镜像 `wotty-staraccounting-api:subscriptions-0.0.103-20261013` 成功，并经 SSH MCP 上传到 YHK。
+- YHK 通过 `api-runtime` Compose 服务启动新 API，保留原容器为已停止的 `wotty-staraccounting-api-backup-20261013-0711`；原镜像另存为 `wotty-staraccounting-api:rollback-subscriptions-20261013-0711`。
+- 新容器沿用原有 `.env` 环境变量、`/app` 工作目录、host 网络、`unless-stopped` 重启策略及 healthcheck；数据库卷、Web 容器和数据未调整。
+- YHK `/api/health` 返回 `{"status":"ok","db":true}`，未登录访问 `/api/subscriptions` 返回预期的 `401`，确认路由已注册且仍受认证保护。
+- 已在手机 `10.126.126.2` 的 `0.0.125` App 中重新打开订阅页；列表正常显示空状态，404 错误已消失。
+- 本次只更新云端 API，无需重打 APK。
