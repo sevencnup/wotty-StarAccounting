@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Subscription } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
+import { ChoicePicker } from "@/components/stark/ChoicePicker";
 import { createId } from "@/lib/stark/utils/id";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { expenseCategoryOptions } from "@/lib/stark/utils/category-icon";
@@ -11,6 +12,8 @@ import { syncDueSubscriptionTransactions } from "@/lib/stark/subscriptions/recur
 
 const manager = new DataModeManager();
 const platforms = ["支付宝", "微信", "银行卡", "现金", "其他"];
+const categoryPickerOptions = expenseCategoryOptions.map((category) => ({ value: category, label: category }));
+const platformPickerOptions = platforms.map((platform) => ({ value: platform, label: platform }));
 
 type FormState = {
   name: string;
@@ -227,8 +230,14 @@ export function SubscriptionManagementSheet() {
           <label className="settings-url-field"><span>记账日</span><input type="number" min="1" max="31" step="1" value={form.billingDay} onChange={(event) => updateForm("billingDay", event.target.value)} /></label>
         </div>
         <div className="subscription-field-grid">
-          <label className="settings-url-field"><span>消费分类</span><select value={form.category} onChange={(event) => updateForm("category", event.target.value)}>{expenseCategoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
-          <label className="settings-url-field"><span>支付平台</span><select value={form.platform} onChange={(event) => updateForm("platform", event.target.value)}>{platforms.map((platform) => <option key={platform} value={platform}>{platform}</option>)}</select></label>
+          <div className="settings-url-field subscription-choice-field">
+            <span>消费分类</span>
+            <ChoicePicker ariaLabel="消费分类" title="选择消费分类" value={form.category} options={categoryPickerOptions} onChange={(value) => updateForm("category", value)} className="subscription-choice-picker" />
+          </div>
+          <div className="settings-url-field subscription-choice-field">
+            <span>支付平台</span>
+            <ChoicePicker ariaLabel="支付平台" title="选择支付平台" value={form.platform} options={platformPickerOptions} onChange={(value) => updateForm("platform", value)} className="subscription-choice-picker" />
+          </div>
         </div>
         <label className="settings-url-field"><span>支付方式（可选）</span><input value={form.paymentMethod} onChange={(event) => updateForm("paymentMethod", event.target.value)} placeholder="例如：招商银行储蓄卡" /></label>
         <label className="settings-url-field"><span>开始记账日期</span><input type="date" value={form.startDate} onChange={(event) => updateForm("startDate", event.target.value)} /></label>
