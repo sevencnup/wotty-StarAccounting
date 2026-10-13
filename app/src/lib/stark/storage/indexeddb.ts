@@ -10,13 +10,14 @@ import type {
   LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
+  Subscription,
   ThemeConfig,
   Transaction,
   User,
 } from "@/lib/stark/models/types";
 
 export const DB_NAME = "wotty-stark-web";
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 export type StoreName =
   | "users"
@@ -30,7 +31,8 @@ export type StoreName =
   | "categoryRules"
   | "importErrorLogs"
   | "exchangeRates"
-  | "themeConfigs";
+  | "themeConfigs"
+  | "subscriptions";
 
 export interface StarkDbSchema {
   users: User;
@@ -45,6 +47,7 @@ export interface StarkDbSchema {
   importErrorLogs: ImportErrorLog;
   exchangeRates: ExchangeRate;
   themeConfigs: ThemeConfig;
+  subscriptions: Subscription;
 }
 
 const STORE_NAMES: StoreName[] = [
@@ -60,6 +63,7 @@ const STORE_NAMES: StoreName[] = [
   "importErrorLogs",
   "exchangeRates",
   "themeConfigs",
+  "subscriptions",
 ];
 
 let dbPromise: Promise<IDBDatabase> | null = null;

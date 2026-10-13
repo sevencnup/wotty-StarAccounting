@@ -48,6 +48,7 @@ export class DataModeManager {
     this.remoteRepo.clearCache();
     this.currentMode = mode;
     setCurrentDataMode(mode);
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("stark:data-mode-changed"));
   }
 
   private resolveCurrentMode(): DataMode {

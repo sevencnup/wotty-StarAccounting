@@ -9164,6 +9164,7 @@ img[src$="/qita.webp"] {
 .settings-center-icon.help { background: #d946ef; }
 .settings-center-icon.about { background: #64748b; }
 .settings-center-icon.remark { background: #f97316; }
+.settings-center-icon.subscriptions { background: #7c5ce5; }
 .settings-center-icon.reconciliation { background: #0d8a5f; }
 .settings-center-icon.update { background: #0ea5e9; }
 .settings-center-icon.mode { background: #475569; }
@@ -9734,6 +9735,32 @@ img[src$="/qita.webp"] {
 }
 
 .settings-sheet-primary:disabled { opacity: 0.55; }
+
+/* ── 订阅自动扣费 ── */
+.subscription-management-sheet { gap: 10px; }
+.subscription-list { display: grid; gap: 7px; max-height: 34dvh; overflow-y: auto; }
+.subscription-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; padding: 11px 12px; border: 1px solid #e1e8f1; border-radius: 12px; background: #fbfcfe; }
+.subscription-row.disabled { opacity: 0.58; }
+.subscription-row-main { display: grid; gap: 4px; min-width: 0; }
+.subscription-row-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.subscription-row-title strong { overflow: hidden; color: #26344c; font-size: calc(12px * var(--user-font-scale)); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.subscription-row-title span { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; color: #28755d; background: #eaf7f0; font-size: calc(8px * var(--user-font-scale)); }
+.subscription-row.disabled .subscription-row-title span { color: #7f899b; background: #eef1f5; }
+.subscription-row-main small { overflow: hidden; color: #7a879b; font-size: calc(9px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }
+.subscription-row-amount { color: #df3f4f; font-size: calc(12px * var(--user-font-scale)); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subscription-row-actions { display: flex; grid-column: 1 / -1; gap: 6px; padding-top: 7px; border-top: 1px solid #edf1f6; }
+.subscription-row-actions button { min-height: 28px; padding: 0 9px; border: 1px solid #dce5f0; border-radius: 8px; color: #5c6b82; background: #ffffff; font-size: calc(9px * var(--user-font-scale)); }
+.subscription-row-actions button.danger { border-color: #f0d1ce; color: #c25a51; background: #fff8f7; }
+.subscription-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid #dce7f4; border-radius: 14px; background: #ffffff; }
+.subscription-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.subscription-editor-heading strong { color: #26344c; font-size: calc(13px * var(--user-font-scale)); }
+.subscription-editor-heading button { border: 0; color: #758197; background: transparent; font-size: calc(10px * var(--user-font-scale)); }
+.subscription-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.subscription-field-grid select,
+.subscription-editor select { width: 100%; height: 37px; padding: 0 9px; border: 1px solid #dce5f0; border-radius: 9px; outline: none; color: #26344c; background: #f8fafd; font-size: calc(11px * var(--user-font-scale)); }
+.subscription-field-grid select:focus,
+.subscription-editor select:focus { border-color: var(--primary); background: #ffffff; }
+.subscription-empty { padding: 15px 10px; border: 1px dashed #dce5f0; border-radius: 11px; color: #818da1; background: #fbfcfe; font-size: calc(10px * var(--user-font-scale)); line-height: 1.5; text-align: center; }
 
 /* ── 账户对账 ── */
 .account-reconciliation-sheet {
