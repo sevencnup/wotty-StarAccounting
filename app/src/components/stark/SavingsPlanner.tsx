@@ -189,6 +189,7 @@ export function SavingsPlanner({
   const [deadline, setDeadline] = useState("");
   const [depositType, setDepositType] = useState<SavingsGoalDepositType>("CASH");
   const [frequency, setFrequency] = useState<SavingsFrequency>("MONTHLY");
+  const [editScope, setEditScope] = useState<"future" | "month">("future");
   const [columns, setColumns] = useState(DEFAULT_COLUMNS);
   const [temporaryColumns, setTemporaryColumns] = useState<string[]>([]);
   const [previousBalanceEnabled, setPreviousBalanceEnabled] = useState(false);
@@ -428,14 +429,11 @@ export function SavingsPlanner({
   function updateField(month: string, field: "salary" | "previousBalance" | "expected", value: string) {
     setRowsByFrequency((current) => {
       const currentRows = current[frequency];
-      if (field === "previousBalance") {
-        return { ...current, [frequency]: { ...currentRows, [month]: { ...(currentRows[month] ?? emptyPlannerRow()), previousBalance: value } } };
-      }
-      if (month !== months[0]) {
-        const row = currentRows[month] ?? emptyPlannerRow();
-        return { ...current, [frequency]: { ...currentRows, [month]: { ...row, [field]: value } } };
-      }
-      const nextRows = months.reduce((next, item) => {
+      const fromIndex = months.indexOf(month);
+      const targetMonths = field === "previousBalance" || editScope === "month" || fromIndex < 0
+        ? [month]
+        : months.slice(fromIndex);
+      const nextRows = targetMonths.reduce((next, item) => {
         const row = currentRows[item] ?? emptyPlannerRow();
         next[item] = { ...row, [field]: value };
         return next;
@@ -473,11 +471,11 @@ export function SavingsPlanner({
 
   function updateExpense(month: string, column: string, value: string) {
     setRowsByFrequency((current) => {
-      if (!shouldSyncSavingsExpense(month, months[0], column, temporaryColumns)) {
-        const row = current[frequency][month] ?? emptyPlannerRow();
-        return { ...current, [frequency]: { ...current[frequency], [month]: { ...row, expenses: { ...row.expenses, [column]: value } } } };
-      }
-      const nextRows = months.reduce((next, item) => {
+      const fromIndex = months.indexOf(month);
+      const targetMonths = editScope === "future" && shouldSyncSavingsExpense(column, temporaryColumns) && fromIndex >= 0
+        ? months.slice(fromIndex)
+        : [month];
+      const nextRows = targetMonths.reduce((next, item) => {
         const row = current[frequency][item] ?? emptyPlannerRow();
         next[item] = { ...row, expenses: { ...row.expenses, [column]: value } };
         return next;
@@ -867,6 +865,15 @@ export function SavingsPlanner({
             <button type="button" className={frequency === "MONTHLY" ? "active" : ""} onClick={() => setFrequency("MONTHLY")}>单月存</button>
             <button type="button" className={frequency === "ALTERNATE" ? "active" : ""} onClick={() => setFrequency("ALTERNATE")}>隔月存</button>
           </div>
+        </div>
+
+        <div className="savings-edit-scope" role="group" aria-label="金额修改范围">
+          <span>金额修改范围</span>
+          <div>
+            <button type="button" className={editScope === "future" ? "active" : ""} aria-pressed={editScope === "future"} onClick={() => setEditScope("future")}>本月及以后</button>
+            <button type="button" className={editScope === "month" ? "active" : ""} aria-pressed={editScope === "month"} onClick={() => setEditScope("month")}>仅本月</button>
+          </div>
+          <small>工资、预计存与固定支出按所选范围修改；临时支出和上月结余只改本月</small>
         </div>
 
         <div className="savings-column-adder">

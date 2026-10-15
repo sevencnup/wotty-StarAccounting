@@ -333,12 +333,10 @@ export function resolveSavingsMonths(
 }
 
 export function shouldSyncSavingsExpense(
-  month: string,
-  firstMonth: string | undefined,
   column: string,
   temporaryColumns: readonly string[],
 ) {
-  return month === firstMonth && !temporaryColumns.includes(column);
+  return !temporaryColumns.includes(column);
 }
 
 export function validateSavingsExpenseColumn(name: string, columns: readonly string[]) {

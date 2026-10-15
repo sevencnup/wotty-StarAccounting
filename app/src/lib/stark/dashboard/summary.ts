@@ -72,6 +72,9 @@ export interface HomeForecast {
   salaryCycleBalance: number;
   /** Net income minus outflows within the payday-to-payday detail range only. */
   salaryCycleNetChange: number;
+  salaryIncome: number;
+  salaryRecordedAt: string | null;
+  salaryCarryover: number | null;
   hasBalanceBaseline: boolean;
   balanceBaselineAmount: number | null;
   balanceBaselineDate: string | null;
@@ -116,6 +119,7 @@ export interface HomeSummary {
   budgetAlerts: HomeBudgetAlert[];
   budgetAllocation: HomeBudgetAllocation;
   savingsPlanAllocation: SavingsPlanAllocation;
+  salaryPlanAvailable: number | null;
   tasks: HomeTaskItem[];
   forecast: HomeForecast;
   insights: HomeInsight[];
@@ -412,6 +416,24 @@ function buildForecast(
   const baselineAmount = account?.openingBalance;
   const baselineDate = account?.openingBalanceDate ?? null;
   const hasBalanceBaseline = typeof baselineAmount === "number" && Number.isFinite(baselineAmount) && Boolean(baselineDate);
+  const salaryTransactions = isReportingYearKey(reportingMonth) ? [] : transactions
+    .filter((transaction) => transaction.type === "INCOME"
+      && transaction.date.slice(0, 7) === reportingMonth
+      && /工资|薪资|薪水/.test(transaction.category)
+      && (parseDate(transaction.date)?.getTime() ?? Infinity) <= referenceDate.getTime())
+    .sort((left, right) => (parseDate(left.date)?.getTime() ?? 0) - (parseDate(right.date)?.getTime() ?? 0));
+  const paydaySalary = salaryTransactions.find((transaction) => (parseDate(transaction.date)?.getDate() ?? 0) >= salaryDay);
+  const salaryRecordedAt = paydaySalary?.date ?? salaryTransactions[0]?.date ?? null;
+  const salaryStart = salaryRecordedAt ? parseDate(salaryRecordedAt) : null;
+  const salaryIncome = salaryStart ? salaryTransactions
+    .filter((transaction) => (parseDate(transaction.date)?.getTime() ?? -Infinity) >= salaryStart.getTime())
+    .reduce((sum, transaction) => sum + transaction.amount, 0) : 0;
+  const salaryCashflowBeforeDeposit = hasBalanceBaseline && baselineDate && salaryStart
+    ? calculateCashflowSinceBalanceBaseline(transactions, savingsPlans, baselineDate, salaryStart)
+    : null;
+  const salaryCarryover = hasBalanceBaseline
+    ? calculateBalanceFromBaseline(baselineAmount, salaryCashflowBeforeDeposit)
+    : null;
   const cashflowThroughNow = hasBalanceBaseline && baselineDate
     ? calculateCashflowSinceBalanceBaseline(transactions, savingsPlans, baselineDate, referenceDate)
     : null;
@@ -432,6 +454,9 @@ function buildForecast(
     currentBalance,
     salaryCycleBalance: balanceFromBaseline ?? cashflow.balance,
     salaryCycleNetChange: cashflow.balance,
+    salaryIncome,
+    salaryRecordedAt,
+    salaryCarryover,
     hasBalanceBaseline: currentBalance !== null,
     balanceBaselineAmount: currentBalance === null ? null : baselineAmount ?? null,
     balanceBaselineDate: currentBalance === null ? null : baselineDate,
@@ -549,6 +574,10 @@ export function buildHomeSummary(input: {
     assetTotal,
   });
   const savingsPlanAllocation = summarizeSavingsPlanAllocation(input.savingsGoals, input.savingsPlans ?? [], currentMonth);
+  const salaryPlanAvailable = forecast.salaryRecordedAt && savingsPlanAllocation.planCount > 0
+    ? forecast.salaryIncome + (forecast.salaryCarryover ?? 0)
+      - savingsPlanAllocation.fixedExpense - savingsPlanAllocation.temporaryExpense - savingsPlanAllocation.plannedDeposit
+    : null;
 
   return {
     expense,
@@ -579,6 +608,7 @@ export function buildHomeSummary(input: {
     budgetAlerts,
     budgetAllocation,
     savingsPlanAllocation,
+    salaryPlanAvailable,
     tasks: buildTasks(input.loans, input.savingsGoals),
     forecast,
     insights: buildInsights(currentMonthTransactions, previousMonthTransactions, expense, budgetAlerts),

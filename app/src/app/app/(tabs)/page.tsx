@@ -362,6 +362,15 @@ function StarkCrystalHero({
                   : translateValue("未设置余额基准", locale)}
               </span>
             ) : null}
+            {!isReportingYearKey(reportingMonth) ? (
+              <span className="stark-cycle-carryover">
+                {translateValue("发薪前结转", locale)} {summary.forecast.salaryRecordedAt
+                  ? summary.forecast.salaryCarryover !== null
+                    ? <>{summary.forecast.salaryCarryover < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.salaryCarryover))}</>
+                    : translateValue("未核实", locale)
+                  : translateValue("待录入工资", locale)}
+              </span>
+            ) : null}
             <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
             <span>{translateValue(balanceMode === "salary" ? "消费" : "月消费", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleExpense : summary.expense)}</span>
             <span>{translateValue("储蓄", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleSavings : summary.forecast.monthSavings)}</span>
@@ -520,8 +529,6 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
     { key: "savings", label: "储蓄", amount: allocation.savings, color: "#10b981" },
   ];
   const periodLabel = isReportingYearKey(reportingMonth) ? "全年资金分配" : "本月资金分配";
-  const availableLabel = allocation.available >= 0 ? "可继续安排" : "已超出收入";
-  const translatedAvailableLabel = translateValue(availableLabel, locale);
   const cardClassName = "stark-budget-allocation-card" + (allocation.available < 0 ? " has-overrun" : "");
 
   return (
@@ -540,11 +547,11 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
 
         <div className="stark-budget-allocation-main">
           <div>
-            <span>{translateValue("可支配预算", locale)}</span>
+            <span>{translateValue("实际收支净额", locale)}</span>
             <strong className={allocation.available < 0 ? "negative" : ""}>
               {allocation.available < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(allocation.available))}
             </strong>
-            <small>{locale === "en-US" ? translatedAvailableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : translatedAvailableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
+            <small>{translateValue("仅统计本期流水，不含上期结转", locale)}</small>
           </div>
           <div className="stark-budget-allocation-income">
             <span>{translateValue("收入", locale)}</span>
@@ -588,6 +595,16 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
               {translateValue("储蓄计划", locale)} <ChevronRightIcon size={12} />
             </Link>
           </div>
+          {!isReportingYearKey(reportingMonth) && summary.forecast.salaryRecordedAt ? (
+            <div className="stark-budget-allocation-plan-source">
+              <span>{translateValue("已入账工资", locale)} <strong>¥ {formatMoney(summary.forecast.salaryIncome)}</strong></span>
+              <span>{translateValue("发薪前结转", locale)} <strong>
+                {summary.forecast.salaryCarryover === null
+                  ? translateValue("未核实", locale)
+                  : `${summary.forecast.salaryCarryover < 0 ? "-¥ " : "¥ "}${formatMoney(Math.abs(summary.forecast.salaryCarryover))}`}
+              </strong></span>
+            </div>
+          ) : null}
           <div className="stark-budget-allocation-plan-totals">
             <div>
               <span>{translateValue("固定支出", locale)}</span>
@@ -602,17 +619,6 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
               <strong>¥ {formatMoney(planAllocation.plannedDeposit)}</strong>
             </div>
           </div>
-          {planAllocation.projectedRemaining !== null ? (
-            <div className="stark-budget-allocation-plan-remaining">
-              <span>
-                {translateValue("计划薪资", locale)} ¥ {formatMoney(planAllocation.plannedSalary)}
-                {planAllocation.previousBalance > 0 ? <> · {translateValue("上月结余", locale)} ¥ {formatMoney(planAllocation.previousBalance)}</> : null}
-              </span>
-              <strong className={planAllocation.projectedRemaining < 0 ? "negative" : ""}>
-                {translateValue("预计剩余", locale)} {planAllocation.projectedRemaining < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(planAllocation.projectedRemaining))}
-              </strong>
-            </div>
-          ) : null}
           {planAllocation.expenseItems.length > 0 ? (
             <div className="stark-budget-allocation-plan-details">
               <strong>{translateValue("计划支出明细", locale)}</strong>
@@ -629,6 +635,21 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
                 ))}
               </ul>
             </div>
+          ) : null}
+          {summary.salaryPlanAvailable !== null ? (
+            <div className="stark-budget-allocation-plan-available">
+              <span>
+                <strong>{translateValue("发薪后预计可支配", locale)}</strong>
+                <small>{translateValue(summary.forecast.salaryCarryover === null
+                  ? "发薪时的计划值，未包含未核实的上期结转"
+                  : "发薪时的计划值，实际记账另计", locale)}</small>
+              </span>
+              <strong className={summary.salaryPlanAvailable < 0 ? "negative" : ""}>
+                {summary.salaryPlanAvailable < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(summary.salaryPlanAvailable))}
+              </strong>
+            </div>
+          ) : !isReportingYearKey(reportingMonth) ? (
+            <p className="stark-budget-allocation-plan-pending">{translateValue("录入本月工资后显示预计可支配", locale)}</p>
           ) : null}
         </div>
       ) : null}
