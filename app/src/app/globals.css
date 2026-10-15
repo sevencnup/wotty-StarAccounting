@@ -2690,7 +2690,76 @@ button.stark-compass-card {
 
 .category-rose-chart {
   width: 100%;
-  height: 248px;
+  height: 204px;
+  touch-action: pan-y;
+}
+
+.category-touch-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 2px;
+}
+
+.category-touch-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: center;
+  align-items: center;
+  gap: 3px 8px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 7px 9px;
+  border: 1px solid #e8edf3;
+  border-radius: 11px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.category-touch-item.selected {
+  border-color: #60a5fa;
+  background: #eff6ff;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.12);
+}
+
+.category-touch-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: #475569;
+  font-size: calc(11px * var(--user-font-scale));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.category-touch-name i {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.category-touch-item > strong {
+  color: #17233c;
+  font-size: calc(11px * var(--user-font-scale));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.category-touch-item > small {
+  grid-column: 1 / -1;
+  color: #94a3b8;
+  font-size: calc(9px * var(--user-font-scale));
+}
+
+.category-touch-item:focus-visible {
+  outline: 2px solid #0060c0;
+  outline-offset: 2px;
 }
 
 .expense-category-sheet {
@@ -2796,7 +2865,7 @@ button.stark-compass-card {
 
 @media (max-width: 360px) {
   .category-rose-chart {
-    height: 226px;
+    height: 188px;
   }
 }
 
