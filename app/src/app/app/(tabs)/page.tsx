@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
 import type { EChartsCoreOption } from "echarts/core";
@@ -519,6 +519,8 @@ function StarkDiagnosticBanner({ summary, onOpen }: { summary: HomeSummary; onOp
 
 function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: { summary: HomeSummary; reportingMonth: string; onManageBudget: () => void }) {
   const locale = useAppLocale();
+  const [planExpanded, setPlanExpanded] = useState(false);
+  const planContentId = useId();
   const allocation = summary.budgetAllocation;
   const planAllocation = summary.savingsPlanAllocation;
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
@@ -587,70 +589,86 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
       {planAllocation.planCount > 0 ? (
         <div className="stark-budget-allocation-plan">
           <div className="stark-budget-allocation-plan-head">
-            <div>
-              <strong>{translateValue("储蓄计划安排", locale)}</strong>
-              <small>{translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)}</small>
-            </div>
+            <button
+              type="button"
+              className="stark-budget-allocation-plan-toggle"
+              aria-expanded={planExpanded}
+              aria-controls={planContentId}
+              onClick={() => setPlanExpanded((expanded) => !expanded)}
+            >
+              <span className="stark-budget-allocation-plan-title">
+                <strong>{translateValue("储蓄计划安排", locale)}</strong>
+                <small>{planExpanded
+                  ? translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)
+                  : `${translateValue("预计存", locale)} ¥ ${formatMoney(planAllocation.plannedDeposit)}`}</small>
+              </span>
+              <span className="stark-budget-allocation-plan-toggle-label">
+                {translateValue(planExpanded ? "收起" : "展开", locale)}
+                <ChevronDownIcon size={14} />
+              </span>
+            </button>
             <Link href="/app/savings" className="stark-budget-allocation-plan-link">
               {translateValue("储蓄计划", locale)} <ChevronRightIcon size={12} />
             </Link>
           </div>
-          {!isReportingYearKey(reportingMonth) && summary.forecast.salaryRecordedAt ? (
-            <div className="stark-budget-allocation-plan-source">
-              <span>{translateValue("已入账工资", locale)} <strong>¥ {formatMoney(summary.forecast.salaryIncome)}</strong></span>
-              <span>{translateValue("发薪前结转", locale)} <strong>
-                {summary.forecast.salaryCarryover === null
-                  ? translateValue("未核实", locale)
-                  : `${summary.forecast.salaryCarryover < 0 ? "-¥ " : "¥ "}${formatMoney(Math.abs(summary.forecast.salaryCarryover))}`}
-              </strong></span>
+          <div id={planContentId} className="stark-budget-allocation-plan-content" hidden={!planExpanded}>
+            {!isReportingYearKey(reportingMonth) && summary.forecast.salaryRecordedAt ? (
+              <div className="stark-budget-allocation-plan-source">
+                <span>{translateValue("已入账工资", locale)} <strong>¥ {formatMoney(summary.forecast.salaryIncome)}</strong></span>
+                <span>{translateValue("发薪前结转", locale)} <strong>
+                  {summary.forecast.salaryCarryover === null
+                    ? translateValue("未核实", locale)
+                    : `${summary.forecast.salaryCarryover < 0 ? "-¥ " : "¥ "}${formatMoney(Math.abs(summary.forecast.salaryCarryover))}`}
+                </strong></span>
+              </div>
+            ) : null}
+            <div className="stark-budget-allocation-plan-totals">
+              <div>
+                <span>{translateValue("固定支出", locale)}</span>
+                <strong>¥ {formatMoney(planAllocation.fixedExpense)}</strong>
+              </div>
+              <div>
+                <span>{translateValue("临时支出", locale)}</span>
+                <strong>¥ {formatMoney(planAllocation.temporaryExpense)}</strong>
+              </div>
+              <div>
+                <span>{translateValue("预计存", locale)}</span>
+                <strong>¥ {formatMoney(planAllocation.plannedDeposit)}</strong>
+              </div>
             </div>
-          ) : null}
-          <div className="stark-budget-allocation-plan-totals">
-            <div>
-              <span>{translateValue("固定支出", locale)}</span>
-              <strong>¥ {formatMoney(planAllocation.fixedExpense)}</strong>
-            </div>
-            <div>
-              <span>{translateValue("临时支出", locale)}</span>
-              <strong>¥ {formatMoney(planAllocation.temporaryExpense)}</strong>
-            </div>
-            <div>
-              <span>{translateValue("预计存", locale)}</span>
-              <strong>¥ {formatMoney(planAllocation.plannedDeposit)}</strong>
-            </div>
+            {planAllocation.expenseItems.length > 0 ? (
+              <div className="stark-budget-allocation-plan-details">
+                <strong>{translateValue("计划支出明细", locale)}</strong>
+                <ul>
+                  {planAllocation.expenseItems.map((item) => (
+                    <li key={`${item.kind}:${item.name}`}>
+                      <span>
+                        <i className={item.kind === "TEMPORARY" ? "temporary" : "fixed"} />
+                        <span>{translateValue(item.name, locale)}</span>
+                        <small>{translateValue(item.kind === "TEMPORARY" ? "临时" : "固定", locale)}</small>
+                      </span>
+                      <strong>¥ {formatMoney(item.amount)}</strong>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {summary.salaryPlanAvailable !== null ? (
+              <div className="stark-budget-allocation-plan-available">
+                <span>
+                  <strong>{translateValue("发薪后预计可支配", locale)}</strong>
+                  <small>{translateValue(summary.forecast.salaryCarryover === null
+                    ? "发薪时的计划值，未包含未核实的上期结转"
+                    : "发薪时的计划值，实际记账另计", locale)}</small>
+                </span>
+                <strong className={summary.salaryPlanAvailable < 0 ? "negative" : ""}>
+                  {summary.salaryPlanAvailable < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(summary.salaryPlanAvailable))}
+                </strong>
+              </div>
+            ) : !isReportingYearKey(reportingMonth) ? (
+              <p className="stark-budget-allocation-plan-pending">{translateValue("录入本月工资后显示预计可支配", locale)}</p>
+            ) : null}
           </div>
-          {planAllocation.expenseItems.length > 0 ? (
-            <div className="stark-budget-allocation-plan-details">
-              <strong>{translateValue("计划支出明细", locale)}</strong>
-              <ul>
-                {planAllocation.expenseItems.map((item) => (
-                  <li key={`${item.kind}:${item.name}`}>
-                    <span>
-                      <i className={item.kind === "TEMPORARY" ? "temporary" : "fixed"} />
-                      <span>{translateValue(item.name, locale)}</span>
-                      <small>{translateValue(item.kind === "TEMPORARY" ? "临时" : "固定", locale)}</small>
-                    </span>
-                    <strong>¥ {formatMoney(item.amount)}</strong>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-          {summary.salaryPlanAvailable !== null ? (
-            <div className="stark-budget-allocation-plan-available">
-              <span>
-                <strong>{translateValue("发薪后预计可支配", locale)}</strong>
-                <small>{translateValue(summary.forecast.salaryCarryover === null
-                  ? "发薪时的计划值，未包含未核实的上期结转"
-                  : "发薪时的计划值，实际记账另计", locale)}</small>
-              </span>
-              <strong className={summary.salaryPlanAvailable < 0 ? "negative" : ""}>
-                {summary.salaryPlanAvailable < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(summary.salaryPlanAvailable))}
-              </strong>
-            </div>
-          ) : !isReportingYearKey(reportingMonth) ? (
-            <p className="stark-budget-allocation-plan-pending">{translateValue("录入本月工资后显示预计可支配", locale)}</p>
-          ) : null}
         </div>
       ) : null}
     </section>
