@@ -487,7 +487,7 @@ object DatabaseFactory {
                 (SavingsPlans.id eq id) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId))
             }.count() > 0
             "categoryRules" -> TransactionCategoryRules.selectAll().where { (TransactionCategoryRules.id eq id) and (TransactionCategoryRules.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
-            "subscriptions" -> Subscriptions.selectAll().where { (Subscriptions.id eq id) and (Subscriptions.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+            "subscriptions" -> subscriptionBelongsToUserInTransaction(userId, id)
             "importErrorLogs" -> ImportErrorLogs.selectAll().where { (ImportErrorLogs.id eq id) and (ImportErrorLogs.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
             "themeConfigs" -> ThemeConfigs.selectAll().where { (ThemeConfigs.id eq id) and (ThemeConfigs.userId eq userId) }.count() > 0
             else -> false
@@ -502,6 +502,19 @@ object DatabaseFactory {
         .select(SavingsGoals.id)
         .where { SavingsGoals.accountId inSubQuery ownedAccountIds(userId) }
 
+    private fun subscriptionBelongsToUserInTransaction(userId: String, id: String): Boolean {
+        // Existing account and subscription columns can have different MySQL collations.
+        // Compare each column with a bound value instead of comparing the columns directly.
+        val accountId = Subscriptions.selectAll()
+            .where { Subscriptions.id eq id }
+            .firstOrNull()
+            ?.get(Subscriptions.accountId)
+            ?: return false
+        return Accounts.selectAll().where {
+            (Accounts.id eq accountId) and (Accounts.ownerId eq userId)
+        }.count() > 0
+    }
+
     private fun entityBelongsToUserInTransaction(userId: String, entityType: String, id: String): Boolean = when (entityType) {
         "users" -> Users.selectAll().where { (Users.id eq id) and (Users.id eq userId) }.count() > 0
         "accounts" -> Accounts.selectAll().where { (Accounts.id eq id) and (Accounts.ownerId eq userId) }.count() > 0
@@ -512,7 +525,7 @@ object DatabaseFactory {
         "savingsGoals" -> SavingsGoals.selectAll().where { (SavingsGoals.id eq id) and (SavingsGoals.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
         "savingsPlans" -> SavingsPlans.selectAll().where { (SavingsPlans.id eq id) and (SavingsPlans.goalId inSubQuery ownedGoalIds(userId)) }.count() > 0
         "categoryRules" -> TransactionCategoryRules.selectAll().where { (TransactionCategoryRules.id eq id) and (TransactionCategoryRules.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
-        "subscriptions" -> Subscriptions.selectAll().where { (Subscriptions.id eq id) and (Subscriptions.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
+        "subscriptions" -> subscriptionBelongsToUserInTransaction(userId, id)
         "importErrorLogs" -> ImportErrorLogs.selectAll().where { (ImportErrorLogs.id eq id) and (ImportErrorLogs.accountId inSubQuery ownedAccountIds(userId)) }.count() > 0
         "themeConfigs" -> ThemeConfigs.selectAll().where { (ThemeConfigs.id eq id) and (ThemeConfigs.userId eq userId) }.count() > 0
         else -> false
