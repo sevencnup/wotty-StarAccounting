@@ -2100,10 +2100,29 @@ nextjs-portal {
   background: #f59e0b;
 }
 
+.stark-budget-allocation-plan-details i.matched {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .stark-budget-allocation-plan-details li small {
   flex: 0 0 auto;
   color: #94a3b8;
   font-size: calc(9px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-details li small.matched {
+  color: #15803d;
+  font-weight: 650;
 }
 
 .stark-budget-allocation-plan-details li > strong {
