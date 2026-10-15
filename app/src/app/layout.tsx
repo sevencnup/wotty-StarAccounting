@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppPreferences } from "@/components/stark/AppPreferences";
 import { AppUpdatePrompt } from "@/components/stark/AppUpdatePrompt";
+import { ConfirmDialogProvider } from "@/components/stark/ConfirmDialogProvider";
 
 export const metadata: Metadata = {
   title: "wotty stark web",
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AppPreferences />
         <AppUpdatePrompt />
-        {children}
+        <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
       </body>
     </html>
   );

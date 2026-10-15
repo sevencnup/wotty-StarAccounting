@@ -525,6 +525,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
   const planAllocation = summary.savingsPlanAllocation;
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
   const allocationBase = Math.max(allocation.income, allocated, 1);
+  const allocationPercent = allocation.income > 0 ? (allocated / allocation.income) * 100 : 0;
   const segments = [
     { key: "expense", label: "消费", amount: allocation.expense, color: "#0ea5e9" },
     { key: "repayment", label: "还款", amount: allocation.repayment, color: "#f59e0b" },
@@ -567,9 +568,13 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
         </div>
 
         <div className="stark-budget-allocation-track" aria-label={locale === "en-US" ? "Budget allocation breakdown" : "预算分配构成"}>
-          {segments.map((segment) => (
-            <i key={segment.key} style={{ width: String(Math.min(100, Math.max(0, (segment.amount / allocationBase) * 100))) + "%", background: segment.color }} />
+          {segments.filter((segment) => segment.amount > 0).map((segment) => (
+            <i key={segment.key} style={{ width: String(Math.min(100, Math.max(0, (segment.amount / allocationBase) * 100))) + "%", minWidth: 3, background: segment.color }} />
           ))}
+        </div>
+        <div className="stark-budget-allocation-track-meta">
+          <span>{locale === "en-US" ? "Allocated share of income" : "已分配占收入"}</span>
+          <strong>{allocation.income > 0 ? `${allocationPercent.toFixed(2)}%` : "—"}</strong>
         </div>
 
         <div className="stark-budget-allocation-grid">

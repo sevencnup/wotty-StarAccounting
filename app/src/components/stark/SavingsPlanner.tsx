@@ -10,6 +10,7 @@ import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "@/lib/stark/models";
 import { normalizeSavingsDepositType, SAVINGS_DEPOSIT_TYPE_OPTIONS } from "@/lib/stark/savings/deposit-type";
 import { ChoicePicker } from "@/components/stark/ChoicePicker";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
@@ -182,6 +183,7 @@ export function SavingsPlanner({
   embedded?: boolean;
   savingsGoalId?: string;
 }) {
+  const confirm = useConfirmDialog();
   const [year, setYear] = useState(() => new Date().getFullYear());
   const [goal, setGoal] = useState<SavingsGoal>(() => createDefaultGoal(year));
   const [goalName, setGoalName] = useState(() => `${year} 年度储蓄`);
@@ -674,7 +676,7 @@ export function SavingsPlanner({
     if (!savingsGoalId || deleting || saving) return;
     const planCount = persistedPlansRef.current.length;
     const planDescription = planCount ? `以及其 ${planCount} 条月度储蓄计划` : "";
-    if (!window.confirm(`确定删除储蓄目标“${goal.name}”${planDescription}吗？此操作无法恢复。`)) return;
+    if (!await confirm({ message: `确定删除储蓄目标“${goal.name}”${planDescription}吗？此操作无法恢复。` })) return;
 
     setDeleting(true);
     setNotice("");

@@ -5,6 +5,7 @@ import type { Subscription } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { ChoicePicker } from "@/components/stark/ChoicePicker";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { createId } from "@/lib/stark/utils/id";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { expenseCategoryOptions } from "@/lib/stark/utils/category-icon";
@@ -55,6 +56,7 @@ function formFromSubscription(subscription: Subscription): FormState {
 }
 
 export function SubscriptionManagementSheet() {
+  const confirm = useConfirmDialog();
   const accountId = getCurrentAccountId();
   const [items, setItems] = useState<Subscription[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -189,7 +191,7 @@ export function SubscriptionManagementSheet() {
   }
 
   async function remove(subscription: Subscription) {
-    if (!window.confirm(`确定删除“${subscription.name}”吗？已生成的历史流水不会删除。`)) return;
+    if (!await confirm({ message: `确定删除“${subscription.name}”吗？已生成的历史流水不会删除。` })) return;
     try {
       await manager.getRepository().deleteSubscription(subscription.id);
       setItems((current) => current.filter((item) => item.id !== subscription.id));
