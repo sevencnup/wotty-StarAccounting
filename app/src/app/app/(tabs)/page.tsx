@@ -665,11 +665,23 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onMa
                   {expenseItemsWithBillMatches.map((item) => (
                     <li key={`${item.kind}:${item.name}`}>
                       <span>
-                        <i aria-hidden="true" className={item.matched ? "matched" : item.kind === "TEMPORARY" ? "temporary" : "fixed"}>{item.matched ? "✓" : ""}</i>
+                        <i
+                          aria-hidden="true"
+                          className={item.matchStatus === "matched" ? "matched" : item.matchStatus === "partial" ? "partial" : item.matchStatus === "over" ? "over" : item.kind === "TEMPORARY" ? "temporary" : "fixed"}
+                        >{item.matchStatus === "matched" ? "✓" : item.matchStatus === "over" ? "!" : ""}</i>
                         <span>{translateValue(item.name, locale)}</span>
-                        <small className={item.matched ? "matched" : ""}>{translateValue(item.matched ? "已记账" : item.kind === "TEMPORARY" ? "临时" : "固定", locale)}</small>
+                        <small className={item.matchStatus === "matched" ? "matched" : item.matchStatus === "partial" ? "partial" : item.matchStatus === "over" ? "over" : ""}>
+                          {translateValue(item.matchStatus === "matched" ? "已达计划" : item.matchStatus === "partial" ? "部分记账" : item.matchStatus === "over" ? "超出计划" : item.kind === "TEMPORARY" ? "临时" : "固定", locale)}
+                        </small>
                       </span>
-                      <strong>¥ {formatMoney(item.amount)}</strong>
+                      <span className="stark-budget-allocation-plan-expense-amount">
+                        <strong>¥ {formatMoney(item.amount)}</strong>
+                        {item.matchedTransactionCount > 0 ? (
+                          <small>
+                            {translateValue("账单合计", locale)} ¥ {formatMoney(item.matchedAmount)} · {locale === "en-US" ? `${item.matchedTransactionCount} bills` : `${item.matchedTransactionCount} 笔`}
+                          </small>
+                        ) : null}
+                      </span>
                     </li>
                   ))}
                 </ul>

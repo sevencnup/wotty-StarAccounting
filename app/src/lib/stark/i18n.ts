@@ -7,7 +7,7 @@ const translations: Record<string, string> = {
   本期资金分配: "Salary-cycle allocation",
   金额修改范围: "Amount edit range", 本月及以后: "This month onward", 仅本月: "This month only", "工资、预计存与固定支出按所选范围修改；临时支出和上月结余只改本月": "Salary, planned savings, and fixed expenses follow the selected range; temporary expenses and carryover only change this month",
   发薪前结转: "Balance before payday", 未核实: "Unverified", 待录入工资: "Salary not recorded", 已入账工资: "Recorded salary", 发薪后预计可支配: "Projected funds after payday", 实际收支净额: "Actual net cash flow", "仅统计本期流水，不含上期结转": "Current-period cash flow only; excludes carryover", "发薪时的计划值，未包含未核实的上期结转": "Payday plan estimate; excludes unverified carryover", "发薪时的计划值，实际记账另计": "Payday plan estimate; actual entries are tracked separately", 录入本月工资后显示预计可支配: "Record this month's salary to see projected funds",
-  储蓄计划安排: "Savings plan allocation", "计划表金额仅供参考，不参与上方实际分配计算": "Plan amounts are for reference and do not change the actual allocation above", 计划支出明细: "Planned expense details", 展开: "Expand", 收起: "Collapse", 固定: "Fixed", 已记账: "Recorded",
+  储蓄计划安排: "Savings plan allocation", "计划表金额仅供参考，不参与上方实际分配计算": "Plan amounts are for reference and do not change the actual allocation above", 计划支出明细: "Planned expense details", 展开: "Expand", 收起: "Collapse", 固定: "Fixed", 已达计划: "Plan met", 部分记账: "Partially recorded", 超出计划: "Over plan", 账单合计: "Bill total",
   "上月结余": "Previous balance", "可选": "Optional", "添加上月结余": "Add previous balance", "移除上月结余": "Remove previous balance", "删除月份行": "Delete month row", "至少保留一个月份行": "Keep at least one month row", "上月结余是专用列，请使用专用按钮": "Previous balance is a dedicated column. Use its button.",
   "wotty stark 网页版 app 端": "wotty stark web app",
   首页: "Home", 消费: "Spending", 储蓄: "Savings", 贷款: "Loans", 资产: "Assets", 账户: "Account",
