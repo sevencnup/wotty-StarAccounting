@@ -13,7 +13,7 @@ import { MonthPicker } from "@/components/stark/MonthPicker";
 import { BottomSheet } from "@/components/stark/BottomSheet";
 import { BudgetManagementSheet } from "@/components/stark/BudgetManagementSheet";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
-import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedHomeMetric, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedHomeMetric, setSelectedReportMonth, type HomeMetric } from "@/lib/stark/storage/local-config";
+import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedBalancePeriodMode, getSelectedHomeMetric, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedBalancePeriodMode, setSelectedHomeMetric, setSelectedReportMonth, type BalancePeriodMode, type HomeMetric } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
   type HomeSummary,
@@ -235,6 +235,8 @@ function StarkCrystalHero({
   onSalaryDayChange,
   activeMetric,
   onMetricChange,
+  balanceMode,
+  onBalanceModeChange,
   transactionCount,
   reportingMonth,
   onReportingMonthChange,
@@ -245,6 +247,8 @@ function StarkCrystalHero({
   onSalaryDayChange: (day: number) => void;
   activeMetric: "balance" | "expense" | "income";
   onMetricChange: (metric: "balance" | "expense" | "income") => void;
+  balanceMode: BalancePeriodMode;
+  onBalanceModeChange: (mode: BalancePeriodMode) => void;
   transactionCount: number;
   reportingMonth: string;
   onReportingMonthChange: (month: string) => void;
@@ -256,7 +260,6 @@ function StarkCrystalHero({
     : locale === "en-US"
       ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(reportingMonth))
       : reportingMonthLabel(reportingMonth);
-  const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
 
   const displayAmount =
@@ -333,14 +336,14 @@ function StarkCrystalHero({
               <button
                 type="button"
                 className={balanceMode === "month" ? "active" : ""}
-                onClick={() => setBalanceMode("month")}
+                onClick={() => onBalanceModeChange("month")}
               >
                 {translateValue("自然月", locale)}
               </button>
               <button
                 type="button"
                 className={balanceMode === "salary" ? "active" : ""}
-                onClick={() => setBalanceMode("salary")}
+                onClick={() => onBalanceModeChange("salary")}
               >
                 {translateValue("发薪周期", locale)}
               </button>
@@ -1107,12 +1110,14 @@ export function HomeDashboard() {
   const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [monthReady, setMonthReady] = useState(false);
   const [activeMetric, setActiveMetric] = useState<HomeMetric>("expense");
+  const [balanceMode, setBalanceMode] = useState<BalancePeriodMode>("month");
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [budgetManagementOpen, setBudgetManagementOpen] = useState(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
     setActiveMetric(getSelectedHomeMetric());
+    setBalanceMode(getSelectedBalancePeriodMode());
     setReportingMonth(getSelectedReportMonth());
     setMonthReady(true);
   }, []);
@@ -1311,6 +1316,11 @@ export function HomeDashboard() {
     setSelectedHomeMetric(metric);
   }
 
+  function handleBalanceModeChange(mode: BalancePeriodMode) {
+    setBalanceMode(mode);
+    setSelectedBalancePeriodMode(mode);
+  }
+
   function handleReportingMonthChange(month: string) {
     setSelectedReportMonth(month);
     setReportingMonth(month);
@@ -1383,6 +1393,8 @@ export function HomeDashboard() {
         onSalaryDayChange={handleSalaryDayChange}
         activeMetric={activeMetric}
         onMetricChange={handleMetricChange}
+        balanceMode={balanceMode}
+        onBalanceModeChange={handleBalanceModeChange}
         transactionCount={currentTransactions.length}
         reportingMonth={reportingMonth}
         onReportingMonthChange={handleReportingMonthChange}
