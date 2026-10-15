@@ -40,6 +40,10 @@ export function AppUpdatePrompt() {
   }, [consumePromptHistory, dismissPrompt]);
 
   useEffect(() => {
+    // The KT hybrid test package has its own applicationId. It must not offer
+    // the Web shell APK from the shared version endpoint.
+    if (navigator.userAgent.includes("WottyStarkKtHybrid")) return;
+
     let cancelled = false;
     const native = Capacitor.isNativePlatform();
 

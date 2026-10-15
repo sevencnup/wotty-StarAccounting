@@ -1,14 +1,25 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { usePathname } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { LazyJournalPanel as JournalPanel, preloadJournalPanel } from "@/components/stark/LazyJournalPanel";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { usePrimaryTabBackGuard } from "@/components/stark/usePrimaryTabBackGuard";
 
+const KT_HYBRID_TAB_PATHS = new Set([
+  "/app",
+  "/app/consumption",
+  "/app/savings",
+  "/app/loans",
+  "/app/assets",
+  "/app/accounts",
+]);
+
 export default function TabsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
+  const router = useRouter();
+  const [ktHybridShell, setKtHybridShell] = useState(false);
   usePrimaryTabBackGuard(pathname);
   const isJournalRoute = pathname.startsWith("/app/journal");
   const isSavingsRoute = pathname.startsWith("/app/savings");
@@ -18,6 +29,24 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const [journalVariant, setJournalVariant] = useState<"journal" | "savings" | "asset" | "loan" | null>(null);
   const dismissJournal = useCallback(() => setJournalVariant(null), []);
   const consumeJournalHistory = useLayeredHistoryMarker(Boolean(journalVariant), "starkJournal", dismissJournal);
+
+  useEffect(() => {
+    if (!navigator.userAgent.includes("WottyStarkKtHybrid")) return;
+    setKtHybridShell(true);
+    document.documentElement.classList.add("kt-hybrid-shell");
+    return () => document.documentElement.classList.remove("kt-hybrid-shell");
+  }, []);
+
+  useEffect(() => {
+    if (!ktHybridShell) return;
+    const handleNativeTab = (event: Event) => {
+      const path = (event as CustomEvent<{ path?: unknown }>).detail?.path;
+      if (typeof path !== "string" || !KT_HYBRID_TAB_PATHS.has(path)) return;
+      router.replace(path, { scroll: false });
+    };
+    window.addEventListener("stark:kt-hybrid-tab", handleNativeTab);
+    return () => window.removeEventListener("stark:kt-hybrid-tab", handleNativeTab);
+  }, [ktHybridShell, router]);
 
   function openJournal() {
     void preloadJournalPanel();
@@ -39,7 +68,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
       }}
     >
       <main className="tabs-shell tabs-liquid-shell">{children}</main>
-      {!isJournalRoute ? (
+      {!isJournalRoute && !ktHybridShell ? (
         <MobileBottomNav />
       ) : null}
       {!isJournalRoute && !isSettingsRoute && !journalVariant ? (
