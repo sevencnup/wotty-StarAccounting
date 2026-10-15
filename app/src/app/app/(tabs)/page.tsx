@@ -823,17 +823,28 @@ function buildHomeExpenseRoseOption(
       selectedMode: "single",
       selectedOffset: 8,
       roseType: "radius",
-      radius: ["16%", "70%"],
+      radius: ["16%", "58%"],
       center: ["50%", "51%"],
       startAngle: 90,
       minAngle: 12,
       avoidLabelOverlap: true,
       labelLayout: { moveOverlap: "shiftY", hideOverlap: false },
       label: {
-        show: false,
+        show: true,
+        position: "outside",
+        alignTo: "edge",
+        edgeDistance: 4,
+        bleedMargin: 0,
+        overflow: "none",
+        formatter: "{b}",
+        fontSize: 11,
+        fontWeight: 500,
       },
       labelLine: {
-        show: false,
+        show: true,
+        length: 8,
+        length2: 8,
+        lineStyle: { width: 1 },
       },
       emphasis: { scale: false, focus: "self" },
       itemStyle: { borderColor: "#ffffff", borderWidth: 3, borderRadius: 5 },
@@ -926,25 +937,6 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
                 setSelectedSegmentId((current) => current === segmentId ? null : segmentId);
               }}
             />
-            <div className="category-touch-list" aria-label={translateValue("分类明细", locale)}>
-              {roseSegments.map((segment) => {
-                const percent = summary.expense > 0 ? Math.round((segment.amount / summary.expense) * 100) : 0;
-                const selected = selectedSegmentId === segment.id;
-                return (
-                  <button
-                    type="button"
-                    key={segment.id}
-                    className={`category-touch-item${selected ? " selected" : ""}`}
-                    aria-pressed={selected}
-                    onClick={() => setSelectedSegmentId((current) => current === segment.id ? null : segment.id)}
-                  >
-                    <span className="category-touch-name"><i style={{ background: segment.color }} />{translateValue(segment.name, locale)}</span>
-                    <strong>¥ {formatMoney(segment.amount)}</strong>
-                    <small>{locale === "en-US" ? `${percent}% of spending` : `占支出 ${percent}%`}</small>
-                  </button>
-                );
-              })}
-            </div>
           </div>
         ) : (
           <div className="category-empty">{translateValue("本月暂无支出记录", locale)}</div>
