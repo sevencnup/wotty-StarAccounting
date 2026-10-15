@@ -147,3 +147,14 @@ export function setSalaryDay(day: number) {
   const safeDay = Math.max(1, Math.min(28, Math.round(day)));
   writeValue("salary-day", String(safeDay));
 }
+
+export type HomeMetric = "balance" | "expense" | "income";
+
+export function getSelectedHomeMetric(): HomeMetric {
+  const value = readValue("home-metric");
+  return value === "balance" || value === "income" ? value : "expense";
+}
+
+export function setSelectedHomeMetric(metric: HomeMetric) {
+  writeValue("home-metric", metric);
+}
