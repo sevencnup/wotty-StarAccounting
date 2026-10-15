@@ -13,7 +13,7 @@ import { MonthPicker } from "@/components/stark/MonthPicker";
 import { BottomSheet } from "@/components/stark/BottomSheet";
 import { BudgetManagementSheet } from "@/components/stark/BudgetManagementSheet";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
-import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
+import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedHomeMetric, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedHomeMetric, setSelectedReportMonth, type HomeMetric } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
   type HomeSummary,
@@ -1106,12 +1106,13 @@ export function HomeDashboard() {
   const [reportingMonth, setReportingMonth] = useState("2026-01");
   const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [monthReady, setMonthReady] = useState(false);
-  const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
+  const [activeMetric, setActiveMetric] = useState<HomeMetric>("expense");
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [budgetManagementOpen, setBudgetManagementOpen] = useState(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
+    setActiveMetric(getSelectedHomeMetric());
     setReportingMonth(getSelectedReportMonth());
     setMonthReady(true);
   }, []);
@@ -1305,6 +1306,11 @@ export function HomeDashboard() {
     setSalaryDay(day);
   }
 
+  function handleMetricChange(metric: HomeMetric) {
+    setActiveMetric(metric);
+    setSelectedHomeMetric(metric);
+  }
+
   function handleReportingMonthChange(month: string) {
     setSelectedReportMonth(month);
     setReportingMonth(month);
@@ -1376,7 +1382,7 @@ export function HomeDashboard() {
         salaryDay={salaryDay}
         onSalaryDayChange={handleSalaryDayChange}
         activeMetric={activeMetric}
-        onMetricChange={setActiveMetric}
+        onMetricChange={handleMetricChange}
         transactionCount={currentTransactions.length}
         reportingMonth={reportingMonth}
         onReportingMonthChange={handleReportingMonthChange}
