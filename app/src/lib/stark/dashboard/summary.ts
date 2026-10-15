@@ -6,7 +6,7 @@ import {
 import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodDate } from "@/lib/stark/utils/format";
 import { calculateBudgetSpent } from "./budget-period";
 import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
-import { calculateBalanceFromBaseline, calculateCalendarPeriodCashflow, calculateCashflowSinceBalanceBaseline, calculateSalaryCycleCashflow } from "./salary-cycle";
+import { calculateBalanceFromBaseline, calculateCalendarPeriodCashflow, calculateCashflowSinceBalanceBaseline, calculateSalaryCycleCashflow, salaryCycleRange } from "./salary-cycle";
 import { summarizeSavingsPlanAllocation, type SavingsPlanAllocation } from "@/lib/stark/savings/planner";
 import { summarizeSavingsProgress } from "@/lib/stark/savings/progress";
 
@@ -120,6 +120,8 @@ export interface HomeSummary {
   budgetAlerts: HomeBudgetAlert[];
   budgetAllocation: HomeBudgetAllocation;
   savingsPlanAllocation: SavingsPlanAllocation;
+  savingsPlanPeriod: string;
+  salaryPlanSource: Pick<HomeForecast, "salaryIncome" | "salaryRecordedAt" | "salaryCarryover">;
   salaryPlanAvailable: number | null;
   tasks: HomeTaskItem[];
   forecast: HomeForecast;
@@ -401,19 +403,14 @@ function buildTasks(loans: Loan[], savingsGoals: SavingsGoal[]): HomeTaskItem[] 
   return tasks.slice(0, 4);
 }
 
-function buildForecast(
+function buildSalaryPlanSource(
   transactions: Transaction[],
   savingsPlans: SavingsPlan[],
-  income: number,
-  expense: number,
   salaryDay: number,
   reportingMonth: string,
   referenceDate: Date,
   account?: Pick<Account, "openingBalance" | "openingBalanceDate"> | null,
-): HomeForecast {
-  const periodCashflow = calculateCalendarPeriodCashflow(transactions, savingsPlans, reportingMonth);
-  const monthBalance = periodCashflow.balance;
-  const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
+): Pick<HomeForecast, "salaryIncome" | "salaryRecordedAt" | "salaryCarryover"> {
   const baselineAmount = account?.openingBalance;
   const baselineDate = account?.openingBalanceDate ?? null;
   const hasBalanceBaseline = typeof baselineAmount === "number" && Number.isFinite(baselineAmount) && Boolean(baselineDate);
@@ -435,6 +432,28 @@ function buildForecast(
   const salaryCarryover = hasBalanceBaseline
     ? calculateBalanceFromBaseline(baselineAmount, salaryCashflowBeforeDeposit)
     : null;
+  return { salaryIncome, salaryRecordedAt, salaryCarryover };
+}
+
+function buildForecast(
+  transactions: Transaction[],
+  savingsPlans: SavingsPlan[],
+  income: number,
+  expense: number,
+  salaryDay: number,
+  reportingMonth: string,
+  referenceDate: Date,
+  account?: Pick<Account, "openingBalance" | "openingBalanceDate"> | null,
+): HomeForecast {
+  const periodCashflow = calculateCalendarPeriodCashflow(transactions, savingsPlans, reportingMonth);
+  const monthBalance = periodCashflow.balance;
+  const cashflow = calculateSalaryCycleCashflow(transactions, savingsPlans, reportingMonth, salaryDay, referenceDate);
+  const baselineAmount = account?.openingBalance;
+  const baselineDate = account?.openingBalanceDate ?? null;
+  const hasBalanceBaseline = typeof baselineAmount === "number" && Number.isFinite(baselineAmount) && Boolean(baselineDate);
+  const { salaryIncome, salaryRecordedAt, salaryCarryover } = buildSalaryPlanSource(
+    transactions, savingsPlans, salaryDay, reportingMonth, referenceDate, account,
+  );
   const cashflowThroughNow = hasBalanceBaseline && baselineDate
     ? calculateCashflowSinceBalanceBaseline(transactions, savingsPlans, baselineDate, referenceDate)
     : null;
@@ -546,6 +565,7 @@ export function buildHomeSummary(input: {
   referenceDate?: Date;
 }) {
   const currentMonth = input.reportingMonth ?? REPORTING_MONTH_KEY;
+  const savingsPlans = input.savingsPlans ?? [];
   const salaryDay = Math.max(1, Math.min(28, Math.round(input.salaryDay ?? 15)));
   const referenceDate = input.referenceDate ?? new Date();
   const { current: currentMonthTransactions, previous: previousMonthTransactions } = splitReportingMonthTransactions(
@@ -559,24 +579,34 @@ export function buildHomeSummary(input: {
   const previousExpense = previousMonthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0);
 
   const totalSavings = input.savingsGoals.reduce((sum, item) => sum + item.currentAmount, 0);
-  const savingsProgress = summarizeSavingsProgress(input.savingsGoals, input.savingsPlans ?? []);
+  const savingsProgress = summarizeSavingsProgress(input.savingsGoals, savingsPlans);
   const loanTotal = input.loans.reduce((sum, item) => sum + item.remainingAmount, 0);
   const loanAll = input.loans.reduce((sum, item) => sum + item.totalAmount, 0);
   const loanRepaid = Math.max(loanAll - loanTotal, 0);
   const assetTotal = input.assets.reduce((sum, item) => sum + item.balance, 0) + totalSavings;
   const liabilityTotal = loanTotal;
   const budgetAlerts = buildBudgetAlerts(input.transactions, input.budgets, expense, currentMonth);
-  const forecast = buildForecast(input.transactions, input.savingsPlans ?? [], income, expense, salaryDay, currentMonth, referenceDate, input.account);
+  const forecast = buildForecast(input.transactions, savingsPlans, income, expense, salaryDay, currentMonth, referenceDate, input.account);
+  const annual = isReportingYearKey(currentMonth);
+  const cycleStart = annual ? null : salaryCycleRange(currentMonth, salaryDay, referenceDate).start;
+  const savingsPlanPeriod = cycleStart
+    ? `${cycleStart.getFullYear()}-${String(cycleStart.getMonth() + 1).padStart(2, "0")}`
+    : currentMonth;
   const budgetAllocation = calculateBudgetAllocation({
-    income,
-    expense,
-    repayment: forecast.monthRepayment,
-    savings: forecast.monthSavings,
+    income: annual ? income : forecast.cycleIncome,
+    expense: annual ? expense : forecast.cycleExpense,
+    repayment: annual ? forecast.monthRepayment : forecast.cycleRepayment,
+    savings: annual ? forecast.monthSavings : forecast.cycleSavings,
     assetTotal,
   });
-  const savingsPlanAllocation = summarizeSavingsPlanAllocation(input.savingsGoals, input.savingsPlans ?? [], currentMonth);
-  const salaryPlanAvailable = forecast.salaryRecordedAt && savingsPlanAllocation.planCount > 0
-    ? forecast.salaryIncome + (forecast.salaryCarryover ?? 0)
+  const savingsPlanAllocation = summarizeSavingsPlanAllocation(input.savingsGoals, savingsPlans, savingsPlanPeriod);
+  const salaryPlanSource = savingsPlanPeriod === currentMonth ? {
+    salaryIncome: forecast.salaryIncome,
+    salaryRecordedAt: forecast.salaryRecordedAt,
+    salaryCarryover: forecast.salaryCarryover,
+  } : buildSalaryPlanSource(input.transactions, savingsPlans, salaryDay, savingsPlanPeriod, referenceDate, input.account);
+  const salaryPlanAvailable = salaryPlanSource.salaryRecordedAt && savingsPlanAllocation.planCount > 0
+    ? salaryPlanSource.salaryIncome + (salaryPlanSource.salaryCarryover ?? 0)
       - savingsPlanAllocation.fixedExpense - savingsPlanAllocation.temporaryExpense - savingsPlanAllocation.plannedDeposit
     : null;
 
@@ -609,6 +639,8 @@ export function buildHomeSummary(input: {
     budgetAlerts,
     budgetAllocation,
     savingsPlanAllocation,
+    savingsPlanPeriod,
+    salaryPlanSource,
     salaryPlanAvailable,
     tasks: buildTasks(input.loans, input.savingsGoals),
     forecast,

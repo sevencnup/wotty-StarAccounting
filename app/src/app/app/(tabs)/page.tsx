@@ -530,7 +530,11 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
     { key: "repayment", label: "还款", amount: allocation.repayment, color: "#f59e0b" },
     { key: "savings", label: "储蓄", amount: allocation.savings, color: "#10b981" },
   ];
-  const periodLabel = isReportingYearKey(reportingMonth) ? "全年资金分配" : "本月资金分配";
+  const annual = isReportingYearKey(reportingMonth);
+  const periodLabel = annual ? "全年资金分配" : "本期资金分配";
+  const periodDescription = annual
+    ? translateValue("收入扣除实际消费、还款和储蓄后的安排金额", locale)
+    : `${translateValue("发薪周期", locale)} ${summary.forecast.salaryCycleRangeLabel.replace(" 至 ", " – ")}`;
   const cardClassName = "stark-budget-allocation-card" + (allocation.available < 0 ? " has-overrun" : "");
 
   return (
@@ -541,7 +545,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
             <span className="stark-budget-allocation-icon"><TargetIcon size={15} strokeWidth={2.2} color="#0060c0" /></span>
             <span>
               <strong>{translateValue(periodLabel, locale)}</strong>
-              <small>{translateValue("收入扣除实际消费、还款和储蓄后的安排金额", locale)}</small>
+              <small>{periodDescription}</small>
             </span>
           </div>
           <span className="stark-budget-allocation-entry">{translateValue("预算管理", locale)} <ChevronRightIcon size={12} /></span>
@@ -599,8 +603,8 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
               <span className="stark-budget-allocation-plan-title">
                 <strong>{translateValue("储蓄计划安排", locale)}</strong>
                 <small>{planExpanded
-                  ? translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)
-                  : `${translateValue("预计存", locale)} ¥ ${formatMoney(planAllocation.plannedDeposit)}`}</small>
+                  ? `${summary.savingsPlanPeriod} · ${translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)}`
+                  : `${summary.savingsPlanPeriod} · ${translateValue("预计存", locale)} ¥ ${formatMoney(planAllocation.plannedDeposit)}`}</small>
               </span>
               <span className="stark-budget-allocation-plan-toggle-label">
                 {translateValue(planExpanded ? "收起" : "展开", locale)}
@@ -612,13 +616,13 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
             </Link>
           </div>
           <div id={planContentId} className="stark-budget-allocation-plan-content" hidden={!planExpanded}>
-            {!isReportingYearKey(reportingMonth) && summary.forecast.salaryRecordedAt ? (
+            {!annual && summary.salaryPlanSource.salaryRecordedAt ? (
               <div className="stark-budget-allocation-plan-source">
-                <span>{translateValue("已入账工资", locale)} <strong>¥ {formatMoney(summary.forecast.salaryIncome)}</strong></span>
+                <span>{translateValue("已入账工资", locale)} <strong>¥ {formatMoney(summary.salaryPlanSource.salaryIncome)}</strong></span>
                 <span>{translateValue("发薪前结转", locale)} <strong>
-                  {summary.forecast.salaryCarryover === null
+                  {summary.salaryPlanSource.salaryCarryover === null
                     ? translateValue("未核实", locale)
-                    : `${summary.forecast.salaryCarryover < 0 ? "-¥ " : "¥ "}${formatMoney(Math.abs(summary.forecast.salaryCarryover))}`}
+                    : `${summary.salaryPlanSource.salaryCarryover < 0 ? "-¥ " : "¥ "}${formatMoney(Math.abs(summary.salaryPlanSource.salaryCarryover))}`}
                 </strong></span>
               </div>
             ) : null}
@@ -657,7 +661,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
               <div className="stark-budget-allocation-plan-available">
                 <span>
                   <strong>{translateValue("发薪后预计可支配", locale)}</strong>
-                  <small>{translateValue(summary.forecast.salaryCarryover === null
+                  <small>{translateValue(summary.salaryPlanSource.salaryCarryover === null
                     ? "发薪时的计划值，未包含未核实的上期结转"
                     : "发薪时的计划值，实际记账另计", locale)}</small>
                 </span>
