@@ -6,6 +6,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { clampPercent, formatMoney } from "@/lib/stark/utils/format";
@@ -56,6 +57,7 @@ function buildAssetDonutOption(groups: Array<{ label: string; amount: number; co
 }
 
 export default function AssetsPage() {
+  const confirm = useConfirmDialog();
   const locale = useAppLocale();
   const [list, setList] = useState<Asset[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
@@ -77,7 +79,7 @@ export default function AssetsPage() {
   }, []);
 
   async function deleteAsset(item: Asset) {
-    if (!window.confirm(`确定删除资产“${item.name}”吗？`)) return;
+    if (!await confirm({ message: `确定删除资产“${item.name}”吗？` })) return;
     await repo.deleteAsset(item.id);
     setEditingAsset(null);
     reload();

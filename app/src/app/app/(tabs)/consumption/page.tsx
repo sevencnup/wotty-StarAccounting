@@ -8,6 +8,7 @@ import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { loadAvailableTransactionMonths, resolveAvailableReportingMonth } from "@/lib/stark/repository/transaction-months";
@@ -102,6 +103,7 @@ function ChevronDownIcon() {
 }
 
 export default function ConsumptionPage() {
+  const confirm = useConfirmDialog();
   const locale = useAppLocale();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -380,7 +382,7 @@ export default function ConsumptionPage() {
   }
 
   async function deleteTransaction(item: Transaction) {
-    if (!window.confirm("确定删除这笔流水吗？")) return;
+    if (!await confirm({ message: "确定删除这笔流水吗？" })) return;
     await repo.deleteTransaction(item.id);
     setEditingTransaction(null);
     window.dispatchEvent(new Event("stark:transaction-saved"));

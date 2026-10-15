@@ -250,13 +250,11 @@ export class RemoteRepository implements DataRepository {
     return sortByDateDesc(transactions);
   }
 
-  private save(entityType: EntityType, value: object) {
+  private async save(entityType: EntityType, value: object) {
     const record = value as Record<string, unknown>;
     const accountId = record.accountId ?? getCurrentAccountId();
     const targetAccountId = String(accountId);
-    this.clearTransactionCaches(targetAccountId);
-    this.clearEntityCaches(entityType, targetAccountId);
-    return this.request<void>("/api/sync", {
+    await this.request<void>("/api/sync", {
       method: "POST",
       body: JSON.stringify({
         id: record.id,
@@ -267,6 +265,10 @@ export class RemoteRepository implements DataRepository {
         updatedAt: record.updatedAt ?? new Date().toISOString(),
       }),
     });
+    // Requests started while the write was in flight may have cached the old
+    // rows. Invalidate after the server confirms the write, before UI refresh.
+    this.clearTransactionCaches(targetAccountId);
+    this.clearEntityCaches(entityType, targetAccountId);
   }
 
   private delete(entityType: EntityType, id: string, accountId?: string) {
