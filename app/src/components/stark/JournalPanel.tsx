@@ -334,7 +334,11 @@ export function JournalPanel({
   }, [beginClose, consumeHistoryEntry]);
 
   const keyboardViewportStyle: CSSProperties | undefined = keyboardViewport
-    ? { height: `${keyboardViewport.height}px`, top: `${keyboardViewport.offsetTop}px`, bottom: "auto" }
+    ? {
+        height: `max(0px, calc(${keyboardViewport.height}px - var(--stark-bottom-nav-clearance)))`,
+        top: `${keyboardViewport.offsetTop}px`,
+        bottom: "auto",
+      }
     : undefined;
 
   const touchStart = useRef({ x: 0, y: 0, allowClose: false, outsidePanel: false, leftEdge: false });
