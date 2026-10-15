@@ -770,6 +770,7 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 
 // 本月支出构成
 type HomeExpenseSegment = {
+  id: string;
   name: string;
   amount: number;
   color: string;
@@ -778,12 +779,14 @@ type HomeExpenseSegment = {
 function buildHomeExpenseRoseOption(
   segments: HomeExpenseSegment[],
   locale: AppLocale,
+  selectedSegmentId: string | null,
 ): EChartsCoreOption {
   return {
     animationDuration: 420,
     animationEasing: "cubicOut",
     tooltip: {
       trigger: "item",
+      triggerOn: "click",
       confine: true,
       backgroundColor: "rgba(19, 27, 48, 0.92)",
       borderWidth: 0,
@@ -795,35 +798,27 @@ function buildHomeExpenseRoseOption(
     },
     series: [{
       type: "pie",
+      selectedMode: "single",
+      selectedOffset: 8,
       roseType: "radius",
-      radius: ["16%", "58%"],
+      radius: ["16%", "70%"],
       center: ["50%", "51%"],
       startAngle: 90,
       minAngle: 12,
       avoidLabelOverlap: true,
       labelLayout: { moveOverlap: "shiftY", hideOverlap: false },
       label: {
-        show: true,
-        position: "outside",
-        alignTo: "edge",
-        edgeDistance: 4,
-        bleedMargin: 0,
-        overflow: "none",
-        formatter: "{b}",
-        fontSize: 11,
-        fontWeight: 500,
+        show: false,
       },
       labelLine: {
-        show: true,
-        length: 8,
-        length2: 8,
-        lineStyle: { width: 1 },
+        show: false,
       },
       emphasis: { scale: false, focus: "self" },
       itemStyle: { borderColor: "#ffffff", borderWidth: 3, borderRadius: 5 },
       data: segments.map((segment) => ({
         name: translateValue(segment.name, locale),
         value: segment.amount,
+        selected: selectedSegmentId === segment.id,
         itemStyle: { color: segment.color },
         label: { color: segment.color },
         labelLine: { lineStyle: { color: segment.color } },
@@ -874,12 +869,13 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
   const ratios = summary.ratios.slice(0, 4);
   const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
   const roseSegments = [
-    ...ratios.map((item) => ({ name: item.name, amount: item.amount, color: item.color })),
-    ...(otherAmount > 0 ? [{ name: "其他", amount: otherAmount, color: "#94a3b8" }] : []),
+    ...ratios.map((item) => ({ id: `category:${item.name}`, name: item.name, amount: item.amount, color: item.color })),
+    ...(otherAmount > 0 ? [{ id: "category:remaining", name: "其余分类", amount: otherAmount, color: "#94a3b8" }] : []),
   ];
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const roseOption = useMemo(
-    () => buildHomeExpenseRoseOption(roseSegments, locale),
-    [locale, roseSegments],
+    () => buildHomeExpenseRoseOption(roseSegments, locale, selectedSegmentId),
+    [locale, roseSegments, selectedSegmentId],
   );
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -902,7 +898,31 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
               option={roseOption}
               className="category-rose-chart"
               ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
+              onDataClick={({ componentType, dataIndex }) => {
+                if (componentType !== "series" || dataIndex === undefined || dataIndex < 0 || dataIndex >= roseSegments.length) return;
+                const segmentId = roseSegments[dataIndex].id;
+                setSelectedSegmentId((current) => current === segmentId ? null : segmentId);
+              }}
             />
+            <div className="category-touch-list" aria-label={translateValue("分类明细", locale)}>
+              {roseSegments.map((segment) => {
+                const percent = summary.expense > 0 ? Math.round((segment.amount / summary.expense) * 100) : 0;
+                const selected = selectedSegmentId === segment.id;
+                return (
+                  <button
+                    type="button"
+                    key={segment.id}
+                    className={`category-touch-item${selected ? " selected" : ""}`}
+                    aria-pressed={selected}
+                    onClick={() => setSelectedSegmentId((current) => current === segment.id ? null : segment.id)}
+                  >
+                    <span className="category-touch-name"><i style={{ background: segment.color }} />{translateValue(segment.name, locale)}</span>
+                    <strong>¥ {formatMoney(segment.amount)}</strong>
+                    <small>{locale === "en-US" ? `${percent}% of spending` : `占支出 ${percent}%`}</small>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         ) : (
           <div className="category-empty">{translateValue("本月暂无支出记录", locale)}</div>
