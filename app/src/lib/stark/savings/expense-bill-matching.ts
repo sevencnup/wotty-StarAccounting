@@ -4,7 +4,9 @@ import { isWithinSalaryCycle, salaryCycleRange } from "../dashboard/salary-cycle
 import type { SavingsPlanAllocationItem } from "./planner";
 
 export type SavingsPlanExpenseBillMatch = SavingsPlanAllocationItem & {
-  matched: boolean;
+  matchedAmount: number;
+  matchedTransactionCount: number;
+  matchStatus: "unmatched" | "partial" | "matched" | "over";
 };
 
 /** Match planned expense names against expense bills in the same salary cycle or calendar year. */
@@ -25,9 +27,20 @@ export function matchSavingsPlanExpensesWithBills(
   ));
 
   return items.map((item) => {
+    const matches = periodExpenses.filter((transaction) => matchesCategoryKeyword(transaction, item.name));
+    const matchedCents = matches.reduce((sum, transaction) => sum + Math.round(Number(transaction.amount) * 100), 0);
+    const plannedCents = Math.round(Number(item.amount) * 100);
     return {
       ...item,
-      matched: periodExpenses.some((transaction) => matchesCategoryKeyword(transaction, item.name)),
+      matchedAmount: matchedCents / 100,
+      matchedTransactionCount: matches.length,
+      matchStatus: matches.length === 0
+        ? "unmatched"
+        : matchedCents < plannedCents
+          ? "partial"
+          : matchedCents > plannedCents
+            ? "over"
+            : "matched",
     };
   });
 }

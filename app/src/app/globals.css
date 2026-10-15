@@ -2114,6 +2114,24 @@ nextjs-portal {
   line-height: 1;
 }
 
+.stark-budget-allocation-plan-details i.partial {
+  background: #fef3c7;
+}
+
+.stark-budget-allocation-plan-details i.over {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
 .stark-budget-allocation-plan-details li small {
   flex: 0 0 auto;
   color: #94a3b8;
@@ -2125,12 +2143,37 @@ nextjs-portal {
   font-weight: 650;
 }
 
-.stark-budget-allocation-plan-details li > strong {
+.stark-budget-allocation-plan-details li small.partial {
+  color: #a16207;
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-details li small.over {
+  color: #b91c1c;
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-expense-amount {
+  display: grid;
+  justify-items: end;
+  flex: 0 0 auto;
+  gap: 2px;
+  text-align: right;
+}
+
+.stark-budget-allocation-plan-expense-amount > strong {
   flex: 0 0 auto;
   color: #334155;
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-expense-amount > small {
+  color: #64748b;
+  font-size: calc(8px * var(--user-font-scale));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .stark-budget-allocation-plan-available {
