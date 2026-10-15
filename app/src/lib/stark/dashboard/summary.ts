@@ -7,6 +7,7 @@ import { REPORTING_MONTH_KEY, clampPercent, isReportingYearKey, reportingPeriodD
 import { calculateBudgetSpent } from "./budget-period";
 import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
 import { calculateBalanceFromBaseline, calculateCalendarPeriodCashflow, calculateCashflowSinceBalanceBaseline, calculateSalaryCycleCashflow } from "./salary-cycle";
+import { summarizeSavingsPlanAllocation, type SavingsPlanAllocation } from "@/lib/stark/savings/planner";
 
 export interface HomeTrend {
   labels: string[];
@@ -114,6 +115,7 @@ export interface HomeSummary {
   loanDelta: number;
   budgetAlerts: HomeBudgetAlert[];
   budgetAllocation: HomeBudgetAllocation;
+  savingsPlanAllocation: SavingsPlanAllocation;
   tasks: HomeTaskItem[];
   forecast: HomeForecast;
   insights: HomeInsight[];
@@ -546,6 +548,7 @@ export function buildHomeSummary(input: {
     savings: forecast.monthSavings,
     assetTotal,
   });
+  const savingsPlanAllocation = summarizeSavingsPlanAllocation(input.savingsGoals, input.savingsPlans ?? [], currentMonth);
 
   return {
     expense,
@@ -575,6 +578,7 @@ export function buildHomeSummary(input: {
     loanDelta: input.loans.reduce((sum, item) => sum + item.monthlyPayment, 0),
     budgetAlerts,
     budgetAllocation,
+    savingsPlanAllocation,
     tasks: buildTasks(input.loans, input.savingsGoals),
     forecast,
     insights: buildInsights(currentMonthTransactions, previousMonthTransactions, expense, budgetAlerts),
