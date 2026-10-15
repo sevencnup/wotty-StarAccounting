@@ -8,6 +8,7 @@ import { calculateBudgetSpent } from "./budget-period";
 import { calculateBudgetAllocation, type BudgetAllocation } from "./budget-allocation";
 import { calculateBalanceFromBaseline, calculateCalendarPeriodCashflow, calculateCashflowSinceBalanceBaseline, calculateSalaryCycleCashflow } from "./salary-cycle";
 import { summarizeSavingsPlanAllocation, type SavingsPlanAllocation } from "@/lib/stark/savings/planner";
+import { summarizeSavingsProgress } from "@/lib/stark/savings/progress";
 
 export interface HomeTrend {
   labels: string[];
@@ -558,7 +559,7 @@ export function buildHomeSummary(input: {
   const previousExpense = previousMonthTransactions.filter((item) => item.type === "EXPENSE").reduce((sum, item) => sum + item.amount, 0);
 
   const totalSavings = input.savingsGoals.reduce((sum, item) => sum + item.currentAmount, 0);
-  const totalSavingsTarget = input.savingsGoals.reduce((sum, item) => sum + item.targetAmount, 0);
+  const savingsProgress = summarizeSavingsProgress(input.savingsGoals, input.savingsPlans ?? []);
   const loanTotal = input.loans.reduce((sum, item) => sum + item.remainingAmount, 0);
   const loanAll = input.loans.reduce((sum, item) => sum + item.totalAmount, 0);
   const loanRepaid = Math.max(loanAll - loanTotal, 0);
@@ -588,9 +589,9 @@ export function buildHomeSummary(input: {
     ratios: buildRatios(currentMonthTransactions),
     savingProgress: {
       title: "储蓄计划",
-      current: totalSavings,
-      total: Math.max(totalSavingsTarget, totalSavings, 0),
-      percent: clampPercent(totalSavingsTarget > 0 ? (totalSavings / totalSavingsTarget) * 100 : 0),
+      current: savingsProgress.savedAmount,
+      total: Math.max(savingsProgress.target, savingsProgress.savedAmount, 0),
+      percent: savingsProgress.percent,
     },
     loanProgress: {
       title: "贷款还款进度",

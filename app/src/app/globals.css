@@ -1832,28 +1832,72 @@ nextjs-portal {
 
 .stark-budget-allocation-plan-head {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
-.stark-budget-allocation-plan-head > div {
+.stark-budget-allocation-plan-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stark-budget-allocation-plan-toggle:focus-visible {
+  outline: 2px solid #0060c0;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.stark-budget-allocation-plan-title {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.stark-budget-allocation-plan-head strong,
+.stark-budget-allocation-plan-title strong,
 .stark-budget-allocation-plan-details > strong {
   color: #0f172a;
   font-size: calc(12px * var(--user-font-scale));
   font-weight: 650;
 }
 
-.stark-budget-allocation-plan-head small {
+.stark-budget-allocation-plan-title small {
   color: #7b8ca3;
   font-size: calc(10px * var(--user-font-scale));
   line-height: 1.4;
+}
+
+.stark-budget-allocation-plan-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  color: #0060c0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stark-budget-allocation-plan-toggle[aria-expanded="true"] .stark-budget-allocation-plan-toggle-label svg {
+  transform: rotate(180deg);
+}
+
+.stark-budget-allocation-plan-content {
+  display: grid;
+  gap: 11px;
+}
+
+.stark-budget-allocation-plan-content[hidden] {
+  display: none;
 }
 
 .stark-budget-allocation-plan-link {
@@ -2252,6 +2296,14 @@ nextjs-portal {
 
   .stark-budget-allocation-plan-totals {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stark-budget-allocation-plan-head {
+    align-items: flex-start;
+  }
+
+  .stark-budget-allocation-plan-link {
+    padding-top: 4px;
   }
 
   .stark-budget-allocation-plan-totals > div:last-child {
