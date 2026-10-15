@@ -362,6 +362,108 @@ export function calculateSavingsRow(values: SavingsRowValues) {
   };
 }
 
+export type SavingsPlanAllocationItem = {
+  name: string;
+  kind: "FIXED" | "TEMPORARY";
+  amount: number;
+};
+
+export type SavingsPlanAllocation = {
+  planCount: number;
+  fixedExpense: number;
+  temporaryExpense: number;
+  plannedDeposit: number;
+  plannedSalary: number;
+  previousBalance: number;
+  projectedRemaining: number | null;
+  expenseItems: SavingsPlanAllocationItem[];
+};
+
+function positivePlanAmount(value: unknown) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+/** Keep saved planning amounts separate from recorded cashflow. */
+export function summarizeSavingsPlanAllocation(
+  goals: SavingsGoal[],
+  plans: SavingsPlan[],
+  reportingPeriod: string,
+): SavingsPlanAllocation {
+  const isYear = /^\d{4}$/.test(reportingPeriod);
+  const goalConfigs = new Map(goals.map((goal) => [goal.id, parseSavingsJsonObject(goal.planConfig)]));
+  const selectedPlans = new Map<string, SavingsPlan>();
+
+  for (const plan of [...plans].sort((left, right) => String(left.updatedAt ?? "").localeCompare(String(right.updatedAt ?? "")))) {
+    if (isYear ? !plan.month.startsWith(`${reportingPeriod}-`) : plan.month !== reportingPeriod) continue;
+    const config = goalConfigs.get(plan.goalId);
+    if (!config) continue;
+    const frequency = isSavingsFrequency(config.frequency) ? config.frequency : null;
+    const planFrequency = plan.remark === "单月存模式" ? "MONTHLY" : plan.remark === "隔月存模式" ? "ALTERNATE" : null;
+    if (frequency && planFrequency && frequency !== planFrequency) continue;
+    const key = `${plan.goalId}:${plan.month}`;
+    const selected = selectedPlans.get(key);
+    const selectedFrequency = selected?.remark === "单月存模式" ? "MONTHLY" : selected?.remark === "隔月存模式" ? "ALTERNATE" : null;
+    // A marked row for the active mode wins over a newer unmarked legacy row.
+    if (frequency && selectedFrequency === frequency && !planFrequency) continue;
+    selectedPlans.set(key, plan);
+  }
+
+  const expenseItems = new Map<string, SavingsPlanAllocationItem>();
+  let fixedExpense = 0;
+  let temporaryExpense = 0;
+  let plannedDeposit = 0;
+  let plannedSalary = 0;
+  let previousBalance = 0;
+  const nonemptyRows: Array<{ salary: number; previousBalance: number; deposit: number; expenses: Record<string, number> }> = [];
+
+  for (const plan of selectedPlans.values()) {
+    const config = goalConfigs.get(plan.goalId) ?? {};
+    const temporaryColumns = new Set(stringArray(config.temporaryColumns));
+    const parsedExpenses = parseSavingsExpenses(plan.expenses);
+    const salary = positivePlanAmount(plan.salary);
+    const balance = positivePlanAmount(parsedExpenses[PREVIOUS_BALANCE_COLUMN]);
+    const deposit = positivePlanAmount(plan.amount);
+    const expenses: Record<string, number> = {};
+
+    for (const [name, rawAmount] of Object.entries(parsedExpenses)) {
+      if (!name || name === PREVIOUS_BALANCE_COLUMN) continue;
+      const amount = positivePlanAmount(rawAmount);
+      if (!amount) continue;
+      const kind = temporaryColumns.has(name) ? "TEMPORARY" : "FIXED";
+      expenses[name] = amount;
+      if (kind === "TEMPORARY") temporaryExpense += amount;
+      else fixedExpense += amount;
+      const key = `${kind}:${name}`;
+      const current = expenseItems.get(key);
+      expenseItems.set(key, { name, kind, amount: (current?.amount ?? 0) + amount });
+    }
+
+    if (!salary && !balance && !deposit && !Object.keys(expenses).length) continue;
+    plannedSalary += salary;
+    previousBalance += balance;
+    plannedDeposit += deposit;
+    nonemptyRows.push({ salary, previousBalance: balance, deposit, expenses });
+  }
+
+  const onlyRow = !isYear && nonemptyRows.length === 1 ? nonemptyRows[0] : null;
+  return {
+    planCount: nonemptyRows.length,
+    fixedExpense,
+    temporaryExpense,
+    plannedDeposit,
+    plannedSalary,
+    previousBalance,
+    projectedRemaining: onlyRow ? calculateSavingsRow({
+      salary: onlyRow.salary,
+      previousBalance: onlyRow.previousBalance,
+      expenses: onlyRow.expenses,
+      expected: onlyRow.deposit,
+    }).remaining : null,
+    expenseItems: [...expenseItems.values()].sort((left, right) => right.amount - left.amount || left.name.localeCompare(right.name)),
+  };
+}
+
 export function savingsPlanRecordedAmount(plan: Pick<SavingsPlan, "amount" | "status" | "actualAmount">) {
   if (plan.status !== "COMPLETED") return 0;
   const actualAmount = Number(plan.actualAmount);

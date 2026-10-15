@@ -4,6 +4,7 @@ import type { LanguageChoice } from "@/lib/stark/storage/ui-settings";
 export type AppLocale = "zh-CN" | "en-US";
 
 const translations: Record<string, string> = {
+  储蓄计划安排: "Savings plan allocation", "计划表金额仅供参考，不参与上方实际分配计算": "Plan amounts are for reference and do not change the actual allocation above", 计划支出明细: "Planned expense details", 固定: "Fixed",
   "上月结余": "Previous balance", "可选": "Optional", "添加上月结余": "Add previous balance", "移除上月结余": "Remove previous balance", "删除月份行": "Delete month row", "至少保留一个月份行": "Keep at least one month row", "上月结余是专用列，请使用专用按钮": "Previous balance is a dedicated column. Use its button.",
   "wotty stark 网页版 app 端": "wotty stark web app",
   首页: "Home", 消费: "Spending", 储蓄: "Savings", 贷款: "Loans", 资产: "Assets", 账户: "Account",

@@ -1820,6 +1820,167 @@ nextjs-portal {
   text-align: right;
 }
 
+.stark-budget-allocation-plan {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 11px;
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid #e7edf3;
+}
+
+.stark-budget-allocation-plan-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stark-budget-allocation-plan-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stark-budget-allocation-plan-head strong,
+.stark-budget-allocation-plan-details > strong {
+  color: #0f172a;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-head small {
+  color: #7b8ca3;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.4;
+}
+
+.stark-budget-allocation-plan-link {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  color: #0060c0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.stark-budget-allocation-plan-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stark-budget-allocation-plan-totals > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.stark-budget-allocation-plan-totals span,
+.stark-budget-allocation-plan-remaining span {
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-totals strong {
+  color: #1e293b;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stark-budget-allocation-plan-remaining {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.stark-budget-allocation-plan-remaining strong {
+  color: #0f766e;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-remaining strong.negative {
+  color: #b45309;
+}
+
+.stark-budget-allocation-plan-details {
+  display: grid;
+  gap: 6px;
+}
+
+.stark-budget-allocation-plan-details ul {
+  display: grid;
+  gap: 0;
+  max-height: 148px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.stark-budget-allocation-plan-details li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #f0f3f7;
+}
+
+.stark-budget-allocation-plan-details li > span {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 5px;
+  color: #475569;
+  font-size: calc(11px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-details li > span > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stark-budget-allocation-plan-details i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: #0ea5e9;
+}
+
+.stark-budget-allocation-plan-details i.temporary {
+  background: #f59e0b;
+}
+
+.stark-budget-allocation-plan-details li small {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: calc(9px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-details li > strong {
+  flex: 0 0 auto;
+  color: #334155;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Shared bottom sheet */
 .bottom-sheet-overlay {
   position: fixed;
@@ -2045,6 +2206,18 @@ nextjs-portal {
     width: 100%;
     margin-left: 0;
     text-align: left;
+  }
+
+  .stark-budget-allocation-plan-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stark-budget-allocation-plan-totals > div:last-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    grid-column: 1 / -1;
   }
 }
 

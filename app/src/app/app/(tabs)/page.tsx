@@ -511,6 +511,7 @@ function StarkDiagnosticBanner({ summary, onOpen }: { summary: HomeSummary; onOp
 function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: { summary: HomeSummary; reportingMonth: string; onManageBudget: () => void }) {
   const locale = useAppLocale();
   const allocation = summary.budgetAllocation;
+  const planAllocation = summary.savingsPlanAllocation;
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
   const allocationBase = Math.max(allocation.income, allocated, 1);
   const segments = [
@@ -576,6 +577,61 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
         <strong>¥ {formatMoney(allocation.assetTotal)}</strong>
         <small>{translateValue("余额单独展示，不重复计入本月扣减", locale)}</small>
       </div>
+      {planAllocation.planCount > 0 ? (
+        <div className="stark-budget-allocation-plan">
+          <div className="stark-budget-allocation-plan-head">
+            <div>
+              <strong>{translateValue("储蓄计划安排", locale)}</strong>
+              <small>{translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)}</small>
+            </div>
+            <Link href="/app/savings" className="stark-budget-allocation-plan-link">
+              {translateValue("储蓄计划", locale)} <ChevronRightIcon size={12} />
+            </Link>
+          </div>
+          <div className="stark-budget-allocation-plan-totals">
+            <div>
+              <span>{translateValue("固定支出", locale)}</span>
+              <strong>¥ {formatMoney(planAllocation.fixedExpense)}</strong>
+            </div>
+            <div>
+              <span>{translateValue("临时支出", locale)}</span>
+              <strong>¥ {formatMoney(planAllocation.temporaryExpense)}</strong>
+            </div>
+            <div>
+              <span>{translateValue("预计存", locale)}</span>
+              <strong>¥ {formatMoney(planAllocation.plannedDeposit)}</strong>
+            </div>
+          </div>
+          {planAllocation.projectedRemaining !== null ? (
+            <div className="stark-budget-allocation-plan-remaining">
+              <span>
+                {translateValue("计划薪资", locale)} ¥ {formatMoney(planAllocation.plannedSalary)}
+                {planAllocation.previousBalance > 0 ? <> · {translateValue("上月结余", locale)} ¥ {formatMoney(planAllocation.previousBalance)}</> : null}
+              </span>
+              <strong className={planAllocation.projectedRemaining < 0 ? "negative" : ""}>
+                {translateValue("预计剩余", locale)} {planAllocation.projectedRemaining < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(planAllocation.projectedRemaining))}
+              </strong>
+            </div>
+          ) : null}
+          {planAllocation.expenseItems.length > 0 ? (
+            <div className="stark-budget-allocation-plan-details">
+              <strong>{translateValue("计划支出明细", locale)}</strong>
+              <ul>
+                {planAllocation.expenseItems.map((item) => (
+                  <li key={`${item.kind}:${item.name}`}>
+                    <span>
+                      <i className={item.kind === "TEMPORARY" ? "temporary" : "fixed"} />
+                      <span>{translateValue(item.name, locale)}</span>
+                      <small>{translateValue(item.kind === "TEMPORARY" ? "临时" : "固定", locale)}</small>
+                    </span>
+                    <strong>¥ {formatMoney(item.amount)}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
