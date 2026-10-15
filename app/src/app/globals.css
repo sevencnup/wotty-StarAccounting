@@ -110,6 +110,10 @@ nextjs-portal {
   overflow-x: hidden;
 }
 
+html.kt-hybrid-shell .tabs-shell {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
 .tabs-liquid-shell {
   background: var(--background);
 }
