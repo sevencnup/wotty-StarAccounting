@@ -20,6 +20,7 @@ import {
 } from "@/lib/stark/dashboard/summary";
 import { homeCoreTransactionMonths, homeSupplementalTransactionMonths } from "@/lib/stark/dashboard/home-load-stages";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
+import { matchSavingsPlanExpensesWithBills } from "@/lib/stark/savings/expense-bill-matching";
 import { formatMoney, isReportingYearKey, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Account, Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
@@ -520,12 +521,21 @@ function StarkDiagnosticBanner({ summary, onOpen }: { summary: HomeSummary; onOp
   );
 }
 
-function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: { summary: HomeSummary; reportingMonth: string; onManageBudget: () => void }) {
+function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onManageBudget }: { summary: HomeSummary; reportingMonth: string; transactions: Transaction[]; onManageBudget: () => void }) {
   const locale = useAppLocale();
   const [planExpanded, setPlanExpanded] = useState(false);
   const planContentId = useId();
   const allocation = summary.budgetAllocation;
   const planAllocation = summary.savingsPlanAllocation;
+  const expenseItemsWithBillMatches = useMemo(
+    () => matchSavingsPlanExpensesWithBills(
+      planAllocation.expenseItems,
+      transactions,
+      summary.savingsPlanPeriod,
+      summary.forecast.salaryDay,
+    ),
+    [planAllocation.expenseItems, summary.forecast.salaryDay, summary.savingsPlanPeriod, transactions],
+  );
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
   const allocationBase = Math.max(allocation.income, allocated, 1);
   const allocationPercent = allocation.income > 0 ? (allocated / allocation.income) * 100 : 0;
@@ -652,12 +662,12 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
               <div className="stark-budget-allocation-plan-details">
                 <strong>{translateValue("计划支出明细", locale)}</strong>
                 <ul>
-                  {planAllocation.expenseItems.map((item) => (
+                  {expenseItemsWithBillMatches.map((item) => (
                     <li key={`${item.kind}:${item.name}`}>
                       <span>
-                        <i className={item.kind === "TEMPORARY" ? "temporary" : "fixed"} />
+                        <i aria-hidden="true" className={item.matched ? "matched" : item.kind === "TEMPORARY" ? "temporary" : "fixed"}>{item.matched ? "✓" : ""}</i>
                         <span>{translateValue(item.name, locale)}</span>
-                        <small>{translateValue(item.kind === "TEMPORARY" ? "临时" : "固定", locale)}</small>
+                        <small className={item.matched ? "matched" : ""}>{translateValue(item.matched ? "已记账" : item.kind === "TEMPORARY" ? "临时" : "固定", locale)}</small>
                       </span>
                       <strong>¥ {formatMoney(item.amount)}</strong>
                     </li>
@@ -1423,7 +1433,7 @@ export function HomeDashboard() {
 
       {/* 本月资金分配 */}
       {budgetAllocationStatus === "ready" ? (
-        <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => setBudgetManagementOpen(true)} />
+        <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} transactions={analysisTransactions} onManageBudget={() => setBudgetManagementOpen(true)} />
       ) : (
         <HomeModulePlaceholder status={budgetAllocationStatus} onRetry={reloadDashboard} height={178} />
       )}
