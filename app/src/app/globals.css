@@ -1868,6 +1868,23 @@ nextjs-portal {
   white-space: nowrap;
 }
 
+.stark-budget-allocation-plan-source {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-source strong {
+  color: #334155;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
 .stark-budget-allocation-plan-totals {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1883,8 +1900,7 @@ nextjs-portal {
   background: #f5f8fc;
 }
 
-.stark-budget-allocation-plan-totals span,
-.stark-budget-allocation-plan-remaining span {
+.stark-budget-allocation-plan-totals span {
   color: #64748b;
   font-size: calc(10px * var(--user-font-scale));
 }
@@ -1895,25 +1911,6 @@ nextjs-portal {
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   overflow-wrap: anywhere;
-}
-
-.stark-budget-allocation-plan-remaining {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-}
-
-.stark-budget-allocation-plan-remaining strong {
-  color: #0f766e;
-  font-size: calc(11px * var(--user-font-scale));
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-
-.stark-budget-allocation-plan-remaining strong.negative {
-  color: #b45309;
 }
 
 .stark-budget-allocation-plan-details {
@@ -1979,6 +1976,51 @@ nextjs-portal {
   font-size: calc(11px * var(--user-font-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-available {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: #eaf5ef;
+}
+
+.stark-budget-allocation-plan-available > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stark-budget-allocation-plan-available > span strong {
+  color: #166534;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-available small,
+.stark-budget-allocation-plan-pending {
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.4;
+}
+
+.stark-budget-allocation-plan-available > strong {
+  flex: 0 0 auto;
+  color: #0f766e;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-available > strong.negative {
+  color: #b45309;
+}
+
+.stark-budget-allocation-plan-pending {
+  margin: 0;
 }
 
 /* Shared bottom sheet */
@@ -2218,6 +2260,11 @@ nextjs-portal {
     justify-content: space-between;
     gap: 8px;
     grid-column: 1 / -1;
+  }
+
+  .stark-budget-allocation-plan-available {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -7726,6 +7773,48 @@ img[src$="/qita.webp"] {
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 10px;
+}
+
+.savings-edit-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: -2px 0 11px;
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.savings-edit-scope > div {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f1f5f9;
+}
+
+.savings-edit-scope button {
+  min-height: 27px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #64748b;
+  background: transparent;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.savings-edit-scope button.active {
+  color: #0060c0;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+  font-weight: 600;
+}
+
+.savings-edit-scope small {
+  flex: 1 1 100%;
+  color: #94a3b8;
+  font-size: calc(9px * var(--user-font-scale));
+  line-height: 1.45;
 }
 
 .savings-plan-actions {

@@ -82,13 +82,12 @@ test("previous balance contributes to the row remaining amount", () => {
   assert.equal(result.remaining, 3000);
 });
 
-test("fixed expense columns sync from the first month", () => {
-  assert.equal(shouldSyncSavingsExpense("2026-01", "2026-01", "房租", []), true);
+test("fixed expense columns can sync from any edited month", () => {
+  assert.equal(shouldSyncSavingsExpense("房租", []), true);
 });
 
 test("temporary expense columns only update the edited month", () => {
-  assert.equal(shouldSyncSavingsExpense("2026-01", "2026-01", "临时支出", ["临时支出"]), false);
-  assert.equal(shouldSyncSavingsExpense("2026-02", "2026-01", "房租", []), false);
+  assert.equal(shouldSyncSavingsExpense("临时支出", ["临时支出"]), false);
 });
 
 test("temporary expenses are included in the row remaining calculation", () => {
