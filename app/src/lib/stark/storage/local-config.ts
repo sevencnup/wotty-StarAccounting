@@ -158,3 +158,13 @@ export function getSelectedHomeMetric(): HomeMetric {
 export function setSelectedHomeMetric(metric: HomeMetric) {
   writeValue("home-metric", metric);
 }
+
+export type BalancePeriodMode = "month" | "salary";
+
+export function getSelectedBalancePeriodMode(): BalancePeriodMode {
+  return readValue("balance-period-mode") === "salary" ? "salary" : "month";
+}
+
+export function setSelectedBalancePeriodMode(mode: BalancePeriodMode) {
+  writeValue("balance-period-mode", mode);
+}
