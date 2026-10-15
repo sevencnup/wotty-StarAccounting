@@ -34,6 +34,7 @@ export function homeCoreTransactionMonths(reportingMonth: string, balanceBaselin
     ...reportingPeriodMonths(previousMonthKey(previousMonth)),
     ...reportingPeriodMonths(previousMonth),
     ...reportingPeriodMonths(reportingMonth),
+    nextMonthKey(reportingMonth),
     ...balanceBaselineTransactionMonths(reportingMonth, balanceBaselineDate),
   ])];
 }

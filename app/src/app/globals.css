@@ -1678,9 +1678,7 @@ nextjs-portal {
 }
 
 .stark-budget-allocation-title small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stark-budget-allocation-entry {
@@ -2283,10 +2281,6 @@ nextjs-portal {
 }
 
 @media (max-width: 420px) {
-  .stark-budget-allocation-title small {
-    white-space: normal;
-  }
-
   .stark-budget-allocation-assets {
     align-items: flex-start;
     flex-wrap: wrap;
