@@ -9,6 +9,16 @@ export type SavingsPlanExpenseBillMatch = SavingsPlanAllocationItem & {
   matchStatus: "unmatched" | "partial" | "matched" | "over";
 };
 
+const UTILITY_EXPENSE_KEYWORDS: Record<string, readonly string[]> = {
+  "水电": ["水电", "水电费", "水费", "电费"],
+  "水电费": ["水电", "水电费", "水费", "电费"],
+};
+
+function expenseKeywords(name: string): readonly string[] {
+  const normalizedName = name.trim().replace(/\s+/g, "");
+  return UTILITY_EXPENSE_KEYWORDS[normalizedName] ?? [name];
+}
+
 /** Match planned expense names against expense bills in the same salary cycle or calendar year. */
 export function matchSavingsPlanExpensesWithBills(
   items: readonly SavingsPlanAllocationItem[],
@@ -27,7 +37,10 @@ export function matchSavingsPlanExpensesWithBills(
   ));
 
   return items.map((item) => {
-    const matches = periodExpenses.filter((transaction) => matchesCategoryKeyword(transaction, item.name));
+    const keywords = expenseKeywords(item.name);
+    const matches = periodExpenses.filter((transaction) => (
+      keywords.some((keyword) => matchesCategoryKeyword(transaction, keyword))
+    ));
     const matchedCents = matches.reduce((sum, transaction) => sum + Math.round(Number(transaction.amount) * 100), 0);
     const plannedCents = Math.round(Number(item.amount) * 100);
     return {
