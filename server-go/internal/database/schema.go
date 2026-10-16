@@ -2,7 +2,9 @@ package database
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -108,6 +110,23 @@ type schemaIndex struct {
 	Name    string
 	Columns []string
 	Unique  bool
+}
+
+// SchemaVersion fingerprints the declarative schema that ensureSchema applies.
+// A compatible additive schema change therefore changes the version without
+// requiring a separate version number to be remembered by hand.
+func SchemaVersion() string {
+	hash := sha256.New()
+	for _, table := range schemaTables {
+		fmt.Fprintf(hash, "table\x00%s\x00%s\x00", table.Name, table.Create)
+		for _, column := range table.Columns {
+			fmt.Fprintf(hash, "column\x00%s\x00%s\x00", column.Name, column.Definition)
+		}
+		for _, index := range table.Indexes {
+			fmt.Fprintf(hash, "index\x00%s\x00%t\x00%s\x00", index.Name, index.Unique, strings.Join(index.Columns, ","))
+		}
+	}
+	return hex.EncodeToString(hash.Sum(nil))[:16]
 }
 
 var schemaTables = []schemaTable{

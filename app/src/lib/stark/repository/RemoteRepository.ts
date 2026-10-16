@@ -20,7 +20,7 @@ import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { clearCloudAuth, getCloudAuthToken, getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { loanRepaymentClassificationsPath, savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
-import { deletePersistentRemoteCache, readPersistentRemoteCache, writePersistentRemoteCache } from "@/lib/stark/repository/persistent-remote-cache";
+import { deletePersistentRemoteCache, readPersistentRemoteCache, synchronizePersistentRemoteCacheSchema, writePersistentRemoteCache } from "@/lib/stark/repository/persistent-remote-cache";
 
 type EntityType =
   | "users"
@@ -73,6 +73,9 @@ export class RemoteRepository implements DataRepository {
   private resourceCacheEpoch = 0;
   private readonly transactionUpdateTimers = new Map<string, number>();
   private activeCacheScope: string | null | undefined;
+  private schemaCheckScope: string | null = null;
+  private schemaCheckAt = 0;
+  private schemaCheckRequest: Promise<void> | null = null;
 
   constructor(baseUrl = getCloudApiUrl()) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -132,6 +135,40 @@ export class RemoteRepository implements DataRepository {
   private async deletePersisted(resource: string, keyPrefix = "") {
     const scope = this.persistentScope();
     if (scope) await deletePersistentRemoteCache(scope, resource, keyPrefix).catch(() => undefined);
+  }
+
+  private async ensureRemoteSchemaVersion() {
+    const scope = this.ensureCacheScope();
+    if (!scope) return;
+    if (this.schemaCheckScope === scope && Date.now() - this.schemaCheckAt < 60_000) return;
+    if (this.schemaCheckRequest) return this.schemaCheckRequest;
+
+    const request = this.request<{ schemaVersion?: unknown }>("/api/schema", undefined, 1200)
+      .then(async (response) => {
+        if (typeof response.schemaVersion !== "string" || !response.schemaVersion) return;
+        if (this.persistentScope() !== scope) return;
+        const changed = await synchronizePersistentRemoteCacheSchema(scope, response.schemaVersion);
+        if (this.persistentScope() !== scope) return;
+        if (changed) {
+          this.clearCache();
+          this.activeCacheScope = scope;
+        }
+        this.schemaCheckScope = scope;
+        this.schemaCheckAt = Date.now();
+      })
+      .catch(() => {
+        // Older servers and offline launches keep using their persisted cache.
+        if (this.persistentScope() === scope) {
+          this.schemaCheckScope = scope;
+          this.schemaCheckAt = Date.now();
+        }
+      });
+    this.schemaCheckRequest = request;
+    try {
+      await request;
+    } finally {
+      if (this.schemaCheckRequest === request) this.schemaCheckRequest = null;
+    }
   }
 
   private notifyTransactionUpdate(accountId: string) {
@@ -225,6 +262,7 @@ export class RemoteRepository implements DataRepository {
 
   private async readCachedResource<T>(resource: CachedResource, key: string, load: () => Promise<T>, accountId?: string): Promise<T> {
     this.ensureCacheScope();
+    await this.ensureRemoteSchemaVersion();
     const cached = this.resourceCache(resource).get(key) as TimedValue<T> | undefined;
     if (cached) {
       if (cached.expiresAt <= Date.now()) {
@@ -244,9 +282,9 @@ export class RemoteRepository implements DataRepository {
     return this.refreshCachedResource(resource, key, load, accountId);
   }
 
-  private async request<T>(path: string, init?: RequestInit): Promise<T> {
+  private async request<T>(path: string, init?: RequestInit, timeoutMs = 10000): Promise<T> {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         ...init,
@@ -409,6 +447,7 @@ export class RemoteRepository implements DataRepository {
 
   async getTransactionsByMonth(accountId: string, month: string) {
     this.ensureCacheScope();
+    await this.ensureRemoteSchemaVersion();
     const targetAccountId = String(accountId);
     const cacheKey = `${targetAccountId}:${month}`;
     const cached = this.transactionMonthCache.get(cacheKey);
@@ -434,6 +473,7 @@ export class RemoteRepository implements DataRepository {
   }
   async getTransactionMonths(accountId: string) {
     this.ensureCacheScope();
+    await this.ensureRemoteSchemaVersion();
     const targetAccountId = String(accountId);
     const cached = this.transactionMonthsCache.get(targetAccountId);
     if (cached) {
