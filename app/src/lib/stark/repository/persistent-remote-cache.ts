@@ -37,6 +37,38 @@ function recordPrefix(scope: string, resource: string, key = "") {
   return `${scope}\u0000${resource}\u0000${key}`;
 }
 
+/** Clear a user's cached API responses when the server's database/API schema changes. */
+export async function synchronizePersistentRemoteCacheSchema(scope: string, schemaVersion: string) {
+  const db = await openCache();
+  const scopePrefix = `${scope}\u0000`;
+  const metadataId = recordPrefix(scope, "__metadata__", "schema-version");
+  return new Promise<boolean>((resolve, reject) => {
+    let changed = false;
+    const transaction = db.transaction(STORE_NAME, "readwrite");
+    const store = transaction.objectStore(STORE_NAME);
+    const currentRequest = store.get(metadataId);
+    currentRequest.onsuccess = () => {
+      const current = currentRequest.result as CacheRecord<string> | undefined;
+      if (current?.dataVersion === CACHE_DATA_VERSION && current.value === schemaVersion) return;
+
+      changed = true;
+      const cursorRequest = store.openKeyCursor(IDBKeyRange.bound(scopePrefix, `${scopePrefix}\uffff`));
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result;
+        if (!cursor) return;
+        if (cursor.primaryKey !== metadataId) store.delete(cursor.primaryKey);
+        cursor.continue();
+      };
+      cursorRequest.onerror = () => transaction.abort();
+      store.put({ id: metadataId, savedAt: Date.now(), dataVersion: CACHE_DATA_VERSION, value: schemaVersion } satisfies CacheRecord<string>);
+    };
+    currentRequest.onerror = () => transaction.abort();
+    transaction.oncomplete = () => resolve(changed);
+    transaction.onerror = () => reject(transaction.error ?? new Error("同步云端缓存版本失败"));
+    transaction.onabort = () => reject(transaction.error ?? new Error("同步云端缓存版本失败"));
+  });
+}
+
 export async function readPersistentRemoteCache<T>(scope: string, resource: string, key: string) {
   const db = await openCache();
   return new Promise<CacheRecord<T> | undefined>((resolve, reject) => {

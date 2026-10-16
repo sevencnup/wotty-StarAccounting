@@ -18,11 +18,12 @@ type HealthChecker interface {
 }
 
 type Options struct {
-	Database HealthChecker
-	Auth     *auth.Service
-	Ledger   *ledger.Service
-	Version  config.AppVersion
-	Logger   *log.Logger
+	Database      HealthChecker
+	Auth          *auth.Service
+	Ledger        *ledger.Service
+	Version       config.AppVersion
+	SchemaVersion string
+	Logger        *log.Logger
 }
 
 type healthResponse struct {
@@ -37,6 +38,13 @@ type versionResponse struct {
 	Changelog   *string `json:"changelog,omitempty"`
 	ForceUpdate bool    `json:"forceUpdate,omitempty"`
 }
+
+type schemaVersionResponse struct {
+	SchemaVersion string `json:"schemaVersion"`
+}
+
+// Bump when public API payloads change without a corresponding SQL schema change.
+const apiContractVersion = "1"
 
 func NewHandler(options Options) http.Handler {
 	router := chi.NewRouter()
@@ -53,6 +61,11 @@ func NewHandler(options Options) http.Handler {
 			APKURL:      options.Version.APKURL,
 			Changelog:   options.Version.Changelog,
 			ForceUpdate: options.Version.ForceUpdate,
+		})
+	})
+	router.Get("/api/schema", func(writer http.ResponseWriter, request *http.Request) {
+		writeJSON(writer, http.StatusOK, schemaVersionResponse{
+			SchemaVersion: "api-" + apiContractVersion + ":" + options.SchemaVersion,
 		})
 	})
 	registerAuthRoutes(router, options.Auth)
