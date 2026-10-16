@@ -11,6 +11,7 @@ import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournal
 import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { loadAvailableTransactionMonths, resolveAvailableReportingMonth } from "@/lib/stark/repository/transaction-months";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
@@ -191,10 +192,18 @@ export default function ConsumptionPage() {
           if (active) setLoadError(true);
         });
     };
+    const handleCacheUpdate = (event: Event) => {
+      const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
+      if (!update || (update.resource !== "transactions" && update.resource !== "transactionMonths")) return;
+      if (update.accountId && update.accountId !== accountId) return;
+      reload();
+    };
     window.addEventListener("stark:transaction-saved", reload);
+    window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     return () => {
       active = false;
       window.removeEventListener("stark:transaction-saved", reload);
+      window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     };
   }, [accountId, monthReady, reportingMonth]);
 

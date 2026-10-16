@@ -189,6 +189,13 @@ export default function LoansPage() {
       .catch(() => setLoadError(true));
   }, []);
 
+  const refreshTransactions = useCallback(() => {
+    void repo.getTransactionsByMonths(
+      getCurrentAccountId(),
+      isReportingYearKey(reportingMonth) ? reportingPeriodMonths(reportingMonth) : [reportingMonth],
+    ).then(setTransactions).catch(() => undefined);
+  }, [reportingMonth]);
+
   async function deleteLoan(item: Loan) {
     if (!await confirm({ message: `确定删除贷款“${item.platform}”吗？` })) return;
     await repo.deleteLoan(item.id);
@@ -217,25 +224,25 @@ export default function LoansPage() {
 
   useEffect(() => {
     const handleLoanSaved = () => reload();
-    const handleTransactionSaved = () => setLoadVersion((version) => version + 1);
+    const handleTransactionSaved = () => refreshTransactions();
     window.addEventListener("stark:loan-saved", handleLoanSaved);
     window.addEventListener("stark:transaction-saved", handleTransactionSaved);
     return () => {
       window.removeEventListener("stark:loan-saved", handleLoanSaved);
       window.removeEventListener("stark:transaction-saved", handleTransactionSaved);
     };
-  }, [reload]);
+  }, [refreshTransactions, reload]);
 
   useEffect(() => {
     const handleCacheUpdate = (event: Event) => {
       const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
-      if (update?.resource !== "loans") return;
-      if (update.accountId && update.accountId !== getCurrentAccountId()) return;
-      reload();
+      if (!update || (update.accountId && update.accountId !== getCurrentAccountId())) return;
+      if (update.resource === "loans") reload();
+      if (update.resource === "transactions") refreshTransactions();
     };
     window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     return () => window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
-  }, [reload]);
+  }, [refreshTransactions, reload]);
 
   const summary = useMemo(() => {
     const activeLoans = list.filter((item) => item.status !== "PAID_OFF");

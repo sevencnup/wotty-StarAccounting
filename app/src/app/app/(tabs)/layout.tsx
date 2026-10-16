@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { MobileBottomNav } from "@/components/stark/MobileBottomNav";
 import { LazyJournalPanel as JournalPanel, preloadJournalPanel } from "@/components/stark/LazyJournalPanel";
@@ -20,6 +20,7 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [ktHybridShell, setKtHybridShell] = useState(false);
+  const tabsPrefetchedRef = useRef(false);
   usePrimaryTabBackGuard(pathname);
   const isJournalRoute = pathname.startsWith("/app/journal");
   const isSavingsRoute = pathname.startsWith("/app/savings");
@@ -46,6 +47,15 @@ export default function TabsLayout({ children }: { children: React.ReactNode }) 
     };
     window.addEventListener("stark:kt-hybrid-tab", handleNativeTab);
     return () => window.removeEventListener("stark:kt-hybrid-tab", handleNativeTab);
+  }, [ktHybridShell, router]);
+
+  useEffect(() => {
+    if (!ktHybridShell || tabsPrefetchedRef.current) return;
+    const timer = window.setTimeout(() => {
+      tabsPrefetchedRef.current = true;
+      for (const path of KT_HYBRID_TAB_PATHS) router.prefetch(path);
+    }, 2500);
+    return () => window.clearTimeout(timer);
   }, [ktHybridShell, router]);
 
   function openJournal() {
