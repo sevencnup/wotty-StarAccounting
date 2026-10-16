@@ -1,210 +1,92 @@
-# Wotty Star Accounting
+# 星会计（Wotty Star Accounting）
 
-Wotty Star Accounting（星会计）是一个面向个人的记账与财务规划项目，支持收支记录、
-预算、储蓄目标、资产、贷款、微信/支付宝账单导入、消费分析和账户对账。
+<p align="center"><img src="app/public/logo.webp" alt="星会计 Logo" width="96"></p>
 
-项目由以下部分组成：
+星会计是面向个人的记账与财务规划应用。记录收支后，可以按自然月或发薪周期查看资金变化，安排预算和储蓄计划，并管理资产、贷款及固定扣费。项目提供网页和 Android 版本。
 
-- `app`：Next.js 前端，同时作为 Capacitor Android App 的界面。
-- `api-server`：Ktor API 服务，为云端模式提供认证、数据读写和 MySQL 持久化。
-- `docs`：数据库部署、Android 调试和开发过程文档。
-- `releases`：按版本归档的 APK 安装包。
+## 主要功能
 
-## 数据模式
+- **收支与账单**：记录收入、支出和账户流水，导入微信、支付宝账单，查看消费结构与趋势。
+- **预算与资金分配**：按分类管理预算，结合薪资收入、计划支出和储蓄目标查看可支配金额。
+- **储蓄、资产与贷款**：管理储蓄目标、资产余额和还款计划，并用相关账单核对计划执行情况。
+- **订阅/扣费管理**：为订阅、保险、还款等固定支出设置日期和金额，到期自动记账。
+- **本地与云端账本**：Android 可选择设备本地账本或登录云端账本；浏览器使用云端账本。
 
-| 运行环境 | 本地模式 | 云端模式 |
+## 版本与数据模式
+
+| 版本 | 页面与导航 | 本仓库能否构建 |
 | --- | --- | --- |
-| Android App | 支持，数据保存在 App 的 IndexedDB | 支持，通过 API 保存到 MySQL |
-| Web 浏览器 | 不支持 | 支持 |
+| Web 壳版（`com.wotty.stark.web`） | Capacitor WebView 与网页底栏 | 可以 |
+| KT 混合版（`com.wotty.stark.ktweb`） | 同一套网页页面与 Kotlin 原生底栏 | 可以 |
+| 纯 KT 版（`com.wotty.stark.nativeapp`） | Kotlin 原生页面 | 不可以，源码不在本仓库 |
 
-Android 首次安装默认使用本地模式；Web 端固定使用云端模式。本地与云端是两个完全隔离的
-数据源，切换模式不会自动迁移、合并或同步账单。
+Web 壳版和 KT 混合版可以同时安装。各版本的区别和构建命令见 [Android 安装包版本区分](docs/android-app-editions.md)。
 
-本地模式不需要 API、MySQL 或登录。云端模式适合多设备访问，但必须先部署 API 和数据库，
-并在统一入口完成 API 检测与账户登录。
+Android 本地模式将数据保存在当前应用的 IndexedDB 中，不需要登录或部署服务器。云端模式通过 API 将数据保存在 MySQL 中，适合在多个设备上访问。两种模式使用独立账本，切换模式不会自动迁移、合并或同步数据。浏览器只支持云端模式。
 
-## 技术栈
+## 仓库结构
 
-- Next.js 16、React 19、TypeScript
-- Capacitor 6、Android Gradle
-- Kotlin、Ktor 3
-- MySQL 8、Exposed、HikariCP
-- pnpm workspace
+| 目录 | 用途 |
+| --- | --- |
+| `app/` | 当前 Next.js 前端及 Capacitor Android 工程 |
+| `server-go/` | Docker Compose 默认使用的 Go API |
+| `api-server/` | 本地 `pnpm dev` 使用的 Ktor API |
+| `web/` | 早期 Web 工程及历史文档 |
+| `docs/` | 开发、部署和版本说明 |
+| `releases/` | 本地打包时保存带版本号和时间戳的 APK |
 
-## 环境要求
-
-- Node.js 20.9 或更高版本
-- pnpm
-- Java 17（运行或构建 API）
-- MySQL 8（仅云端模式需要）
-- Android SDK（仅打包 Android App 需要）
-
-所有 Node 依赖由根目录的 pnpm workspace 管理。请在仓库根目录执行安装，不要在 `app`
-目录单独运行 `npm install` 或 `pnpm install`。
+主要技术包括 Next.js 16、React 19、TypeScript、Capacitor 6、Kotlin、Go、MySQL 8 和 pnpm workspace。
 
 ## 本地开发
 
-### 1. 安装依赖
+前端开发需要 Node.js 20.9 或更高版本和 pnpm；本地运行 Ktor API 还需要 Java 17，使用云端账本时需要 MySQL 8。Android 打包还需要 Android SDK。所有 Node 依赖都从仓库根目录安装：
 
 ```bash
 pnpm install
-```
-
-### 2. 配置云端服务
-
-如果只调试 Android 本地模式，可以跳过数据库配置。开发云端模式时，复制环境变量模板：
-
-```bash
 cp .env.example .env
 ```
 
-至少需要确认以下配置：
-
-```text
-DATABASE_URL=jdbc:mysql://127.0.0.1:3306/star_accounting
-DB_USER=accounting
-DB_PASSWORD=请替换为数据库密码
-JWT_SECRET=请替换为至少 32 位的随机字符串
-ACCOUNT_ADMIN_KEY=请替换为至少 12 位的管理员恢复密钥
-```
-
-`JWT_SECRET` 用于云端登录令牌；`ACCOUNT_ADMIN_KEY` 用于无邮件密码找回以及开启或关闭注册。
-这两个值只能配置在 API 环境变量中，不能写入前端源码或提交到 Git。
-
-### 3. 启动 Web 和 API
+开发云端账本时，在 `.env` 中填写本机 MySQL 的 `DATABASE_URL`、`DB_USER`、`DB_PASSWORD`，并设置 `JWT_SECRET`。`ACCOUNT_ADMIN_KEY` 用于密码找回和注册开关。随后运行：
 
 ```bash
 pnpm dev
 ```
 
-启动地址：
+此命令同时启动 Next.js 前端和 Ktor API。默认地址为 Web `http://127.0.0.1:12366`、API `http://127.0.0.1:12367`；端口被占用时，启动脚本会输出实际使用的端口。只调试 Android 本地模式时，可以跳过数据库配置，但 API 的数据接口无法使用。
 
-- Web：`http://127.0.0.1:12366`
-- API：`http://127.0.0.1:12367`
-- 健康检查：`http://127.0.0.1:12367/api/health`
-
-健康检查返回以下内容时，表示 API 和数据库均可用：
-
-```json
-{"status":"ok","db":true}
-```
-
-开发脚本会读取根目录 `.env` 并同时启动 Web 与 API；退出命令时会停止它启动的两个服务。日常
-开发默认会设置 `DB_AUTO_MIGRATE=false`，避免每次重启都向远端 MySQL 查询完整表结构。
-首次建库或后端表模型变更后，临时改为 `DB_AUTO_MIGRATE=true` 启动一次，确认完成后再改回
-`false`。
-
-`pnpm dev` 默认只输出 Web/API 的启动状态；如需提前编译全部标签页以便演示或测试，可设置
-`DEV_PREWARM_ROUTES=true` 后再启动。
-
-### 单独启动前端
-
-```bash
-pnpm --filter wotty-stark-web dev
-```
-
-浏览器版仍然需要云端 API。只有通过 Capacitor 运行的 Android App 才能在没有 API 时使用
-本地模式。
-
-### 单独启动 API
-
-Linux/macOS：
-
-```bash
-sh app/android/gradlew -p api-server run
-```
-
-Windows：
-
-```powershell
-app\android\gradlew.bat -p api-server run
-```
-
-## 登录和 API 地址
-
-根路径 `/` 是 Web 与 Android App 共用的统一入口：
-
-- Web 会自动检测已保存的云端 API，然后显示登录界面。
-- Android App 可在入口选择本地模式或云端模式。
-- 切换到本地模式会立即取消云端检测并进入本地账本。
-- 切换到云端模式会自动检测 API；已有有效登录状态时会直接进入并加载账单。
-
-浏览器访问时，默认 API 地址是当前主机的 `12367` 端口。Android 安装包中的 `localhost`
-指手机本身，因此应填写 API 服务器的局域网 IP、公网 IP 或域名，例如
-`http://192.168.1.10:12367`。公网部署建议通过 HTTPS 反向代理开放 API。
+Android 安装包内的 `localhost` 指手机本身。使用云端模式时，应填写 API 服务器的局域网地址或 HTTPS 域名，而不是电脑上的 `localhost`。
 
 ## Docker Compose 部署
 
-根目录提供 `docker-compose.yml`，可同时启动 MySQL、Go API 和 Web：
+根目录的 Compose 文件会启动 MySQL、Go API 和 Web。复制 `.env.example` 后，至少修改数据库密码、`JWT_SECRET` 和 `ACCOUNT_ADMIN_KEY`；首次使用内置 MySQL 时将 `DATABASE_URL` 留空：
 
 ```bash
 cp .env.example .env
-# 编辑 .env，设置数据库密码、JWT_SECRET 和管理员恢复密钥；首次部署将 DATABASE_URL 留空
 docker compose up -d --build
 ```
 
-默认端口：
+Web 默认绑定宿主机 `127.0.0.1:12366`，API 默认监听 `12367`，MySQL 默认只通过 `127.0.0.1:3307` 暴露。对外访问 Web 时，需要按部署环境配置反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
 
-- Web：`12366`
-- API：`12367`
-- MySQL：宿主机回环地址 `127.0.0.1:3307`，不直接暴露到公网；可通过 `MYSQL_HOST_PORT` 修改
+## Android 打包
 
-MySQL 首次启动会创建空数据库和应用账号，API 会在数据库可用后自动创建业务表。账单保存在
-`mysql-data` 命名数据卷中，普通停止、重启或更新镜像不会删除数据。已有 MySQL 用户可在
-`.env` 中填写 `DATABASE_URL`，API 会继续使用指定数据库而不是内置数据库。
+在仓库根目录执行以下命令；打包过程会构建网页、同步 Capacitor 资源，再生成 APK：
 
-当前 Compose 默认构建 Go API 镜像；旧的 Ktor Dockerfile 会暂时保留，便于在 Go API 健康检查
-失败时快速回滚。API 健康检查只有在数据库已连接时才会通过。
+| 版本 | Windows | Linux |
+| --- | --- | --- |
+| Web 壳版 | `pnpm --dir app apk` | `pnpm --dir app apk:linux` |
+| KT 混合版 | `pnpm --dir app apk:ktweb` | `pnpm --dir app apk:ktweb:linux` |
 
-> `docker compose down -v` 会删除 MySQL 数据卷和全部云端账本。只有确认已经备份且确实要
-> 清空数据库时才能执行。
+新 APK 会按版本和时间戳另存到 `releases/`，保留旧包。Android `versionCode` 随新安装包单独递增。
 
-## 检查与构建
+## 数据与凭据
 
-```bash
-pnpm typecheck
-pnpm test
-pnpm build
-```
+- 卸载 Android 应用或清除应用数据可能删除该版本的本地账本；请自行备份重要数据。
+- 云端账本依赖 MySQL 数据卷；更新和迁移服务器前应备份数据库。
+- `.env`、数据库密码、`JWT_SECRET` 和管理员密钥不能提交到 Git。
 
-## Android 开发与打包
-
-局域网 Live Reload：
-
-```bash
-pnpm --dir app dev:mobile
-```
-
-Windows 打包：
-
-```powershell
-pnpm --dir app apk
-```
-
-Linux 打包：
-
-```bash
-pnpm --dir app apk:linux
-```
-
-构建会生成 `app-debug.apk`，并在 `releases/` 中保存带版本号和时间戳的副本，不会覆盖旧包。
-安装到已连接设备：
-
-```bash
-adb install -r releases/<安装包文件名>.apk
-```
-
-## 数据安全
-
-- Android 本地模式的数据只存在当前 App 中；卸载 App、清除应用数据或设备损坏都可能导致丢失。
-- 本地模式和云端模式不会自动互相同步，切换前请确认自己进入的是正确账本。
-- 云端模式应定期备份 MySQL 数据库，并妥善保存 `JWT_SECRET` 和数据库凭据。
-- 不要将真实 `.env`、密码、管理员恢复密钥或令牌提交到仓库。
-
-## 相关文档
+## 更多文档
 
 - [更新日志](CHANGELOG.md)
 - [开发迭代记录](docs/version-history.md)
-- [数据库配置与部署说明](docs/database-config.md)
 - [Android Live Reload](docs/android-live-reload.md)
 - [Android APK 构建记录](docs/android-apk-build-development.md)
