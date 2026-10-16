@@ -246,7 +246,7 @@ export default function SavingsPage() {
                         </div>
                         <em>+¥ {formatMoney(amount)}</em>
                         {plan.proofImage ? (
-                          <button type="button" className={styles.proofButton} onClick={() => setPreviewProofImage(plan.proofImage)} aria-label={`查看${goal?.name || "储蓄计划"}的图片凭证`}>
+                          <button type="button" className={styles.proofButton} onClick={() => setPreviewProofImage(plan.proofImage ?? null)} aria-label={`查看${goal?.name || "储蓄计划"}的图片凭证`}>
                             <img src={plan.proofImage} alt="图片凭证" />
                           </button>
                         ) : null}
