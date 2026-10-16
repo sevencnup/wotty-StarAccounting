@@ -2,10 +2,13 @@
 const DB_NAME = "wotty-stark-remote-cache";
 const STORE_NAME = "responses";
 const DB_VERSION = 1;
+// Increase when the client-side API response model changes incompatibly.
+const CACHE_DATA_VERSION = 1;
 
 type CacheRecord<T> = {
   id: string;
   savedAt: number;
+  dataVersion: number;
   value: T;
 };
 
@@ -38,7 +41,10 @@ export async function readPersistentRemoteCache<T>(scope: string, resource: stri
   const db = await openCache();
   return new Promise<CacheRecord<T> | undefined>((resolve, reject) => {
     const request = db.transaction(STORE_NAME, "readonly").objectStore(STORE_NAME).get(recordPrefix(scope, resource, key));
-    request.onsuccess = () => resolve(request.result as CacheRecord<T> | undefined);
+    request.onsuccess = () => {
+      const record = request.result as CacheRecord<T> | undefined;
+      resolve(record?.dataVersion === CACHE_DATA_VERSION ? record : undefined);
+    };
     request.onerror = () => reject(request.error ?? new Error("读取云端缓存失败"));
   });
 }
@@ -50,6 +56,7 @@ export async function writePersistentRemoteCache<T>(scope: string, resource: str
     transaction.objectStore(STORE_NAME).put({
       id: recordPrefix(scope, resource, key),
       savedAt: Date.now(),
+      dataVersion: CACHE_DATA_VERSION,
       value,
     } satisfies CacheRecord<T>);
     transaction.oncomplete = () => resolve();

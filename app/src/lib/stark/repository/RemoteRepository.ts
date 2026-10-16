@@ -238,9 +238,7 @@ export class RemoteRepository implements DataRepository {
     this.ensureCacheScope();
     if (persisted && epoch === this.resourceCacheEpoch && generation === this.resourceGeneration(resource, key)) {
       this.resourceCache(resource).set(key, { expiresAt: persisted.savedAt + RESOURCE_CACHE_TTL, value: persisted.value });
-      if (persisted.savedAt + RESOURCE_CACHE_TTL <= Date.now()) {
-        void this.refreshCachedResource(resource, key, load, accountId).catch(() => undefined);
-      }
+      void this.refreshCachedResource(resource, key, load, accountId).catch(() => undefined);
       return persisted.value;
     }
     return this.refreshCachedResource(resource, key, load, accountId);
@@ -424,9 +422,7 @@ export class RemoteRepository implements DataRepository {
     this.ensureCacheScope();
     if (persisted && epoch === this.resourceCacheEpoch && generation === this.transactionCacheGeneration(targetAccountId)) {
       this.transactionMonthCache.set(cacheKey, { expiresAt: persisted.savedAt + TRANSACTION_CACHE_TTL, value: persisted.value });
-      if (persisted.savedAt + TRANSACTION_CACHE_TTL <= Date.now()) {
-        void this.refreshTransactionMonth(targetAccountId, month).catch(() => undefined);
-      }
+      void this.refreshTransactionMonth(targetAccountId, month).catch(() => undefined);
       return persisted.value;
     }
     return this.refreshTransactionMonth(targetAccountId, month);
@@ -450,9 +446,7 @@ export class RemoteRepository implements DataRepository {
     this.ensureCacheScope();
     if (persisted && epoch === this.resourceCacheEpoch && generation === this.transactionCacheGeneration(targetAccountId)) {
       this.transactionMonthsCache.set(targetAccountId, { expiresAt: persisted.savedAt + TRANSACTION_CACHE_TTL, value: persisted.value });
-      if (persisted.savedAt + TRANSACTION_CACHE_TTL <= Date.now()) {
-        void this.refreshTransactionMonths(targetAccountId).catch(() => undefined);
-      }
+      void this.refreshTransactionMonths(targetAccountId).catch(() => undefined);
       return persisted.value;
     }
     return this.refreshTransactionMonths(targetAccountId);
