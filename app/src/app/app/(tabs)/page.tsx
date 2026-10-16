@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
 import Link from "next/link";
 import type { EChartsCoreOption } from "echarts/core";
@@ -12,13 +12,15 @@ import { Skeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { BottomSheet } from "@/components/stark/BottomSheet";
 import { BudgetManagementSheet } from "@/components/stark/BudgetManagementSheet";
-import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
+import { getCloudApiUrl, getCurrentAccountId, getSalaryDay, getSelectedBalancePeriodMode, getSelectedHomeMetric, getSelectedReportMonth, setSalaryDay as persistSalaryDay, setSelectedBalancePeriodMode, setSelectedHomeMetric, setSelectedReportMonth, type BalancePeriodMode, type HomeMetric } from "@/lib/stark/storage/local-config";
 import {
   buildHomeSummary,
   type HomeSummary,
 } from "@/lib/stark/dashboard/summary";
 import { homeCoreTransactionMonths, homeSupplementalTransactionMonths } from "@/lib/stark/dashboard/home-load-stages";
 import { toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
+import { matchSavingsPlanExpensesWithBills } from "@/lib/stark/savings/expense-bill-matching";
 import { formatMoney, isReportingYearKey, monthKey, reportingMonthDate, reportingMonthEndDate, reportingMonthLabel, reportingMonthSequence, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Account, Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { translateText, translateValue, useAppLocale, type AppLocale } from "@/lib/stark/i18n";
@@ -183,19 +185,25 @@ function SalaryDayModal({
   onSave: (day: number) => void;
 }) {
   const [val, setVal] = useState(String(salaryDay));
+  const dismissModal = useCallback(() => onClose(), [onClose]);
+  const consumeModalHistory = useLayeredHistoryMarker(true, "starkSalaryDayModal", dismissModal);
+  const closeModal = useCallback(() => {
+    consumeModalHistory();
+    dismissModal();
+  }, [consumeModalHistory, dismissModal]);
 
   function handleConfirm() {
     const num = Math.max(1, Math.min(28, Math.round(Number(val) || 15)));
     onSave(num);
-    onClose();
+    closeModal();
   }
 
   return (
-    <div className="home-modal-mask" onClick={onClose}>
+    <div className="home-modal-mask" onClick={closeModal}>
       <div className="home-modal-content" onClick={(e) => e.stopPropagation()}>
         <div className="home-modal-head">
           <h3>薪资周期设置</h3>
-          <button type="button" className="home-modal-close" onClick={onClose}>×</button>
+          <button type="button" className="home-modal-close" onClick={closeModal}>×</button>
         </div>
         <p className="home-modal-desc">
           配置每月固定发薪日（1 ~ 28 日），自动同步薪资周期结余与流水统计。
@@ -213,7 +221,7 @@ function SalaryDayModal({
           <span>日</span>
         </div>
         <div className="home-modal-actions">
-          <button type="button" className="home-modal-btn cancel" onClick={onClose}>取消</button>
+          <button type="button" className="home-modal-btn cancel" onClick={closeModal}>取消</button>
           <button type="button" className="home-modal-btn confirm" onClick={handleConfirm}>保存</button>
         </div>
       </div>
@@ -228,6 +236,8 @@ function StarkCrystalHero({
   onSalaryDayChange,
   activeMetric,
   onMetricChange,
+  balanceMode,
+  onBalanceModeChange,
   transactionCount,
   reportingMonth,
   onReportingMonthChange,
@@ -238,6 +248,8 @@ function StarkCrystalHero({
   onSalaryDayChange: (day: number) => void;
   activeMetric: "balance" | "expense" | "income";
   onMetricChange: (metric: "balance" | "expense" | "income") => void;
+  balanceMode: BalancePeriodMode;
+  onBalanceModeChange: (mode: BalancePeriodMode) => void;
   transactionCount: number;
   reportingMonth: string;
   onReportingMonthChange: (month: string) => void;
@@ -249,7 +261,6 @@ function StarkCrystalHero({
     : locale === "en-US"
       ? new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(reportingMonthDate(reportingMonth))
       : reportingMonthLabel(reportingMonth);
-  const [balanceMode, setBalanceMode] = useState<"month" | "salary">("month");
   const [showSalaryModal, setShowSalaryModal] = useState(false);
 
   const displayAmount =
@@ -326,14 +337,14 @@ function StarkCrystalHero({
               <button
                 type="button"
                 className={balanceMode === "month" ? "active" : ""}
-                onClick={() => setBalanceMode("month")}
+                onClick={() => onBalanceModeChange("month")}
               >
                 {translateValue("自然月", locale)}
               </button>
               <button
                 type="button"
                 className={balanceMode === "salary" ? "active" : ""}
-                onClick={() => setBalanceMode("salary")}
+                onClick={() => onBalanceModeChange("salary")}
               >
                 {translateValue("发薪周期", locale)}
               </button>
@@ -353,6 +364,15 @@ function StarkCrystalHero({
                 {summary.forecast.hasBalanceBaseline
                   ? <>{translateValue("余额基准", locale)} ¥{formatMoney(summary.forecast.balanceBaselineAmount ?? 0)} · {summary.forecast.balanceBaselineDate?.slice(0, 10)}</>
                   : translateValue("未设置余额基准", locale)}
+              </span>
+            ) : null}
+            {!isReportingYearKey(reportingMonth) ? (
+              <span className="stark-cycle-carryover">
+                {translateValue("发薪前结转", locale)} {summary.forecast.salaryRecordedAt
+                  ? summary.forecast.salaryCarryover !== null
+                    ? <>{summary.forecast.salaryCarryover < 0 ? "-¥" : "¥"}{formatMoney(Math.abs(summary.forecast.salaryCarryover))}</>
+                    : translateValue("未核实", locale)
+                  : translateValue("待录入工资", locale)}
               </span>
             ) : null}
             <span>{translateValue(balanceMode === "salary" ? "收入" : "月收入", locale)} ¥{formatMoney(balanceMode === "salary" ? summary.forecast.cycleIncome : summary.income)}</span>
@@ -501,19 +521,34 @@ function StarkDiagnosticBanner({ summary, onOpen }: { summary: HomeSummary; onOp
   );
 }
 
-function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: { summary: HomeSummary; reportingMonth: string; onManageBudget: () => void }) {
+function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onManageBudget }: { summary: HomeSummary; reportingMonth: string; transactions: Transaction[]; onManageBudget: () => void }) {
   const locale = useAppLocale();
+  const [planExpanded, setPlanExpanded] = useState(false);
+  const planContentId = useId();
   const allocation = summary.budgetAllocation;
+  const planAllocation = summary.savingsPlanAllocation;
+  const expenseItemsWithBillMatches = useMemo(
+    () => matchSavingsPlanExpensesWithBills(
+      planAllocation.expenseItems,
+      transactions,
+      summary.savingsPlanPeriod,
+      summary.forecast.salaryDay,
+    ),
+    [planAllocation.expenseItems, summary.forecast.salaryDay, summary.savingsPlanPeriod, transactions],
+  );
   const allocated = allocation.expense + allocation.repayment + allocation.savings;
   const allocationBase = Math.max(allocation.income, allocated, 1);
+  const allocationPercent = allocation.income > 0 ? (allocated / allocation.income) * 100 : 0;
   const segments = [
     { key: "expense", label: "消费", amount: allocation.expense, color: "#0ea5e9" },
     { key: "repayment", label: "还款", amount: allocation.repayment, color: "#f59e0b" },
     { key: "savings", label: "储蓄", amount: allocation.savings, color: "#10b981" },
   ];
-  const periodLabel = isReportingYearKey(reportingMonth) ? "全年资金分配" : "本月资金分配";
-  const availableLabel = allocation.available >= 0 ? "可继续安排" : "已超出收入";
-  const translatedAvailableLabel = translateValue(availableLabel, locale);
+  const annual = isReportingYearKey(reportingMonth);
+  const periodLabel = annual ? "全年资金分配" : "本期资金分配";
+  const periodDescription = annual
+    ? translateValue("收入扣除实际消费、还款和储蓄后的安排金额", locale)
+    : `${translateValue("发薪周期", locale)} ${summary.forecast.salaryCycleRangeLabel.replace(" 至 ", " – ")}`;
   const cardClassName = "stark-budget-allocation-card" + (allocation.available < 0 ? " has-overrun" : "");
 
   return (
@@ -524,7 +559,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
             <span className="stark-budget-allocation-icon"><TargetIcon size={15} strokeWidth={2.2} color="#0060c0" /></span>
             <span>
               <strong>{translateValue(periodLabel, locale)}</strong>
-              <small>{translateValue("收入扣除实际消费、还款和储蓄后的安排金额", locale)}</small>
+              <small>{periodDescription}</small>
             </span>
           </div>
           <span className="stark-budget-allocation-entry">{translateValue("预算管理", locale)} <ChevronRightIcon size={12} /></span>
@@ -532,11 +567,11 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
 
         <div className="stark-budget-allocation-main">
           <div>
-            <span>{translateValue("可支配预算", locale)}</span>
+            <span>{translateValue("实际收支净额", locale)}</span>
             <strong className={allocation.available < 0 ? "negative" : ""}>
               {allocation.available < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(allocation.available))}
             </strong>
-            <small>{locale === "en-US" ? translatedAvailableLabel + ": ¥" + formatMoney(Math.abs(allocation.available)) : translatedAvailableLabel + " ¥ " + formatMoney(Math.abs(allocation.available))}</small>
+            <small>{translateValue("仅统计本期流水，不含上期结转", locale)}</small>
           </div>
           <div className="stark-budget-allocation-income">
             <span>{translateValue("收入", locale)}</span>
@@ -546,9 +581,13 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
         </div>
 
         <div className="stark-budget-allocation-track" aria-label={locale === "en-US" ? "Budget allocation breakdown" : "预算分配构成"}>
-          {segments.map((segment) => (
-            <i key={segment.key} style={{ width: String(Math.min(100, Math.max(0, (segment.amount / allocationBase) * 100))) + "%", background: segment.color }} />
+          {segments.filter((segment) => segment.amount > 0).map((segment) => (
+            <i key={segment.key} style={{ width: String(Math.min(100, Math.max(0, (segment.amount / allocationBase) * 100))) + "%", minWidth: 3, background: segment.color }} />
           ))}
+        </div>
+        <div className="stark-budget-allocation-track-meta">
+          <span>{locale === "en-US" ? "Allocated share of income" : "已分配占收入"}</span>
+          <strong>{allocation.income > 0 ? `${allocationPercent.toFixed(2)}%` : "—"}</strong>
         </div>
 
         <div className="stark-budget-allocation-grid">
@@ -569,6 +608,103 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, onManageBudget }: 
         <strong>¥ {formatMoney(allocation.assetTotal)}</strong>
         <small>{translateValue("余额单独展示，不重复计入本月扣减", locale)}</small>
       </div>
+      {planAllocation.planCount > 0 ? (
+        <div className="stark-budget-allocation-plan">
+          <div className="stark-budget-allocation-plan-head">
+            <button
+              type="button"
+              className="stark-budget-allocation-plan-toggle"
+              aria-expanded={planExpanded}
+              aria-controls={planContentId}
+              onClick={() => setPlanExpanded((expanded) => !expanded)}
+            >
+              <span className="stark-budget-allocation-plan-title">
+                <strong>{translateValue("储蓄计划安排", locale)}</strong>
+                <small>{planExpanded
+                  ? `${summary.savingsPlanPeriod} · ${translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)}`
+                  : `${summary.savingsPlanPeriod} · ${translateValue("预计存", locale)} ¥ ${formatMoney(planAllocation.plannedDeposit)}`}</small>
+              </span>
+              <span className="stark-budget-allocation-plan-toggle-label">
+                {translateValue(planExpanded ? "收起" : "展开", locale)}
+                <ChevronDownIcon size={14} />
+              </span>
+            </button>
+            <Link href="/app/savings" className="stark-budget-allocation-plan-link">
+              {translateValue("储蓄计划", locale)} <ChevronRightIcon size={12} />
+            </Link>
+          </div>
+          <div id={planContentId} className="stark-budget-allocation-plan-content" hidden={!planExpanded}>
+            {!annual && summary.salaryPlanSource.salaryRecordedAt ? (
+              <div className="stark-budget-allocation-plan-source">
+                <span>{translateValue("已入账工资", locale)} <strong>¥ {formatMoney(summary.salaryPlanSource.salaryIncome)}</strong></span>
+                <span>{translateValue("发薪前结转", locale)} <strong>
+                  {summary.salaryPlanSource.salaryCarryover === null
+                    ? translateValue("未核实", locale)
+                    : `${summary.salaryPlanSource.salaryCarryover < 0 ? "-¥ " : "¥ "}${formatMoney(Math.abs(summary.salaryPlanSource.salaryCarryover))}`}
+                </strong></span>
+              </div>
+            ) : null}
+            <div className="stark-budget-allocation-plan-totals">
+              <div>
+                <span>{translateValue("固定支出", locale)}</span>
+                <strong>¥ {formatMoney(planAllocation.fixedExpense)}</strong>
+              </div>
+              <div>
+                <span>{translateValue("临时支出", locale)}</span>
+                <strong>¥ {formatMoney(planAllocation.temporaryExpense)}</strong>
+              </div>
+              <div>
+                <span>{translateValue("预计存", locale)}</span>
+                <strong>¥ {formatMoney(planAllocation.plannedDeposit)}</strong>
+              </div>
+            </div>
+            {planAllocation.expenseItems.length > 0 ? (
+              <div className="stark-budget-allocation-plan-details">
+                <strong>{translateValue("计划支出明细", locale)}</strong>
+                <ul>
+                  {expenseItemsWithBillMatches.map((item) => (
+                    <li key={`${item.kind}:${item.name}`}>
+                      <span>
+                        <i
+                          aria-hidden="true"
+                          className={item.matchStatus === "matched" ? "matched" : item.matchStatus === "partial" ? "partial" : item.matchStatus === "over" ? "over" : item.kind === "TEMPORARY" ? "temporary" : "fixed"}
+                        >{item.matchStatus === "matched" ? "✓" : item.matchStatus === "over" ? "!" : ""}</i>
+                        <span>{translateValue(item.name, locale)}</span>
+                        <small className={item.matchStatus === "matched" ? "matched" : item.matchStatus === "partial" ? "partial" : item.matchStatus === "over" ? "over" : ""}>
+                          {translateValue(item.matchStatus === "matched" ? "已达计划" : item.matchStatus === "partial" ? "部分记账" : item.matchStatus === "over" ? "超出计划" : item.kind === "TEMPORARY" ? "临时" : "固定", locale)}
+                        </small>
+                      </span>
+                      <span className="stark-budget-allocation-plan-expense-amount">
+                        <strong>¥ {formatMoney(item.amount)}</strong>
+                        {item.matchedTransactionCount > 0 ? (
+                          <small>
+                            {translateValue("账单合计", locale)} ¥ {formatMoney(item.matchedAmount)} · {locale === "en-US" ? `${item.matchedTransactionCount} bills` : `${item.matchedTransactionCount} 笔`}
+                          </small>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            {summary.salaryPlanAvailable !== null ? (
+              <div className="stark-budget-allocation-plan-available">
+                <span>
+                  <strong>{translateValue("发薪后预计可支配", locale)}</strong>
+                  <small>{translateValue(summary.salaryPlanSource.salaryCarryover === null
+                    ? "发薪时的计划值，未包含未核实的上期结转"
+                    : "发薪时的计划值，实际记账另计", locale)}</small>
+                </span>
+                <strong className={summary.salaryPlanAvailable < 0 ? "negative" : ""}>
+                  {summary.salaryPlanAvailable < 0 ? "-¥ " : "¥ "}{formatMoney(Math.abs(summary.salaryPlanAvailable))}
+                </strong>
+              </div>
+            ) : !isReportingYearKey(reportingMonth) ? (
+              <p className="stark-budget-allocation-plan-pending">{translateValue("录入本月工资后显示预计可支配", locale)}</p>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -656,6 +792,7 @@ function StarkCompassMatrix({ summary, onManageBudget }: { summary: HomeSummary;
 
 // 本月支出构成
 type HomeExpenseSegment = {
+  id: string;
   name: string;
   amount: number;
   color: string;
@@ -664,12 +801,14 @@ type HomeExpenseSegment = {
 function buildHomeExpenseRoseOption(
   segments: HomeExpenseSegment[],
   locale: AppLocale,
+  selectedSegmentId: string | null,
 ): EChartsCoreOption {
   return {
     animationDuration: 420,
     animationEasing: "cubicOut",
     tooltip: {
       trigger: "item",
+      triggerOn: "click",
       confine: true,
       backgroundColor: "rgba(19, 27, 48, 0.92)",
       borderWidth: 0,
@@ -681,6 +820,8 @@ function buildHomeExpenseRoseOption(
     },
     series: [{
       type: "pie",
+      selectedMode: "single",
+      selectedOffset: 8,
       roseType: "radius",
       radius: ["16%", "58%"],
       center: ["50%", "51%"],
@@ -710,6 +851,7 @@ function buildHomeExpenseRoseOption(
       data: segments.map((segment) => ({
         name: translateValue(segment.name, locale),
         value: segment.amount,
+        selected: selectedSegmentId === segment.id,
         itemStyle: { color: segment.color },
         label: { color: segment.color },
         labelLine: { lineStyle: { color: segment.color } },
@@ -760,12 +902,13 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
   const ratios = summary.ratios.slice(0, 4);
   const otherAmount = summary.ratios.slice(4).reduce((sum, item) => sum + item.amount, 0);
   const roseSegments = [
-    ...ratios.map((item) => ({ name: item.name, amount: item.amount, color: item.color })),
-    ...(otherAmount > 0 ? [{ name: "其他", amount: otherAmount, color: "#94a3b8" }] : []),
+    ...ratios.map((item) => ({ id: `category:${item.name}`, name: item.name, amount: item.amount, color: item.color })),
+    ...(otherAmount > 0 ? [{ id: "category:remaining", name: "其余分类", amount: otherAmount, color: "#94a3b8" }] : []),
   ];
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const roseOption = useMemo(
-    () => buildHomeExpenseRoseOption(roseSegments, locale),
-    [locale, roseSegments],
+    () => buildHomeExpenseRoseOption(roseSegments, locale, selectedSegmentId),
+    [locale, roseSegments, selectedSegmentId],
   );
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -788,6 +931,11 @@ function TopExpenseStructure({ summary, reportingMonth }: { summary: HomeSummary
               option={roseOption}
               className="category-rose-chart"
               ariaLabel={`${translateValue(periodLabel, locale)} ¥ ${formatMoney(summary.expense)}`}
+              onDataClick={({ componentType, dataIndex }) => {
+                if (componentType !== "series" || dataIndex === undefined || dataIndex < 0 || dataIndex >= roseSegments.length) return;
+                const segmentId = roseSegments[dataIndex].id;
+                setSelectedSegmentId((current) => current === segmentId ? null : segmentId);
+              }}
             />
           </div>
         ) : (
@@ -995,12 +1143,15 @@ export function HomeDashboard() {
   const [reportingMonth, setReportingMonth] = useState("2026-01");
   const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [monthReady, setMonthReady] = useState(false);
-  const [activeMetric, setActiveMetric] = useState<"balance" | "expense" | "income">("expense");
+  const [activeMetric, setActiveMetric] = useState<HomeMetric>("expense");
+  const [balanceMode, setBalanceMode] = useState<BalancePeriodMode>("month");
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [budgetManagementOpen, setBudgetManagementOpen] = useState(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
+    setActiveMetric(getSelectedHomeMetric());
+    setBalanceMode(getSelectedBalancePeriodMode());
     setReportingMonth(getSelectedReportMonth());
     setMonthReady(true);
   }, []);
@@ -1194,6 +1345,16 @@ export function HomeDashboard() {
     setSalaryDay(day);
   }
 
+  function handleMetricChange(metric: HomeMetric) {
+    setActiveMetric(metric);
+    setSelectedHomeMetric(metric);
+  }
+
+  function handleBalanceModeChange(mode: BalancePeriodMode) {
+    setBalanceMode(mode);
+    setSelectedBalancePeriodMode(mode);
+  }
+
   function handleReportingMonthChange(month: string) {
     setSelectedReportMonth(month);
     setReportingMonth(month);
@@ -1265,7 +1426,9 @@ export function HomeDashboard() {
         salaryDay={salaryDay}
         onSalaryDayChange={handleSalaryDayChange}
         activeMetric={activeMetric}
-        onMetricChange={setActiveMetric}
+        onMetricChange={handleMetricChange}
+        balanceMode={balanceMode}
+        onBalanceModeChange={handleBalanceModeChange}
         transactionCount={currentTransactions.length}
         reportingMonth={reportingMonth}
         onReportingMonthChange={handleReportingMonthChange}
@@ -1274,7 +1437,7 @@ export function HomeDashboard() {
 
       {/* 本月资金分配 */}
       {budgetAllocationStatus === "ready" ? (
-        <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} onManageBudget={() => setBudgetManagementOpen(true)} />
+        <StarkBudgetAllocationCard summary={summary} reportingMonth={reportingMonth} transactions={analysisTransactions} onManageBudget={() => setBudgetManagementOpen(true)} />
       ) : (
         <HomeModulePlaceholder status={budgetAllocationStatus} onRetry={reloadDashboard} height={178} />
       )}

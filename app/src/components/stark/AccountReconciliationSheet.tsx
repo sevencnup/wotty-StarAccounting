@@ -6,6 +6,7 @@ import { calculateLedgerCashflow } from "@/lib/stark/ledger/balance";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
+import { DateTimePicker } from "@/components/stark/DateTimePicker";
 
 const repository = new DataModeManager().getRepository();
 
@@ -109,7 +110,7 @@ export function AccountReconciliationSheet() {
       </section>
 
       <section className="reconciliation-section reconciliation-fields">
-        <label><span>余额基准日期</span><input type="date" value={openingDate} onChange={(event) => { setOpeningDate(event.target.value); setMessage(""); }} /></label>
+        <label><span>余额基准日期</span><DateTimePicker className="reconciliation-date-picker" ariaLabel="选择余额基准日期" value={openingDate} onChange={(nextDate) => { setOpeningDate(nextDate); setMessage(""); }} /></label>
         <label><span>该日 00:00 的实际余额</span><div className="reconciliation-money-input actual"><b>¥</b><input inputMode="decimal" value={actualBalance} onChange={(event) => { setActualBalance(event.target.value.replace(/[^0-9.-]/g, "")); setMessage(""); }} placeholder="例如：发工资前的账户余额" /></div></label>
         <label><span>说明（可选）</span><input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="例如：9 月 15 日发工资前余额" /></label>
       </section>

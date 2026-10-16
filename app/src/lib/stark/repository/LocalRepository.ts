@@ -10,6 +10,7 @@ import type {
   LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
+  Subscription,
   ThemeConfig,
   Transaction,
   User,
@@ -294,6 +295,24 @@ export class LocalRepository implements DataRepository {
   async deleteCategoryRule(id: string) {
     await this.ensureSeeded();
     await deleteRecord("categoryRules", id);
+  }
+
+  async getSubscriptions(accountId: string) {
+    await this.ensureSeeded();
+    const targetAccountId = accountId || getCurrentAccountId();
+    return (await getAllRecords<Subscription>("subscriptions"))
+      .filter((item) => item.accountId === targetAccountId)
+      .sort((left, right) => left.name.localeCompare(right.name, "zh-CN"));
+  }
+
+  async saveSubscription(subscription: Subscription) {
+    await this.ensureSeeded();
+    await putRecord("subscriptions", subscription);
+  }
+
+  async deleteSubscription(id: string) {
+    await this.ensureSeeded();
+    await deleteRecord("subscriptions", id);
   }
 
   async getImportErrorLogs(accountId: string) {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState, type PropsWithChildren } from "react";
 import { createPortal } from "react-dom";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const CLOSE_SETTLE_MS = 240;
 
@@ -9,20 +10,21 @@ type BottomSheetProps = PropsWithChildren<{
   title: string;
   onClose: () => void;
   historyMode?: "marker" | "route";
+  closeRequest?: number;
   className?: string;
   overlayClassName?: string;
   bodyClassName?: string;
 }>;
 
-export function BottomSheet({ children, title, onClose, historyMode = "marker", className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
+export function BottomSheet({ children, title, onClose, historyMode = "marker", closeRequest, className = "", overlayClassName = "", bodyClassName = "" }: BottomSheetProps) {
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   const [enterReady, setEnterReady] = useState(false);
   const [closing, setClosing] = useState(false);
-  const historyEntryRef = useRef<{ markerUrl: string } | null>(null);
   const closingRef = useRef(false);
   const closeTimerRef = useRef<number | null>(null);
   const onCloseRef = useRef(onClose);
+  const handledCloseRequestRef = useRef(closeRequest);
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -54,44 +56,23 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
     }, CLOSE_SETTLE_MS);
   }, []);
 
+  const consumeHistoryEntry = useLayeredHistoryMarker(
+    mounted && historyMode === "marker",
+    "starkBottomSheet",
+    beginClose,
+  );
+
   const requestClose = useCallback(() => {
     if (closingRef.current) return;
-    const ownsHistoryEntry = historyMode === "marker" && historyEntryRef.current !== null;
-    historyEntryRef.current = null;
     beginClose();
-    if (ownsHistoryEntry) window.history.back();
-  }, [beginClose, historyMode]);
+    consumeHistoryEntry();
+  }, [beginClose, consumeHistoryEntry]);
 
   useEffect(() => {
-    if (!mounted || historyMode !== "marker") return;
-
-    // Give the sheet a distinct hash entry. Some WebViews coalesce same-URL
-    // state entries, while a hash entry is retained and consumed first by an
-    // edge-back gesture before the underlying page can be reached.
-    if (!historyEntryRef.current) {
-      const currentState = window.history.state;
-      const nextState = currentState && typeof currentState === "object"
-        ? { ...currentState, starkBottomSheet: true }
-        : { starkBottomSheet: true };
-      const markerUrl = new URL(window.location.href);
-      markerUrl.hash = "stark-bottom-sheet=" + encodeURIComponent(titleId) + "-" + Date.now();
-      window.history.pushState(nextState, "", markerUrl.href);
-      historyEntryRef.current = { markerUrl: markerUrl.href };
-    }
-
-    const closeFromHistory = () => {
-      if (!historyEntryRef.current) return;
-      historyEntryRef.current = null;
-      beginClose();
-    };
-
-    window.addEventListener("popstate", closeFromHistory);
-    window.addEventListener("hashchange", closeFromHistory);
-    return () => {
-      window.removeEventListener("popstate", closeFromHistory);
-      window.removeEventListener("hashchange", closeFromHistory);
-    };
-  }, [beginClose, historyMode, mounted]);
+    if (closeRequest === undefined || closeRequest === handledCloseRequestRef.current) return;
+    handledCloseRequestRef.current = closeRequest;
+    requestClose();
+  }, [closeRequest, requestClose]);
 
   useEffect(() => () => {
     if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
@@ -142,7 +123,16 @@ export function BottomSheet({ children, title, onClose, historyMode = "marker", 
   if (!mounted) return null;
 
   return createPortal(
-    <div className={`bottom-sheet-overlay ${closing ? "is-closing" : ""} ${overlayClassName}`.trim()} onClick={requestClose}>
+    <div
+      className={`bottom-sheet-overlay ${closing ? "is-closing" : ""} ${overlayClassName}`.trim()}
+      onClick={(event) => {
+        event.stopPropagation();
+        requestClose();
+      }}
+      onTouchStart={(event) => event.stopPropagation()}
+      onTouchMove={(event) => event.stopPropagation()}
+      onTouchEnd={(event) => event.stopPropagation()}
+    >
       <section className={`bottom-sheet ${enterReady ? "is-ready" : ""} ${closing ? "is-closing" : ""} ${className}`.trim()} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(event) => event.stopPropagation()}>
         <div className="bottom-sheet-handle" aria-hidden="true" />
         <header className="bottom-sheet-header">

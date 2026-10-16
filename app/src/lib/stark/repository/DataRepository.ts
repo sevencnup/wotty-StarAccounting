@@ -10,6 +10,7 @@ import type {
   LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
+  Subscription,
   ThemeConfig,
   Transaction,
   User,
@@ -57,6 +58,10 @@ export interface DataRepository {
   getCategoryRules(accountId: string): Promise<CategoryRule[]>;
   saveCategoryRule(rule: CategoryRule): Promise<void>;
   deleteCategoryRule(id: string, accountId?: string): Promise<void>;
+
+  getSubscriptions(accountId: string): Promise<Subscription[]>;
+  saveSubscription(subscription: Subscription): Promise<void>;
+  deleteSubscription(id: string): Promise<void>;
 
   getImportErrorLogs(accountId: string): Promise<ImportErrorLog[]>;
   saveImportErrorLog(log: ImportErrorLog): Promise<void>;

@@ -1678,9 +1678,7 @@ nextjs-portal {
 }
 
 .stark-budget-allocation-title small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .stark-budget-allocation-entry {
@@ -1741,6 +1739,96 @@ nextjs-portal {
   min-width: 0;
   height: 100%;
   border-radius: 999px;
+}
+
+.stark-budget-allocation-track-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-track-meta strong {
+  color: #475569;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.stark-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(5px);
+}
+
+.stark-confirm-dialog {
+  width: min(100%, 360px);
+  padding: 25px 23px 20px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(15, 35, 62, 0.2);
+  color: #17233c;
+}
+
+.stark-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 15px;
+  border-radius: 11px;
+  background: #fff0ed;
+  color: #cf604e;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.stark-confirm-dialog h2 {
+  margin: 0 0 9px;
+  font-size: calc(17px * var(--user-font-scale));
+  font-weight: 700;
+}
+
+.stark-confirm-dialog p {
+  margin: 0;
+  color: #64748b;
+  font-size: calc(13px * var(--user-font-scale));
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.stark-confirm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.stark-confirm-actions button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 12px;
+  background: #edf3f9;
+  color: #34445c;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.stark-confirm-actions button.danger {
+  background: #e65c4c;
+  color: #fff;
+}
+
+.stark-confirm-actions button:focus-visible {
+  outline: 2px solid #0060c0;
+  outline-offset: 2px;
 }
 
 .stark-budget-allocation-grid {
@@ -1818,6 +1906,319 @@ nextjs-portal {
 .stark-budget-allocation-assets small {
   margin-left: auto;
   text-align: right;
+}
+
+.stark-budget-allocation-plan {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 11px;
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid #e7edf3;
+}
+
+.stark-budget-allocation-plan-head {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.stark-budget-allocation-plan-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stark-budget-allocation-plan-toggle:focus-visible {
+  outline: 2px solid #0060c0;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.stark-budget-allocation-plan-title {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stark-budget-allocation-plan-title strong,
+.stark-budget-allocation-plan-details > strong {
+  color: #0f172a;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-title small {
+  color: #7b8ca3;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.4;
+}
+
+.stark-budget-allocation-plan-toggle-label {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 2px;
+  color: #0060c0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.stark-budget-allocation-plan-toggle[aria-expanded="true"] .stark-budget-allocation-plan-toggle-label svg {
+  transform: rotate(180deg);
+}
+
+.stark-budget-allocation-plan-content {
+  display: grid;
+  gap: 11px;
+}
+
+.stark-budget-allocation-plan-content[hidden] {
+  display: none;
+}
+
+.stark-budget-allocation-plan-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+  flex: 0 0 auto;
+  gap: 2px;
+  min-height: 44px;
+  color: #0060c0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.stark-budget-allocation-plan-source {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-source strong {
+  color: #334155;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.stark-budget-allocation-plan-totals > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #f5f8fc;
+}
+
+.stark-budget-allocation-plan-totals span {
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-totals strong {
+  color: #1e293b;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.stark-budget-allocation-plan-details {
+  display: grid;
+  gap: 6px;
+}
+
+.stark-budget-allocation-plan-details ul {
+  display: grid;
+  gap: 0;
+  max-height: 148px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.stark-budget-allocation-plan-details li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #f0f3f7;
+}
+
+.stark-budget-allocation-plan-details li > span {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  gap: 5px;
+  color: #475569;
+  font-size: calc(11px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-details li > span > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.stark-budget-allocation-plan-details i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  background: #0ea5e9;
+}
+
+.stark-budget-allocation-plan-details i.temporary {
+  background: #f59e0b;
+}
+
+.stark-budget-allocation-plan-details i.matched {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stark-budget-allocation-plan-details i.partial {
+  background: #fef3c7;
+}
+
+.stark-budget-allocation-plan-details i.over {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stark-budget-allocation-plan-details li small {
+  flex: 0 0 auto;
+  color: #94a3b8;
+  font-size: calc(9px * var(--user-font-scale));
+}
+
+.stark-budget-allocation-plan-details li small.matched {
+  color: #15803d;
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-details li small.partial {
+  color: #a16207;
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-details li small.over {
+  color: #b91c1c;
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-expense-amount {
+  display: grid;
+  justify-items: end;
+  flex: 0 0 auto;
+  gap: 2px;
+  text-align: right;
+}
+
+.stark-budget-allocation-plan-expense-amount > strong {
+  flex: 0 0 auto;
+  color: #334155;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-expense-amount > small {
+  color: #64748b;
+  font-size: calc(8px * var(--user-font-scale));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stark-budget-allocation-plan-available {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+  border-radius: 11px;
+  background: #eaf5ef;
+}
+
+.stark-budget-allocation-plan-available > span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.stark-budget-allocation-plan-available > span strong {
+  color: #166534;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.stark-budget-allocation-plan-available small,
+.stark-budget-allocation-plan-pending {
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.4;
+}
+
+.stark-budget-allocation-plan-available > strong {
+  flex: 0 0 auto;
+  color: #0f766e;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.stark-budget-allocation-plan-available > strong.negative {
+  color: #b45309;
+}
+
+.stark-budget-allocation-plan-pending {
+  margin: 0;
 }
 
 /* Shared bottom sheet */
@@ -2032,10 +2433,6 @@ nextjs-portal {
 }
 
 @media (max-width: 420px) {
-  .stark-budget-allocation-title small {
-    white-space: normal;
-  }
-
   .stark-budget-allocation-assets {
     align-items: flex-start;
     flex-wrap: wrap;
@@ -2045,6 +2442,23 @@ nextjs-portal {
     width: 100%;
     margin-left: 0;
     text-align: left;
+  }
+
+  .stark-budget-allocation-plan-totals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stark-budget-allocation-plan-totals > div:last-child {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    grid-column: 1 / -1;
+  }
+
+  .stark-budget-allocation-plan-available {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 }
 
@@ -2339,6 +2753,7 @@ button.stark-compass-card {
 .category-rose-chart {
   width: 100%;
   height: 248px;
+  touch-action: pan-y;
 }
 
 .expense-category-sheet {
@@ -3975,6 +4390,7 @@ button.stark-compass-card {
 }
 
 .mobile-bottom-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4000,6 +4416,28 @@ button.stark-compass-card {
 
 .mobile-bottom-nav-item.active {
   color: #0060c0;
+}
+
+.mobile-bottom-nav-item.is-pending::after {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border: 2px solid rgba(0, 96, 192, 0.15);
+  border-top-color: #0060c0;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: nav-pending-spin 900ms linear infinite;
+}
+
+@keyframes nav-pending-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottom-nav-item.is-pending::after {
+    animation: none;
+  }
 }
 
 @media (max-width: 360px) {
@@ -5607,6 +6045,28 @@ button.stark-compass-card {
 }
 
 .savings-dashboard-page .recent-list {
+  gap: 5px;
+}
+
+.savings-recent-year {
+  display: grid;
+  gap: 5px;
+}
+
+.savings-recent-year + .savings-recent-year {
+  margin-top: 7px;
+}
+
+.savings-recent-year h3 {
+  margin: 2px 2px 0;
+  color: #65718a;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.savings-recent-year-plans {
+  display: grid;
   gap: 5px;
 }
 
@@ -7278,6 +7738,167 @@ img[src$="/qita.webp"] {
   text-align: center;
 }
 
+.savings-template-import {
+  margin-bottom: 12px;
+}
+
+.savings-template-import-trigger {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px dashed #b9c9dc;
+  border-radius: 11px;
+  color: #31536f;
+  background: #f8fbff;
+  text-align: left;
+}
+
+.savings-template-import-trigger::after {
+  content: "›";
+  margin-left: 10px;
+  color: #7690aa;
+  font-size: calc(21px * var(--user-font-scale));
+  line-height: 1;
+}
+
+.savings-template-import-trigger > span {
+  grid-column: 1;
+  color: #273c52;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.savings-template-import-trigger > small {
+  grid-column: 1;
+  margin-top: 2px;
+  color: #75899d;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.35;
+}
+
+.savings-template-picker {
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid #dce6f0;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.savings-template-picker-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  gap: 8px;
+  align-items: start;
+  padding: 11px 12px 9px;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.savings-template-picker-head > div {
+  min-width: 0;
+}
+
+.savings-template-picker-head strong,
+.savings-template-picker-head span {
+  display: block;
+}
+
+.savings-template-picker-head strong {
+  color: #26384b;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.savings-template-picker-head span {
+  margin-top: 3px;
+  color: #7b8da0;
+  font-size: calc(10px * var(--user-font-scale));
+  line-height: 1.4;
+}
+
+.savings-template-picker-head > button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: #728399;
+  background: #f4f7fa;
+  font-size: calc(18px * var(--user-font-scale));
+  line-height: 1;
+}
+
+.savings-template-picker-state {
+  margin: 0;
+  padding: 16px 12px;
+  color: #7b8da0;
+  font-size: calc(11px * var(--user-font-scale));
+  text-align: center;
+}
+
+.savings-template-list {
+  display: grid;
+}
+
+.savings-template-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid #eef3f7;
+  color: #30465d;
+  background: #ffffff;
+  text-align: left;
+}
+
+.savings-template-option:last-child {
+  border-bottom: 0;
+}
+
+.savings-template-option > span {
+  min-width: 0;
+}
+
+.savings-template-option strong,
+.savings-template-option small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.savings-template-option strong {
+  color: #283b50;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.savings-template-option small {
+  margin-top: 3px;
+  color: #8191a3;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.savings-template-option em {
+  color: #56718d;
+  font-size: calc(10px * var(--user-font-scale));
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.savings-template-import-trigger:hover,
+.savings-template-option:hover {
+  background: #f7faff;
+}
+
 .savings-goal-editor {
   display: grid;
   gap: 10px;
@@ -7347,6 +7968,48 @@ img[src$="/qita.webp"] {
   justify-content: space-between;
   gap: 6px;
   margin-bottom: 10px;
+}
+
+.savings-edit-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: -2px 0 11px;
+  color: #64748b;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.savings-edit-scope > div {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #f1f5f9;
+}
+
+.savings-edit-scope button {
+  min-height: 27px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #64748b;
+  background: transparent;
+  font-size: calc(10px * var(--user-font-scale));
+}
+
+.savings-edit-scope button.active {
+  color: #0060c0;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
+  font-weight: 600;
+}
+
+.savings-edit-scope small {
+  flex: 1 1 100%;
+  color: #94a3b8;
+  font-size: calc(9px * var(--user-font-scale));
+  line-height: 1.45;
 }
 
 .savings-plan-actions {
@@ -8958,6 +9621,7 @@ img[src$="/qita.webp"] {
 .settings-center-icon.help { background: #d946ef; }
 .settings-center-icon.about { background: #64748b; }
 .settings-center-icon.remark { background: #f97316; }
+.settings-center-icon.subscriptions { background: #7c5ce5; }
 .settings-center-icon.reconciliation { background: #0d8a5f; }
 .settings-center-icon.update { background: #0ea5e9; }
 .settings-center-icon.mode { background: #475569; }
@@ -9528,6 +10192,31 @@ img[src$="/qita.webp"] {
 }
 
 .settings-sheet-primary:disabled { opacity: 0.55; }
+
+/* ── 周期支出自动记账 ── */
+.subscription-management-sheet { gap: 10px; }
+.subscription-list { display: grid; gap: 7px; max-height: 34dvh; overflow-y: auto; }
+.subscription-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; padding: 11px 12px; border: 1px solid #e1e8f1; border-radius: 12px; background: #fbfcfe; }
+.subscription-row.disabled { opacity: 0.58; }
+.subscription-row-main { display: grid; gap: 4px; min-width: 0; }
+.subscription-row-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.subscription-row-title strong { overflow: hidden; color: #26344c; font-size: calc(12px * var(--user-font-scale)); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.subscription-row-title span { flex: 0 0 auto; padding: 2px 6px; border-radius: 999px; color: #28755d; background: #eaf7f0; font-size: calc(8px * var(--user-font-scale)); }
+.subscription-row.disabled .subscription-row-title span { color: #7f899b; background: #eef1f5; }
+.subscription-row-main small { overflow: hidden; color: #7a879b; font-size: calc(9px * var(--user-font-scale)); text-overflow: ellipsis; white-space: nowrap; }
+.subscription-row-amount { color: #df3f4f; font-size: calc(12px * var(--user-font-scale)); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.subscription-row-actions { display: flex; grid-column: 1 / -1; gap: 6px; padding-top: 7px; border-top: 1px solid #edf1f6; }
+.subscription-row-actions button { min-height: 28px; padding: 0 9px; border: 1px solid #dce5f0; border-radius: 8px; color: #5c6b82; background: #ffffff; font-size: calc(9px * var(--user-font-scale)); }
+.subscription-row-actions button.danger { border-color: #f0d1ce; color: #c25a51; background: #fff8f7; }
+.subscription-editor { display: grid; gap: 10px; padding: 12px; border: 1px solid #dce7f4; border-radius: 14px; background: #ffffff; }
+.subscription-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.subscription-editor-heading strong { color: #26344c; font-size: calc(13px * var(--user-font-scale)); }
+.subscription-editor-heading button { border: 0; color: #758197; background: transparent; font-size: calc(10px * var(--user-font-scale)); }
+.subscription-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.subscription-choice-field { min-width: 0; }
+.subscription-choice-field .subscription-choice-picker { width: 100%; height: 37px; padding: 0 9px; border: 1px solid #dce5f0 !important; border-radius: 9px; color: #26344c; background: #f8fafd !important; font-size: calc(11px * var(--user-font-scale)); }
+.subscription-choice-field .subscription-choice-picker:focus-visible { border-color: var(--primary) !important; background: #ffffff !important; }
+.subscription-empty { padding: 15px 10px; border: 1px dashed #dce5f0; border-radius: 11px; color: #818da1; background: #fbfcfe; font-size: calc(10px * var(--user-font-scale)); line-height: 1.5; text-align: center; }
 
 /* ── 账户对账 ── */
 .account-reconciliation-sheet {
@@ -13862,4 +14551,951 @@ body .budget-management-sheet .budget-management-save {
   border: 0 !important;
   color: #ffffff !important;
   background: #0068c9 !important;
+}
+
+/* Shared reporting date picker: an app-level sheet rather than a browser-like
+   dropdown. Home and consumption reuse this component, so the visual language
+   stays identical wherever a reporting period is selected. */
+body .reporting-month-picker-backdrop {
+  z-index: 500;
+  padding: 16px 12px calc(16px + env(safe-area-inset-bottom));
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(10px) saturate(115%);
+}
+
+body .reporting-month-picker-dialog {
+  width: min(100%, 400px);
+  max-height: calc(100dvh - 32px - env(safe-area-inset-bottom));
+  padding: 16px;
+  overflow: auto;
+  border: 0 !important;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.3);
+  scrollbar-width: none;
+}
+
+body .reporting-month-picker-dialog::-webkit-scrollbar {
+  display: none;
+}
+
+body .reporting-month-picker-head {
+  align-items: center;
+}
+
+body .reporting-month-picker-head > div {
+  gap: 3px;
+}
+
+body .reporting-month-picker-head span {
+  color: #7b8ba1;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+body .reporting-month-picker-head strong {
+  color: #17253a;
+  font-size: calc(20px * var(--user-font-scale));
+  letter-spacing: -0.02em;
+}
+
+body .reporting-month-picker-head > button {
+  width: 36px;
+  height: 36px;
+  border: 0 !important;
+  background: #f1f5f9;
+  color: #607089;
+  font-size: calc(25px * var(--user-font-scale));
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+body .reporting-month-picker-head > button:active {
+  transform: scale(0.92);
+  background: #e7edf4;
+}
+
+body .reporting-month-picker-current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 11px 12px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #e8f2ff 0%, #f3f8ff 100%);
+  color: #183d67;
+}
+
+body .reporting-month-picker-current-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #2872bb;
+  box-shadow: 0 3px 10px rgba(38, 105, 170, 0.12);
+}
+
+body .reporting-month-picker-current-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+body .reporting-month-picker-current > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+body .reporting-month-picker-current small {
+  color: #6680a0;
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+body .reporting-month-picker-current strong {
+  color: #245987;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 750;
+}
+
+body .reporting-year-picker {
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 4px;
+  margin-top: 14px;
+  padding: 4px;
+  border-radius: 16px;
+  background: #f3f6fa;
+}
+
+body .reporting-year-picker button,
+body .reporting-year-picker select {
+  height: 40px;
+  border: 0 !important;
+  border-radius: 12px;
+  background: transparent;
+  color: #30455e;
+}
+
+body .reporting-year-picker button {
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.07);
+  font-size: calc(26px * var(--user-font-scale));
+  line-height: 1;
+}
+
+body .reporting-year-picker button:not(:disabled):active {
+  transform: scale(0.92);
+}
+
+body .reporting-year-picker select {
+  padding: 0 28px 0 10px;
+  color: #1e3a5a;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 750;
+  text-align: center;
+  text-align-last: center;
+}
+
+body .reporting-year-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  margin-top: 12px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: #f3f6fa;
+  color: #53677f;
+  font-weight: 700;
+}
+
+body .reporting-year-option.selected {
+  background: #e4f0ff;
+  color: #2265a8;
+  box-shadow: none;
+}
+
+body .reporting-month-grid {
+  gap: 7px;
+  margin-top: 12px;
+}
+
+body .reporting-month-grid button {
+  min-height: 46px;
+  border: 0 !important;
+  border-radius: 14px;
+  background: #f4f7fb;
+  color: #50647d;
+  font-weight: 700;
+  transition: transform 160ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+body .reporting-month-grid button:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+body .reporting-month-grid button.selected {
+  background: linear-gradient(135deg, #2c79c7 0%, #145fae 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(25, 100, 177, 0.24);
+}
+
+body .reporting-month-grid button.unavailable,
+body .reporting-month-grid button.unavailable:disabled,
+body .reporting-year-option.unavailable,
+body .reporting-year-option.unavailable:disabled {
+  background: #f6f7f9;
+  color: #b8c2cf;
+}
+
+body .reporting-month-picker-cancel {
+  height: 40px;
+  margin-top: 12px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: transparent;
+  color: #718198;
+  font-weight: 700;
+}
+
+body .reporting-month-picker-dialog button:focus-visible,
+body .reporting-month-picker-dialog select:focus-visible {
+  outline: 2px solid rgba(32, 110, 187, 0.46);
+  outline-offset: 2px;
+}
+
+/* Native date controls are used in journal, savings and account settings.
+   Keep their platform picker intact while giving them the same neutral field
+   surface and readable calendar affordance. */
+body :where(input[type="date"], input[type="datetime-local"]) {
+  color-scheme: light;
+  background-color: #f3f6fa !important;
+  color: #2d4058 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+body :where(input[type="date"], input[type="datetime-local"])::-webkit-calendar-picker-indicator {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0.68;
+}
+
+body :where(input[type="date"], input[type="datetime-local"])::-webkit-datetime-edit,
+body :where(input[type="date"], input[type="datetime-local"])::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+@media (min-width: 700px) {
+  body .reporting-month-picker-backdrop {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .reporting-month-picker-dialog *,
+  body .reporting-month-picker-dialog *::before,
+  body .reporting-month-picker-dialog *::after {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Project-owned date picker. Do not use the WebView's native date dialog: it
+   cannot follow the application's visual language or interaction density. */
+body .stark-date-picker-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #f3f6fa !important;
+  color: #2e4159;
+  font: inherit;
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+body .stark-date-picker-trigger:active:not(:disabled) {
+  transform: scale(0.99);
+  background: #eaf0f6 !important;
+}
+
+body .stark-date-picker-trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+body .stark-date-picker-trigger.modern-form-input {
+  height: 38px;
+  padding: 0 12px;
+  font-size: calc(13px * var(--user-font-scale));
+}
+
+body .stark-date-picker-trigger.meta-input {
+  height: 36px;
+  padding: 0 10px;
+  font-size: calc(12px * var(--user-font-scale));
+}
+
+body .savings-goal-field .stark-date-picker-trigger.savings-date-picker {
+  height: 36px;
+  padding: 0 12px;
+  color: #172038;
+  background: #ffffff !important;
+  font-size: calc(12px * var(--user-font-scale));
+}
+
+body .reconciliation-fields .stark-date-picker-trigger.reconciliation-date-picker {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: #26344c;
+  background: #f9fbfe !important;
+  font-size: calc(11px * var(--user-font-scale));
+}
+
+body .stark-date-picker-trigger-icon,
+body .stark-date-picker-trigger-chevron {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #64809e;
+}
+
+body .stark-date-picker-trigger-icon {
+  width: 17px;
+  height: 17px;
+  margin-right: 7px;
+}
+
+body .stark-date-picker-trigger-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+body .stark-date-picker-trigger-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+body .stark-date-picker-trigger.is-empty .stark-date-picker-trigger-label {
+  color: #8795a8;
+}
+
+body .stark-date-picker-trigger-chevron {
+  width: 15px;
+  height: 15px;
+  margin-left: 6px;
+  color: #93a0b0;
+}
+
+body .stark-date-picker-trigger-chevron svg {
+  width: 100%;
+  height: 100%;
+}
+
+body .stark-date-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 650;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px 10px calc(12px + env(safe-area-inset-bottom));
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(10px) saturate(115%);
+}
+
+body .stark-date-picker-dialog {
+  width: min(100%, 430px);
+  max-height: calc(100dvh - 24px - env(safe-area-inset-bottom));
+  padding: 18px 16px 16px;
+  overflow: auto;
+  border: 0 !important;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.3);
+  scrollbar-width: none;
+}
+
+body .stark-date-picker-dialog::-webkit-scrollbar {
+  display: none;
+}
+
+body .stark-date-picker-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body .stark-date-picker-header > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+body .stark-date-picker-header span {
+  color: #7a8aa0;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+  letter-spacing: 0.04em;
+}
+
+body .stark-date-picker-header strong {
+  overflow: hidden;
+  color: #16253a;
+  font-size: calc(20px * var(--user-font-scale));
+  font-weight: 760;
+  letter-spacing: -0.025em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .stark-date-picker-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 12px;
+  place-items: center;
+  background: #f2f5f8;
+  color: #62728a;
+  font-size: calc(25px * var(--user-font-scale));
+  line-height: 1;
+}
+
+body .stark-date-picker-navigation {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  gap: 5px;
+  margin-top: 16px;
+  padding: 4px;
+  border-radius: 17px;
+  background: #f3f6fa;
+}
+
+body .stark-date-picker-navigation > button {
+  display: grid;
+  height: 42px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 13px;
+  place-items: center;
+  background: #ffffff;
+  color: #39516d;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.07);
+}
+
+body .stark-date-picker-navigation > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+body .stark-date-picker-navigation > button svg {
+  width: 20px;
+  height: 20px;
+}
+
+body .stark-date-picker-navigation > button:not(:disabled):active,
+body .stark-date-picker-close:active {
+  transform: scale(0.92);
+}
+
+body .stark-date-picker-navigation .stark-date-picker-month-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  overflow: hidden;
+  color: #1e4c7a;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+body .stark-date-picker-navigation .stark-date-picker-month-title svg {
+  width: 16px;
+  height: 16px;
+}
+
+body .stark-date-picker-year-menu {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 17px;
+  background: #f5f8fc;
+}
+
+body .stark-date-picker-year-menu-head {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+body .stark-date-picker-year-menu-head strong {
+  color: #58708b;
+  font-size: calc(11px * var(--user-font-scale));
+  text-align: center;
+}
+
+body .stark-date-picker-year-menu-head button {
+  display: grid;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 9px;
+  place-items: center;
+  background: #ffffff;
+  color: #5c7189;
+}
+
+body .stark-date-picker-year-menu-head button:disabled {
+  opacity: 0.35;
+}
+
+body .stark-date-picker-year-menu-head svg {
+  width: 17px;
+  height: 17px;
+}
+
+body .stark-date-picker-year-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+body .stark-date-picker-year-grid button {
+  height: 33px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #58708b;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+body .stark-date-picker-year-grid button.selected {
+  background: #dfeeff;
+  color: #2267ac;
+}
+
+body .stark-date-picker-weekdays,
+body .stark-date-picker-day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+body .stark-date-picker-weekdays {
+  margin-top: 14px;
+}
+
+body .stark-date-picker-weekdays span {
+  height: 28px;
+  color: #8694a6;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+  line-height: 28px;
+  text-align: center;
+}
+
+body .stark-date-picker-day-grid button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 13px;
+  background: transparent;
+  color: #334b66;
+  font-size: calc(14px * var(--user-font-scale));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+body .stark-date-picker-day-grid button.outside {
+  color: #c3cbd5;
+  font-weight: 500;
+}
+
+body .stark-date-picker-day-grid button.today {
+  color: #2170ba;
+  box-shadow: inset 0 0 0 1.5px #a7cbed;
+}
+
+body .stark-date-picker-day-grid button.selected {
+  background: linear-gradient(135deg, #2d7dc9 0%, #145eac 100%);
+  color: #ffffff;
+  box-shadow: 0 7px 16px rgba(26, 99, 178, 0.24);
+}
+
+body .stark-date-picker-day-grid button.selected.today {
+  box-shadow: 0 7px 16px rgba(26, 99, 178, 0.24);
+}
+
+body .stark-date-picker-day-grid button:active {
+  transform: scale(0.94);
+}
+
+body .stark-date-picker-time {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 11px;
+  border-radius: 16px;
+  background: #f4f7fb;
+}
+
+body .stark-date-picker-time > span {
+  color: #698097;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 700;
+}
+
+body .stark-date-picker-time > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+body .stark-date-picker-time select {
+  height: 34px;
+  min-width: 76px;
+  padding: 0 22px 0 9px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #31536f;
+  font: inherit;
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+body .stark-date-picker-time i {
+  color: #71869d;
+  font-size: calc(17px * var(--user-font-scale));
+  font-style: normal;
+  font-weight: 700;
+}
+
+body .stark-date-picker-actions {
+  display: grid;
+  grid-template-columns: 0.9fr 0.9fr 1.2fr;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+body .stark-date-picker-actions button {
+  height: 42px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 13px;
+  font: inherit;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 720;
+}
+
+body .stark-date-picker-actions .clear {
+  background: #f1f4f8;
+  color: #8190a2;
+}
+
+body .stark-date-picker-actions .today {
+  background: #eaf3ff;
+  color: #2670b7;
+}
+
+body .stark-date-picker-actions .confirm {
+  background: #1767b5;
+  color: #ffffff;
+  box-shadow: 0 8px 16px rgba(22, 96, 171, 0.2);
+}
+
+body .stark-date-picker-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+body .stark-date-picker-dialog button:focus-visible,
+body .stark-date-picker-dialog select:focus-visible,
+body .stark-date-picker-trigger:focus-visible {
+  outline: 2px solid rgba(32, 111, 190, 0.48);
+  outline-offset: 2px;
+}
+
+@media (min-width: 700px) {
+  body .stark-date-picker-backdrop {
+    align-items: center;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  body .stark-date-picker-dialog {
+    padding: 16px 12px 12px;
+    border-radius: 24px;
+  }
+
+  body .stark-date-picker-day-grid button {
+    min-height: 38px;
+    border-radius: 11px;
+    font-size: calc(13px * var(--user-font-scale));
+  }
+
+  body .stark-date-picker-navigation {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+  }
+}
+
+/* Project-owned choices for short lists such as plan years and months. Native
+   selects open an Android/Chrome dialog that cannot follow the app UI. */
+body .stark-choice-picker-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px 0 10px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff !important;
+  color: #405268;
+  font: inherit;
+  font-size: calc(11px * var(--user-font-scale));
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+body .stark-choice-picker-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body .stark-choice-picker-trigger > i {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #8090a3;
+}
+
+body .stark-choice-picker-trigger > i svg {
+  width: 100%;
+  height: 100%;
+}
+
+body .stark-choice-picker-trigger:active:not(:disabled) {
+  transform: scale(0.98);
+  background: #f3f6fa !important;
+}
+
+body .stark-choice-picker-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+body .savings-plan-toolbar .savings-year-picker .stark-choice-picker-trigger {
+  width: 88px;
+}
+
+body .savings-month-restorer .stark-choice-picker-trigger {
+  width: 76px;
+  min-width: 76px;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff !important;
+  color: #405268;
+}
+
+body .choice-picker-sheet {
+  min-height: 0;
+  max-height: min(430px, calc(100dvh - 12px - env(safe-area-inset-bottom)));
+  padding: 10px 14px calc(16px + env(safe-area-inset-bottom));
+  border: 0 !important;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -14px 42px rgba(15, 23, 42, 0.16);
+}
+
+body .choice-picker-sheet .bottom-sheet-header {
+  min-height: 40px;
+}
+
+body .choice-picker-sheet .bottom-sheet-body {
+  gap: 10px;
+  padding: 2px;
+}
+
+body .choice-picker-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f3f6fa;
+}
+
+body .choice-picker-current span {
+  color: #718196;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+body .choice-picker-current strong {
+  color: #245987;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 760;
+  font-variant-numeric: tabular-nums;
+}
+
+body .choice-picker-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+body .choice-picker-options button {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 6px;
+  border: 0 !important;
+  border-radius: 13px;
+  background: #f3f6fa;
+  color: #4c6079;
+  font: inherit;
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+body .choice-picker-options button.selected {
+  background: linear-gradient(135deg, #2c79c7 0%, #145fae 100%);
+  color: #ffffff;
+  box-shadow: 0 7px 15px rgba(25, 100, 177, 0.22);
+}
+
+body .choice-picker-options button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+body .choice-picker-options button:disabled {
+  color: #b8c2cf;
+  background: #f6f7f9;
+}
+
+body .stark-choice-picker-trigger:focus-visible,
+body .choice-picker-sheet button:focus-visible {
+  outline: 2px solid rgba(32, 111, 190, 0.48);
+  outline-offset: 2px;
+}
+
+/* The reporting-period sheet already owns its dialog. Its year control uses
+   an in-sheet paged grid instead of nesting another native select dialog. */
+body .reporting-year-picker .reporting-year-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 6px;
+  border: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  color: #1e3a5a;
+  font-size: calc(15px * var(--user-font-scale));
+  font-weight: 750;
+}
+
+body .reporting-year-picker .reporting-year-value span {
+  color: #6b7d93;
+  font-size: calc(14px * var(--user-font-scale));
+}
+
+body .reporting-year-menu {
+  margin-top: 9px;
+  padding: 10px;
+  border-radius: 17px;
+  background: #f3f6fa;
+}
+
+body .reporting-year-menu-head {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+body .reporting-year-menu-head strong {
+  color: #5c7189;
+  font-size: calc(11px * var(--user-font-scale));
+  text-align: center;
+}
+
+body .reporting-year-menu-head button {
+  display: grid;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 9px;
+  place-items: center;
+  background: #ffffff;
+  color: #5c7189;
+  font-size: calc(20px * var(--user-font-scale));
+  line-height: 1;
+}
+
+body .reporting-year-menu-head button:disabled {
+  opacity: 0.35;
+}
+
+body .reporting-year-menu-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+
+body .reporting-year-menu-grid button {
+  height: 33px;
+  padding: 0;
+  border: 0 !important;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #58708b;
+  font: inherit;
+  font-size: calc(11px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+body .reporting-year-menu-grid button.selected {
+  background: #dfeeff;
+  color: #2267ac;
 }

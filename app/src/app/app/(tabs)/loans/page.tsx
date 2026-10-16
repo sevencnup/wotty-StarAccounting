@@ -6,6 +6,7 @@ import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { EChartView } from "@/components/stark/EChartView";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { REPORTING_MONTH_KEY, clampPercent, formatMoney, isReportingYearKey, monthKey, reportingPeriodMonths } from "@/lib/stark/utils/format";
@@ -168,6 +169,7 @@ function buildDonutChartOption(loans: Loan[], locale: AppLocale): EChartsCoreOpt
 }
 
 export default function LoansPage() {
+  const confirm = useConfirmDialog();
   const locale = useAppLocale();
   const [list, setList] = useState<Loan[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -188,7 +190,7 @@ export default function LoansPage() {
   }, []);
 
   async function deleteLoan(item: Loan) {
-    if (!window.confirm(`确定删除贷款“${item.platform}”吗？`)) return;
+    if (!await confirm({ message: `确定删除贷款“${item.platform}”吗？` })) return;
     await repo.deleteLoan(item.id);
     setEditingLoan(null);
     reload();

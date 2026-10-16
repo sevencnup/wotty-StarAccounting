@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
+import { addSavingsMonth, buildSavingsMonths, calculateSavingsRow, createSavingsPlanTemplate, normalizeSavingsDeadline, parseSavingsExpenses, parseSavingsJsonObject, PREVIOUS_BALANCE_COLUMN, recordSavingsPlanDeposit, remapSavingsMonthsToYear, remapSavingsRowsToYear, removeSavingsMonth, resolveSavingsMonths, sanitizeSavingsExpenseColumns, savingsPlanRecordedAmount, selectSavingsDraft, selectSavingsGoal, selectSavingsPlannerYear, shouldShowSavingsPlannerLoading, shouldSyncSavingsExpense, validateSavingsExpenseColumn } from "./planner.ts";
 
 test("monthly mode contains all twelve months", () => {
   assert.equal(buildSavingsMonths(2026, "MONTHLY").length, 12);
@@ -82,13 +82,12 @@ test("previous balance contributes to the row remaining amount", () => {
   assert.equal(result.remaining, 3000);
 });
 
-test("fixed expense columns sync from the first month", () => {
-  assert.equal(shouldSyncSavingsExpense("2026-01", "2026-01", "房租", []), true);
+test("fixed expense columns can sync from any edited month", () => {
+  assert.equal(shouldSyncSavingsExpense("房租", []), true);
 });
 
 test("temporary expense columns only update the edited month", () => {
-  assert.equal(shouldSyncSavingsExpense("2026-01", "2026-01", "临时支出", ["临时支出"]), false);
-  assert.equal(shouldSyncSavingsExpense("2026-02", "2026-01", "房租", []), false);
+  assert.equal(shouldSyncSavingsExpense("临时支出", ["临时支出"]), false);
 });
 
 test("temporary expenses are included in the row remaining calculation", () => {
@@ -130,11 +129,94 @@ test("expense column sanitizing removes legacy array indexes but keeps named col
   assert.deepEqual(sanitizeSavingsExpenseColumns(["0", "1", "106", "房租", " 房租 "]), ["房租"]);
 });
 
+test("historical savings templates copy structure while remapping months to the new year", () => {
+  const template = createSavingsPlanTemplate({
+    id: "goal-history",
+    name: "2026 年度储蓄",
+    depositType: "HELP_DEPOSIT",
+    planConfig: JSON.stringify({
+      frequency: "ALTERNATE",
+      columns: ["房租", "临时医疗"],
+      temporaryColumns: ["临时医疗"],
+      previousBalance: true,
+      monthsByFrequency: {
+        MONTHLY: ["2026-02", "2026-04"],
+        ALTERNATE: ["2026-01", "2026-03", "2026-05"],
+      },
+    }),
+  }, [{
+    month: "2026-03",
+    remark: "隔月存模式",
+    amount: 2600,
+    salary: 8000,
+    expenses: JSON.stringify({ 房租: 2200, 临时医疗: 300, [PREVIOUS_BALANCE_COLUMN]: 500 }),
+  }], 2027);
+
+  assert.equal(template.sourceGoalName, "2026 年度储蓄");
+  assert.equal(template.depositType, "HELP_DEPOSIT");
+  assert.equal(template.frequency, "ALTERNATE");
+  assert.deepEqual(template.columns, ["房租", "临时医疗"]);
+  assert.deepEqual(template.temporaryColumns, ["临时医疗"]);
+  assert.equal(template.previousBalanceEnabled, true);
+  assert.deepEqual(template.monthsByFrequency, {
+    MONTHLY: ["2027-02", "2027-04"],
+    ALTERNATE: ["2027-01", "2027-03", "2027-05"],
+  });
+  assert.deepEqual(template.rowsByFrequency.ALTERNATE["2027-03"], {
+    salary: "8000",
+    previousBalance: "500",
+    expected: "2600",
+    expenses: { 房租: "2200", 临时医疗: "300" },
+  });
+});
+
+test("historical templates recover columns and previous balance from older plan rows", () => {
+  const template = createSavingsPlanTemplate({
+    id: "goal-legacy",
+    name: "旧计划",
+    depositType: "CASH",
+    planConfig: null,
+  }, [{
+    month: "2026-03",
+    remark: "隔月存模式",
+    expenses: JSON.stringify({ 房租: 1500, [PREVIOUS_BALANCE_COLUMN]: 200 }),
+  }], 2027);
+
+  assert.equal(template.frequency, "ALTERNATE");
+  assert.deepEqual(template.columns, ["房租"]);
+  assert.equal(template.previousBalanceEnabled, true);
+  assert.deepEqual(template.monthsByFrequency.ALTERNATE, ["2027-03"]);
+});
+
+test("switching a draft to another year keeps matching planning rows and drops unsupported months", () => {
+  assert.deepEqual(remapSavingsMonthsToYear(["2026-01", "2026-02", "2026-03"], 2027, "ALTERNATE"), ["2027-01", "2027-03"]);
+  assert.deepEqual(remapSavingsRowsToYear({
+    "2026-01": { expected: "1000" },
+    "2026-02": { expected: "2000" },
+    "2026-03": { expected: "3000" },
+  }, 2027, "ALTERNATE"), {
+    "2027-01": { expected: "1000" },
+    "2027-03": { expected: "3000" },
+  });
+});
+
 test("savings goal selection uses the requested goal when editing", () => {
   const goals = [{ id: "goal-a" }, { id: "goal-b" }];
   assert.deepEqual(selectSavingsGoal(goals, "goal-b"), { id: "goal-b" });
   assert.equal(selectSavingsGoal(goals, "missing"), null);
   assert.equal(selectSavingsGoal(goals), null);
+});
+
+test("editing a future savings goal opens the year that has persisted plans", () => {
+  const plans = [{ month: "2027-01" }, { month: "2027-02" }];
+  assert.equal(selectSavingsPlannerYear(2026, plans, {}), 2027);
+  assert.equal(selectSavingsPlannerYear(2027, plans, {}), 2027);
+});
+
+test("editing uses configured plan years when legacy goals have no saved rows", () => {
+  assert.equal(selectSavingsPlannerYear(2026, [], {
+    monthsByYear: { "2027": { MONTHLY: ["2027-01"] } },
+  }), 2027);
 });
 
 test("editing ignores legacy or older drafts but restores a newer draft", () => {

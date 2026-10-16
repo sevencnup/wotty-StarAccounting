@@ -8,9 +8,11 @@ import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournal
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { savingsDepositTypeLabel } from "@/lib/stark/savings/deposit-type";
+import { groupRecentSavingsPlans } from "@/lib/stark/savings/recent-plans";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 import { savingsPlanRecordedAmount } from "@/lib/stark/savings/planner";
+import { summarizeSavingsProgress } from "@/lib/stark/savings/progress";
 import { translateValue, useAppLocale } from "@/lib/stark/i18n";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import styles from "./savings-record.module.css";
@@ -98,13 +100,10 @@ export default function SavingsPage() {
     const monthPlans = plans.filter((plan) => plan.month === currentMonth);
     const monthPlanned = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
     const plannedTotal = plans.reduce((sum, plan) => sum + plan.amount, 0);
-    const completedAmount = plans.reduce((sum, plan) => sum + savingsPlanRecordedAmount(plan), 0);
-    const recordedSaved = goals.reduce((sum, goal) => sum + goal.currentAmount, 0);
-    const savedAmount = Math.max(recordedSaved, completedAmount);
-    const target = goals.reduce((sum, goal) => sum + goal.targetAmount, 0) || plannedTotal;
+    const { savedAmount, target, percent } = summarizeSavingsProgress(goals, plans);
     const completed = plans.filter((plan) => plan.status === "COMPLETED").length;
     const pending = plans.filter((plan) => plan.status !== "COMPLETED").length;
-    const progress = target > 0 ? clampPercent((savedAmount / target) * 100) : 0;
+    const progress = clampPercent(percent);
     const pendingAmount = Math.max(plannedTotal - savedAmount, 0);
     const remainingTarget = Math.max(target - savedAmount, 0);
     const completionRate = plans.length ? clampPercent((completed / plans.length) * 100) : 0;
@@ -112,9 +111,7 @@ export default function SavingsPage() {
     return { activeCount, completed, completionRate, monthPlanned, pending, pendingAmount, plannedTotal, progress, remainingTarget, savedAmount, target };
   }, [currentMonth, goals, plans]);
 
-  const recentPlans = useMemo(() => (
-    [...plans].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8)
-  ), [plans]);
+  const recentPlanGroups = useMemo(() => groupRecentSavingsPlans(plans), [plans]);
   const activeGoals = useMemo(() => goals.filter((goal) => goal.status === "ACTIVE"), [goals]);
   const goalCards = useMemo(() => (
     activeGoals.length ? activeGoals : goals
@@ -215,45 +212,52 @@ export default function SavingsPage() {
         <div className="recent-head savings-section-head">
           <div>
             <h2>{translateValue("最近计划", locale)}</h2>
-            <span>{translateValue("最近更新的存入安排", locale)}</span>
+            <span>{translateValue("按计划月份从近到远", locale)}</span>
           </div>
-          <span className="mini-section-note">{translateValue("按更新时间", locale)}</span>
+          <span className="mini-section-note">{translateValue("按计划月份", locale)}</span>
         </div>
         <div className="recent-list">
-          {recentPlans.length ? recentPlans.map((plan) => {
-            const goal = goals.find((item) => item.id === plan.goalId);
-            const recorded = plan.status === "COMPLETED";
-            const amount = recorded && plan.actualAmount !== null && plan.actualAmount !== undefined ? plan.actualAmount : plan.amount;
-            const recordedAmount = savingsPlanRecordedAmount(plan);
-            const progress = plan.amount > 0 ? clampPercent((recordedAmount / plan.amount) * 100) : 0;
-            return (
-              <div key={plan.id} className={`savings-recent-row ${plan.status.toLowerCase()}`}>
-                <div className="savings-recent-icon">存</div>
-                <strong>{goal?.name || "储蓄计划"}</strong>
-                <div className="savings-recent-meta">
-                  <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
-                  <time>{dayLabel(plan.updatedAt.slice(0, 10), locale)}</time>
-                </div>
-                <div className={styles.recentActions}>
-                  <div className={styles.progressSummary}>
-                    <div className={styles.progressTrack} aria-label={`${goal?.name || "储蓄计划"} 完成 ${progress}%`}>
-                      <i style={{ width: `${progress}%` }} />
+          {recentPlanGroups.length ? recentPlanGroups.map((group) => (
+            <section key={group.year} className="savings-recent-year" aria-label={locale === "en-US" ? `${group.year} savings plans` : `${group.year} 年储蓄计划`}>
+              <h3>{locale === "en-US" ? group.year : group.year === "未设置" ? group.year : `${group.year} 年`}</h3>
+              <div className="savings-recent-year-plans">
+                {group.plans.map((plan) => {
+                  const goal = goals.find((item) => item.id === plan.goalId);
+                  const recorded = plan.status === "COMPLETED";
+                  const amount = recorded && plan.actualAmount !== null && plan.actualAmount !== undefined ? plan.actualAmount : plan.amount;
+                  const recordedAmount = savingsPlanRecordedAmount(plan);
+                  const progress = plan.amount > 0 ? clampPercent((recordedAmount / plan.amount) * 100) : 0;
+                  return (
+                    <div key={plan.id} className={`savings-recent-row ${plan.status.toLowerCase()}`}>
+                      <div className="savings-recent-icon">{recorded ? "已" : "未"}</div>
+                      <strong>{goal?.name || "储蓄计划"}</strong>
+                      <div className="savings-recent-meta">
+                        <span>{plan.month} · {translateValue(planStatusLabel(plan.status), locale)}</span>
+                        <time>{dayLabel(plan.updatedAt.slice(0, 10), locale)}</time>
+                      </div>
+                      <div className={styles.recentActions}>
+                        <div className={styles.progressSummary}>
+                          <div className={styles.progressTrack} aria-label={`${goal?.name || "储蓄计划"} 完成 ${progress}%`}>
+                            <i style={{ width: `${progress}%` }} />
+                          </div>
+                          <small>已存 ¥ {formatMoney(recordedAmount)} / 计划 ¥ {formatMoney(plan.amount)}</small>
+                        </div>
+                        <em>+¥ {formatMoney(amount)}</em>
+                        <button
+                          type="button"
+                          className={`${styles.recordButton} ${recorded ? styles.recorded : ""}`}
+                          onClick={() => setRecordingPlan(plan)}
+                          aria-label={`${goal?.name || "储蓄计划"} · ${recorded ? "修改实际存入记录" : "记录实际存入"}`}
+                        >
+                          {recorded ? "修改记录" : "实际存入"}
+                        </button>
+                      </div>
                     </div>
-                    <small>已存 ¥ {formatMoney(recordedAmount)} / 计划 ¥ {formatMoney(plan.amount)}</small>
-                  </div>
-                  <em>+¥ {formatMoney(amount)}</em>
-                  <button
-                    type="button"
-                    className={`${styles.recordButton} ${recorded ? styles.recorded : ""}`}
-                    onClick={() => setRecordingPlan(plan)}
-                    aria-label={`${goal?.name || "储蓄计划"} · ${recorded ? "修改实际存入记录" : "记录实际存入"}`}
-                  >
-                    {recorded ? "修改记录" : "实际存入"}
-                  </button>
-                </div>
+                  );
+                })}
               </div>
-            );
-          }) : (
+            </section>
+          )) : (
             <div className="loan-empty">{translateValue("暂无储蓄记录", locale)}</div>
           )}
         </div>

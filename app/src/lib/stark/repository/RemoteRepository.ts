@@ -10,6 +10,7 @@ import type {
   LoanRepaymentClassificationResult,
   SavingsGoal,
   SavingsPlan,
+  Subscription,
   ThemeConfig,
   Transaction,
   User,
@@ -32,14 +33,15 @@ type EntityType =
   | "categoryRules"
   | "importErrorLogs"
   | "exchangeRates"
-  | "themeConfigs";
+  | "themeConfigs"
+  | "subscriptions";
 
 type TimedValue<T> = {
   expiresAt: number;
   value: T;
 };
 
-type CachedResource = "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans";
+type CachedResource = "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans" | "subscriptions";
 
 export type RemoteCacheUpdate = {
   resource: CachedResource;
@@ -216,7 +218,7 @@ export class RemoteRepository implements DataRepository {
   }
 
   private clearEntityCaches(entityType: EntityType, accountId: string) {
-    if (entityType === "assets" || entityType === "budgets" || entityType === "loans" || entityType === "savingsGoals") {
+    if (entityType === "assets" || entityType === "budgets" || entityType === "loans" || entityType === "savingsGoals" || entityType === "subscriptions") {
       this.invalidateCachedResource(entityType, accountId);
     }
     if (entityType === "savingsGoals" || entityType === "savingsPlans") {
@@ -248,13 +250,11 @@ export class RemoteRepository implements DataRepository {
     return sortByDateDesc(transactions);
   }
 
-  private save(entityType: EntityType, value: object) {
+  private async save(entityType: EntityType, value: object) {
     const record = value as Record<string, unknown>;
     const accountId = record.accountId ?? getCurrentAccountId();
     const targetAccountId = String(accountId);
-    this.clearTransactionCaches(targetAccountId);
-    this.clearEntityCaches(entityType, targetAccountId);
-    return this.request<void>("/api/sync", {
+    await this.request<void>("/api/sync", {
       method: "POST",
       body: JSON.stringify({
         id: record.id,
@@ -265,6 +265,10 @@ export class RemoteRepository implements DataRepository {
         updatedAt: record.updatedAt ?? new Date().toISOString(),
       }),
     });
+    // Requests started while the write was in flight may have cached the old
+    // rows. Invalidate after the server confirms the write, before UI refresh.
+    this.clearTransactionCaches(targetAccountId);
+    this.clearEntityCaches(entityType, targetAccountId);
   }
 
   private delete(entityType: EntityType, id: string, accountId?: string) {
@@ -436,6 +440,17 @@ export class RemoteRepository implements DataRepository {
   async getCategoryRules(accountId: string) { return await this.request<CategoryRule[]>(`/api/category-rules?accountId=${encodeURIComponent(accountId)}`); }
   async saveCategoryRule(rule: CategoryRule) { await this.save("categoryRules", rule); }
   async deleteCategoryRule(id: string, accountId?: string) { await this.delete("categoryRules", id, accountId); }
+  getSubscriptions(accountId: string) {
+    const targetAccountId = String(accountId);
+    return this.readCachedResource(
+      "subscriptions",
+      targetAccountId,
+      () => this.request<Subscription[]>(`/api/subscriptions?accountId=${encodeURIComponent(targetAccountId)}`),
+      targetAccountId,
+    );
+  }
+  async saveSubscription(subscription: Subscription) { await this.save("subscriptions", subscription); }
+  async deleteSubscription(id: string, accountId?: string) { await this.delete("subscriptions", id, accountId); }
   async getImportErrorLogs(accountId: string) { return await this.request<ImportErrorLog[]>(`/api/import-errors?accountId=${encodeURIComponent(accountId)}`); }
   async saveImportErrorLog(log: ImportErrorLog) { await this.save("importErrorLogs", log); }
   async getExchangeRates() { return await this.request<ExchangeRate[]>("/api/exchange-rates"); }
