@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import packageInfo from "../../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
@@ -16,12 +16,14 @@ import { serializeTransactionsToCsv } from "@/lib/stark/export/transaction-csv";
 import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
 import { matchImportedLoanRepayments } from "@/lib/stark/import/loan-repayment";
 import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
+import { SubscriptionManagementSheet } from "@/components/stark/SubscriptionManagementSheet";
 import { BottomSheet } from "@/components/stark/BottomSheet";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
 import type { BillImportSource } from "@/lib/stark/import/bill-csv";
 
 const manager = new DataModeManager();
-type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "MODE";
+type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "SUBSCRIPTIONS" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "MODE";
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
 
@@ -37,6 +39,7 @@ function SettingIcon({ type }: { type: PanelKey }) {
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
     REMARK: <><path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4-7 4V3a1 1 0 0 1 1-1Z" /><path d="M9 8h6" /><path d="M9 12h4" /></>,
+    SUBSCRIPTIONS: <><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M8 7h8M8 11h5M8 15h3" /><path d="M16 16h.01" /></>,
     LANGUAGE: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" /></>,
     FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
     HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
@@ -88,6 +91,12 @@ export default function AccountsPage() {
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dismissLogoutConfirm = useCallback(() => setLogoutConfirmOpen(false), []);
+  const consumeLogoutHistory = useLayeredHistoryMarker(logoutConfirmOpen, "starkLogoutConfirm", dismissLogoutConfirm);
+  const closeLogoutConfirm = useCallback(() => {
+    consumeLogoutHistory();
+    dismissLogoutConfirm();
+  }, [consumeLogoutHistory, dismissLogoutConfirm]);
 
   useEffect(() => {
     const saved = readUiSettings();
@@ -201,8 +210,12 @@ export default function AccountsPage() {
   function logout() {
     cloudLogout();
     setCloudUser(null);
-    setLogoutConfirmOpen(false);
-    router.replace("/");
+    // The confirmation dialog owns a temporary history entry. Calling
+    // history.back() and navigating away in the same event races in Android
+    // WebView, which can leave the protected route mounted with no session.
+    // A hard replacement drops that transient entry and always boots the
+    // access gate from a clean URL.
+    window.location.replace("/");
   }
 
   function requestLogout() {
@@ -341,6 +354,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
+        <SettingsRow type="SUBSCRIPTIONS" title="订阅/扣费管理" value="按月自动记账" onClick={() => setActivePanel("SUBSCRIPTIONS")} />
       </section>
 
       <section className="settings-center-group">
@@ -363,11 +377,11 @@ export default function AccountsPage() {
       {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={requestLogout}>退出登录</button> : null}
 
       {logoutConfirmOpen ? (
-        <div className="account-confirm-mask" role="presentation" onClick={() => setLogoutConfirmOpen(false)}>
+        <div className="account-confirm-mask" role="presentation" onClick={closeLogoutConfirm}>
           <section className="account-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="account-logout-title" onClick={(event) => event.stopPropagation()}>
             <strong id="account-logout-title">确定要退出当前云端账户吗？</strong>
             <div className="account-confirm-actions">
-              <button type="button" className="account-confirm-cancel" onClick={() => setLogoutConfirmOpen(false)}>取消</button>
+              <button type="button" className="account-confirm-cancel" onClick={closeLogoutConfirm}>取消</button>
               <button type="button" className="account-confirm-primary" onClick={logout}>确定</button>
             </div>
           </section>
@@ -376,7 +390,7 @@ export default function AccountsPage() {
 
       {activePanel ? (
         <BottomSheet
-          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "SUBSCRIPTIONS" ? "订阅/扣费管理" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
           className="settings-sheet"
           overlayClassName="settings-sheet-overlay"
           onClose={() => setActivePanel(null)}
@@ -424,6 +438,8 @@ export default function AccountsPage() {
             {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">
               <BillRemarkSheet />
             </div> : null}
+
+            {activePanel === "SUBSCRIPTIONS" ? <SubscriptionManagementSheet /> : null}
 
             {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN", "EN_US"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : item === "ZH_CN" ? "固定使用简体中文" : "固定使用英文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
             {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}

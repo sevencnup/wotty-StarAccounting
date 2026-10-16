@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Budget } from "@/lib/stark/models";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { BottomSheet } from "@/components/stark/BottomSheet";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const manager = new DataModeManager();
 
@@ -18,6 +20,7 @@ type BudgetManagementSheetProps = {
 };
 
 export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange, onClose, historyMode = "marker" }: BudgetManagementSheetProps) {
+  const confirm = useConfirmDialog();
   const [budgets, setBudgets] = useState(initialBudgets);
   const [editing, setEditing] = useState<Budget | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -27,16 +30,21 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    setBudgets(initialBudgets);
-  }, [initialBudgets]);
-
-  function closeEditor() {
+  const dismissEditor = useCallback(() => {
     setEditing(null);
     setAmount("");
     setEditorOpen(false);
     setMessage("");
-  }
+  }, []);
+  const consumeEditorHistory = useLayeredHistoryMarker(editorOpen, "starkBudgetEditor", dismissEditor);
+  const closeEditor = useCallback(() => {
+    consumeEditorHistory();
+    dismissEditor();
+  }, [consumeEditorHistory, dismissEditor]);
+
+  useEffect(() => {
+    setBudgets(initialBudgets);
+  }, [initialBudgets]);
 
   function beginCreate() {
     setEditing(null);
@@ -95,7 +103,7 @@ export function BudgetManagementSheet({ budgets: initialBudgets, onBudgetsChange
   }
 
   async function remove(item: Budget) {
-    if (!window.confirm(`确定删除${item.period === "MONTHLY" ? "月度" : "年度"}总预算吗？`)) return;
+    if (!await confirm({ message: `确定删除${item.period === "MONTHLY" ? "月度" : "年度"}总预算吗？` })) return;
     setMessage("");
     try {
       await manager.getRepository().deleteBudget(item.id);

@@ -22,6 +22,22 @@ const categoryIconFiles: Record<string, string> = {
   其他: "qita.webp",
   保险: "baoxian.webp",
   红包: "hongbao.webp",
+  房租: "fangzu.webp",
+  公交地铁: "gongjiaoditie.webp",
+  会员订阅: "huiyuandingyue.webp",
+  打车: "dache.webp",
+  买菜: "maicai.webp",
+  母婴: "muying.webp",
+  税费手续费: "shuifei-shouxvfei.webp",
+  外卖: "waimai.webp",
+  报销: "baoxiao.webp",
+  补贴: "butie.webp",
+  二手转卖: "ershouzhuanmai.webp",
+  兼职: "jianzhi.webp",
+  经营收入: "jinyingshouru.webp",
+  利息分红: "lixif-fenhong.webp",
+  退款: "tuikuan.webp",
+  租金: "zujin.webp",
   充电: "chongdian-optimized.webp",
   出行: "chuxinglei.webp",
   打印: "dayin-optimized.webp",
@@ -69,16 +85,18 @@ const categoryIconFiles: Record<string, string> = {
   物业费: "wuyefei.webp",
 };
 
-const nonExpenseCategories = new Set(["工资", "奖金", "理财", "转账", "还款"]);
+const nonExpenseCategories = new Set([
+  "工资", "奖金", "理财", "报销", "补贴", "二手转卖", "兼职", "经营收入", "利息分红", "退款", "租金", "转账", "还款",
+]);
 const expenseCategoryOrder = [
   // 餐饮食品
-  "餐饮", "闲食", "水果", "肉类", "水产", "糖果", "甜品", "下午茶", "饮品", "酒类", "烟草",
+  "餐饮", "外卖", "买菜", "闲食", "水果", "肉类", "水产", "糖果", "甜品", "下午茶", "饮品", "酒类", "烟草",
   // 购物服饰与宠物
-  "购物", "服装", "鞋类", "美容", "个人护理", "理发", "宠物", "玩具", "礼物", "红包",
+  "购物", "服装", "鞋类", "美容", "个人护理", "理发", "宠物", "母婴", "玩具", "礼物", "红包",
   // 交通出行
-  "交通", "出行", "旅游", "加油", "充电", "汽车保养", "停车费",
+  "交通", "公交地铁", "打车", "出行", "旅游", "加油", "充电", "汽车保养", "停车费",
   // 住房与日用
-  "住房", "物业费", "家具", "家电", "装修", "水费", "电费", "燃气", "网费", "清洁", "清洁优化", "日常清洁", "家政", "维修", "日用", "生活用品",
+  "住房", "房租", "物业费", "家具", "家电", "装修", "水费", "电费", "燃气", "网费", "清洁", "清洁优化", "日常清洁", "家政", "维修", "日用", "生活用品",
   // 数码通讯
   "通讯", "电子产品", "影音", "打印",
   // 医疗健康
@@ -86,9 +104,9 @@ const expenseCategoryOrder = [
   // 运动户外
   "体育", "户外",
   // 教育与娱乐
-  "教育", "图书", "娱乐",
+  "教育", "图书", "娱乐", "会员订阅",
   // 其他
-  "工具", "保险", "花圃", "其他",
+  "工具", "保险", "税费手续费", "花圃", "其他",
 ];
 
 const orderedExpenseCategories = Array.from(new Set([
@@ -109,6 +127,14 @@ const incomeCategoryIcons: Record<string, string> = {
   工资: "gongjulei.webp",
   奖金: "wanju.webp",
   理财: "jiajulei1.webp",
+  报销: "baoxiao.webp",
+  补贴: "butie.webp",
+  二手转卖: "ershouzhuanmai.webp",
+  兼职: "jianzhi.webp",
+  经营收入: "jinyingshouru.webp",
+  利息分红: "lixif-fenhong.webp",
+  退款: "tuikuan.webp",
+  租金: "zujin.webp",
 };
 
 const categoryKeywordIcons: Array<[RegExp, string]> = [

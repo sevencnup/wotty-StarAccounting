@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { formatMoney, nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { categoryIconSrc } from "@/lib/stark/utils/category-icon";
@@ -83,6 +84,7 @@ function RemarkCategoryEditor({
 }
 
 export function BillRemarkSheet() {
+  const confirm = useConfirmDialog();
   const [repo] = useState(() => new DataModeManager().getRepository());
   const [accountId, setAccountId] = useState(() => getCurrentAccountId());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -226,7 +228,7 @@ export function BillRemarkSheet() {
   }
 
   async function deleteRule(rule: CategoryRule) {
-    if (!window.confirm(`确定删除“${ruleKeyword(rule)}”规则吗？已归类的流水不会被清除。`)) return;
+    if (!await confirm({ message: `确定删除“${ruleKeyword(rule)}”规则吗？已归类的流水不会被清除。` })) return;
     await repo.deleteCategoryRule(rule.id, accountId);
     setRules((prev) => prev.filter((item) => item.id !== rule.id));
   }

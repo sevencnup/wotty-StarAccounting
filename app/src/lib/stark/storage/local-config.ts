@@ -147,3 +147,24 @@ export function setSalaryDay(day: number) {
   const safeDay = Math.max(1, Math.min(28, Math.round(day)));
   writeValue("salary-day", String(safeDay));
 }
+
+export type HomeMetric = "balance" | "expense" | "income";
+
+export function getSelectedHomeMetric(): HomeMetric {
+  const value = readValue("home-metric");
+  return value === "balance" || value === "income" ? value : "expense";
+}
+
+export function setSelectedHomeMetric(metric: HomeMetric) {
+  writeValue("home-metric", metric);
+}
+
+export type BalancePeriodMode = "month" | "salary";
+
+export function getSelectedBalancePeriodMode(): BalancePeriodMode {
+  return readValue("balance-period-mode") === "salary" ? "salary" : "month";
+}
+
+export function setSelectedBalancePeriodMode(mode: BalancePeriodMode) {
+  writeValue("balance-period-mode", mode);
+}

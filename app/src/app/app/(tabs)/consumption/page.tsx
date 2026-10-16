@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { PageTopBar } from "@/components/stark/PageTopBar";
@@ -8,6 +8,8 @@ import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { MonthPicker } from "@/components/stark/MonthPicker";
 import { RemarkedExpenseCard } from "@/components/stark/RemarkedExpenseCard";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
+import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { loadAvailableTransactionMonths, resolveAvailableReportingMonth } from "@/lib/stark/repository/transaction-months";
 import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
@@ -101,6 +103,7 @@ function ChevronDownIcon() {
 }
 
 export default function ConsumptionPage() {
+  const confirm = useConfirmDialog();
   const locale = useAppLocale();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -110,7 +113,7 @@ export default function ConsumptionPage() {
   const [availableMonths, setAvailableMonths] = useState<ReadonlySet<string>>(new Set());
   const [accountId, setAccountId] = useState(() => getCurrentAccountId());
   const [monthReady, setMonthReady] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("expense");
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [categoryFilter, setCategoryFilter] = useState("全部分类");
   const [platformFilter, setPlatformFilter] = useState("全部账户");
   const [query, setQuery] = useState("");
@@ -124,6 +127,16 @@ export default function ConsumptionPage() {
   const categoryMenuRef = useRef<HTMLDivElement>(null);
   const accountFilterRef = useRef<HTMLDivElement>(null);
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const dismissFilters = useCallback(() => {
+    setCategoryOpen(false);
+    setAccountOpen(false);
+    setFilterMenuReady(false);
+  }, []);
+  const consumeFilterHistory = useLayeredHistoryMarker(categoryOpen || accountOpen, "starkConsumptionFilter", dismissFilters);
+  const closeFilters = useCallback(() => {
+    consumeFilterHistory();
+    dismissFilters();
+  }, [consumeFilterHistory, dismissFilters]);
 
   useEffect(() => {
     setReportingMonth(getSelectedReportMonth());
@@ -192,14 +205,13 @@ export default function ConsumptionPage() {
       const insideCategory = categoryFilterRef.current?.contains(target) || categoryMenuRef.current?.contains(target);
       const insideAccount = accountFilterRef.current?.contains(target) || accountMenuRef.current?.contains(target);
       if (!insideCategory && !insideAccount) {
-        setCategoryOpen(false);
-        setAccountOpen(false);
+        closeFilters();
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setCategoryOpen(false);
-        setAccountOpen(false);
+        event.preventDefault();
+        closeFilters();
       }
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
@@ -208,7 +220,7 @@ export default function ConsumptionPage() {
       document.removeEventListener("pointerdown", closeOnOutsidePointer);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [accountOpen, categoryOpen]);
+  }, [accountOpen, categoryOpen, closeFilters]);
 
   const monthTransactions = transactions;
 
@@ -363,14 +375,14 @@ export default function ConsumptionPage() {
     setSelectedReportMonth(month);
     setReportingMonth(month);
     setCategoryFilter("全部分类");
-    setCategoryOpen(false);
+    closeFilters();
     setPlatformFilter("全部账户");
     setQuery("");
     setDetailQuery("");
   }
 
   async function deleteTransaction(item: Transaction) {
-    if (!window.confirm("确定删除这笔流水吗？")) return;
+    if (!await confirm({ message: "确定删除这笔流水吗？" })) return;
     await repo.deleteTransaction(item.id);
     setEditingTransaction(null);
     window.dispatchEvent(new Event("stark:transaction-saved"));
@@ -422,7 +434,7 @@ export default function ConsumptionPage() {
 
       <section className={"consumption-filter-card" + (categoryOpen || accountOpen ? " is-category-open" : "")}>
         <div className="consumption-mode-tabs" role="tablist" aria-label={locale === "en-US" ? "Transaction type" : "收支类型"}>
-          {([["expense", locale === "en-US" ? "Expense" : "支出"], ["income", locale === "en-US" ? "Income" : "收入"], ["all", locale === "en-US" ? "All" : "全部"]] as const).map(([value, label]) => (
+          {([["all", locale === "en-US" ? "All" : "全部"], ["expense", locale === "en-US" ? "Expense" : "支出"], ["income", locale === "en-US" ? "Income" : "收入"]] as const).map(([value, label]) => (
             <button key={value} type="button" className={viewMode === value ? "active" : ""} onClick={() => setViewMode(value)}>
               {label}
             </button>
@@ -437,15 +449,19 @@ export default function ConsumptionPage() {
               aria-haspopup="listbox"
               aria-expanded={categoryOpen}
               onClick={() => {
-                setAccountOpen(false);
                 setFilterMenuReady(false);
-                setCategoryOpen((open) => !open);
+                if (categoryOpen) {
+                  closeFilters();
+                  return;
+                }
+                setAccountOpen(false);
+                setCategoryOpen(true);
               }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  setAccountOpen(false);
                   setFilterMenuReady(false);
+                  setAccountOpen(false);
                   setCategoryOpen(true);
                 }
               }}
@@ -480,7 +496,7 @@ export default function ConsumptionPage() {
                         className={"consumption-category-option" + (selected ? " selected" : "")}
                         onClick={() => {
                           setCategoryFilter(option.label);
-                          setCategoryOpen(false);
+                          closeFilters();
                         }}
                       >
                         <span className="consumption-category-option-icon">
@@ -507,15 +523,19 @@ export default function ConsumptionPage() {
               aria-haspopup="listbox"
               aria-expanded={accountOpen}
               onClick={() => {
-                setCategoryOpen(false);
                 setFilterMenuReady(false);
-                setAccountOpen((open) => !open);
+                if (accountOpen) {
+                  closeFilters();
+                  return;
+                }
+                setCategoryOpen(false);
+                setAccountOpen(true);
               }}
               onKeyDown={(event) => {
                 if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  setCategoryOpen(false);
                   setFilterMenuReady(false);
+                  setCategoryOpen(false);
                   setAccountOpen(true);
                 }
               }}
@@ -548,7 +568,7 @@ export default function ConsumptionPage() {
                         className={"consumption-category-option" + (selected ? " selected" : "")}
                         onClick={() => {
                           setPlatformFilter(option.label);
-                          setAccountOpen(false);
+                          closeFilters();
                         }}
                       >
                         <span className="consumption-account-option-icon"><AccountFilterIcon account={option.label} /></span>

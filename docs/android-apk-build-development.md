@@ -10,7 +10,7 @@
 1. 核对 Capacitor、Android Gradle 工程、SDK 版本与现有构建脚本。
 2. 为 Android 应用启用明文 HTTP 访问，并将 Capacitor Android 本地页面协议设为 HTTP；当前云端 API 为 IP 地址 HTTP 服务，Android WebView 默认会拦截该请求。
 3. 安装 Android SDK command-line tools、工程所需 Android platform 和 build-tools；复用项目 Gradle Wrapper，不安装全局 Gradle。
-4. 构建前端生产静态资源并同步至 Android 工程，再执行 APK 构建。
+4. 构建前端生产静态资源并通过项目的 `sync:android` 脚本同步至 Android 工程；该脚本会修正 pnpm workspace 下 Capacitor Android 依赖的生成路径，再执行 APK 构建。
 5. 将新 APK 复制到带版本号的独立产物路径，校验文件存在与 Android 包信息。
 6. 更新版本记录，检查 Git 差异并仅提交源码与文档，不提交 SDK、Gradle 缓存和 APK 产物。
 

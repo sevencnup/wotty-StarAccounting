@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { appVersionEndpoint, APP_UPDATE_BASE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 type UpdateState = { info: AppVersionInfo; unavailable: boolean } | null;
 type NoticeState = { title: string; message: string } | null;
@@ -11,6 +12,32 @@ export function AppUpdatePrompt() {
   const [update, setUpdate] = useState<UpdateState>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [checking, setChecking] = useState(false);
+  const checkAbortRef = useRef<AbortController | null>(null);
+  const dismissibleUpdate = Boolean(update && (!update.info.forceUpdate || update.unavailable));
+  const dismissPrompt = useCallback(() => {
+    if (checking) {
+      checkAbortRef.current?.abort();
+      setChecking(false);
+      return;
+    }
+    if (notice) {
+      setNotice(null);
+      return;
+    }
+    if (update) {
+      if (!dismissibleUpdate) return false;
+      setUpdate(null);
+    }
+  }, [checking, dismissibleUpdate, notice, update]);
+  const consumePromptHistory = useLayeredHistoryMarker(
+    checking || Boolean(notice) || Boolean(update),
+    "starkUpdatePrompt",
+    dismissPrompt,
+  );
+  const closePrompt = useCallback(() => {
+    consumePromptHistory();
+    dismissPrompt();
+  }, [consumePromptHistory, dismissPrompt]);
 
   useEffect(() => {
     let cancelled = false;
@@ -23,6 +50,7 @@ export function AppUpdatePrompt() {
       }
 
       const controller = new AbortController();
+      checkAbortRef.current = controller;
       const timer = window.setTimeout(() => controller.abort(), 5000);
       if (manual) {
         setNotice(null);
@@ -42,10 +70,12 @@ export function AppUpdatePrompt() {
           setNotice({ title: "已是最新版本", message: "当前 App 版本为 " + CURRENT_APP_VERSION_NAME + "。" });
         }
       } catch {
+        if (controller.signal.aborted) return;
         if (manual && !cancelled) setNotice({ title: "版本检查失败", message: "暂时无法连接版本服务，请稍后重试。" });
         // Version checks are optional and must never block the app.
       } finally {
         window.clearTimeout(timer);
+        if (checkAbortRef.current === controller) checkAbortRef.current = null;
         if (manual && !cancelled) setChecking(false);
       }
     }
@@ -58,6 +88,8 @@ export function AppUpdatePrompt() {
     void checkForUpdate(false);
     return () => {
       cancelled = true;
+      checkAbortRef.current?.abort();
+      checkAbortRef.current = null;
       window.removeEventListener("stark:check-app-update", handleManualCheck);
     };
   }, []);
@@ -82,7 +114,7 @@ export function AppUpdatePrompt() {
           <p className="app-update-kicker">{notice.title}</p>
           <h2 id="app-update-notice-title">{notice.message}</h2>
           <div className="app-update-actions single">
-            <button type="button" className="app-update-primary" onClick={() => setNotice(null)}>知道了</button>
+            <button type="button" className="app-update-primary" onClick={closePrompt}>知道了</button>
           </div>
         </section>
       </div>
@@ -107,7 +139,7 @@ export function AppUpdatePrompt() {
         {info.changelog ? <p className="app-update-changelog">{info.changelog}</p> : null}
         {update.unavailable ? <p className="app-update-unavailable">服务器尚未配置 APK 下载地址，请稍后再试。</p> : null}
         <div className="app-update-actions">
-          <button type="button" className="app-update-later" onClick={() => setUpdate(null)} disabled={info.forceUpdate && !update.unavailable}>稍后</button>
+          <button type="button" className="app-update-later" onClick={closePrompt} disabled={info.forceUpdate && !update.unavailable}>稍后</button>
           <button type="button" className="app-update-primary" onClick={openDownload} disabled={update.unavailable}>下载更新</button>
         </div>
       </section>

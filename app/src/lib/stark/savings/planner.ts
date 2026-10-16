@@ -1,4 +1,4 @@
-import type { SavingsGoal, SavingsPlan } from "../models/types";
+import type { SavingsGoal, SavingsGoalDepositType, SavingsPlan } from "../models/types";
 
 export type SavingsFrequency = "MONTHLY" | "ALTERNATE";
 
@@ -7,6 +7,162 @@ export type TimestampedSavingsDraft = {
 };
 
 export const PREVIOUS_BALANCE_COLUMN = "上月结余";
+
+export type SavingsPlanTemplate = {
+  sourceGoalId: string;
+  sourceGoalName: string;
+  depositType: SavingsGoalDepositType;
+  frequency: SavingsFrequency;
+  columns: string[];
+  temporaryColumns: string[];
+  previousBalanceEnabled: boolean;
+  monthsByFrequency: Record<SavingsFrequency, string[]>;
+  rowsByFrequency: Record<SavingsFrequency, Record<string, SavingsPlanTemplateRow>>;
+};
+
+export type SavingsPlanTemplateRow = {
+  salary: string;
+  previousBalance: string;
+  expected: string;
+  expenses: Record<string, string>;
+};
+
+function isSavingsFrequency(value: unknown): value is SavingsFrequency {
+  return value === "MONTHLY" || value === "ALTERNATE";
+}
+
+function stringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function objectRecord(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function templatePlanBelongsToFrequency(plan: Pick<SavingsPlan, "remark">, frequency: SavingsFrequency, legacyFrequency: SavingsFrequency) {
+  if (plan.remark === "单月存模式") return frequency === "MONTHLY";
+  if (plan.remark === "隔月存模式") return frequency === "ALTERNATE";
+  return legacyFrequency === frequency;
+}
+
+export function remapSavingsMonthsToYear(months: readonly string[], targetYear: number, frequency: SavingsFrequency) {
+  const selectedMonths = new Set(
+    months
+      .map((month) => Number(month.slice(5, 7)))
+      .filter((month) => Number.isInteger(month) && month >= 1 && month <= 12),
+  );
+  const supportedMonths = buildSavingsMonths(targetYear, frequency);
+  const selected = supportedMonths.filter((month) => selectedMonths.has(Number(month.slice(5, 7))));
+  return selected.length ? selected : supportedMonths;
+}
+
+export function remapSavingsRowsToYear<T>(
+  rows: Readonly<Record<string, T>> | null | undefined,
+  targetYear: number,
+  frequency: SavingsFrequency,
+) {
+  const supportedMonths = new Set(buildSavingsMonths(targetYear, frequency));
+  return Object.fromEntries(
+    Object.entries(rows ?? {}).flatMap(([month, row]) => {
+      const monthNumber = Number(month.slice(5, 7));
+      const targetMonth = `${targetYear}-${String(monthNumber).padStart(2, "0")}`;
+      return Number.isInteger(monthNumber) && supportedMonths.has(targetMonth) ? [[targetMonth, row]] : [];
+    }),
+  ) as Record<string, T>;
+}
+
+function templateAmount(value: number | string | null | undefined) {
+  const amount = Number(value || 0);
+  return Number.isFinite(amount) && amount !== 0 ? String(amount) : "";
+}
+
+/**
+ * Extracts reusable planning data. Actual deposits, completion state, name and
+ * progress deliberately stay out of the template.
+ */
+export function createSavingsPlanTemplate(
+  goal: Pick<SavingsGoal, "id" | "name" | "depositType" | "planConfig">,
+  plans: readonly Pick<SavingsPlan, "month" | "remark" | "expenses" | "amount" | "salary">[],
+  targetYear: number,
+): SavingsPlanTemplate {
+  const config = parseSavingsJsonObject(goal.planConfig);
+  const configuredFrequency = isSavingsFrequency(config.frequency) ? config.frequency : undefined;
+  const planRemarks = plans.map((plan) => plan.remark);
+  const frequency = configuredFrequency
+    ?? (planRemarks.includes("隔月存模式") && !planRemarks.includes("单月存模式") ? "ALTERNATE" : "MONTHLY");
+  const configuredColumns = sanitizeSavingsExpenseColumns([
+    ...stringArray(config.columns),
+    ...stringArray(config.fixedColumns),
+    ...stringArray(config.temporaryColumns),
+  ]).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+  const planColumns = sanitizeSavingsExpenseColumns(
+    plans.flatMap((plan) => Object.keys(parseSavingsExpenses(plan.expenses))),
+  ).filter((column) => column !== PREVIOUS_BALANCE_COLUMN);
+  const columns = Array.from(new Set([...configuredColumns, ...planColumns]));
+  const temporaryColumns = sanitizeSavingsExpenseColumns(stringArray(config.temporaryColumns))
+    .filter((column) => columns.includes(column));
+  const monthsByFrequencyConfig = objectRecord(config.monthsByFrequency);
+  const monthsByYearConfig = objectRecord(config.monthsByYear);
+  const latestConfiguredYear = Object.keys(monthsByYearConfig)
+    .filter((year) => /^\d{4}$/.test(year))
+    .sort((left, right) => Number(right) - Number(left))[0];
+  const latestYearConfig = latestConfiguredYear ? objectRecord(monthsByYearConfig[latestConfiguredYear]) : {};
+  const legacyMonths = stringArray(config.months);
+  const monthsFor = (mode: SavingsFrequency) => {
+    const configuredMonths = stringArray(monthsByFrequencyConfig[mode]);
+    const yearMonths = stringArray(latestYearConfig[mode]);
+    const persistedMonths = plans
+      .filter((plan) => templatePlanBelongsToFrequency(plan, mode, configuredFrequency ?? frequency))
+      .map((plan) => plan.month);
+    const sourceMonths = configuredMonths.length
+      ? configuredMonths
+      : yearMonths.length
+        ? yearMonths
+        : configuredFrequency === mode && legacyMonths.length
+          ? legacyMonths
+          : persistedMonths;
+    return remapSavingsMonthsToYear(sourceMonths, targetYear, mode);
+  };
+  const latestPlanYear = plans
+    .map((plan) => plan.month.slice(0, 4))
+    .filter((year) => /^\d{4}$/.test(year))
+    .sort((left, right) => Number(right) - Number(left))[0];
+  const sourcePlans = latestPlanYear ? plans.filter((plan) => plan.month.startsWith(`${latestPlanYear}-`)) : plans;
+  const rowsFor = (mode: SavingsFrequency) => {
+    const sourceRows = Object.fromEntries(sourcePlans
+      .filter((plan) => templatePlanBelongsToFrequency(plan, mode, configuredFrequency ?? frequency))
+      .map((plan) => {
+        const expenses = parseSavingsExpenses(plan.expenses);
+        return [plan.month, {
+          salary: templateAmount(plan.salary),
+          previousBalance: expenses[PREVIOUS_BALANCE_COLUMN] ?? "",
+          expected: templateAmount(plan.amount),
+          expenses: Object.fromEntries(
+            Object.entries(expenses).filter(([column]) => column !== PREVIOUS_BALANCE_COLUMN && columns.includes(column)),
+          ),
+        } satisfies SavingsPlanTemplateRow];
+      }));
+    return remapSavingsRowsToYear(sourceRows, targetYear, mode);
+  };
+
+  return {
+    sourceGoalId: goal.id,
+    sourceGoalName: goal.name,
+    depositType: goal.depositType,
+    frequency,
+    columns,
+    temporaryColumns,
+    previousBalanceEnabled: config.previousBalance === true || plans.some((plan) => PREVIOUS_BALANCE_COLUMN in parseSavingsExpenses(plan.expenses)),
+    monthsByFrequency: {
+      MONTHLY: monthsFor("MONTHLY"),
+      ALTERNATE: monthsFor("ALTERNATE"),
+    },
+    rowsByFrequency: {
+      MONTHLY: rowsFor("MONTHLY"),
+      ALTERNATE: rowsFor("ALTERNATE"),
+    },
+  };
+}
 
 export function shouldShowSavingsPlannerLoading(hydrating: boolean, goalId?: string) {
   return hydrating && Boolean(goalId);
@@ -20,6 +176,51 @@ export function normalizeSavingsDeadline(value?: string | null) {
 export function selectSavingsGoal<T extends { id: string }>(goals: readonly T[], goalId?: string) {
   if (!goalId) return null;
   return goals.find((goal) => goal.id === goalId) ?? null;
+}
+
+function savingsPlanYear(value: unknown) {
+  if (typeof value !== "string") return null;
+  const match = value.match(/^(\d{4})-\d{2}$/);
+  if (!match) return null;
+  const year = Number(match[1]);
+  return Number.isInteger(year) ? year : null;
+}
+
+function addSavingsPlanYears(value: unknown, years: Set<number>) {
+  stringArray(value).forEach((month) => {
+    const year = savingsPlanYear(month);
+    if (year !== null) years.add(year);
+  });
+}
+
+/**
+ * Chooses the first useful year when opening an existing goal. A goal can
+ * already contain a future year's rows, while the editor otherwise starts at
+ * the device's current year and would render a completely empty table.
+ */
+export function selectSavingsPlannerYear(
+  fallbackYear: number,
+  plans: readonly Pick<SavingsPlan, "month">[],
+  config: Record<string, unknown>,
+) {
+  const persistedYears = new Set<number>();
+  plans.forEach((plan) => {
+    const year = savingsPlanYear(plan.month);
+    if (year !== null) persistedYears.add(year);
+  });
+
+  const configuredYears = new Set<number>();
+  addSavingsPlanYears(config.months, configuredYears);
+  Object.values(objectRecord(config.monthsByFrequency)).forEach((months) => addSavingsPlanYears(months, configuredYears));
+  Object.entries(objectRecord(config.monthsByYear)).forEach(([yearValue, monthsByFrequency]) => {
+    if (/^\d{4}$/.test(yearValue)) configuredYears.add(Number(yearValue));
+    Object.values(objectRecord(monthsByFrequency)).forEach((months) => addSavingsPlanYears(months, configuredYears));
+  });
+
+  const candidates = persistedYears.size ? persistedYears : configuredYears;
+  if (!candidates.size || candidates.has(fallbackYear)) return fallbackYear;
+  const ordered = [...candidates].sort((left, right) => left - right);
+  return ordered.find((year) => year > fallbackYear) ?? ordered.at(-1) ?? fallbackYear;
 }
 
 export function selectSavingsDraft<T extends TimestampedSavingsDraft>(draft: T | null, goalUpdatedAt?: string, isEditing = false) {
@@ -132,12 +333,10 @@ export function resolveSavingsMonths(
 }
 
 export function shouldSyncSavingsExpense(
-  month: string,
-  firstMonth: string | undefined,
   column: string,
   temporaryColumns: readonly string[],
 ) {
-  return month === firstMonth && !temporaryColumns.includes(column);
+  return !temporaryColumns.includes(column);
 }
 
 export function validateSavingsExpenseColumn(name: string, columns: readonly string[]) {
@@ -158,6 +357,108 @@ export function calculateSavingsRow(values: SavingsRowValues) {
     expenseTotal,
     available: salary + previousBalance - expenseTotal,
     remaining: salary + previousBalance - expenseTotal - expected,
+  };
+}
+
+export type SavingsPlanAllocationItem = {
+  name: string;
+  kind: "FIXED" | "TEMPORARY";
+  amount: number;
+};
+
+export type SavingsPlanAllocation = {
+  planCount: number;
+  fixedExpense: number;
+  temporaryExpense: number;
+  plannedDeposit: number;
+  plannedSalary: number;
+  previousBalance: number;
+  projectedRemaining: number | null;
+  expenseItems: SavingsPlanAllocationItem[];
+};
+
+function positivePlanAmount(value: unknown) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? amount : 0;
+}
+
+/** Keep saved planning amounts separate from recorded cashflow. */
+export function summarizeSavingsPlanAllocation(
+  goals: SavingsGoal[],
+  plans: SavingsPlan[],
+  reportingPeriod: string,
+): SavingsPlanAllocation {
+  const isYear = /^\d{4}$/.test(reportingPeriod);
+  const goalConfigs = new Map(goals.map((goal) => [goal.id, parseSavingsJsonObject(goal.planConfig)]));
+  const selectedPlans = new Map<string, SavingsPlan>();
+
+  for (const plan of [...plans].sort((left, right) => String(left.updatedAt ?? "").localeCompare(String(right.updatedAt ?? "")))) {
+    if (isYear ? !plan.month.startsWith(`${reportingPeriod}-`) : plan.month !== reportingPeriod) continue;
+    const config = goalConfigs.get(plan.goalId);
+    if (!config) continue;
+    const frequency = isSavingsFrequency(config.frequency) ? config.frequency : null;
+    const planFrequency = plan.remark === "单月存模式" ? "MONTHLY" : plan.remark === "隔月存模式" ? "ALTERNATE" : null;
+    if (frequency && planFrequency && frequency !== planFrequency) continue;
+    const key = `${plan.goalId}:${plan.month}`;
+    const selected = selectedPlans.get(key);
+    const selectedFrequency = selected?.remark === "单月存模式" ? "MONTHLY" : selected?.remark === "隔月存模式" ? "ALTERNATE" : null;
+    // A marked row for the active mode wins over a newer unmarked legacy row.
+    if (frequency && selectedFrequency === frequency && !planFrequency) continue;
+    selectedPlans.set(key, plan);
+  }
+
+  const expenseItems = new Map<string, SavingsPlanAllocationItem>();
+  let fixedExpense = 0;
+  let temporaryExpense = 0;
+  let plannedDeposit = 0;
+  let plannedSalary = 0;
+  let previousBalance = 0;
+  const nonemptyRows: Array<{ salary: number; previousBalance: number; deposit: number; expenses: Record<string, number> }> = [];
+
+  for (const plan of selectedPlans.values()) {
+    const config = goalConfigs.get(plan.goalId) ?? {};
+    const temporaryColumns = new Set(stringArray(config.temporaryColumns));
+    const parsedExpenses = parseSavingsExpenses(plan.expenses);
+    const salary = positivePlanAmount(plan.salary);
+    const balance = positivePlanAmount(parsedExpenses[PREVIOUS_BALANCE_COLUMN]);
+    const deposit = positivePlanAmount(plan.amount);
+    const expenses: Record<string, number> = {};
+
+    for (const [name, rawAmount] of Object.entries(parsedExpenses)) {
+      if (!name || name === PREVIOUS_BALANCE_COLUMN) continue;
+      const amount = positivePlanAmount(rawAmount);
+      if (!amount) continue;
+      const kind = temporaryColumns.has(name) ? "TEMPORARY" : "FIXED";
+      expenses[name] = amount;
+      if (kind === "TEMPORARY") temporaryExpense += amount;
+      else fixedExpense += amount;
+      const key = `${kind}:${name}`;
+      const current = expenseItems.get(key);
+      expenseItems.set(key, { name, kind, amount: (current?.amount ?? 0) + amount });
+    }
+
+    if (!salary && !balance && !deposit && !Object.keys(expenses).length) continue;
+    plannedSalary += salary;
+    previousBalance += balance;
+    plannedDeposit += deposit;
+    nonemptyRows.push({ salary, previousBalance: balance, deposit, expenses });
+  }
+
+  const onlyRow = !isYear && nonemptyRows.length === 1 ? nonemptyRows[0] : null;
+  return {
+    planCount: nonemptyRows.length,
+    fixedExpense,
+    temporaryExpense,
+    plannedDeposit,
+    plannedSalary,
+    previousBalance,
+    projectedRemaining: onlyRow ? calculateSavingsRow({
+      salary: onlyRow.salary,
+      previousBalance: onlyRow.previousBalance,
+      expenses: onlyRow.expenses,
+      expected: onlyRow.deposit,
+    }).remaining : null,
+    expenseItems: [...expenseItems.values()].sort((left, right) => right.amount - left.amount || left.name.localeCompare(right.name)),
   };
 }
 
