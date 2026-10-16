@@ -7350,7 +7350,7 @@ img[src$="/qita.webp"] {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: calc(82px + env(safe-area-inset-bottom));
+  bottom: calc(74px + env(safe-area-inset-bottom));
   z-index: 60;
   display: inline-flex;
   align-items: center;
@@ -7396,7 +7396,7 @@ img[src$="/qita.webp"] {
 
 @media (max-width: 360px) {
   .global-journal-trigger {
-    bottom: calc(80px + env(safe-area-inset-bottom));
+    bottom: calc(72px + env(safe-area-inset-bottom));
     height: 40px;
     padding: 0 15px;
   }
