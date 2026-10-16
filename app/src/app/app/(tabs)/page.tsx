@@ -1147,6 +1147,7 @@ export function HomeDashboard() {
   const [balanceMode, setBalanceMode] = useState<BalancePeriodMode>("month");
   const [diagnosticOpen, setDiagnosticOpen] = useState(false);
   const [budgetManagementOpen, setBudgetManagementOpen] = useState(false);
+  const hasCoreDataRef = useRef(false);
 
   useEffect(() => {
     setSalaryDay(getSalaryDay());
@@ -1161,46 +1162,38 @@ export function HomeDashboard() {
     const repo = manager.getRepository();
     let active = true;
     let requestSequence = 0;
-    const load = async () => {
+    const load = async (background = false) => {
       const requestId = ++requestSequence;
       const canUpdate = () => active && requestId === requestSequence;
-      setLoading(true);
+      if (!background) {
+        hasCoreDataRef.current = false;
+        setLoading(true);
+        setAssetStatus("loading");
+        setBudgetStatus("loading");
+        setLoanStatus("loading");
+        setSavingsStatus("loading");
+        setHistoryStatus("loading");
+      }
       setLoadError("");
-      setAssetStatus("loading");
-      setBudgetStatus("loading");
-      setLoanStatus("loading");
-      setSavingsStatus("loading");
-      setHistoryStatus("loading");
       try {
         const accountId = getCurrentAccountId();
-        const loadedAccount = await repo.getAccount(accountId);
-        const [coreTransactions, loadedAvailableMonths] = await Promise.all([
-          repo.getTransactionsByMonths(accountId, homeCoreTransactionMonths(reportingMonth, loadedAccount?.openingBalanceDate)),
-          loadAvailableTransactionMonths(repo, accountId),
-        ]);
-        if (!canUpdate()) return;
-        const resolvedReportingMonth = resolveAvailableReportingMonth(reportingMonth, loadedAvailableMonths);
-        if (resolvedReportingMonth !== reportingMonth) {
-          setSelectedReportMonth(resolvedReportingMonth);
-          setReportingMonth(resolvedReportingMonth);
-          setAvailableMonths(loadedAvailableMonths);
-          return;
-        }
-        setAccount(loadedAccount);
-        setTransactions(coreTransactions);
-        setAvailableMonths(loadedAvailableMonths);
-        setLoading(false);
-
+        const accountRequest = repo.getAccount(accountId);
+        const monthsRequest = loadAvailableTransactionMonths(repo, accountId);
         const assetsRequest = repo.getAssets(accountId);
         const budgetsRequest = repo.getBudgets(accountId);
         const loansRequest = repo.getLoans(accountId);
         const savingsRequest = repo.getSavingsGoals(accountId)
           .then(async (goals) => [goals, await repo.getSavingsPlansByGoals(goals.map((goal) => goal.id))] as const);
-        const historyRequest = budgetsRequest
-          .then((loadedBudgets) => repo.getTransactionsByMonths(
-            accountId,
-            homeSupplementalTransactionMonths(reportingMonth, loadedBudgets.some((budget) => budget.period === "YEARLY"), loadedAccount?.openingBalanceDate),
-          ));
+
+        void monthsRequest.then((loadedAvailableMonths) => {
+          if (!canUpdate()) return;
+          const resolvedReportingMonth = resolveAvailableReportingMonth(reportingMonth, loadedAvailableMonths);
+          setAvailableMonths(loadedAvailableMonths);
+          if (resolvedReportingMonth !== reportingMonth) {
+            setSelectedReportMonth(resolvedReportingMonth);
+            setReportingMonth(resolvedReportingMonth);
+          }
+        }).catch(() => undefined);
 
         void assetsRequest.then(
           (items) => {
@@ -1243,7 +1236,21 @@ export function HomeDashboard() {
             if (canUpdate()) setSavingsStatus("error");
           },
         );
-        void historyRequest.then(
+        const loadedAccount = await accountRequest;
+        const coreTransactions = await repo.getTransactionsByMonths(
+          accountId,
+          homeCoreTransactionMonths(reportingMonth, loadedAccount?.openingBalanceDate),
+        );
+        if (!canUpdate()) return;
+        setAccount(loadedAccount);
+        setTransactions(coreTransactions);
+        hasCoreDataRef.current = true;
+        setLoading(false);
+
+        void budgetsRequest.then((loadedBudgets) => repo.getTransactionsByMonths(
+          accountId,
+          homeSupplementalTransactionMonths(reportingMonth, loadedBudgets.some((budget) => budget.period === "YEARLY"), loadedAccount?.openingBalanceDate),
+        )).then(
           (items) => {
             if (!canUpdate()) return;
             setTransactions(items);
@@ -1255,8 +1262,10 @@ export function HomeDashboard() {
         );
       } catch {
         if (!canUpdate()) return;
-        setLoadError("云端数据加载失败，请检查后端服务和数据库连接后重试。");
-        setLoading(false);
+        if (!hasCoreDataRef.current) {
+          setLoadError("云端数据加载失败，请检查后端服务和数据库连接后重试。");
+          setLoading(false);
+        }
       }
     };
     void load();
@@ -1264,6 +1273,11 @@ export function HomeDashboard() {
       const update = (event as CustomEvent<RemoteCacheUpdate>).detail;
       const accountId = getCurrentAccountId();
       if (!update || (update.accountId && update.accountId !== accountId)) return;
+
+      if (update.resource === "transactions" || update.resource === "transactionMonths" || update.resource === "accounts") {
+        void load(true);
+        return;
+      }
 
       if (update.resource === "assets") {
         void repo.getAssets(accountId).then(
@@ -1309,15 +1323,16 @@ export function HomeDashboard() {
           );
       }
     };
-    window.addEventListener("stark:transaction-saved", load);
-    window.addEventListener("stark:savings-saved", load);
-    window.addEventListener("stark:account-saved", load);
+    const handleSaved = () => { void load(true); };
+    window.addEventListener("stark:transaction-saved", handleSaved);
+    window.addEventListener("stark:savings-saved", handleSaved);
+    window.addEventListener("stark:account-saved", handleSaved);
     window.addEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     return () => {
       active = false;
-      window.removeEventListener("stark:transaction-saved", load);
-      window.removeEventListener("stark:savings-saved", load);
-      window.removeEventListener("stark:account-saved", load);
+      window.removeEventListener("stark:transaction-saved", handleSaved);
+      window.removeEventListener("stark:savings-saved", handleSaved);
+      window.removeEventListener("stark:account-saved", handleSaved);
       window.removeEventListener(REMOTE_CACHE_UPDATED_EVENT, handleCacheUpdate);
     };
   }, [loadVersion, monthReady, reportingMonth]);

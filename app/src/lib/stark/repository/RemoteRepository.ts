@@ -18,8 +18,9 @@ import type {
 import type { DataRepository } from "@/lib/stark/repository/DataRepository";
 import { getCloudApiUrl } from "@/lib/stark/storage/local-config";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
-import { clearCloudAuth, getCloudAuthToken } from "@/lib/stark/storage/cloud-auth";
+import { clearCloudAuth, getCloudAuthToken, getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { loanRepaymentClassificationsPath, savingsGoalsPath, savingsPlansPath, transactionsImportPath } from "@/lib/stark/repository/remote-paths";
+import { deletePersistentRemoteCache, readPersistentRemoteCache, writePersistentRemoteCache } from "@/lib/stark/repository/persistent-remote-cache";
 
 type EntityType =
   | "users"
@@ -41,18 +42,18 @@ type TimedValue<T> = {
   value: T;
 };
 
-type CachedResource = "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans" | "subscriptions";
+type CachedResource = "accounts" | "assets" | "budgets" | "loans" | "savingsGoals" | "savingsPlans" | "subscriptions" | "categoryRules" | "importErrorLogs" | "exchangeRates" | "themeConfigs";
 
 export type RemoteCacheUpdate = {
-  resource: CachedResource;
+  resource: CachedResource | "transactions" | "transactionMonths";
   key: string;
   accountId?: string;
 };
 
 export const REMOTE_CACHE_UPDATED_EVENT = "stark:remote-cache-updated";
 
-const TRANSACTION_CACHE_TTL = 20_000;
-const RESOURCE_CACHE_TTL = 30_000;
+const TRANSACTION_CACHE_TTL = 60_000;
+const RESOURCE_CACHE_TTL = 60_000;
 const TRANSACTION_PAGE_SIZE = 500;
 
 function sortByDateDesc<T extends { date?: string; createdAt?: string }>(items: T[]) {
@@ -70,6 +71,8 @@ export class RemoteRepository implements DataRepository {
   private readonly resourceRequests = new Map<CachedResource, Map<string, Promise<unknown>>>();
   private readonly resourceGenerations = new Map<string, number>();
   private resourceCacheEpoch = 0;
+  private readonly transactionUpdateTimers = new Map<string, number>();
+  private activeCacheScope: string | null | undefined;
 
   constructor(baseUrl = getCloudApiUrl()) {
     this.baseUrl = baseUrl.replace(/\/$/, "");
@@ -77,6 +80,8 @@ export class RemoteRepository implements DataRepository {
 
   clearCache() {
     this.resourceCacheEpoch += 1;
+    for (const timer of this.transactionUpdateTimers.values()) window.clearTimeout(timer);
+    this.transactionUpdateTimers.clear();
     this.transactionMonthCache.clear();
     this.transactionMonthRequests.clear();
     this.transactionMonthsCache.clear();
@@ -88,8 +93,56 @@ export class RemoteRepository implements DataRepository {
   }
 
   setBaseUrl(baseUrl: string) {
-    this.baseUrl = baseUrl.replace(/\/$/, "");
+    const normalized = baseUrl.replace(/\/$/, "");
+    if (normalized === this.baseUrl) return;
+    this.baseUrl = normalized;
     this.clearCache();
+  }
+
+  private persistentScope() {
+    if (!getCloudAuthToken()) return null;
+    const userId = getCloudAuthUser()?.id;
+    return userId ? `${this.baseUrl}\u0000${userId}` : null;
+  }
+
+  private ensureCacheScope() {
+    const scope = this.persistentScope();
+    if (scope !== this.activeCacheScope) {
+      this.activeCacheScope = scope;
+      this.clearCache();
+    }
+    return scope;
+  }
+
+  private async readPersisted<T>(resource: string, key: string) {
+    const scope = this.persistentScope();
+    if (!scope) return undefined;
+    try {
+      return await readPersistentRemoteCache<T>(scope, resource, key);
+    } catch {
+      return undefined;
+    }
+  }
+
+  private persist<T>(resource: string, key: string, value: T) {
+    const scope = this.persistentScope();
+    if (scope) void writePersistentRemoteCache(scope, resource, key, value).catch(() => undefined);
+  }
+
+  private async deletePersisted(resource: string, keyPrefix = "") {
+    const scope = this.persistentScope();
+    if (scope) await deletePersistentRemoteCache(scope, resource, keyPrefix).catch(() => undefined);
+  }
+
+  private notifyTransactionUpdate(accountId: string) {
+    if (typeof window === "undefined") return;
+    const previous = this.transactionUpdateTimers.get(accountId);
+    if (previous !== undefined) window.clearTimeout(previous);
+    const timer = window.setTimeout(() => {
+      this.transactionUpdateTimers.delete(accountId);
+      this.notifyCachedResourceUpdate({ resource: "transactions", key: accountId, accountId });
+    }, 150);
+    this.transactionUpdateTimers.set(accountId, timer);
   }
 
   private resourceCache(resource: CachedResource) {
@@ -143,6 +196,7 @@ export class RemoteRepository implements DataRepository {
   }
 
   private refreshCachedResource<T>(resource: CachedResource, key: string, load: () => Promise<T>, accountId?: string) {
+    this.ensureCacheScope();
     const requests = this.resourceRequestMap(resource);
     const pending = requests.get(key) as Promise<T> | undefined;
     if (pending) return pending;
@@ -152,8 +206,10 @@ export class RemoteRepository implements DataRepository {
     const epoch = this.resourceCacheEpoch;
     const generation = this.resourceGeneration(resource, key);
     const request = load().then((value) => {
+      this.ensureCacheScope();
       if (epoch === this.resourceCacheEpoch && generation === this.resourceGeneration(resource, key)) {
         cache.set(key, { expiresAt: Date.now() + RESOURCE_CACHE_TTL, value });
+        this.persist(resource, key, value);
         if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(value)) {
           this.notifyCachedResourceUpdate({ resource, key, accountId });
         }
@@ -167,13 +223,25 @@ export class RemoteRepository implements DataRepository {
     return settledRequest;
   }
 
-  private readCachedResource<T>(resource: CachedResource, key: string, load: () => Promise<T>, accountId?: string): Promise<T> {
+  private async readCachedResource<T>(resource: CachedResource, key: string, load: () => Promise<T>, accountId?: string): Promise<T> {
+    this.ensureCacheScope();
     const cached = this.resourceCache(resource).get(key) as TimedValue<T> | undefined;
     if (cached) {
       if (cached.expiresAt <= Date.now()) {
         void this.refreshCachedResource(resource, key, load, accountId).catch(() => undefined);
       }
-      return Promise.resolve(cached.value);
+      return cached.value;
+    }
+    const epoch = this.resourceCacheEpoch;
+    const generation = this.resourceGeneration(resource, key);
+    const persisted = await this.readPersisted<T>(resource, key);
+    this.ensureCacheScope();
+    if (persisted && epoch === this.resourceCacheEpoch && generation === this.resourceGeneration(resource, key)) {
+      this.resourceCache(resource).set(key, { expiresAt: persisted.savedAt + RESOURCE_CACHE_TTL, value: persisted.value });
+      if (persisted.savedAt + RESOURCE_CACHE_TTL <= Date.now()) {
+        void this.refreshCachedResource(resource, key, load, accountId).catch(() => undefined);
+      }
+      return persisted.value;
     }
     return this.refreshCachedResource(resource, key, load, accountId);
   }
@@ -204,7 +272,7 @@ export class RemoteRepository implements DataRepository {
     }
   }
 
-  private clearTransactionCaches(accountId: string) {
+  private async clearTransactionCaches(accountId: string) {
     this.transactionCacheGenerations.set(accountId, (this.transactionCacheGenerations.get(accountId) ?? 0) + 1);
     const prefix = `${accountId}:`;
     for (const key of this.transactionMonthCache.keys()) {
@@ -215,14 +283,29 @@ export class RemoteRepository implements DataRepository {
     }
     this.transactionMonthsCache.delete(accountId);
     this.transactionMonthsRequests.delete(accountId);
+    await Promise.all([
+      this.deletePersisted("transactionMonth", `${accountId}:`),
+      this.deletePersisted("transactionMonths", accountId),
+    ]);
   }
 
-  private clearEntityCaches(entityType: EntityType, accountId: string) {
-    if (entityType === "assets" || entityType === "budgets" || entityType === "loans" || entityType === "savingsGoals" || entityType === "subscriptions") {
-      this.invalidateCachedResource(entityType, accountId);
+  private async clearEntityCaches(entityType: EntityType, accountId: string) {
+    const accountResources: CachedResource[] = ["assets", "budgets", "loans", "savingsGoals", "subscriptions", "categoryRules", "importErrorLogs"];
+    if (accountResources.includes(entityType as CachedResource)) {
+      this.invalidateCachedResource(entityType as CachedResource, accountId);
+      await this.deletePersisted(entityType, accountId);
+    }
+    if (entityType === "accounts") {
+      this.invalidateCachedResource("accounts", "all");
+      await this.deletePersisted("accounts", "all");
     }
     if (entityType === "savingsGoals" || entityType === "savingsPlans") {
       this.invalidateCachedResource("savingsPlans");
+      await this.deletePersisted("savingsPlans");
+    }
+    if (entityType === "exchangeRates" || entityType === "themeConfigs") {
+      this.invalidateCachedResource(entityType);
+      await this.deletePersisted(entityType);
     }
   }
 
@@ -267,8 +350,10 @@ export class RemoteRepository implements DataRepository {
     });
     // Requests started while the write was in flight may have cached the old
     // rows. Invalidate after the server confirms the write, before UI refresh.
-    this.clearTransactionCaches(targetAccountId);
-    this.clearEntityCaches(entityType, targetAccountId);
+    await Promise.all([
+      entityType === "transactions" ? this.clearTransactionCaches(targetAccountId) : Promise.resolve(),
+      this.clearEntityCaches(entityType, targetAccountId),
+    ]);
   }
 
   private delete(entityType: EntityType, id: string, accountId?: string) {
@@ -282,7 +367,9 @@ export class RemoteRepository implements DataRepository {
   }
   async saveUser(user: User) { await this.save("users", user); }
 
-  async getAccounts() { return await this.request<Account[]>("/api/accounts"); }
+  getAccounts() {
+    return this.readCachedResource("accounts", "all", () => this.request<Account[]>("/api/accounts"));
+  }
   async getAccount(id: string) { return (await this.getAccounts()).find((item) => item.id === id) ?? null; }
   async saveAccount(account: Account) { await this.save("accounts", account); }
   async deleteAccount(id: string) { await this.delete("accounts", id); }
@@ -296,28 +383,53 @@ export class RemoteRepository implements DataRepository {
     const transactions = await this.fetchAllTransactions(String(accountId));
     return transactions.slice((normalizedPage - 1) * normalizedPageSize, normalizedPage * normalizedPageSize);
   }
+
+  private refreshTransactionMonth(accountId: string, month: string) {
+    this.ensureCacheScope();
+    const cacheKey = `${accountId}:${month}`;
+    const existing = this.transactionMonthRequests.get(cacheKey);
+    if (existing) return existing;
+    const generation = this.transactionCacheGeneration(accountId);
+    const epoch = this.resourceCacheEpoch;
+    const previous = this.transactionMonthCache.get(cacheKey)?.value;
+    const pending = this.fetchAllTransactions(accountId, month)
+      .then((transactions) => {
+        this.ensureCacheScope();
+        if (epoch === this.resourceCacheEpoch && generation === this.transactionCacheGeneration(accountId)) {
+          this.transactionMonthCache.set(cacheKey, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: transactions });
+          this.persist("transactionMonth", cacheKey, transactions);
+          if (previous && JSON.stringify(previous) !== JSON.stringify(transactions)) this.notifyTransactionUpdate(accountId);
+        }
+        return transactions;
+      });
+    const settled = pending.finally(() => {
+      if (this.transactionMonthRequests.get(cacheKey) === settled) this.transactionMonthRequests.delete(cacheKey);
+    });
+    this.transactionMonthRequests.set(cacheKey, settled);
+    return settled;
+  }
+
   async getTransactionsByMonth(accountId: string, month: string) {
+    this.ensureCacheScope();
     const targetAccountId = String(accountId);
     const cacheKey = `${targetAccountId}:${month}`;
     const cached = this.transactionMonthCache.get(cacheKey);
-    if (cached && cached.expiresAt > Date.now()) return cached.value;
-
-    let request = this.transactionMonthRequests.get(cacheKey);
-    if (!request) {
-      const generation = this.transactionCacheGeneration(targetAccountId);
-      const pending = this.fetchAllTransactions(targetAccountId, month)
-        .then((transactions) => {
-          if (generation === this.transactionCacheGeneration(targetAccountId)) {
-            this.transactionMonthCache.set(cacheKey, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: transactions });
-          }
-          return transactions;
-        });
-      request = pending.finally(() => {
-        if (this.transactionMonthRequests.get(cacheKey) === request) this.transactionMonthRequests.delete(cacheKey);
-      });
-      this.transactionMonthRequests.set(cacheKey, request);
+    if (cached) {
+      if (cached.expiresAt <= Date.now()) void this.refreshTransactionMonth(targetAccountId, month).catch(() => undefined);
+      return cached.value;
     }
-    return request;
+    const generation = this.transactionCacheGeneration(targetAccountId);
+    const epoch = this.resourceCacheEpoch;
+    const persisted = await this.readPersisted<Transaction[]>("transactionMonth", cacheKey);
+    this.ensureCacheScope();
+    if (persisted && epoch === this.resourceCacheEpoch && generation === this.transactionCacheGeneration(targetAccountId)) {
+      this.transactionMonthCache.set(cacheKey, { expiresAt: persisted.savedAt + TRANSACTION_CACHE_TTL, value: persisted.value });
+      if (persisted.savedAt + TRANSACTION_CACHE_TTL <= Date.now()) {
+        void this.refreshTransactionMonth(targetAccountId, month).catch(() => undefined);
+      }
+      return persisted.value;
+    }
+    return this.refreshTransactionMonth(targetAccountId, month);
   }
   async getTransactionsByMonths(accountId: string, months: string[]) {
     const uniqueMonths = [...new Set(months)];
@@ -325,26 +437,51 @@ export class RemoteRepository implements DataRepository {
     return sortByDateDesc(monthlyTransactions.flat());
   }
   async getTransactionMonths(accountId: string) {
+    this.ensureCacheScope();
     const targetAccountId = String(accountId);
     const cached = this.transactionMonthsCache.get(targetAccountId);
-    if (cached && cached.expiresAt > Date.now()) return cached.value;
-
-    let request = this.transactionMonthsRequests.get(targetAccountId);
-    if (!request) {
-      const generation = this.transactionCacheGeneration(targetAccountId);
-      const pending = this.request<string[]>(`/api/transactions/months?accountId=${encodeURIComponent(targetAccountId)}`)
-        .then((months) => {
-          if (generation === this.transactionCacheGeneration(targetAccountId)) {
-            this.transactionMonthsCache.set(targetAccountId, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: months });
-          }
-          return months;
-        });
-      request = pending.finally(() => {
-        if (this.transactionMonthsRequests.get(targetAccountId) === request) this.transactionMonthsRequests.delete(targetAccountId);
-      });
-      this.transactionMonthsRequests.set(targetAccountId, request);
+    if (cached) {
+      if (cached.expiresAt <= Date.now()) void this.refreshTransactionMonths(targetAccountId).catch(() => undefined);
+      return cached.value;
     }
-    return request;
+    const generation = this.transactionCacheGeneration(targetAccountId);
+    const epoch = this.resourceCacheEpoch;
+    const persisted = await this.readPersisted<string[]>("transactionMonths", targetAccountId);
+    this.ensureCacheScope();
+    if (persisted && epoch === this.resourceCacheEpoch && generation === this.transactionCacheGeneration(targetAccountId)) {
+      this.transactionMonthsCache.set(targetAccountId, { expiresAt: persisted.savedAt + TRANSACTION_CACHE_TTL, value: persisted.value });
+      if (persisted.savedAt + TRANSACTION_CACHE_TTL <= Date.now()) {
+        void this.refreshTransactionMonths(targetAccountId).catch(() => undefined);
+      }
+      return persisted.value;
+    }
+    return this.refreshTransactionMonths(targetAccountId);
+  }
+
+  private refreshTransactionMonths(accountId: string) {
+    this.ensureCacheScope();
+    const existing = this.transactionMonthsRequests.get(accountId);
+    if (existing) return existing;
+    const generation = this.transactionCacheGeneration(accountId);
+    const epoch = this.resourceCacheEpoch;
+    const previous = this.transactionMonthsCache.get(accountId)?.value;
+    const pending = this.request<string[]>(`/api/transactions/months?accountId=${encodeURIComponent(accountId)}`)
+      .then((months) => {
+        this.ensureCacheScope();
+        if (epoch === this.resourceCacheEpoch && generation === this.transactionCacheGeneration(accountId)) {
+          this.transactionMonthsCache.set(accountId, { expiresAt: Date.now() + TRANSACTION_CACHE_TTL, value: months });
+          this.persist("transactionMonths", accountId, months);
+          if (previous && JSON.stringify(previous) !== JSON.stringify(months)) {
+            this.notifyCachedResourceUpdate({ resource: "transactionMonths", key: accountId, accountId });
+          }
+        }
+        return months;
+      });
+    const settled = pending.finally(() => {
+      if (this.transactionMonthsRequests.get(accountId) === settled) this.transactionMonthsRequests.delete(accountId);
+    });
+    this.transactionMonthsRequests.set(accountId, settled);
+    return settled;
   }
   async getTransaction(id: string) { return await this.request<Transaction | null>(`/api/transactions/${encodeURIComponent(id)}`); }
   async saveTransaction(transaction: Transaction) { await this.save("transactions", transaction); }
@@ -356,7 +493,7 @@ export class RemoteRepository implements DataRepository {
       method: "POST",
       body: JSON.stringify(transactions),
     });
-    this.clearTransactionCaches(accountId);
+    await this.clearTransactionCaches(accountId);
     return result;
   }
   async applyLoanRepaymentClassifications(transactions: Transaction[]): Promise<LoanRepaymentClassificationResult> {
@@ -366,7 +503,7 @@ export class RemoteRepository implements DataRepository {
       method: "POST",
       body: JSON.stringify(transactions),
     });
-    this.clearTransactionCaches(accountId);
+    await this.clearTransactionCaches(accountId);
     return result;
   }
 
@@ -417,8 +554,10 @@ export class RemoteRepository implements DataRepository {
   }
   async saveSavingsGoal(goal: SavingsGoal) { await this.save("savingsGoals", goal); }
   async deleteSavingsGoal(id: string) {
-    this.clearCache();
     await this.request<void>(`/api/savings-goals/${encodeURIComponent(id)}`, { method: "DELETE" });
+    this.invalidateCachedResource("savingsGoals");
+    this.invalidateCachedResource("savingsPlans");
+    await Promise.all([this.deletePersisted("savingsGoals"), this.deletePersisted("savingsPlans")]);
   }
   getSavingsPlans(goalId: string) {
     return this.readCachedResource(
@@ -433,11 +572,14 @@ export class RemoteRepository implements DataRepository {
   }
   async saveSavingsPlan(plan: SavingsPlan) { await this.save("savingsPlans", plan); }
   async deleteSavingsPlan(id: string) {
-    this.clearCache();
     await this.request<void>(`/api/savings-plans/${encodeURIComponent(id)}`, { method: "DELETE" });
+    this.invalidateCachedResource("savingsPlans");
+    await this.deletePersisted("savingsPlans");
   }
 
-  async getCategoryRules(accountId: string) { return await this.request<CategoryRule[]>(`/api/category-rules?accountId=${encodeURIComponent(accountId)}`); }
+  getCategoryRules(accountId: string) {
+    return this.readCachedResource("categoryRules", accountId, () => this.request<CategoryRule[]>(`/api/category-rules?accountId=${encodeURIComponent(accountId)}`), accountId);
+  }
   async saveCategoryRule(rule: CategoryRule) { await this.save("categoryRules", rule); }
   async deleteCategoryRule(id: string, accountId?: string) { await this.delete("categoryRules", id, accountId); }
   getSubscriptions(accountId: string) {
@@ -451,9 +593,15 @@ export class RemoteRepository implements DataRepository {
   }
   async saveSubscription(subscription: Subscription) { await this.save("subscriptions", subscription); }
   async deleteSubscription(id: string, accountId?: string) { await this.delete("subscriptions", id, accountId); }
-  async getImportErrorLogs(accountId: string) { return await this.request<ImportErrorLog[]>(`/api/import-errors?accountId=${encodeURIComponent(accountId)}`); }
+  getImportErrorLogs(accountId: string) {
+    return this.readCachedResource("importErrorLogs", accountId, () => this.request<ImportErrorLog[]>(`/api/import-errors?accountId=${encodeURIComponent(accountId)}`), accountId);
+  }
   async saveImportErrorLog(log: ImportErrorLog) { await this.save("importErrorLogs", log); }
-  async getExchangeRates() { return await this.request<ExchangeRate[]>("/api/exchange-rates"); }
-  async getThemeConfig(userId: string) { return await this.request<ThemeConfig | null>(`/api/theme-config/${encodeURIComponent(userId)}`); }
+  getExchangeRates() {
+    return this.readCachedResource("exchangeRates", "all", () => this.request<ExchangeRate[]>("/api/exchange-rates"));
+  }
+  getThemeConfig(userId: string) {
+    return this.readCachedResource("themeConfigs", userId, () => this.request<ThemeConfig | null>(`/api/theme-config/${encodeURIComponent(userId)}`));
+  }
   async saveThemeConfig(config: ThemeConfig) { await this.save("themeConfigs", config); }
 }
