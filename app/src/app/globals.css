@@ -7242,6 +7242,48 @@ img[src$="/qita.webp"] {
   cursor: pointer;
 }
 
+.savings-proof-preview .savings-proof-open {
+  width: 76px;
+  height: 76px;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 10px;
+  cursor: zoom-in;
+}
+
+.proof-image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: calc(56px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));
+  background: rgba(9, 16, 28, 0.92);
+}
+
+.proof-image-viewer img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.proof-image-viewer-close {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+}
+
 .savings-record-notice {
   margin: -4px 0 0;
   color: #dc2626;
@@ -7308,7 +7350,7 @@ img[src$="/qita.webp"] {
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 70px;
+  bottom: calc(82px + env(safe-area-inset-bottom));
   z-index: 60;
   display: inline-flex;
   align-items: center;
@@ -7354,7 +7396,7 @@ img[src$="/qita.webp"] {
 
 @media (max-width: 360px) {
   .global-journal-trigger {
-    bottom: 68px;
+    bottom: calc(80px + env(safe-area-inset-bottom));
     height: 40px;
     padding: 0 15px;
   }

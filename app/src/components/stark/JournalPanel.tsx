@@ -13,6 +13,7 @@ import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys
 import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
 import { categoryIconSrcForCategory, expenseCategoryOptions } from "@/lib/stark/utils/category-icon";
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
+import { ProofImageViewer } from "@/components/stark/ProofImageViewer";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 const SavingsPlanner = dynamic(
@@ -131,6 +132,7 @@ export function JournalPanel({
   const [recordedAmount, setRecordedAmount] = useState("");
   const [recordedDate, setRecordedDate] = useState(nowText().slice(0, 16));
   const [proofImage, setProofImage] = useState<string | null>(null);
+  const [previewProofImage, setPreviewProofImage] = useState<string | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
   const [recordNotice, setRecordNotice] = useState("");
   const [salaryEntryMode, setSalaryEntryMode] = useState<"single" | "batch">("single");
@@ -692,7 +694,9 @@ export function JournalPanel({
               />
               {proofImage ? (
                 <div className="savings-proof-preview">
-                  <img src={proofImage} alt="图片凭证预览" />
+                  <button type="button" className="savings-proof-open" onClick={() => setPreviewProofImage(proofImage)} aria-label="查看图片凭证大图">
+                    <img src={proofImage} alt="图片凭证预览" />
+                  </button>
                   <button type="button" onClick={() => setProofImage(null)}>清除图片</button>
                 </div>
               ) : (
@@ -702,6 +706,7 @@ export function JournalPanel({
                 </button>
               )}
             </div>
+            {previewProofImage ? <ProofImageViewer src={previewProofImage} onClose={() => setPreviewProofImage(null)} /> : null}
             {recordNotice ? <p className="savings-record-notice">{recordNotice}</p> : null}
             <button type="button" className="modern-primary-submit" disabled={recordSaving} onClick={() => void saveSavingsRecord()}>
               {recordSaving ? "保存中…" : "保存记录"}

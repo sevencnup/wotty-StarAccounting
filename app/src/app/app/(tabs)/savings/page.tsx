@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import { PageDataError, PageSkeleton } from "@/components/stark/Skeleton";
 import { LazyJournalPanel as JournalPanel } from "@/components/stark/LazyJournalPanel";
+import { ProofImageViewer } from "@/components/stark/ProofImageViewer";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { REMOTE_CACHE_UPDATED_EVENT, type RemoteCacheUpdate } from "@/lib/stark/repository/RemoteRepository";
 import { savingsDepositTypeLabel } from "@/lib/stark/savings/deposit-type";
@@ -59,6 +60,7 @@ export default function SavingsPage() {
   const [loadError, setLoadError] = useState(false);
   const [loadVersion, setLoadVersion] = useState(0);
   const [recordingPlan, setRecordingPlan] = useState<SavingsPlan | null>(null);
+  const [previewProofImage, setPreviewProofImage] = useState<string | null>(null);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -243,6 +245,11 @@ export default function SavingsPage() {
                           <small>已存 ¥ {formatMoney(recordedAmount)} / 计划 ¥ {formatMoney(plan.amount)}</small>
                         </div>
                         <em>+¥ {formatMoney(amount)}</em>
+                        {plan.proofImage ? (
+                          <button type="button" className={styles.proofButton} onClick={() => setPreviewProofImage(plan.proofImage)} aria-label={`查看${goal?.name || "储蓄计划"}的图片凭证`}>
+                            <img src={plan.proofImage} alt="图片凭证" />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={`${styles.recordButton} ${recorded ? styles.recorded : ""}`}
@@ -276,6 +283,8 @@ export default function SavingsPage() {
           }}
         />
       ) : null}
+
+      {previewProofImage ? <ProofImageViewer src={previewProofImage} onClose={() => setPreviewProofImage(null)} /> : null}
 
       {editingGoalId ? (
         <JournalPanel
