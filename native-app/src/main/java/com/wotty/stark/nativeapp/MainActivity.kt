@@ -193,17 +193,17 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val Ink = Color(0xFF16243B)
-private val Muted = Color(0xFF708098)
-private val Canvas = Color(0xFFF6F8FC)
+private val Ink = Color(0xFF1F2937)
+private val Muted = Color(0xFF7B8798)
+private val Canvas = Color(0xFFF5F7FB)
 private val Blue = Color(0xFF0869C6)
 private val DeepBlue = Color(0xFF034F9F)
 private val SoftBlue = Color(0xFFE6F1FF)
 private val Green = Color(0xFF0A966B)
 private val Red = Color(0xFFD94D5D)
 private val Amber = Color(0xFFF0A329)
-private val Line = Color(0xFFE5EBF3)
-private val StarkFontFamily = FontFamily(Typeface.create("sans-serif-medium", Typeface.NORMAL))
+private val Line = Color(0xFFE8EDF3)
+private val StarkFontFamily = FontFamily(Typeface.create("sans-serif", Typeface.NORMAL))
 
 private enum class RootTab(val label: String, val iconResource: Int) {
     HOME("首页", R.drawable.nav_home),
@@ -510,9 +510,9 @@ private fun StarkNativeTheme(content: @Composable () -> Unit) {
             onSurface = Ink,
         ),
     ) {
-        // Web uses Microsoft YaHei UI around 400/500. Use Android's medium
-        // system face as the device-safe counterpart rather than the thin
-        // generic `sans` fallback Compose selected before.
+        // Web uses Microsoft YaHei UI around 400/500. Android's medium
+        // system face keeps Chinese glyphs from falling into an overly thin
+        // fallback while the individual home styles still control hierarchy.
         CompositionLocalProvider(
             androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(
                 fontFamily = StarkFontFamily,
@@ -725,7 +725,7 @@ private fun NativeBottomBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp)
+                .height(49.dp)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceAround,
@@ -742,8 +742,8 @@ private fun NativeBottomBar(
                 contentAlignment = Alignment.Center,
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Icon(Icons.Default.Add, contentDescription = "记账", tint = Blue, modifier = Modifier.size(23.dp))
-                    Text("记账", color = Blue, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Add, contentDescription = "记账", tint = Blue, modifier = Modifier.size(20.dp))
+                    Text("记账", color = Blue, fontSize = 8.sp, fontWeight = FontWeight.Medium)
                 }
             }
             RootTab.entries.drop(3).forEach { tab ->
@@ -774,7 +774,7 @@ private fun RowScope.NativeBottomTab(
             resourceId = tab.iconResource,
             contentDescription = tab.label,
             active = active,
-            modifier = Modifier.size(27.dp),
+            modifier = Modifier.size(24.dp),
         )
     }
 }
@@ -840,8 +840,8 @@ private fun HomeScreen(
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 0.dp, bottom = 76.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 0.dp, bottom = 70.dp),
+        verticalArrangement = Arrangement.spacedBy(7.dp),
     ) {
         item { WebReplicaHeader(onSearch = { onOpenOverlay(HomeOverlay.SEARCH) }, onApi = { onOpenOverlay(HomeOverlay.API) }, apiStatus = apiStatus) }
         item {
@@ -983,7 +983,7 @@ private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, tota
     val data = visible.mapIndexed { index, (name, amount) ->
         RoseChartSegment(name, amount, colors[index % colors.size])
     }
-    Box(Modifier.fillMaxWidth().height(248.dp)) {
+            Box(Modifier.fillMaxWidth().height(190.dp)) {
         NativeRoseChart(data, Modifier.fillMaxSize())
         Text(
             "¥ ${moneyFormat.format(total)}",
@@ -1105,12 +1105,12 @@ private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>, onAll: () -
 @Composable
 private fun WebReplicaHeader(onSearch: () -> Unit, onApi: () -> Unit, apiStatus: String) {
     Row(
-        modifier = Modifier.fillMaxWidth().height(34.dp),
+        modifier = Modifier.fillMaxWidth().height(30.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Spacer(Modifier.size(26.dp))
-        Text("首页", color = Color(0xFF101827), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+        Text("首页", color = Color(0xFF101827), fontSize = 17.sp, fontWeight = FontWeight.Normal)
         IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
     }
 }
@@ -1147,8 +1147,8 @@ private fun WebReplicaMetricControl(metric: HomeMetric, monthLabel: String, onMo
 
 @Composable
 private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: String, value: Double, count: Int, monthLabel: String, salaryDay: Int, onPeriodChange: (BalancePeriod) -> Unit, onSalaryDayClick: () -> Unit, onDetails: () -> Unit) {
-    WebReplicaCard(padding = 0.dp) {
-        Box(Modifier.fillMaxWidth().height(146.dp).padding(horizontal = 18.dp, vertical = 16.dp)) {
+    WebReplicaCard(padding = 0.dp, radius = 20.dp) {
+        Box(Modifier.fillMaxWidth().height(136.dp).padding(horizontal = 18.dp, vertical = 14.dp)) {
             Text(monthLabel.substringBefore("年").substringAfterLast("年"), modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
             Column(Modifier.align(Alignment.TopStart)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -1162,7 +1162,7 @@ private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: Str
                     }
                 }
                 Spacer(Modifier.height(5.dp))
-                Text("¥ " + moneyFormat.format(value), color = Color(0xFF0F172A), fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                Text("¥ " + moneyFormat.format(value), color = Color(0xFF0F172A), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(7.dp))
                 Text("共 " + count + " 笔记账", color = Color(0xFF94A3B8), fontSize = 11.sp)
                 Spacer(Modifier.height(3.dp))
@@ -1183,7 +1183,7 @@ private fun WebReplicaBudgetCard(income: Double, expense: Double, repayment: Dou
     val configuredBudget = remoteBudgets.filter { it.period == "MONTHLY" }.sumOf { it.amount }
     val allocationBase = if (configuredBudget > 0.0) configuredBudget else allocationIncome
     val allocated = expense + repayment + savings
-    val available = allocationIncome - allocated
+    val available = allocationBase - allocated
     WebReplicaCard {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onManageBudget).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE2F3FF)), contentAlignment = Alignment.Center) {
@@ -1191,18 +1191,18 @@ private fun WebReplicaBudgetCard(income: Double, expense: Double, repayment: Dou
             }
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(monthLabel + "资金分配", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text("收入扣除实际消费、还款和储蓄后的安排金额", color = Color(0xFF7B8CA3), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(monthLabel + "资金分配", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text("收入扣除实际消费、还款和储蓄后的安排金额", color = Color(0xFF7B8CA3), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text("预算管理  ›", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth()) {
             BudgetAmount("可支配预算", available, "可继续安排 ¥ ${moneyFormat.format(available)}", Modifier.weight(1f))
             Box(Modifier.width(1.dp).height(64.dp).background(Line))
             BudgetAmount("收入", allocationBase, "已分配 ¥ ${moneyFormat.format(allocated)}", Modifier.weight(1f).padding(start = 14.dp))
         }
-        Spacer(Modifier.height(15.dp))
+        Spacer(Modifier.height(11.dp))
         Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color(0xFFEAF0F7))) {
             if (allocationBase > 0) {
                 Row(Modifier.fillMaxWidth().height(7.dp)) {
@@ -1211,17 +1211,17 @@ private fun WebReplicaBudgetCard(income: Double, expense: Double, repayment: Dou
                 }
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth()) {
             BudgetSegment("消费", expense, Color(0xFF0EA5E9), Modifier.weight(1f))
             BudgetSegment("还款", repayment, Color(0xFFF59E0B), Modifier.weight(1f))
         }
-        Spacer(Modifier.height(13.dp))
+        Spacer(Modifier.height(9.dp))
         Row(Modifier.fillMaxWidth()) {
             BudgetSegment("储蓄", savings, Color(0xFF10B981), Modifier.weight(1f))
             BudgetSegment("剩余", available, Blue, Modifier.weight(1f), blueValue = true)
         }
-        HorizontalDivider(Modifier.padding(vertical = 15.dp), color = Line)
+        HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
             Spacer(Modifier.width(6.dp))
@@ -1237,7 +1237,7 @@ private fun BudgetAmount(label: String, value: Double, caption: String, modifier
     Column(modifier) {
         Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
         Spacer(Modifier.height(3.dp))
-        Text("¥ ${moneyFormat.format(value)}", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text("¥ ${moneyFormat.format(value)}", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(2.dp))
         Text(caption, color = Color(0xFF8D9CAF), fontSize = 10.sp, maxLines = 1)
     }
@@ -1252,7 +1252,7 @@ private fun BudgetSegment(label: String, value: Double, color: Color, modifier: 
             Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
         }
         Spacer(Modifier.height(3.dp))
-        Text("¥ ${moneyFormat.format(value)}", color = if (blueValue) Blue else Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text("¥ ${moneyFormat.format(value)}", color = if (blueValue) Blue else Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1274,8 +1274,8 @@ private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, monthlyB
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-            Text("财务诊断", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Text(if (warning || (monthlyBudget > 0 && expense > monthlyBudget) || (configuredBudget > 0 && expense > configuredBudget)) "本月支出偏高，建议关注预算" else "本月现金流平稳，无超支或临近违约风险", color = Color(0xFF64748B), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("财务诊断", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (warning || (monthlyBudget > 0 && expense > monthlyBudget) || (configuredBudget > 0 && expense > configuredBudget)) "本月支出偏高，建议关注预算" else "本月现金流平稳，无超支或临近违约风险", color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text("查看  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
@@ -1313,7 +1313,7 @@ private fun CompassTile(label: String, value: String, badge: String, color: Colo
             Text(label, color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(7.dp))
-        Text(value, color = Ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(value, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(badge, color = color, fontSize = 10.sp, fontWeight = FontWeight.Medium)
@@ -1323,13 +1323,13 @@ private fun CompassTile(label: String, value: String, badge: String, color: Colo
 }
 
 @Composable
-private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 16.dp, radius: Dp = 22.dp, content: @Composable ColumnScope.() -> Unit) {
+private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 13.dp, radius: Dp = 18.dp, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(radius),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(1.dp, Color(0xFFE7EDF3)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(Modifier.padding(padding), content = content)
     }
