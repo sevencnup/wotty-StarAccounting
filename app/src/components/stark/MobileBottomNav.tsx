@@ -4,9 +4,32 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { appRoute } from "@/lib/stark/navigation/routes";
+import { appRoute, planBackgroundResume } from "@/lib/stark/navigation/routes";
 import { createTabNavigation } from "@/lib/stark/navigation/tab-navigation";
 import { isNativeAppRuntime } from "@/lib/stark/storage/local-config";
+
+const BACKGROUNDED_AT_STORAGE_KEY = "wotty:navigation-backgrounded-at";
+
+function readPersistedBackgroundedAt() {
+  try {
+    const value = Number(window.localStorage.getItem(BACKGROUNDED_AT_STORAGE_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistBackgroundedAt(value: number | null) {
+  try {
+    if (value === null) {
+      window.localStorage.removeItem(BACKGROUNDED_AT_STORAGE_KEY);
+    } else {
+      window.localStorage.setItem(BACKGROUNDED_AT_STORAGE_KEY, String(value));
+    }
+  } catch {
+    // Navigation recovery still works in memory when storage is unavailable.
+  }
+}
 
 export const NAV_ITEMS = [
   { href: "/app", label: "首页", icon: "/nav-icons/home.png" },
@@ -24,6 +47,8 @@ export function MobileBottomNav() {
   const navigationRef = useRef<ReturnType<typeof createTabNavigation> | null>(null);
   const lifecycleRef = useRef(0);
   const routerRef = useRef(router);
+  const backgroundedAtRef = useRef<number | null>(null);
+  const restartStartedRef = useRef(false);
   routerRef.current = router;
 
   const getNavigation = useCallback(() => {
@@ -40,6 +65,51 @@ export function MobileBottomNav() {
     });
     navigationRef.current = navigation;
     return navigation;
+  }, []);
+
+  useEffect(() => {
+    const markBackgrounded = () => {
+      const backgroundedAt = Date.now();
+      backgroundedAtRef.current = backgroundedAt;
+      persistBackgroundedAt(backgroundedAt);
+    };
+    const markResumed = (restoredFromPageCache = false) => {
+      const resume = planBackgroundResume(
+        backgroundedAtRef.current,
+        Date.now(),
+        window.location.pathname,
+        window.location.search,
+        window.location.hash,
+        restoredFromPageCache,
+      );
+      backgroundedAtRef.current = null;
+      persistBackgroundedAt(null);
+      if (resume.mode === "restart" && !restartStartedRef.current) {
+        restartStartedRef.current = true;
+        // Capacitor serves its static root document reliably, while a direct
+        // document navigation to a nested Next route may fall back to root.
+        // The access gate consumes this recovery URL and client-navigates back
+        // to the original tab with a fresh Next router.
+        window.location.replace(resume.target);
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") markBackgrounded();
+      else if (document.visibilityState === "visible") markResumed();
+    };
+    const handlePageShow = (event: PageTransitionEvent) => markResumed(event.persisted);
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", markBackgrounded);
+    window.addEventListener("pageshow", handlePageShow);
+    backgroundedAtRef.current = readPersistedBackgroundedAt();
+    if (document.visibilityState === "visible") markResumed();
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", markBackgrounded);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, []);
 
   useEffect(() => {
