@@ -97,17 +97,43 @@ export default function SavingsPage() {
   const summary = useMemo(() => {
     const monthPlans = plans.filter((plan) => plan.month === currentMonth);
     const monthPlanned = monthPlans.reduce((sum, plan) => sum + plan.amount, 0);
+    const monthCompletedPlans = monthPlans.filter((plan) => plan.status === "COMPLETED");
+    const monthPendingPlans = monthPlans.filter((plan) => plan.status === "PENDING");
+    const monthSkippedPlans = monthPlans.filter((plan) => plan.status === "SKIPPED");
+    const monthRecorded = monthCompletedPlans.reduce((sum, plan) => sum + savingsPlanRecordedAmount(plan), 0);
+    const monthPendingAmount = monthPendingPlans.reduce((sum, plan) => sum + plan.amount, 0);
+    const monthStatusParts = [
+      monthCompletedPlans.length
+        ? locale === "en-US"
+          ? `Saved ¥${formatMoney(monthRecorded)} · ${monthCompletedPlans.length} completed`
+          : `已存 ¥ ${formatMoney(monthRecorded)} · ${monthCompletedPlans.length} 项已完成`
+        : "",
+      monthPendingPlans.length
+        ? locale === "en-US"
+          ? `Pending ¥${formatMoney(monthPendingAmount)} · ${monthPendingPlans.length} pending`
+          : `待存 ¥ ${formatMoney(monthPendingAmount)} · ${monthPendingPlans.length} 项待存`
+        : "",
+      monthSkippedPlans.length
+        ? locale === "en-US"
+          ? `${monthSkippedPlans.length} skipped`
+          : `${monthSkippedPlans.length} 项已跳过`
+        : "",
+    ].filter(Boolean);
+    const monthStatus = monthStatusParts.length
+      ? `${currentMonth} · ${monthStatusParts.join(" · ")}`
+      : `${currentMonth} · ${locale === "en-US" ? "No savings plans" : "暂无储蓄计划"}`;
     const plannedTotal = plans.reduce((sum, plan) => sum + plan.amount, 0);
     const { savedAmount, target, percent } = summarizeSavingsProgress(goals, plans);
     const completed = plans.filter((plan) => plan.status === "COMPLETED").length;
-    const pending = plans.filter((plan) => plan.status !== "COMPLETED").length;
+    const pending = plans.filter((plan) => plan.status === "PENDING").length;
+    const skipped = plans.filter((plan) => plan.status === "SKIPPED").length;
     const progress = clampPercent(percent);
     const pendingAmount = Math.max(plannedTotal - savedAmount, 0);
     const remainingTarget = Math.max(target - savedAmount, 0);
     const completionRate = plans.length ? clampPercent((completed / plans.length) * 100) : 0;
     const activeCount = goals.filter((goal) => goal.status === "ACTIVE").length;
-    return { activeCount, completed, completionRate, monthPlanned, pending, pendingAmount, plannedTotal, progress, remainingTarget, savedAmount, target };
-  }, [currentMonth, goals, plans]);
+    return { activeCount, completed, completionRate, monthPlanned, monthStatus, pending, pendingAmount, plannedTotal, progress, remainingTarget, savedAmount, skipped, target };
+  }, [currentMonth, goals, locale, plans]);
 
   const recentPlanGroups = useMemo(() => groupRecentSavingsPlans(plans), [plans]);
   const activeGoals = useMemo(() => goals.filter((goal) => goal.status === "ACTIVE"), [goals]);
@@ -152,7 +178,7 @@ export default function SavingsPage() {
         <div className="savings-metric-card primary">
           <span>{translateValue("本月计划", locale)}</span>
           <strong>¥ {formatMoney(summary.monthPlanned)}</strong>
-          <small>{locale === "en-US" ? `${currentMonth} planned amount` : `${currentMonth} 待执行额度`}</small>
+          <small>{summary.monthStatus}</small>
         </div>
         <div className="savings-metric-card gap">
           <span>{translateValue("目标缺口", locale)}</span>
@@ -162,7 +188,9 @@ export default function SavingsPage() {
         <div className="savings-metric-card done">
           <span>{translateValue("完成率", locale)}</span>
           <strong>{summary.completionRate}%</strong>
-          <small>{locale === "en-US" ? `${summary.completed} completed · ${summary.pending} pending` : `${summary.completed} 已完成 · ${summary.pending} 待处理`}</small>
+          <small>{locale === "en-US"
+            ? `${summary.completed} completed · ${summary.pending} pending${summary.skipped ? ` · ${summary.skipped} skipped` : ""}`
+            : `${summary.completed} 已完成 · ${summary.pending} 待存入${summary.skipped ? ` · ${summary.skipped} 已跳过` : ""}`}</small>
         </div>
       </section>
 

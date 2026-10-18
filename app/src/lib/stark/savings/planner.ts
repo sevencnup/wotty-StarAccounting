@@ -371,6 +371,11 @@ export type SavingsPlanAllocation = {
   fixedExpense: number;
   temporaryExpense: number;
   plannedDeposit: number;
+  recordedDeposit: number;
+  pendingDeposit: number;
+  completedPlanCount: number;
+  pendingPlanCount: number;
+  skippedPlanCount: number;
   plannedSalary: number;
   previousBalance: number;
   projectedRemaining: number | null;
@@ -411,6 +416,11 @@ export function summarizeSavingsPlanAllocation(
   let fixedExpense = 0;
   let temporaryExpense = 0;
   let plannedDeposit = 0;
+  let recordedDeposit = 0;
+  let pendingDeposit = 0;
+  let completedPlanCount = 0;
+  let pendingPlanCount = 0;
+  let skippedPlanCount = 0;
   let plannedSalary = 0;
   let previousBalance = 0;
   const nonemptyRows: Array<{ salary: number; previousBalance: number; deposit: number; expenses: Record<string, number> }> = [];
@@ -422,6 +432,7 @@ export function summarizeSavingsPlanAllocation(
     const salary = positivePlanAmount(plan.salary);
     const balance = positivePlanAmount(parsedExpenses[PREVIOUS_BALANCE_COLUMN]);
     const deposit = positivePlanAmount(plan.amount);
+    const actualDeposit = savingsPlanRecordedAmount(plan);
     const expenses: Record<string, number> = {};
 
     for (const [name, rawAmount] of Object.entries(parsedExpenses)) {
@@ -437,10 +448,19 @@ export function summarizeSavingsPlanAllocation(
       expenseItems.set(key, { name, kind, amount: (current?.amount ?? 0) + amount });
     }
 
-    if (!salary && !balance && !deposit && !Object.keys(expenses).length) continue;
+    if (!salary && !balance && !deposit && !actualDeposit && !Object.keys(expenses).length) continue;
     plannedSalary += salary;
     previousBalance += balance;
     plannedDeposit += deposit;
+    if (plan.status === "COMPLETED") {
+      recordedDeposit += actualDeposit;
+      completedPlanCount += 1;
+    } else if (plan.status === "PENDING") {
+      pendingDeposit += deposit;
+      pendingPlanCount += 1;
+    } else if (plan.status === "SKIPPED") {
+      skippedPlanCount += 1;
+    }
     nonemptyRows.push({ salary, previousBalance: balance, deposit, expenses });
   }
 
@@ -450,6 +470,11 @@ export function summarizeSavingsPlanAllocation(
     fixedExpense,
     temporaryExpense,
     plannedDeposit,
+    recordedDeposit,
+    pendingDeposit,
+    completedPlanCount,
+    pendingPlanCount,
+    skippedPlanCount,
     plannedSalary,
     previousBalance,
     projectedRemaining: onlyRow ? calculateSavingsRow({

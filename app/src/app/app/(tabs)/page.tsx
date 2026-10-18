@@ -527,6 +527,23 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onMa
   const planContentId = useId();
   const allocation = summary.budgetAllocation;
   const planAllocation = summary.savingsPlanAllocation;
+  const planAllocationStatus = [
+    planAllocation.completedPlanCount
+      ? locale === "en-US"
+        ? `Saved ¥${formatMoney(planAllocation.recordedDeposit)} · ${planAllocation.completedPlanCount} completed`
+        : `已存 ¥ ${formatMoney(planAllocation.recordedDeposit)} · ${planAllocation.completedPlanCount} 项已完成`
+      : "",
+    planAllocation.pendingPlanCount
+      ? locale === "en-US"
+        ? `Pending ¥${formatMoney(planAllocation.pendingDeposit)} · ${planAllocation.pendingPlanCount} pending`
+        : `待存 ¥ ${formatMoney(planAllocation.pendingDeposit)} · ${planAllocation.pendingPlanCount} 项待存`
+      : "",
+    planAllocation.skippedPlanCount
+      ? locale === "en-US"
+        ? `${planAllocation.skippedPlanCount} skipped`
+        : `${planAllocation.skippedPlanCount} 项已跳过`
+      : "",
+  ].filter(Boolean).join(" · ");
   const expenseItemsWithBillMatches = useMemo(
     () => matchSavingsPlanExpensesWithBills(
       planAllocation.expenseItems,
@@ -622,7 +639,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onMa
                 <strong>{translateValue("储蓄计划安排", locale)}</strong>
                 <small>{planExpanded
                   ? `${summary.savingsPlanPeriod} · ${translateValue("计划表金额仅供参考，不参与上方实际分配计算", locale)}`
-                  : `${summary.savingsPlanPeriod} · ${translateValue("预计存", locale)} ¥ ${formatMoney(planAllocation.plannedDeposit)}`}</small>
+                  : `${summary.savingsPlanPeriod} · ${planAllocationStatus || `${translateValue("预计存", locale)} ¥ ${formatMoney(planAllocation.plannedDeposit)}`}`}</small>
               </span>
               <span className="stark-budget-allocation-plan-toggle-label">
                 {translateValue(planExpanded ? "收起" : "展开", locale)}
@@ -656,6 +673,9 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onMa
               <div>
                 <span>{translateValue("预计存", locale)}</span>
                 <strong>¥ {formatMoney(planAllocation.plannedDeposit)}</strong>
+                <small>{locale === "en-US"
+                  ? `Saved ¥${formatMoney(planAllocation.recordedDeposit)} · Pending ¥${formatMoney(planAllocation.pendingDeposit)}`
+                  : `已存 ¥ ${formatMoney(planAllocation.recordedDeposit)} · 待存 ¥ ${formatMoney(planAllocation.pendingDeposit)}`}</small>
               </div>
             </div>
             {planAllocation.expenseItems.length > 0 ? (
