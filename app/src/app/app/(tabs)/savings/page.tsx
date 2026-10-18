@@ -13,7 +13,7 @@ import { groupRecentSavingsPlans } from "@/lib/stark/savings/recent-plans";
 import { formatMoney } from "@/lib/stark/utils/format";
 import type { SavingsGoal, SavingsPlan } from "@/lib/stark/models";
 import { savingsPlanRecordedAmount } from "@/lib/stark/savings/planner";
-import { summarizeSavingsProgress } from "@/lib/stark/savings/progress";
+import { summarizeSavingsGoalProgress, summarizeSavingsProgress } from "@/lib/stark/savings/progress";
 import { translateValue, useAppLocale } from "@/lib/stark/i18n";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import styles from "./savings-record.module.css";
@@ -46,10 +46,6 @@ function planStatusLabel(status: SavingsPlan["status"]) {
   if (status === "COMPLETED") return "已完成";
   if (status === "SKIPPED") return "已跳过";
   return "待存入";
-}
-
-function goalPercent(goal: SavingsGoal) {
-  return goal.targetAmount > 0 ? clampPercent((goal.currentAmount / goal.targetAmount) * 100) : 0;
 }
 
 export default function SavingsPage() {
@@ -180,8 +176,8 @@ export default function SavingsPage() {
         </div>
         <div className="savings-goal-grid">
           {goalCards.length ? goalCards.map((goal) => {
-            const percent = goalPercent(goal);
-            const remaining = Math.max(goal.targetAmount - goal.currentAmount, 0);
+            const { savedAmount, target, percent } = summarizeSavingsGoalProgress(goal, plans);
+            const remaining = Math.max(target - savedAmount, 0);
             return (
               <article key={goal.id} className="savings-goal-card">
                 <div className="savings-goal-copy">
@@ -201,7 +197,7 @@ export default function SavingsPage() {
                   </button>
                 </div>
                 <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percent}%`}><i style={{ width: `${percent}%` }} /></div>
-                <p><span>{translateValue("已存", locale)} ¥ {formatMoney(goal.currentAmount)}</span><span>{locale === "en-US" ? "Remaining" : "还差"} ¥ {formatMoney(remaining)}</span></p>
+                <p><span>{translateValue("已存", locale)} ¥ {formatMoney(savedAmount)}</span><span>{locale === "en-US" ? "Remaining" : "还差"} ¥ {formatMoney(remaining)}</span></p>
               </article>
             );
           }) : (

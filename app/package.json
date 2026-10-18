@@ -1,7 +1,7 @@
 {
   "name": "wotty-stark-web",
   "private": true,
-  "version": "0.5.0-dev.4",
+  "version": "0.5.0-dev.5",
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:mobile": "node scripts/mobile-dev.mjs",
