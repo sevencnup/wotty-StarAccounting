@@ -2054,6 +2054,13 @@ html.kt-hybrid-shell .tabs-shell {
   overflow-wrap: anywhere;
 }
 
+.stark-budget-allocation-plan-totals small {
+  color: #64748b;
+  font-size: calc(9px * var(--user-font-scale));
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+}
+
 .stark-budget-allocation-plan-details {
   display: grid;
   gap: 6px;
