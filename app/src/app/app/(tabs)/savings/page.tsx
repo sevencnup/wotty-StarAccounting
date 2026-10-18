@@ -206,6 +206,7 @@ export default function SavingsPage() {
           {goalCards.length ? goalCards.map((goal) => {
             const { savedAmount, target, percent } = summarizeSavingsGoalProgress(goal, plans);
             const remaining = Math.max(target - savedAmount, 0);
+            const percentLabel = Number(percent.toFixed(2));
             return (
               <article key={goal.id} className="savings-goal-card">
                 <div className="savings-goal-copy">
@@ -214,7 +215,7 @@ export default function SavingsPage() {
                   <small>{deadlineLabel(goal.deadline, locale)}</small>
                 </div>
                 <div className="savings-goal-card-actions">
-                  <em>{percent}%</em>
+                  <em>{percentLabel}%</em>
                   <button
                     type="button"
                     className="savings-goal-edit-button"
@@ -224,7 +225,7 @@ export default function SavingsPage() {
                     {translateValue("编辑目标", locale)}
                   </button>
                 </div>
-                <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percent}%`}><i style={{ width: `${percent}%` }} /></div>
+                <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percentLabel}%`}><i style={{ width: `${percent}%` }} /></div>
                 <p><span>{translateValue("已存", locale)} ¥ {formatMoney(savedAmount)}</span><span>{locale === "en-US" ? "Remaining" : "还差"} ¥ {formatMoney(remaining)}</span></p>
               </article>
             );
