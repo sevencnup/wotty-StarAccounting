@@ -172,8 +172,16 @@ class KtHybridActivity : MainActivity() {
         val isLocalPage = uri?.scheme == "http" && (uri.host == "localhost" || uri.host == "127.0.0.1")
         val path = if (isLocalPage) uri?.path?.trimEnd('/') else null
         val index = path?.let(::tabIndexForPath) ?: -1
-        bottomBar?.visibility = if (index >= 0) View.VISIBLE else View.GONE
-        if (index >= 0) setSelectedTab(index)
+        if (index >= 0) {
+            setSelectedTab(index)
+            activeWebView.evaluateJavascript("document.querySelector('.journal-overlay.page') !== null") { result ->
+                if (webView == activeWebView) {
+                    bottomBar?.visibility = if (result == "true") View.GONE else View.VISIBLE
+                }
+            }
+        } else {
+            bottomBar?.visibility = View.GONE
+        }
         if (path == pendingPath?.trimEnd('/')) {
             pendingPath = null
             fallbackNavigation?.let(mainHandler::removeCallbacks)
