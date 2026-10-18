@@ -337,7 +337,7 @@ export function JournalPanel({
 
   const keyboardViewportStyle: CSSProperties | undefined = keyboardViewport
     ? {
-        height: `max(0px, calc(${keyboardViewport.height}px - var(--stark-bottom-nav-clearance)))`,
+        height: `${keyboardViewport.height}px`,
         top: `${keyboardViewport.offsetTop}px`,
         bottom: "auto",
       }
