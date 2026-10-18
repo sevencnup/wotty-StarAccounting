@@ -174,7 +174,7 @@ class KtHybridActivity : MainActivity() {
         val index = path?.let(::tabIndexForPath) ?: -1
         if (index >= 0) {
             setSelectedTab(index)
-            activeWebView.evaluateJavascript("document.querySelector('.journal-overlay.page') !== null") { result ->
+            activeWebView.evaluateJavascript("document.querySelector('.journal-overlay, .bottom-sheet-overlay') !== null") { result ->
                 if (webView == activeWebView) {
                     bottomBar?.visibility = if (result == "true") View.GONE else View.VISIBLE
                 }
