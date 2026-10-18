@@ -1,5 +1,9 @@
 import type { Transaction } from "@/lib/stark/models/types";
 
+const CURRENT_ACCOUNT_CONFIG_KEY = process.env.NEXT_PUBLIC_SHOWCASE_DEMO === "1"
+  ? "wotty-stark:showcase:current-account-id"
+  : "wotty-stark:current-account-id";
+
 export const SALARY_BATCH_MONTHS = Array.from({ length: 12 }, (_, index) => index + 1);
 
 function pad(value: number) {
@@ -56,7 +60,7 @@ export function buildSalaryBatchTransactions({
   return monthKeys.map((monthKey) => ({
     id: createTransactionId(monthKey),
     userId: "local-user",
-    accountId: accountId ?? (typeof window !== "undefined" ? window.localStorage.getItem("wotty-stark:current-account-id") ?? "default" : "default"),
+    accountId: accountId ?? (typeof window !== "undefined" ? window.localStorage.getItem(CURRENT_ACCOUNT_CONFIG_KEY) ?? "default" : "default"),
     amount: safeAmount,
     type: "INCOME",
     category: "工资",

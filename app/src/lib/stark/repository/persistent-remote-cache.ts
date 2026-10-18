@@ -1,5 +1,7 @@
+const SHOWCASE_DEMO_MODE = process.env.NEXT_PUBLIC_SHOWCASE_DEMO === "1";
+
 /** Cloud read cache kept outside the local ledger database. */
-const DB_NAME = "wotty-stark-remote-cache";
+const DB_NAME = SHOWCASE_DEMO_MODE ? "wotty-stark-showcase-remote-cache" : "wotty-stark-remote-cache";
 const STORE_NAME = "responses";
 const DB_VERSION = 1;
 // Increase when the client-side API response model changes incompatibly.

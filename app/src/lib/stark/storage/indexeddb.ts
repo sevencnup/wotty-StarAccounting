@@ -15,8 +15,9 @@ import type {
   Transaction,
   User,
 } from "@/lib/stark/models/types";
+const SHOWCASE_DEMO_MODE = process.env.NEXT_PUBLIC_SHOWCASE_DEMO === "1";
 
-export const DB_NAME = "wotty-stark-web";
+export const DB_NAME = SHOWCASE_DEMO_MODE ? "wotty-stark-showcase-web" : "wotty-stark-web";
 export const DB_VERSION = 2;
 
 export type StoreName =

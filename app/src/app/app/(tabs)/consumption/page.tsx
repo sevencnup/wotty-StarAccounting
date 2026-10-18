@@ -17,6 +17,7 @@ import { buildHomeSummary } from "@/lib/stark/dashboard/summary";
 import { effectiveCategory, effectiveType, hasRemark, toAnalysisTransaction, toAnalysisTransactions } from "@/lib/stark/dashboard/remark";
 import { normalizeConsumptionPlatform } from "@/lib/stark/dashboard/consumption-platforms";
 import { categoryIconSrc, categoryIconSrcForCategory } from "@/lib/stark/utils/category-icon";
+import { withAppBasePath } from "@/lib/stark/runtime";
 import { getCurrentAccountId, getSelectedReportMonth, setSelectedReportMonth } from "@/lib/stark/storage/local-config";
 import { formatMoney, isReportingYearKey, reportingMonthDate, reportingMonthEndDate, reportingPeriodDate, reportingPeriodMonths } from "@/lib/stark/utils/format";
 import type { Transaction } from "@/lib/stark/models";
@@ -49,10 +50,10 @@ function categoryIconForFilter(category: string) {
 }
 
 function accountIconSrcForFilter(account: string) {
-  if (account === "微信") return "/category-icons/weixin.webp";
-  if (account === "支付宝") return "/category-icons/zhifubao.webp";
-  if (account === "银行卡") return "/category-icons/unionpau.webp";
-  if (account === "全部账户" || account === "其他") return "/category-icons/qita.webp";
+  if (account === "微信") return withAppBasePath("/category-icons/weixin.webp");
+  if (account === "支付宝") return withAppBasePath("/category-icons/zhifubao.webp");
+  if (account === "银行卡") return withAppBasePath("/category-icons/unionpau.webp");
+  if (account === "全部账户" || account === "其他") return withAppBasePath("/category-icons/qita.webp");
   return "";
 }
 

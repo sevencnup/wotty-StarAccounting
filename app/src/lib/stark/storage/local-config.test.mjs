@@ -52,3 +52,21 @@ test("repairs a stale adjacent localhost API port after the Web port changes", a
     else process.env.NEXT_PUBLIC_API_PORT = previousApiPort;
   }
 });
+
+test("keeps showcase mode local and stores its settings in a separate namespace", async () => {
+  const previousShowcaseMode = process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+  process.env.NEXT_PUBLIC_SHOWCASE_DEMO = "1";
+  const storage = installBrowser("https://star-accounting.example");
+  try {
+    const { getCurrentDataMode, getSelectedReportMonth, setSelectedReportMonth } = await import(`./local-config.ts?showcase=${Date.now()}`);
+
+    assert.equal(getCurrentDataMode(), "LOCAL");
+    assert.equal(getSelectedReportMonth(), "2026-10");
+    setSelectedReportMonth("2026-08");
+    assert.equal(storage.get("wotty-stark:showcase:reporting-month"), "2026-08");
+    assert.equal(storage.has("wotty-stark:reporting-month"), false);
+  } finally {
+    if (previousShowcaseMode === undefined) delete process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+    else process.env.NEXT_PUBLIC_SHOWCASE_DEMO = previousShowcaseMode;
+  }
+});

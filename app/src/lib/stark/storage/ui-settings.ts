@@ -1,3 +1,5 @@
+const SHOWCASE_DEMO_MODE = process.env.NEXT_PUBLIC_SHOWCASE_DEMO === "1";
+
 export type ThemeChoice = "BLUE" | "GREEN" | "AMBER";
 export type LanguageChoice = "SYSTEM" | "ZH_CN" | "EN_US";
 export type FontChoice = "SMALL" | "STANDARD" | "LARGE";
@@ -8,7 +10,7 @@ export type UiSettings = {
   font: FontChoice;
 };
 
-export const UI_SETTINGS_KEY = "wotty-stark:ui-settings";
+export const UI_SETTINGS_KEY = SHOWCASE_DEMO_MODE ? "wotty-stark:showcase:ui-settings" : "wotty-stark:ui-settings";
 export const defaultUiSettings: UiSettings = { theme: "BLUE", language: "ZH_CN", font: "STANDARD" };
 
 const themes: ThemeChoice[] = ["BLUE", "GREEN", "AMBER"];

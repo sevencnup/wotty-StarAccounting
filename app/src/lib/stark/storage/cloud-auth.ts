@@ -1,4 +1,6 @@
-const AUTH_PREFIX = "wotty-stark:cloud-auth:";
+const SHOWCASE_DEMO_MODE = process.env.NEXT_PUBLIC_SHOWCASE_DEMO === "1";
+
+const AUTH_PREFIX = SHOWCASE_DEMO_MODE ? "wotty-stark:showcase:cloud-auth:" : "wotty-stark:cloud-auth:";
 const REMEMBERED_CREDENTIALS_KEY = `${AUTH_PREFIX}remembered-credentials`;
 
 export type CloudAuthUser = {

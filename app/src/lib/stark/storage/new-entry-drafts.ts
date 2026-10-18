@@ -1,6 +1,8 @@
+const SHOWCASE_DEMO_MODE = process.env.NEXT_PUBLIC_SHOWCASE_DEMO === "1";
+
 export type NewEntryDraftKind = "journal" | "salary" | "savings" | "asset" | "loan";
 
-const DRAFT_PREFIX = "wotty-stark:new-entry-draft:";
+const DRAFT_PREFIX = SHOWCASE_DEMO_MODE ? "wotty-stark:showcase:new-entry-draft:" : "wotty-stark:new-entry-draft:";
 
 export function newEntryDraftKey(kind: NewEntryDraftKind, scope?: string) {
   return DRAFT_PREFIX + kind + (scope ? `:${scope}` : "");

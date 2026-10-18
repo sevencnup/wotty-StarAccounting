@@ -7,6 +7,8 @@ const lanDevOrigins = Object.values(networkInterfaces())
   .filter(({ family, internal }) => family === "IPv4" && !internal)
   .map(({ address }) => address);
 
+const showcaseDemoBuild = process.env.STARK_SHOWCASE_DEMO === "1";
+
 const nextConfig: NextConfig = {
   // Next.js 16 rejects HMR connections from a LAN address unless it is
   // explicitly trusted. Discover active local IPv4 addresses so a phone can
@@ -20,6 +22,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   devIndicators: false,
+  ...(showcaseDemoBuild ? { basePath: "/phone-demo" } : {}),
   output: "export",
   trailingSlash: true,
   images: { unoptimized: true },

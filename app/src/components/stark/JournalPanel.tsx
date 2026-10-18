@@ -8,6 +8,7 @@ import { nowText } from "@/lib/stark/utils/format";
 import { createId } from "@/lib/stark/utils/id";
 import { clearNewEntryDraft, readNewEntryDraft, saveNewEntryDraft, type NewEntryDraftKind } from "@/lib/stark/storage/new-entry-drafts";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
+import { SHOWCASE_DEMO_MODE } from "@/lib/stark/runtime";
 import { recordSavingsPlanDeposit } from "@/lib/stark/savings/planner";
 import { buildSalaryBatchTransactions, SALARY_BATCH_MONTHS, salaryBatchMonthKeys, selectSalaryBatchMonths } from "@/lib/stark/journal/salary-batch";
 import type { Asset, AssetType, Loan, SavingsGoal, SavingsPlan, Transaction, TransactionType } from "@/lib/stark/models";
@@ -323,7 +324,7 @@ export function JournalPanel({
 
   const beginClose = useCallback(() => {
     if (closingRef.current) return;
-    if (isSavings) window.sessionStorage.removeItem("stark:journal-variant");
+    if (isSavings) window.sessionStorage.removeItem(SHOWCASE_DEMO_MODE ? "showcase:stark:journal-variant" : "stark:journal-variant");
     closingRef.current = true;
     setVisible(false);
     closeTimerRef.current = setTimeout(onClose, 220);
