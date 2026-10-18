@@ -20,11 +20,14 @@ export function summarizeSavingsProgress(goals: readonly SavingsGoal[], plans: r
 
 /** Reconcile a goal's stored amount with completed plan records without double counting. */
 export function summarizeSavingsGoalProgress(goal: SavingsGoal, plans: readonly SavingsPlan[]) {
-  const completedAmount = plans
-    .filter((plan) => plan.goalId === goal.id)
+  const goalPlans = plans.filter((plan) => plan.goalId === goal.id);
+  const completedAmount = goalPlans
     .reduce((sum, plan) => sum + savingsPlanRecordedAmount(plan), 0);
+  const plannedTarget = goalPlans.reduce((sum, plan) => (
+    sum + (Number.isFinite(plan.amount) ? Math.max(plan.amount, 0) : 0)
+  ), 0);
   const savedAmount = Math.max(goal.currentAmount, completedAmount);
-  const target = goal.targetAmount;
+  const target = goal.targetAmount > 0 ? goal.targetAmount : plannedTarget;
 
   return {
     savedAmount,
