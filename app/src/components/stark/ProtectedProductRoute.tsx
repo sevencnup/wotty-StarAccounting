@@ -5,17 +5,20 @@ import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { cloudMe } from "@/lib/stark/repository/cloud-auth";
 import { getCloudAuthToken, getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime } from "@/lib/stark/storage/local-config";
+import { SHOWCASE_DEMO_MODE, withAppBasePath } from "@/lib/stark/runtime";
+import { seedShowcaseDemoData } from "@/lib/stark/repository/showcase-demo";
 
 const manager = new DataModeManager();
 
 function getEntryUrl() {
   const requested = `${window.location.pathname}${window.location.search}`;
-  return `/?next=${encodeURIComponent(requested)}`;
+  return `${withAppBasePath("/")}?next=${encodeURIComponent(requested)}`;
 }
 
 /** 保护 App 与未来 Web 的业务路由，避免绕过根路径入口。 */
 export function ProtectedProductRoute({ children }: { children: React.ReactNode }) {
   const [authorized, setAuthorized] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -24,6 +27,13 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
 
     async function authorize() {
       try {
+        if (SHOWCASE_DEMO_MODE) {
+          await manager.switchMode("LOCAL");
+          await manager.getLocalRepository().getCurrentUser();
+          await seedShowcaseDemoData();
+          if (mountedRef.current) setAuthorized(true);
+          return;
+        }
         const mode = isNativeAppRuntime() ? getCurrentDataMode() : "CLOUD";
         if (mode === "LOCAL") {
           await manager.switchMode("LOCAL");
@@ -46,6 +56,10 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
         }
         if (mountedRef.current) setAuthorized(true);
       } catch {
+        if (SHOWCASE_DEMO_MODE) {
+          if (mountedRef.current) setLoadError("演示账本暂时无法打开，请检查浏览器是否允许本地存储。");
+          return;
+        }
         window.location.replace(getEntryUrl());
       }
     }
@@ -58,6 +72,7 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
   }, []);
 
   if (authorized) return <>{children}</>;
+  if (loadError) return <main className="app-route-access-loading" role="alert">{loadError}</main>;
 
   return <main className="app-route-access-loading" aria-busy="true">正在进入账本...</main>;
 }

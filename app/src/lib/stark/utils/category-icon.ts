@@ -1,5 +1,8 @@
 import type { Transaction } from "@/lib/stark/models";
 
+const APP_BASE_PATH = (process.env.NEXT_PUBLIC_APP_BASE_PATH ?? "").replace(/\/+$/, "");
+const withAppBasePath = (path: string) => APP_BASE_PATH ? `${APP_BASE_PATH}${path}` : path;
+
 const categoryIconFiles: Record<string, string> = {
   餐饮: "canyinlei.webp",
   购物: "gouwulei.webp",
@@ -181,7 +184,8 @@ const categoryKeywordIcons: Array<[RegExp, string]> = [
   [/转|退款|收入/, "dianzilei.webp"],
 ];
 
-const fallbackCategoryIcon = "/category-icons/qita.webp";
+const categoryIconPath = (file: string) => withAppBasePath(`/category-icons/${file}`);
+const fallbackCategoryIcon = categoryIconPath("qita.webp");
 
 function incomeIconFile(category: string): string | null {
   const normalized = category.trim();
@@ -194,28 +198,28 @@ function incomeIconFile(category: string): string | null {
 
 export function categoryIconSrcForCategory(category: string, type?: Transaction["type"]): string {
   if (type === "TRANSFER" || type === "REPAYMENT") {
-    return `/category-icons/${categoryIconFiles[type === "TRANSFER" ? "转账" : "还款"]}`;
+    return categoryIconPath(categoryIconFiles[type === "TRANSFER" ? "转账" : "还款"]);
   }
   const normalized = category.trim();
-  if (categoryIconFiles[normalized]) return `/category-icons/${categoryIconFiles[normalized]}`;
+  if (categoryIconFiles[normalized]) return categoryIconPath(categoryIconFiles[normalized]);
   if (type === "INCOME") {
     const incomeIcon = incomeIconFile(normalized);
-    if (incomeIcon) return `/category-icons/${incomeIcon}`;
+    if (incomeIcon) return categoryIconPath(incomeIcon);
   }
   const matched = categoryKeywordIcons.find(([matcher]) => matcher.test(normalized));
-  if (matched) return `/category-icons/${matched[1]}`;
+  if (matched) return categoryIconPath(matched[1]);
   return fallbackCategoryIcon;
 }
 
 export function categoryIconSrc(item: Transaction): string {
   if (item.type === "TRANSFER" || item.type === "REPAYMENT") {
-    return `/category-icons/${categoryIconFiles[item.type === "TRANSFER" ? "转账" : "还款"]}`;
+    return categoryIconPath(categoryIconFiles[item.type === "TRANSFER" ? "转账" : "还款"]);
   }
   const normalized = item.category.trim();
-  if (categoryIconFiles[normalized]) return `/category-icons/${categoryIconFiles[normalized]}`;
+  if (categoryIconFiles[normalized]) return categoryIconPath(categoryIconFiles[normalized]);
   if (item.type === "INCOME") {
     const incomeIcon = incomeCategoryIcons[normalized];
-    if (incomeIcon) return `/category-icons/${incomeIcon}`;
+    if (incomeIcon) return categoryIconPath(incomeIcon);
   }
   return fallbackCategoryIcon;
 }

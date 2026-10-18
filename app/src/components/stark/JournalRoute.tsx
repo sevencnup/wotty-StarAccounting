@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { JournalPanel } from "@/components/stark/JournalPanel";
+import { SHOWCASE_DEMO_MODE, withAppBasePath } from "@/lib/stark/runtime";
 
 export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "asset" | "loan" }) {
   const [routeReady, setRouteReady] = useState(false);
@@ -24,7 +25,8 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
       setRouteReady(true);
       return;
     }
-    setResolvedVariant(window.sessionStorage.getItem("stark:journal-variant") === "savings" ? "savings" : "journal");
+    const journalVariantKey = SHOWCASE_DEMO_MODE ? "showcase:stark:journal-variant" : "stark:journal-variant";
+    setResolvedVariant(window.sessionStorage.getItem(journalVariantKey) === "savings" ? "savings" : "journal");
     setPreset(new URLSearchParams(window.location.search).get("preset") === "salary"
       ? { type: "INCOME", category: "工资" }
       : undefined);
@@ -36,7 +38,7 @@ export function JournalRoute({ variant }: { variant?: "journal" | "savings" | "a
 
   function closePanel() {
     if (resolvedVariant === "savings") {
-      window.location.replace("/app/savings/");
+      window.location.replace(withAppBasePath("/app/savings/"));
       return;
     }
     window.history.back();
