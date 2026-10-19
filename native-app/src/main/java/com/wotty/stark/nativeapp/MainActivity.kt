@@ -1414,15 +1414,21 @@ private fun StarkNativeApp() {
                             if (cursor.moveToFirst()) cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) else null
                         } ?: "账单.csv"
                     }
-                    require(fileName.endsWith(".csv", ignoreCase = true)) { "目前只支持 CSV 文件，请先将 XLS/XLSX 另存为 CSV" }
-                    val content = withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                             ?: throw IllegalStateException("无法读取所选文件")
                     }
+                    val extension = fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
+                    require(extension != "xls") { "旧式 XLS 文件暂不支持，请用 Excel 或 WPS 另存为 XLSX 或 CSV" }
+                    require(extension in setOf("csv", "xlsx")) { "目前支持 CSV 和 XLSX 文件" }
                     val accountId = apiPreferences.accountId.ifBlank { "local" }
                     val userId = apiPreferences.userId.ifBlank { "local-user" }
                     val parsed = withContext(Dispatchers.Default) {
-                        parseNativeBillCsv(content, fileName, accountId, userId)
+                        if (extension == "csv") {
+                            parseNativeBillCsv(decodeNativeBillCsv(bytes), fileName, accountId, userId)
+                        } else {
+                            parseNativeBillXlsx(bytes, fileName, accountId, userId)
+                        }
                     }
                     pendingCsvImport = markNativeBillDuplicates(parsed, entries.toList())
                     csvImportStatus = if (parsed.rows.isEmpty() && parsed.issues.isNotEmpty()) {
@@ -1988,7 +1994,15 @@ private fun StarkNativeApp() {
                     },
                     onPickBills = {
                         csvImportStatus = "正在选择账单文件…"
-                        csvImportLauncher.launch(arrayOf("text/*", "text/csv", "application/csv", "application/vnd.ms-excel"))
+                        csvImportLauncher.launch(
+                            arrayOf(
+                                "text/*",
+                                "text/csv",
+                                "application/csv",
+                                "application/vnd.ms-excel",
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            ),
+                        )
                     },
                     onConfirmBillImport = ::confirmCsvImport,
                     onSaveSubscription = { subscription ->
