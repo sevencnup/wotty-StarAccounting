@@ -677,7 +677,7 @@ private class NativeLedgerStore(context: Context) {
     }
 
     fun clearApiPreferences() {
-        preferences.edit().remove("apiToken").remove("apiAccountId").apply()
+        preferences.edit().remove("apiToken").remove("apiAccountId").remove("apiUserId").apply()
     }
 }
 
@@ -700,6 +700,58 @@ private class NativeApiClient {
                 accountId = user.optString("defaultAccountId", ""),
                 userId = user.optString("id", ""),
             )
+        }
+    }
+
+    suspend fun changePassword(config: NativeApiPreferences, newPassword: String, confirmPassword: String) {
+        authorizedAccountRequest(
+            config = config,
+            path = "/api/auth/password",
+            method = "POST",
+            payload = JSONObject().put("newPassword", newPassword).put("confirmPassword", confirmPassword),
+        )
+    }
+
+    suspend fun loadRegistrationStatus(config: NativeApiPreferences): Boolean {
+        val payload = authorizedAccountRequest(config, "/api/auth/registration", method = "GET")
+        if (!payload.has("registrationEnabled")) throw IllegalStateException("服务器没有返回注册状态")
+        return payload.getBoolean("registrationEnabled")
+    }
+
+    suspend fun setRegistrationEnabled(config: NativeApiPreferences, enabled: Boolean, adminKey: String): Boolean {
+        val payload = authorizedAccountRequest(
+            config = config,
+            path = "/api/auth/registration",
+            method = "POST",
+            payload = JSONObject().put("registrationEnabled", enabled).put("adminKey", adminKey),
+        )
+        if (!payload.has("registrationEnabled")) throw IllegalStateException("服务器没有返回注册状态")
+        return payload.getBoolean("registrationEnabled")
+    }
+
+    private suspend fun authorizedAccountRequest(
+        config: NativeApiPreferences,
+        path: String,
+        method: String,
+        payload: JSONObject? = null,
+    ): JSONObject = withContext(Dispatchers.IO) {
+        require(config.token.isNotBlank()) { "请先登录云端账户" }
+        val builder = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + path)
+            .header("Authorization", "Bearer ${config.token}")
+        if (method == "GET") {
+            builder.get()
+        } else {
+            val body = (payload ?: JSONObject()).toString().toRequestBody("application/json".toMediaType())
+            builder.post(body)
+        }
+        client.newCall(builder.build()).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            val result = runCatching { JSONObject(raw) }.getOrDefault(JSONObject())
+            if (!response.isSuccessful) {
+                throw IllegalStateException(result.optString("error").ifBlank { "云端请求失败（${response.code}）" })
+            }
+            result
         }
     }
 
@@ -1728,6 +1780,19 @@ private fun StarkNativeApp() {
                     importingCsv = importingCsv,
                     onOpenApi = { homeOverlay = HomeOverlay.API },
                     onRefresh = { refreshVersion += 1 },
+                    onChangePassword = { newPassword, confirmPassword ->
+                        apiClient.changePassword(apiPreferences, newPassword, confirmPassword)
+                    },
+                    onLoadRegistrationStatus = { apiClient.loadRegistrationStatus(apiPreferences) },
+                    onSetRegistrationEnabled = { enabled, adminKey ->
+                        apiClient.setRegistrationEnabled(apiPreferences, enabled, adminKey)
+                    },
+                    onLogout = {
+                        ledgerStore.clearApiPreferences()
+                        apiPreferences = apiPreferences.copy(token = "", accountId = "", userId = "")
+                        apiStatus = "未连接云端"
+                        refreshVersion += 1
+                    },
                     onExportBills = {
                         if (exportingCsv) {
                             csvExportStatus = "正在导出账单…"
