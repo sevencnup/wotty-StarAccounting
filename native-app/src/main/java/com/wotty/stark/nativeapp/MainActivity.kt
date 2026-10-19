@@ -2019,12 +2019,16 @@ private fun StarkNativeApp() {
     if (entrySheetOpen) {
         QuickEntrySheet(
             existing = editingEntry,
+            existingEntries = entries.toList(),
+            salaryPaydayDefault = salaryDay,
+            salaryUserId = apiPreferences.userId.ifBlank { "local-user" },
+            salaryAccountId = apiPreferences.accountId.ifBlank { "local" },
             onClose = { entrySheetOpen = false; editingEntry = null },
             onSave = { entry ->
                 val oldEntry = entries.firstOrNull { it.id == entry.id }
                 val saved = entry.copy(
-                    userId = entry.userId.ifBlank { apiPreferences.userId },
-                    accountId = entry.accountId.ifBlank { apiPreferences.accountId },
+                    userId = entry.userId.ifBlank { apiPreferences.userId.ifBlank { "local-user" } },
+                    accountId = entry.accountId.ifBlank { apiPreferences.accountId.ifBlank { "local" } },
                 )
                 if (apiPreferences.token.isNotBlank()) apiClient.saveEntry(apiPreferences, saved)
                 val existingIndex = entries.indexOfFirst { it.id == saved.id }
@@ -2034,6 +2038,53 @@ private fun StarkNativeApp() {
                 val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
                 ledgerStore.save(dataScope, scopeAccountId, actualBalance, entries)
                 if (apiPreferences.token.isNotBlank()) apiStatus = "已保存流水"
+            },
+            onSaveSalaryBatch = { candidates ->
+                val dataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
+                val monthSelection = selectNativeSalaryBatchMonths(
+                    candidates.mapNotNull(::nativeSalaryMonthKey),
+                    entries.toList(),
+                )
+                val existingIds = entries.mapTo(mutableSetOf(), LedgerEntry::id)
+                val existingOrders = entries.mapNotNullTo(mutableSetOf()) { it.orderId?.takeIf(String::isNotBlank) }
+                val candidateByMonth = candidates.associateBy { nativeSalaryMonthKey(it) }
+                val uniqueEntries = monthSelection.pendingMonthKeys.mapNotNull(candidateByMonth::get).filter { candidate ->
+                    val duplicate = candidate.id in existingIds || (!candidate.orderId.isNullOrBlank() && candidate.orderId in existingOrders)
+                    if (!duplicate) {
+                        existingIds += candidate.id
+                        candidate.orderId?.takeIf(String::isNotBlank)?.let(existingOrders::add)
+                    }
+                    !duplicate
+                }
+                val skippedCount = monthSelection.selectedMonthKeys.size - uniqueEntries.size
+
+                if (apiPreferences.token.isNotBlank()) {
+                    val remoteResult = if (uniqueEntries.isEmpty()) {
+                        NativeBillImportResult(imported = 0, skipped = 0, errors = 0)
+                    } else {
+                        apiClient.importTransactions(apiPreferences, uniqueEntries)
+                    }
+                    refreshVersion += 1
+                    remoteResult.copy(skipped = remoteResult.skipped + skippedCount)
+                } else {
+                    if (uniqueEntries.isNotEmpty()) {
+                        val nextEntries = (uniqueEntries + entries.toList()).distinctBy(LedgerEntry::id).sortedByDescending(LedgerEntry::date)
+                        val nextBalance = actualBalance + uniqueEntries.sumOf(LedgerEntry::balanceChange)
+                        ledgerStore.saveImportedLedgerBatch(
+                            dataScope,
+                            scopeAccountId,
+                            nextBalance,
+                            nextEntries,
+                            uniqueEntries,
+                            emptyList(),
+                        )
+                        entries.clear()
+                        entries.addAll(nextEntries)
+                        actualBalance = nextBalance
+                    }
+                    NativeBillImportResult(imported = uniqueEntries.size, skipped = skippedCount, errors = 0)
+                }
             },
         )
     }
@@ -4239,12 +4290,21 @@ private fun ApiLoginDialog(
 @Composable
 private fun QuickEntrySheet(
     existing: LedgerEntry?,
+    existingEntries: List<LedgerEntry>,
+    salaryPaydayDefault: Int,
+    salaryUserId: String,
+    salaryAccountId: String,
     onClose: () -> Unit,
     onSave: suspend (LedgerEntry) -> Unit,
+    onSaveSalaryBatch: suspend (List<LedgerEntry>) -> NativeBillImportResult,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var type by remember(existing?.id) { mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: EntryType.EXPENSE) }
+    var ordinaryType by remember(existing?.id) { mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: EntryType.EXPENSE) }
+    var ordinaryCategory by remember(existing?.id) { mutableStateOf(existing?.category?.substringBefore(" ·") ?: "餐饮") }
+    var entryMode by remember(existing?.id) { mutableStateOf("NORMAL") }
+    var salaryEntryMode by remember(existing?.id) { mutableStateOf("SINGLE") }
     var merchant by remember(existing?.id) { mutableStateOf(existing?.merchant.orEmpty()) }
     var description by remember(existing?.id) { mutableStateOf(existing?.description.orEmpty()) }
     var amountText by remember(existing?.id) { mutableStateOf(existing?.amount?.toString().orEmpty()) }
@@ -4252,8 +4312,14 @@ private fun QuickEntrySheet(
     var platform by remember(existing?.id) { mutableStateOf(existing?.platform ?: "支付宝") }
     var selectedDate by remember(existing?.id) { mutableStateOf(existing?.transactionDate ?: LocalDate.now().toString()) }
     var selectedTime by remember(existing?.id) { mutableStateOf(existing?.date?.substringAfter(" ")?.take(5)?.takeIf(String::isNotBlank) ?: "12:00") }
+    var salaryYearText by remember(existing?.id) { mutableStateOf(LocalDate.now().year.toString()) }
+    var salaryMonths by remember(existing?.id) { mutableStateOf(setOf(LocalDate.now().monthValue)) }
+    var salaryPaydayText by remember(existing?.id, salaryPaydayDefault) { mutableStateOf(salaryPaydayDefault.coerceIn(1, 28).toString()) }
     var saving by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf("") }
+    var batchStatus by remember { mutableStateOf("") }
+    var batchFailedRows by remember { mutableStateOf(emptyList<NativeImportFailedRow>()) }
+    var batchHasError by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val categories = when (type) {
         EntryType.INCOME -> listOf("工资", "奖金", "兼职", "经营收入", "报销", "退款", "租金", "利息分红", "补贴", "二手转卖", "理财", "其他")
@@ -4261,6 +4327,16 @@ private fun QuickEntrySheet(
         else -> listOf("餐饮", "外卖", "买菜", "购物", "交通", "公交地铁", "打车", "住房", "房租", "水费", "电费", "燃气", "网费", "日用", "医疗", "教育", "娱乐", "会员订阅", "保险", "还款", "其他")
     }
     val dateParts = runCatching { LocalDate.parse(selectedDate) }.getOrElse { LocalDate.now() }
+    val salaryYear = salaryYearText.toIntOrNull()?.takeIf { it in 2000..9999 }
+    val selectedSalaryMonthKeys = salaryYear?.let { year ->
+        runCatching { nativeSalaryBatchMonthKeys(year, salaryMonths.toList()) }.getOrDefault(emptyList())
+    }.orEmpty()
+    val existingSalaryMonthKeys = nativeExistingSalaryMonthKeys(existingEntries)
+    val salaryMonthSelection = selectNativeSalaryBatchMonths(selectedSalaryMonthKeys, existingSalaryMonthKeys)
+    val isSalaryMode = existing == null && entryMode == "SALARY"
+    val isBatchMode = isSalaryMode && salaryEntryMode == "BATCH"
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+    val payday = salaryPaydayText.toIntOrNull()
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -4277,83 +4353,294 @@ private fun QuickEntrySheet(
         ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
-                    Text(if (existing == null) "记一笔" else "编辑流水", color = Ink, fontWeight = FontWeight.Black, fontSize = 23.sp)
-                    Text("填写金额、分类、账户和发生时间", color = Muted, fontSize = 11.sp)
+                    Text(if (isBatchMode) "历史工资补录" else if (existing == null) "记一笔" else "编辑流水", color = Ink, fontWeight = FontWeight.Black, fontSize = 23.sp)
+                    Text(if (isSalaryMode) "填写工资金额、入账账户和发薪时间" else "填写金额、分类、账户和发生时间", color = Muted, fontSize = 11.sp)
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "关闭", tint = Muted) }
             }
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFFEAF0F7)).padding(4.dp)) {
-                EntryType.entries.filter { it != EntryType.REPAYMENT }.forEach { item ->
-                    val selected = item == type
-                    Text(
-                        item.label,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (selected) Color.White else Color.Transparent).clickable {
-                            type = item
-                            category = when (item) {
-                                EntryType.INCOME -> "工资"
-                                EntryType.TRANSFER -> "转账"
-                                else -> "餐饮"
+            if (existing == null) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFFEAF0F7)).padding(4.dp)) {
+                    listOf("NORMAL" to "普通记账", "SALARY" to "工资收入").forEach { (mode, label) ->
+                        val selected = entryMode == mode
+                        Text(
+                            label,
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (selected) Color.White else Color.Transparent).clickable {
+                                if (entryMode != mode) {
+                                    entryMode = mode
+                                    batchStatus = ""
+                                    batchFailedRows = emptyList()
+                                    batchHasError = false
+                                    saveError = ""
+                                    if (mode == "SALARY") {
+                                        ordinaryType = type
+                                        ordinaryCategory = category
+                                        type = EntryType.INCOME
+                                        category = "工资"
+                                        selectedTime = "09:00"
+                                    } else {
+                                        type = ordinaryType
+                                        category = ordinaryCategory
+                                    }
+                                }
+                            }.padding(vertical = 12.dp),
+                            textAlign = TextAlign.Center,
+                            color = if (selected) Blue else Muted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp,
+                        )
+                    }
+                }
+            }
+            if (isSalaryMode) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Color(0xFFEAF0F7)).padding(4.dp)) {
+                    listOf("SINGLE" to "单月录入", "BATCH" to "批量补录").forEach { (mode, label) ->
+                        val selected = salaryEntryMode == mode
+                        Text(
+                            label,
+                            modifier = Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if (selected) Color.White else Color.Transparent).clickable {
+                                salaryEntryMode = mode
+                                saveError = ""
+                                batchStatus = ""
+                                batchFailedRows = emptyList()
+                                batchHasError = false
+                            }.padding(vertical = 10.dp),
+                            textAlign = TextAlign.Center,
+                            color = if (selected) Green else Muted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
+            }
+            if (isBatchMode) {
+                Text("选择年份和月份后，将按同一金额生成工资收入；已存在工资的月份会自动跳过。", color = Muted, fontSize = 11.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("补录年份", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = salaryYearText,
+                            onValueChange = { salaryYearText = it.filter(Char::isDigit).take(4); batchStatus = ""; batchFailedRows = emptyList(); batchHasError = false },
+                            placeholder = { Text("2000–9999") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    }
+                    Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { salaryMonths = (1..12).toSet(); batchStatus = ""; batchFailedRows = emptyList(); batchHasError = false }) { Text("全选") }
+                        TextButton(onClick = { salaryMonths = emptySet(); batchStatus = ""; batchFailedRows = emptyList(); batchHasError = false }) { Text("清空") }
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    (1..12).toList().chunked(4).forEach { monthRow ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            monthRow.forEach { month ->
+                                val monthKey = salaryYear?.let { runCatching { YearMonth.of(it, month).toString() }.getOrNull() }
+                                val alreadyRecorded = monthKey != null && monthKey in existingSalaryMonthKeys
+                                val selected = month in salaryMonths
+                                Column(
+                                    Modifier.weight(1f).heightIn(min = 46.dp).clip(RoundedCornerShape(12.dp))
+                                        .background(if (selected) SoftBlue else Color.White)
+                                        .clickable {
+                                            salaryMonths = if (selected) salaryMonths - month else salaryMonths + month
+                                            batchStatus = ""
+                                            batchFailedRows = emptyList()
+                                            batchHasError = false
+                                        }.padding(vertical = 6.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center,
+                                ) {
+                                    Text("${month}月", color = if (selected) Blue else Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    if (alreadyRecorded) Text("已入账", color = Muted, fontSize = 8.sp, maxLines = 1)
+                                }
                             }
-                        }.padding(vertical = 12.dp),
-                        textAlign = TextAlign.Center,
-                        color = if (selected) item.color else Muted,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                    )
+                        }
+                    }
                 }
+                Text(
+                    when {
+                        salaryYear == null -> "年份需填写 2000–9999。"
+                        selectedSalaryMonthKeys.isEmpty() -> "请选择要补录的月份。"
+                        salaryMonthSelection.skippedMonthKeys.size == selectedSalaryMonthKeys.size -> "所选 ${selectedSalaryMonthKeys.size} 个月都已有工资收入，未重复新增。"
+                        else -> "已选择 ${selectedSalaryMonthKeys.size} 个月，确认后将先检查是否已有工资记录。"
+                    },
+                    color = Muted,
+                    fontSize = 11.sp,
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("每月工资（元）", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = amountText,
+                            onValueChange = { amountText = it.filter { char -> char.isDigit() || char == '.' }; batchStatus = ""; batchFailedRows = emptyList(); batchHasError = false },
+                            placeholder = { Text("0.00") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("发薪日", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        OutlinedTextField(
+                            value = salaryPaydayText,
+                            onValueChange = { salaryPaydayText = it.filter(Char::isDigit).take(2); batchStatus = ""; batchFailedRows = emptyList(); batchHasError = false },
+                            placeholder = { Text("1–28") },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                    }
+                }
+                Text("入账账户", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                ChoiceRow(listOf("支付宝", "微信", "银行卡", "现金", "其他"), platform, onSelect = { platform = it })
+                NativeInput(label = "发薪单位（选填）", value = merchant, onValueChange = { merchant = it }, placeholder = "未填写则标记为工资补录")
+                if (saveError.isNotBlank()) Text(saveError, color = Red, fontSize = 12.sp)
+                if (batchStatus.isNotBlank()) Text(batchStatus, color = if (batchHasError) Red else Green, fontSize = 12.sp)
+                batchFailedRows.take(3).forEach { failed ->
+                    Text("第 ${failed.lineNumber} 笔失败：${failed.errorMessage}", color = Red, fontSize = 10.sp)
+                }
+            } else {
+                if (isSalaryMode) {
+                    Text("工资收入 · 工资分类", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                } else {
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFFEAF0F7)).padding(4.dp)) {
+                        EntryType.entries.filter { it != EntryType.REPAYMENT }.forEach { item ->
+                            val selected = item == type
+                            Text(
+                                item.label,
+                                modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (selected) Color.White else Color.Transparent).clickable {
+                                    type = item
+                                    ordinaryType = item
+                                    category = when (item) {
+                                        EntryType.INCOME -> "工资"
+                                        EntryType.TRANSFER -> "转账"
+                                        else -> "餐饮"
+                                    }
+                                    ordinaryCategory = category
+                                }.padding(vertical = 12.dp),
+                                textAlign = TextAlign.Center,
+                                color = if (selected) item.color else Muted,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                            )
+                        }
+                    }
+                }
+                NativeInput(label = "商户 / 名称", value = merchant, onValueChange = { merchant = it }, placeholder = "例如：便利店、公司工资")
+                NativeInput(label = "金额", value = amountText, onValueChange = { amountText = it.filter { char -> char.isDigit() || char == '.' } }, placeholder = "0.00", isAmount = true)
+                if (isSalaryMode) {
+                    Text("工资", modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(Color(0xFFE8F7EF)).padding(horizontal = 12.dp, vertical = 8.dp), color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                } else {
+                    Text("分类", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    ChoiceRow(categories, category, onSelect = { category = it })
+                }
+                Text("账户 / 平台", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                ChoiceRow(listOf("支付宝", "微信", "银行卡", "现金", "其他"), platform, onSelect = { platform = it })
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("日期", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = {
+                            android.app.DatePickerDialog(
+                                context,
+                                { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day).toString() },
+                                dateParts.year,
+                                dateParts.monthValue - 1,
+                                dateParts.dayOfMonth,
+                            ).show()
+                        }) { Text(selectedDate) }
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("時間", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        TextButton(onClick = {
+                            val hour = selectedTime.substringBefore(":").toIntOrNull() ?: 12
+                            val minute = selectedTime.substringAfter(":", "00").toIntOrNull() ?: 0
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, chosenHour, chosenMinute -> selectedTime = "%02d:%02d".format(chosenHour, chosenMinute) },
+                                hour,
+                                minute,
+                                true,
+                            ).show()
+                        }) { Text(selectedTime) }
+                    }
+                }
+                NativeInput(label = "备注", value = description, onValueChange = { description = it }, placeholder = "可选")
+                if (saveError.isNotBlank()) Text(saveError, color = Red, fontSize = 12.sp)
             }
-            NativeInput(label = "商户 / 名称", value = merchant, onValueChange = { merchant = it }, placeholder = "例如：便利店、公司工资")
-            NativeInput(label = "金额", value = amountText, onValueChange = { amountText = it.filter { char -> char.isDigit() || char == '.' } }, placeholder = "0.00", isAmount = true)
-            Text("分类", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            ChoiceRow(categories, category, onSelect = { category = it })
-            Text("账户 / 平台", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            ChoiceRow(listOf("支付宝", "微信", "银行卡", "现金", "其他"), platform, onSelect = { platform = it })
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text("日期", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    TextButton(onClick = {
-                        android.app.DatePickerDialog(
-                            context,
-                            { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day).toString() },
-                            dateParts.year,
-                            dateParts.monthValue - 1,
-                            dateParts.dayOfMonth,
-                        ).show()
-                    }) { Text(selectedDate) }
-                }
-                Column(Modifier.weight(1f)) {
-                    Text("時間", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    TextButton(onClick = {
-                        val hour = selectedTime.substringBefore(":").toIntOrNull() ?: 12
-                        val minute = selectedTime.substringAfter(":", "00").toIntOrNull() ?: 0
-                        android.app.TimePickerDialog(
-                            context,
-                            { _, chosenHour, chosenMinute -> selectedTime = "%02d:%02d".format(chosenHour, chosenMinute) },
-                            hour,
-                            minute,
-                            true,
-                        ).show()
-                    }) { Text(selectedTime) }
-                }
-            }
-            NativeInput(label = "备注", value = description, onValueChange = { description = it }, placeholder = "可选")
-            if (saveError.isNotBlank()) Text(saveError, color = Red, fontSize = 12.sp)
-            val amount = amountText.toDoubleOrNull() ?: 0.0
             Text(
                 text = when {
                     saving -> "保存中…"
+                    isBatchMode && selectedSalaryMonthKeys.isNotEmpty() && amount > 0 && payday != null -> "确认补录 ${selectedSalaryMonthKeys.size} 个月工资"
+                    isBatchMode -> "请输入工资金额并选择月份"
                     amount > 0 -> "${if (existing == null) "保存" else "保存修改"} ¥ ${moneyFormat.format(amount)}"
                     else -> "请输入金额"
                 },
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                    .background(if (amount > 0 && !saving) type.color else Color(0xFFCCD5E2))
-                    .clickable(enabled = amount > 0 && !saving) {
+                    .background(if ((!isBatchMode && amount > 0 || isBatchMode && amount > 0 && selectedSalaryMonthKeys.isNotEmpty() && payday != null) && !saving) if (isSalaryMode) Green else type.color else Color(0xFFCCD5E2))
+                    .clickable(enabled = !saving && if (isBatchMode) amount > 0 && selectedSalaryMonthKeys.isNotEmpty() && payday != null else amount > 0) {
+                        if (isBatchMode) {
+                            val safeYear = salaryYear
+                            if (safeYear == null) {
+                                saveError = "年份需填写 2000–9999。"
+                                return@clickable
+                            }
+                            if (salaryMonths.isEmpty()) {
+                                saveError = "请选择要补录的月份。"
+                                return@clickable
+                            }
+                            if (amount <= 0.0 || !amount.isFinite()) {
+                                saveError = "请输入大于 0 的每月工资金额"
+                                return@clickable
+                            }
+                            if (payday == null || payday !in 1..28) {
+                                saveError = "发薪日需在 1–28 日之间"
+                                return@clickable
+                            }
+                            val monthKeys = nativeSalaryBatchMonthKeys(safeYear, salaryMonths)
+                            val candidates = buildNativeSalaryBatchEntries(
+                                monthKeys = monthKeys,
+                                amount = amount,
+                                payday = payday,
+                                platform = platform,
+                                merchant = merchant,
+                                userId = salaryUserId,
+                                accountId = salaryAccountId,
+                            )
+                            coroutineScope.launch {
+                                saving = true
+                                saveError = ""
+                                batchStatus = "正在补录 ${candidates.size} 笔工资收入..."
+                                batchFailedRows = emptyList()
+                                batchHasError = false
+                                try {
+                                    val result = onSaveSalaryBatch(candidates)
+                                    batchStatus = buildString {
+                                        append("已补录 ${result.imported} 笔")
+                                        if (result.skipped > 0) append("，跳过 ${result.skipped} 个已有工资月份")
+                                        if (result.errors > 0) append("，失败 ${result.errors} 笔")
+                                        append("。")
+                                    }
+                                    batchFailedRows = result.failedRows
+                                    batchHasError = result.errors > 0
+                                } catch (error: Throwable) {
+                                    batchStatus = ""
+                                    saveError = "批量补录失败：${error.message ?: "请检查连接后重试"}"
+                                    batchHasError = true
+                                } finally {
+                                    saving = false
+                                }
+                            }
+                            return@clickable
+                        }
                         val now = java.time.LocalDateTime.now().toString().replace('T', ' ')
                         val dateTime = "$selectedDate $selectedTime:00"
                         val entry = LedgerEntry(
                             id = existing?.id ?: "native-${java.util.UUID.randomUUID()}",
                             title = merchant.ifBlank { description.ifBlank { category } },
-                            category = "$category · $platform",
+                            category = "${if (isSalaryMode) "工资" else category} · $platform",
                             amount = amount,
                             type = type,
                             dayLabel = dateTime.take(16),
