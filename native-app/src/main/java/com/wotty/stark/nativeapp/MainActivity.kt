@@ -319,7 +319,6 @@ private data class NativeRemoteSnapshot(
 )
 
 private data class NativeBudget(val amount: Double, val category: String, val period: String)
-private data class NativeAsset(val id: String, val name: String, val type: String, val balance: Double, val currency: String)
 internal data class NativeLoan(
     val id: String,
     val platform: String,
@@ -409,6 +408,25 @@ private class NativeLedgerStore(context: Context) {
                 .putString("entries", rows.toString())
         }
         editor.apply()
+    }
+
+    fun loadAssets(scope: String, accountId: String): List<NativeAsset> =
+        database.readAll(scope, accountId, "assets").mapNotNull { raw ->
+            runCatching { JSONObject(raw).toNativeAsset(accountId) }.getOrNull()
+        }
+
+    fun saveAssetsState(scope: String, accountId: String, assets: List<NativeAsset>) {
+        database.replaceAll(scope, accountId, "assets", assets.map { asset ->
+            NativeStoredEntity(asset.id, asset.toPayload().toString(), asset.updatedAt)
+        })
+    }
+
+    fun saveAsset(scope: String, accountId: String, asset: NativeAsset) {
+        database.upsert(scope, accountId, "assets", NativeStoredEntity(asset.id, asset.toPayload().toString(), asset.updatedAt))
+    }
+
+    fun deleteAsset(scope: String, accountId: String, assetId: String) {
+        database.delete(scope, accountId, "assets", assetId)
     }
 
     fun loadLoans(scope: String, accountId: String): List<NativeLoan> =
@@ -681,17 +699,17 @@ private class NativeApiClient {
         return buildList {
             for (index in 0 until rows.length()) {
                 val row = rows.optJSONObject(index) ?: continue
-                add(
-                    NativeAsset(
-                        id = row.optString("id"),
-                        name = row.optString("name", "未命名资产"),
-                        type = row.optString("type", "OTHER"),
-                        balance = row.optDouble("balance", 0.0),
-                        currency = row.optString("currency", "CNY"),
-                    ),
-                )
+                add(row.toNativeAsset(config.accountId))
             }
         }
+    }
+
+    suspend fun saveAsset(config: NativeApiPreferences, asset: NativeAsset) {
+        postJson(config, "/api/assets", asset.toPayload(), "资产数据保存失败")
+    }
+
+    suspend fun deleteAsset(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/assets/" + java.net.URLEncoder.encode(id, "UTF-8"), "资产")
     }
 
     private suspend fun getJsonArray(config: NativeApiPreferences, path: String): JSONArray = withContext(Dispatchers.IO) {
@@ -962,7 +980,14 @@ private fun StarkNativeApp() {
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
     var refreshVersion by remember { mutableStateOf(0) }
-    var remoteAssets by remember { mutableStateOf<List<NativeAsset>>(emptyList()) }
+    var remoteAssets by remember {
+        mutableStateOf(
+            ledgerStore.loadAssets(
+                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
+                apiPreferences.accountId.ifBlank { "local" },
+            ),
+        )
+    }
     var remoteBudgets by remember { mutableStateOf<List<NativeBudget>>(emptyList()) }
     var remoteLoans by remember { mutableStateOf<List<NativeLoan>>(emptyList()) }
     var remoteSavings by remember { mutableStateOf<List<NativeSavingsGoal>>(emptyList()) }
@@ -975,9 +1000,9 @@ private fun StarkNativeApp() {
         entries.clear()
         entries.addAll(cached.entries)
         actualBalance = cached.actualBalance
+        remoteAssets = ledgerStore.loadAssets(scope, accountId)
         remoteLoans = ledgerStore.loadLoans(scope, accountId)
         if (apiPreferences.token.isBlank()) {
-            remoteAssets = emptyList()
             remoteBudgets = emptyList()
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
             remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
@@ -1000,6 +1025,7 @@ private fun StarkNativeApp() {
             remoteAssets = assets
             if (balance != null) actualBalance = balance
             ledgerStore.save(scope, accountId, actualBalance, remote.entries)
+            ledgerStore.saveAssetsState(scope, accountId, assets)
             remoteBudgets = budgets
             remoteLoans = loans
             ledgerStore.saveLoansState(scope, accountId, loans)
@@ -1039,6 +1065,7 @@ private fun StarkNativeApp() {
                     salaryDay = salaryDay,
                     monthlyBudget = monthlyBudget,
                     remoteBudgets = remoteBudgets,
+                    remoteAssets = remoteAssets,
                     remoteLoans = remoteLoans,
                     remoteSavings = remoteSavings,
                     remoteSavingsPlans = remoteSavingsPlans,
@@ -1142,12 +1169,41 @@ private fun StarkNativeApp() {
                         refreshVersion += 1
                     },
                 )
-                RootTab.ASSETS -> AssetsOverviewScreen(
+                RootTab.ASSETS -> NativeAssetsOverviewScreen(
                     modifier = Modifier.padding(insets),
                     assets = remoteAssets,
-                    balance = actualBalance,
+                    savingsGoals = remoteSavings,
+                    loans = remoteLoans,
+                    fallbackBalance = actualBalance,
                     connected = apiPreferences.token.isNotBlank(),
                     onConnect = { homeOverlay = HomeOverlay.API },
+                    onOpenSavings = { selectedTab = RootTab.SAVINGS },
+                    onOpenLoans = { selectedTab = RootTab.LOANS },
+                    onSaveAsset = { asset ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val updated = asset.copy(
+                            userId = apiPreferences.userId.ifBlank { asset.userId.ifBlank { "local-user" } },
+                            accountId = accountId,
+                            createdAt = asset.createdAt.ifBlank { now },
+                            updatedAt = now,
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveAsset(apiPreferences, updated)
+                        ledgerStore.saveAsset(scope, accountId, updated)
+                        remoteAssets = remoteAssets.filterNot { it.id == updated.id } + updated
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地资产已保存" else "云端资产已保存"
+                        refreshVersion += 1
+                    },
+                    onDeleteAsset = { asset ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        if (apiPreferences.token.isNotBlank()) apiClient.deleteAsset(apiPreferences, asset.id)
+                        ledgerStore.deleteAsset(scope, accountId, asset.id)
+                        remoteAssets = remoteAssets.filterNot { it.id == asset.id }
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地资产已删除" else "云端资产已删除"
+                        refreshVersion += 1
+                    },
                 )
                 RootTab.SETTINGS -> NativeSettingsScreen(
                     modifier = Modifier.padding(insets),
@@ -1450,6 +1506,7 @@ private fun HomeScreen(
     salaryDay: Int,
     monthlyBudget: Double,
     remoteBudgets: List<NativeBudget>,
+    remoteAssets: List<NativeAsset>,
     remoteLoans: List<NativeLoan>,
     remoteSavings: List<NativeSavingsGoal>,
     remoteSavingsPlans: List<NativeSavingsPlan>,
@@ -1540,7 +1597,7 @@ private fun HomeScreen(
             )
         }
         item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
-        item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteLoans, remoteSavings, remoteSavingsPlans, onOpenOverlay, onSelectTab) }
+        item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteAssets, remoteLoans, remoteSavings, remoteSavingsPlans, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
         item { WebReplicaCashflowTrend(entries, month, selectedYear) }
@@ -2097,13 +2154,13 @@ private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, monthlyB
 }
 
 @Composable
-private fun WebReplicaCompass(income: Double, expense: Double, actualBalance: Double, monthlyBudget: Double, remoteLoans: List<NativeLoan>, remoteSavings: List<NativeSavingsGoal>, remoteSavingsPlans: List<NativeSavingsPlan>, onOpenOverlay: (HomeOverlay) -> Unit, onSelectTab: (RootTab) -> Unit) {
-    val netWorth = actualBalance
+private fun WebReplicaCompass(income: Double, expense: Double, actualBalance: Double, monthlyBudget: Double, remoteAssets: List<NativeAsset>, remoteLoans: List<NativeLoan>, remoteSavings: List<NativeSavingsGoal>, remoteSavingsPlans: List<NativeSavingsPlan>, onOpenOverlay: (HomeOverlay) -> Unit, onSelectTab: (RootTab) -> Unit) {
+    val netWorth = nativeAssetOverview(remoteAssets, remoteSavings, remoteLoans, actualBalance).netWorth
     val base = if (monthlyBudget > 0) monthlyBudget else income
     val usedPercent = if (base > 0) (expense / base * 100).toInt().coerceIn(0, 100) else 0
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CompassTile("净资产", "¥ " + moneyFormat.format(netWorth), "账户当前余额", Green, Icons.Default.CheckCircle, Modifier.weight(1f)) { onSelectTab(RootTab.ASSETS) }
+            CompassTile("净资产", "¥ " + moneyFormat.format(netWorth), "资产减去关联负债", Green, Icons.Default.CheckCircle, Modifier.weight(1f)) { onSelectTab(RootTab.ASSETS) }
             CompassTile("预算余量", (100 - usedPercent).toString() + "%", "已用 " + usedPercent + "%", Blue, Icons.Default.PieChart, Modifier.weight(1f)) { onOpenOverlay(HomeOverlay.BUDGET) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3073,38 +3130,6 @@ private fun NativeProofImageViewer(source: String, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun AssetsOverviewScreen(modifier: Modifier, assets: List<NativeAsset>, balance: Double, connected: Boolean, onConnect: () -> Unit) {
-    val total = assets.sumOf { it.balance }
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { NativePageHeader("资产总览", "账户余额与资金配置") }
-        item {
-            WebReplicaCard(padding = 17.dp, radius = 20.dp) {
-                Text("资产总额", color = Muted, fontSize = 12.sp)
-                Text("¥ ${moneyFormat.format(if (assets.isEmpty()) balance else total)}", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Black)
-                Text(if (connected) "${assets.size} 个资产账户" else "当前显示设备上的账本余额", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-            }
-        }
-        if (!connected) item { CloudConnectNotice("连接云端账本后同步资产账户", onConnect) }
-        if (assets.isEmpty()) {
-            item { EmptyPageCard(if (connected) "还没有资产账户" else "资产明细尚未接入本地账本", "资产新增、编辑和余额校正正在接入原生页面。") }
-        } else {
-            item { Text("资产账户", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-            items(assets, key = { it.id }) { asset ->
-                WebReplicaCard(padding = 14.dp, radius = 16.dp) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(asset.name, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Text(assetTypeLabel(asset.type), color = Muted, fontSize = 11.sp)
-                        }
-                        Text("${currencySymbol(asset.currency)} ${moneyFormat.format(asset.balance)}", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun NativeSettingsScreen(
     modifier: Modifier,
     apiPreferences: NativeApiPreferences,
@@ -3187,23 +3212,6 @@ private fun savingsPlanStatusLabel(value: String): String = when (value) {
     "COMPLETED" -> "已完成"
     "SKIPPED" -> "已跳过"
     else -> "待存入"
-}
-
-private fun assetTypeLabel(value: String): String = when (value) {
-    "CASH" -> "现金"
-    "BANK_CARD" -> "银行卡"
-    "ALIPAY" -> "支付宝"
-    "WECHAT" -> "微信"
-    "INVESTMENT" -> "投资"
-    else -> "其他资产"
-}
-
-private fun currencySymbol(value: String): String = when (value.uppercase()) {
-    "CNY" -> "¥"
-    "USD" -> "$"
-    "EUR" -> "€"
-    "JPY" -> "¥"
-    else -> value.uppercase()
 }
 
 private fun savingsPlanRecordedAmount(plan: NativeSavingsPlan): Double {
