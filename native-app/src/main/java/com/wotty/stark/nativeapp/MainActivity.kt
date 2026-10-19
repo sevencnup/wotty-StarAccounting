@@ -3,9 +3,14 @@ package com.wotty.stark.nativeapp
 import android.os.Bundle
 import android.content.Context
 import android.graphics.Typeface
+import android.net.Uri
+import android.util.Base64
 import android.view.View
+import java.io.ByteArrayOutputStream
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -104,6 +109,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
@@ -321,24 +327,6 @@ private data class NativeLoan(
     val dueDate: Int,
     val status: String,
 )
-private data class NativeSavingsGoal(
-    val id: String,
-    val name: String,
-    val targetAmount: Double,
-    val currentAmount: Double,
-    val deadline: String,
-    val depositType: String,
-    val status: String,
-)
-private data class NativeSavingsPlan(
-    val id: String,
-    val goalId: String,
-    val amount: Double,
-    val actualAmount: Double?,
-    val status: String,
-    val month: String,
-)
-
 private class NativeLedgerStore(context: Context) {
     private val preferences = context.getSharedPreferences("native-ledger", Context.MODE_PRIVATE)
     private val database = NativeEntityDatabase(context.applicationContext)
@@ -379,6 +367,41 @@ private class NativeLedgerStore(context: Context) {
                 .putString("entries", rows.toString())
         }
         editor.apply()
+    }
+
+    fun loadSavingsGoals(scope: String, accountId: String): List<NativeSavingsGoal> =
+        database.readAll(scope, accountId, "savingsGoals").mapNotNull(::parseNativeSavingsGoal)
+
+    fun loadSavingsPlans(scope: String, accountId: String): List<NativeSavingsPlan> =
+        database.readAll(scope, accountId, "savingsPlans").mapNotNull(::parseNativeSavingsPlan)
+
+    fun saveSavingsState(scope: String, accountId: String, goals: List<NativeSavingsGoal>, plans: List<NativeSavingsPlan>) {
+        database.replaceAll(scope, accountId, "savingsGoals", goals.map { goal ->
+            NativeStoredEntity(goal.id, goal.toPayload().toString(), goal.updatedAt)
+        })
+        database.replaceAll(scope, accountId, "savingsPlans", plans.map { plan ->
+            NativeStoredEntity(plan.id, plan.toPayload().toString(), plan.updatedAt)
+        })
+    }
+
+    fun saveSavingsGoal(scope: String, accountId: String, goal: NativeSavingsGoal) {
+        database.upsert(scope, accountId, "savingsGoals", NativeStoredEntity(goal.id, goal.toPayload().toString(), goal.updatedAt))
+    }
+
+    fun saveSavingsPlan(scope: String, accountId: String, plan: NativeSavingsPlan) {
+        database.upsert(scope, accountId, "savingsPlans", NativeStoredEntity(plan.id, plan.toPayload().toString(), plan.updatedAt))
+    }
+
+    fun deleteSavingsPlan(scope: String, accountId: String, planId: String) {
+        database.delete(scope, accountId, "savingsPlans", planId)
+    }
+
+    fun deleteSavingsGoal(scope: String, accountId: String, goalId: String) {
+        database.readAll(scope, accountId, "savingsPlans")
+            .mapNotNull(::parseNativeSavingsPlan)
+            .filter { it.goalId == goalId }
+            .forEach { database.delete(scope, accountId, "savingsPlans", it.id) }
+        database.delete(scope, accountId, "savingsGoals", goalId)
     }
 
     private fun parseEntryArray(raw: String): List<LedgerEntry> = runCatching {
@@ -641,19 +664,7 @@ private class NativeApiClient {
     suspend fun loadSavingsGoals(config: NativeApiPreferences): List<NativeSavingsGoal> = withContext(Dispatchers.IO) {
         val rows = getJsonArray(config, "/api/savings-goals?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
         buildList {
-            for (i in 0 until rows.length()) rows.optJSONObject(i)?.let {
-                add(
-                    NativeSavingsGoal(
-                        id = it.optString("id"),
-                        name = it.optString("name", "储蓄计划"),
-                        targetAmount = it.optDouble("targetAmount"),
-                        currentAmount = it.optDouble("currentAmount"),
-                        deadline = it.optString("deadline"),
-                        depositType = it.optString("depositType", "PRIVATE"),
-                        status = it.optString("status", "ACTIVE"),
-                    ),
-                )
-            }
+            for (i in 0 until rows.length()) rows.optJSONObject(i)?.let { parseNativeSavingsGoal(it.toString())?.let(::add) }
         }
     }
 
@@ -663,17 +674,54 @@ private class NativeApiClient {
             val rows = getJsonArray(config, "/api/savings-plans?goalId=" + java.net.URLEncoder.encode(goalId, "UTF-8"))
             for (index in 0 until rows.length()) {
                 val row = rows.optJSONObject(index) ?: continue
-                result += NativeSavingsPlan(
-                    id = row.optString("id"),
-                    goalId = row.optString("goalId", goalId),
-                    amount = row.optDouble("amount", 0.0),
-                    actualAmount = if (row.isNull("actualAmount")) null else row.optDouble("actualAmount"),
-                    status = row.optString("status", "PENDING"),
-                    month = row.optString("month"),
-                )
+                parseNativeSavingsPlan(row.toString())?.let { result += it.copy(goalId = it.goalId.ifBlank { goalId }) }
             }
         }
         return result
+    }
+
+    suspend fun saveSavingsGoal(config: NativeApiPreferences, goal: NativeSavingsGoal) {
+        postJson(config, "/api/savings-goals", goal.toPayload(config.userId))
+    }
+
+    suspend fun saveSavingsPlan(config: NativeApiPreferences, plan: NativeSavingsPlan) {
+        postJson(config, "/api/savings-plans", plan.toPayload())
+    }
+
+    suspend fun deleteSavingsGoal(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/savings-goals/" + java.net.URLEncoder.encode(id, "UTF-8"), "储蓄目标")
+    }
+
+    suspend fun deleteSavingsPlan(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/savings-plans/" + java.net.URLEncoder.encode(id, "UTF-8"), "储蓄计划")
+    }
+
+    private suspend fun deleteJson(config: NativeApiPreferences, path: String, label: String) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + path)
+            .header("Authorization", "Bearer ${config.token}")
+            .delete()
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val raw = response.body?.string().orEmpty()
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "${label}删除失败" })
+            }
+        }
+    }
+
+    private suspend fun postJson(config: NativeApiPreferences, path: String, payload: JSONObject) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + path)
+            .header("Authorization", "Bearer ${config.token}")
+            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val raw = response.body?.string().orEmpty()
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "储蓄数据保存失败" })
+            }
+        }
     }
 
     suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry) = withContext(Dispatchers.IO) {
@@ -775,6 +823,9 @@ private fun StarkNativeApp() {
     var deleteError by remember { mutableStateOf("") }
     var deletingEntry by remember { mutableStateOf(false) }
     var homeOverlay by remember { mutableStateOf<HomeOverlay?>(null) }
+    var recordingSavingsPlan by remember { mutableStateOf<NativeSavingsPlan?>(null) }
+    var savingsEditorOpen by remember { mutableStateOf(false) }
+    var savingsEditorGoal by remember { mutableStateOf<NativeSavingsGoal?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val ledgerStore = remember { NativeLedgerStore(context.applicationContext) }
     val apiClient = remember { NativeApiClient() }
@@ -806,11 +857,13 @@ private fun StarkNativeApp() {
             remoteAssets = emptyList()
             remoteBudgets = emptyList()
             remoteLoans = emptyList()
-            remoteSavings = emptyList()
-            remoteSavingsPlans = emptyList()
+            remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
+            remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
             apiStatus = "未连接云端"
             return@LaunchedEffect
         }
+        remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
+        remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
         apiStatus = "正在同步…"
         runCatching {
             val remote = apiClient.loadSnapshot(apiPreferences)
@@ -829,6 +882,7 @@ private fun StarkNativeApp() {
             remoteLoans = loans
             remoteSavings = savings
             remoteSavingsPlans = savingsPlans
+            ledgerStore.saveSavingsState(scope, accountId, savings, savingsPlans)
             apiStatus = "已同步 ${remote.entries.size} 笔"
         }.onFailure { error ->
             apiStatus = if (cached.entries.isNotEmpty()) {
@@ -885,6 +939,9 @@ private fun StarkNativeApp() {
                     plans = remoteSavingsPlans,
                     connected = apiPreferences.token.isNotBlank(),
                     onConnect = { homeOverlay = HomeOverlay.API },
+                    onRecordPlan = { recordingSavingsPlan = it },
+                    onNewGoal = { savingsEditorGoal = null; savingsEditorOpen = true },
+                    onEditGoal = { goal -> savingsEditorGoal = goal; savingsEditorOpen = true },
                 )
                 RootTab.LOANS -> LoansOverviewScreen(
                     modifier = Modifier.padding(insets),
@@ -1039,6 +1096,71 @@ private fun StarkNativeApp() {
                 val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
                 ledgerStore.save(dataScope, scopeAccountId, actualBalance, entries)
                 if (apiPreferences.token.isNotBlank()) apiStatus = "已保存流水"
+            },
+        )
+    }
+
+    recordingSavingsPlan?.let { plan ->
+        val goal = remoteSavings.firstOrNull { it.id == plan.goalId }
+        if (goal != null) {
+            SavingsRecordSheet(
+                plan = plan,
+                goal = goal,
+                onClose = { recordingSavingsPlan = null },
+                onSave = { updatedPlan, updatedGoal ->
+                    val dataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                    val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
+                    if (apiPreferences.token.isNotBlank()) {
+                        apiClient.saveSavingsGoal(apiPreferences, updatedGoal)
+                        apiClient.saveSavingsPlan(apiPreferences, updatedPlan)
+                    }
+                    ledgerStore.saveSavingsGoal(dataScope, scopeAccountId, updatedGoal)
+                    ledgerStore.saveSavingsPlan(dataScope, scopeAccountId, updatedPlan)
+                    remoteSavings = remoteSavings.map { if (it.id == updatedGoal.id) updatedGoal else it }
+                    remoteSavingsPlans = remoteSavingsPlans.map { if (it.id == updatedPlan.id) updatedPlan else it }
+                    if (apiPreferences.token.isNotBlank()) apiStatus = "已记录实际存入"
+                    recordingSavingsPlan = null
+                },
+            )
+        }
+    }
+
+    if (savingsEditorOpen) {
+        NativeSavingsEditorSheet(
+            goal = savingsEditorGoal,
+            goals = remoteSavings,
+            allPlans = remoteSavingsPlans,
+            accountId = apiPreferences.accountId.ifBlank { "local" },
+            userId = apiPreferences.userId,
+            onClose = { savingsEditorOpen = false; savingsEditorGoal = null },
+            onSave = { changes ->
+                val dataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
+                val updatedGoal = changes.goal.copy(
+                    userId = apiPreferences.userId.ifBlank { changes.goal.userId },
+                    accountId = scopeAccountId,
+                )
+                if (apiPreferences.token.isNotBlank()) {
+                    apiClient.saveSavingsGoal(apiPreferences, updatedGoal)
+                    changes.planIdsToDelete.forEach { apiClient.deleteSavingsPlan(apiPreferences, it) }
+                    changes.plansToSave.forEach { apiClient.saveSavingsPlan(apiPreferences, it) }
+                }
+                ledgerStore.saveSavingsGoal(dataScope, scopeAccountId, updatedGoal)
+                changes.planIdsToDelete.forEach { ledgerStore.deleteSavingsPlan(dataScope, scopeAccountId, it) }
+                changes.plansToSave.forEach { ledgerStore.saveSavingsPlan(dataScope, scopeAccountId, it) }
+                remoteSavings = remoteSavings.filterNot { it.id == updatedGoal.id } + updatedGoal
+                val changedIds = changes.planIdsToDelete.toSet() + changes.plansToSave.map { it.id }
+                remoteSavingsPlans = remoteSavingsPlans.filterNot { it.id in changedIds } + changes.plansToSave
+                if (apiPreferences.token.isNotBlank()) apiStatus = "已保存储蓄计划"
+            },
+            onDelete = { goalId ->
+                val dataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
+                if (apiPreferences.token.isNotBlank()) apiClient.deleteSavingsGoal(apiPreferences, goalId)
+                ledgerStore.deleteSavingsGoal(dataScope, scopeAccountId, goalId)
+                remoteSavings = remoteSavings.filterNot { it.id == goalId }
+                remoteSavingsPlans = remoteSavingsPlans.filterNot { it.goalId == goalId }
+                if (apiPreferences.token.isNotBlank()) apiStatus = "已删除储蓄目标"
             },
         )
     }
@@ -2197,13 +2319,54 @@ private fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun SavingsOverviewScreen(modifier: Modifier, goals: List<NativeSavingsGoal>, plans: List<NativeSavingsPlan>, connected: Boolean, onConnect: () -> Unit) {
+private fun SavingsOverviewScreen(
+    modifier: Modifier,
+    goals: List<NativeSavingsGoal>,
+    plans: List<NativeSavingsPlan>,
+    connected: Boolean,
+    onConnect: () -> Unit,
+    onRecordPlan: (NativeSavingsPlan) -> Unit,
+    onNewGoal: () -> Unit,
+    onEditGoal: (NativeSavingsGoal) -> Unit,
+) {
+    var previewProofImage by remember { mutableStateOf<String?>(null) }
     val activeGoals = goals.filter { it.status == "ACTIVE" }
-    val target = activeGoals.sumOf { savingsGoalTarget(it, plans) }
-    val saved = activeGoals.sumOf { savingsGoalSaved(it, plans) }
+    val displayGoals = (activeGoals.ifEmpty { goals }).take(4)
+    val target = goals.sumOf { savingsGoalTarget(it, plans) }
+    val saved = goals.sumOf { savingsGoalSaved(it, plans) }
     val progress = if (target <= 0.0) 0.0 else (saved / target * 100).coerceIn(0.0, 100.0)
+    val currentMonth = YearMonth.now().toString()
+    val currentMonthPlans = plans.filter { it.month == currentMonth }
+    val currentMonthSaved = currentMonthPlans.sumOf(::savingsPlanRecordedAmount)
+    val currentMonthPlanned = currentMonthPlans.sumOf { it.amount.coerceAtLeast(0.0) }
+    val completedPlans = plans.count { it.status == "COMPLETED" }
+    val pendingPlans = plans.count { it.status == "PENDING" }
+    val skippedPlans = plans.count { it.status == "SKIPPED" }
+    val pendingAmount = plans.filter { it.status == "PENDING" }.sumOf { it.amount.coerceAtLeast(0.0) }
+    val completionRate = if (plans.isEmpty()) 0.0 else completedPlans.toDouble() / plans.size * 100
+    val remainingTarget = (target - saved).coerceAtLeast(0.0)
+    val plansByYear = plans.groupBy { plan ->
+        plan.month.takeIf { it.matches(Regex("\\d{4}-(0[1-9]|1[0-2])")) }?.take(4) ?: "未设置"
+    }.entries.sortedWith(compareByDescending { it.key.toIntOrNull() ?: -1 })
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { NativePageHeader("储蓄计划", "目标、累计存入与完成进度") }
+        item {
+            Text(
+                "＋ 新建储蓄目标",
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Blue)
+                    .clickable(onClick = onNewGoal).padding(vertical = 13.dp),
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        }
+        item {
+            WebReplicaCard(padding = 13.dp, radius = 16.dp) {
+                Text("规划提醒", color = Amber, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("本页面用于安排储蓄计划和记录实际存入，不会实际转移资金。", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+        }
         item {
             WebReplicaCard(padding = 17.dp, radius = 20.dp) {
                 Text("累计存入", color = Muted, fontSize = 12.sp)
@@ -2219,27 +2382,66 @@ private fun SavingsOverviewScreen(modifier: Modifier, goals: List<NativeSavingsG
                 }
             }
         }
-        if (!connected) item { CloudConnectNotice("连接云端账本后查看储蓄目标", onConnect) }
-        if (activeGoals.isEmpty()) {
+        item {
+            WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text("本月计划", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text(currentMonth, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                    }
+                    Text("已存 ¥ ${moneyFormat.format(currentMonthSaved)}", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(9.dp))
+                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Line)) {
+                    val fraction = if (currentMonthPlanned <= 0.0) 0f else (currentMonthSaved / currentMonthPlanned).toFloat().coerceIn(0f, 1f)
+                    Box(Modifier.fillMaxWidth(fraction).height(6.dp).clip(CircleShape).background(Green))
+                }
+                Text("计划 ¥ ${moneyFormat.format(currentMonthPlanned)}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp))
+            }
+        }
+        item {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                WebReplicaCard(modifier = Modifier.weight(1f), padding = 11.dp, radius = 15.dp) {
+                    Text("目标缺口", color = Muted, fontSize = 10.sp)
+                    Text("¥ ${moneyFormat.format(remainingTarget)}", color = Amber, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+                WebReplicaCard(modifier = Modifier.weight(1f), padding = 11.dp, radius = 15.dp) {
+                    Text("待存金额", color = Muted, fontSize = 10.sp)
+                    Text("¥ ${moneyFormat.format(pendingAmount)}", color = Blue, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                }
+                WebReplicaCard(modifier = Modifier.weight(1f), padding = 11.dp, radius = 15.dp) {
+                    Text("计划完成率", color = Muted, fontSize = 10.sp)
+                    Text("${percentLabel(completionRate)}%", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("$completedPlans 已完成 · $pendingPlans 待存${if (skippedPlans > 0) " · $skippedPlans 跳过" else ""}", color = Muted, fontSize = 8.sp, maxLines = 1)
+                }
+            }
+        }
+        if (!connected) item {
+            CloudConnectNotice("本地目标仅保存在本机；登录后查看当前云端账本", onConnect)
+        }
+        if (displayGoals.isEmpty()) {
             item {
                 EmptyPageCard(
                     title = if (connected) "还没有活跃储蓄目标" else "尚无本地储蓄目标",
-                    detail = "目标组和每月计划的原生编辑与存入记录正在接入。",
+                    detail = "创建目标后，可安排单月或隔月计划并记录实际存入。",
                 )
             }
         } else {
             item { Text("目标组", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-            items(activeGoals, key = { it.id }) { goal ->
+            items(displayGoals, key = { it.id }) { goal ->
                 val goalTarget = savingsGoalTarget(goal, plans)
                 val goalSaved = savingsGoalSaved(goal, plans)
                 val goalProgress = if (goalTarget <= 0.0) 0.0 else (goalSaved / goalTarget * 100).coerceIn(0.0, 100.0)
-                WebReplicaCard(padding = 15.dp, radius = 17.dp) {
+                WebReplicaCard(modifier = Modifier.clickable { onEditGoal(goal) }, padding = 15.dp, radius = 17.dp) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(goal.name, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Text("${depositTypeLabel(goal.depositType)}${goal.deadline.takeIf { it.isNotBlank() }?.let { " · 截止 $it" }.orEmpty()}", color = Muted, fontSize = 11.sp)
                         }
-                        Text("${percentLabel(goalProgress)}%", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("${percentLabel(goalProgress)}%", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("编辑计划 ›", color = Blue, fontSize = 10.sp)
+                        }
                     }
                     Spacer(Modifier.height(10.dp))
                     Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Line)) {
@@ -2252,6 +2454,262 @@ private fun SavingsOverviewScreen(modifier: Modifier, goals: List<NativeSavingsG
                     }
                 }
             }
+        }
+        item { Text("月度计划", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+        if (plans.isEmpty()) {
+            item {
+                EmptyPageCard(
+                    title = "暂无月度计划",
+                    detail = "创建月度计划后，可在这里记录实际存入金额和凭证。",
+                )
+            }
+        } else {
+            plansByYear.forEach { (year, yearPlans) ->
+                item {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (year == "未设置") year else "$year 年", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text("${yearPlans.size} 项计划", color = Muted, fontSize = 10.sp)
+                    }
+                }
+                items(yearPlans.sortedByDescending { it.month }, key = { it.id }) { plan ->
+                    val goal = goals.firstOrNull { it.id == plan.goalId }
+                    val recordedAmount = savingsPlanRecordedAmount(plan)
+                    WebReplicaCard(padding = 14.dp, radius = 16.dp) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Column(Modifier.weight(1f)) {
+                                Text(goal?.name ?: "储蓄计划", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("${plan.month} · ${savingsPlanStatusLabel(plan.status)}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                            }
+                            Text(if (plan.status == "COMPLETED") "+¥ ${moneyFormat.format(recordedAmount)}" else "计划 ¥ ${moneyFormat.format(plan.amount)}", color = if (plan.status == "COMPLETED") Green else Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(Modifier.height(9.dp))
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("已存 ¥ ${moneyFormat.format(recordedAmount)} / ¥ ${moneyFormat.format(plan.amount)}", color = Muted, fontSize = 10.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!plan.proofImage.isNullOrBlank()) {
+                                    TextButton(onClick = { previewProofImage = plan.proofImage }) { Text("查看凭证", fontSize = 11.sp) }
+                                }
+                                TextButton(onClick = { onRecordPlan(plan) }, enabled = goal != null) {
+                                    Text(if (plan.status == "COMPLETED") "修改记录" else "实际存入", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    previewProofImage?.let { proof -> NativeProofImageViewer(proof, onDismiss = { previewProofImage = null }) }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SavingsRecordSheet(
+    plan: NativeSavingsPlan,
+    goal: NativeSavingsGoal,
+    onClose: () -> Unit,
+    onSave: suspend (NativeSavingsPlan, NativeSavingsGoal) -> Unit,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var amountText by remember(plan.id) { mutableStateOf((plan.actualAmount ?: plan.amount).takeIf { it > 0.0 }?.toString().orEmpty()) }
+    var recordedDate by remember(plan.id) {
+        mutableStateOf((plan.actualDate ?: plan.updatedAt).take(16).ifBlank {
+            java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+        })
+    }
+    var proofImage by remember(plan.id) { mutableStateOf(plan.proofImage) }
+    var previewProof by remember { mutableStateOf<String?>(null) }
+    var loadingProof by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf("") }
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) coroutineScope.launch {
+            loadingProof = true
+            errorMessage = ""
+            runCatching { withContext(Dispatchers.IO) { compressSavingsProofImage(context, uri) } }
+                .onSuccess { proofImage = it }
+                .onFailure { errorMessage = it.message ?: "图片处理失败" }
+            loadingProof = false
+        }
+    }
+    val parsedDateTime = runCatching {
+        java.time.LocalDateTime.parse(recordedDate, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+    }.getOrElse { java.time.LocalDateTime.now() }
+    val amount = amountText.toDoubleOrNull() ?: 0.0
+
+    ModalBottomSheet(
+        onDismissRequest = onClose,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = Color(0xFFFBFCFE),
+        dragHandle = { Box(Modifier.padding(top = 10.dp).width(36.dp).height(4.dp).clip(CircleShape).background(Color(0xFFD7DFEA))) },
+    ) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 760.dp).verticalScroll(rememberScrollState())
+                .navigationBarsPadding().padding(start = 22.dp, end = 22.dp, bottom = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column {
+                    Text(if (plan.status == "COMPLETED") "修改实际存入" else "记录实际存入", color = Ink, fontWeight = FontWeight.Black, fontSize = 22.sp)
+                    Text("${goal.name} · ${plan.month}", color = Muted, fontSize = 12.sp)
+                }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "关闭", tint = Muted) }
+            }
+            WebReplicaCard(padding = 13.dp, radius = 15.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("计划金额", color = Muted, fontSize = 11.sp)
+                    Text("¥ ${moneyFormat.format(plan.amount)}", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            NativeInput(
+                label = "实际存入金额",
+                value = amountText,
+                onValueChange = { amountText = it.filter { char -> char.isDigit() || char == '.' } },
+                placeholder = "0.00",
+                isAmount = true,
+            )
+            Column {
+                Text("实际存入日期", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                TextButton(onClick = {
+                    android.app.DatePickerDialog(
+                        context,
+                        { _, year, month, day ->
+                            val time = recordedDate.substringAfter(' ', "12:00")
+                            recordedDate = "%04d-%02d-%02d %s".format(java.util.Locale.ROOT, year, month + 1, day, time)
+                        },
+                        parsedDateTime.year,
+                        parsedDateTime.monthValue - 1,
+                        parsedDateTime.dayOfMonth,
+                    ).show()
+                }) { Text(recordedDate) }
+                TextButton(onClick = {
+                    android.app.TimePickerDialog(
+                        context,
+                        { _, hour, minute ->
+                            val date = recordedDate.substringBefore(' ')
+                            recordedDate = "$date %02d:%02d".format(java.util.Locale.ROOT, hour, minute)
+                        },
+                        parsedDateTime.hour,
+                        parsedDateTime.minute,
+                        true,
+                    ).show()
+                }) { Text("调整时间") }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("图片凭证", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                if (!proofImage.isNullOrBlank()) {
+                    val bitmap = remember(proofImage) { decodeSavingsProofImage(proofImage.orEmpty()) }
+                    if (bitmap != null) {
+                        Image(
+                            bitmap = bitmap.asImageBitmap(),
+                            contentDescription = "储蓄凭证预览",
+                            modifier = Modifier.fillMaxWidth().height(180.dp).clip(RoundedCornerShape(14.dp)).clickable { previewProof = proofImage },
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TextButton(onClick = { previewProof = proofImage }) { Text("查看大图") }
+                        TextButton(onClick = { proofImage = null }) { Text("清除图片", color = Red) }
+                    }
+                } else {
+                    TextButton(onClick = { imagePicker.launch("image/*") }, enabled = !loadingProof) {
+                        Text(if (loadingProof) "正在处理图片…" else "＋ 添加图片凭证")
+                    }
+                }
+            }
+            if (errorMessage.isNotBlank()) Text(errorMessage, color = Red, fontSize = 12.sp)
+            Text(
+                if (saving) "保存中…" else if (amount > 0) "保存实际存入 ¥ ${moneyFormat.format(amount)}" else "请输入大于 0 的金额",
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .background(if (amount > 0 && !saving && !loadingProof) Green else Color(0xFFCCD5E2))
+                    .clickable(enabled = amount > 0 && !saving && !loadingProof) {
+                        val now = java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val previousRecorded = savingsPlanRecordedAmount(plan)
+                        val nextPlan = plan.copy(
+                            status = "COMPLETED",
+                            actualAmount = amount,
+                            actualDate = if (recordedDate.length == 16) "$recordedDate:00" else recordedDate,
+                            proofImage = proofImage,
+                            updatedAt = now,
+                        )
+                        val nextGoal = goal.copy(
+                            currentAmount = (goal.currentAmount - previousRecorded + amount).coerceAtLeast(0.0),
+                            updatedAt = now,
+                        )
+                        saving = true
+                        errorMessage = ""
+                        coroutineScope.launch {
+                            try {
+                                onSave(nextPlan, nextGoal)
+                                onClose()
+                            } catch (error: Throwable) {
+                                errorMessage = error.message ?: "保存失败，请检查网络后重试"
+                            } finally {
+                                saving = false
+                            }
+                        }
+                    }
+                    .padding(vertical = 15.dp),
+                textAlign = TextAlign.Center,
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+    previewProof?.let { proof -> NativeProofImageViewer(proof, onDismiss = { previewProof = null }) }
+}
+
+private fun compressSavingsProofImage(context: Context, uri: Uri): String {
+    val originalLength = context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+    require(originalLength == null || originalLength <= 12L * 1024 * 1024) { "图片不能超过 12MB" }
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+    require(bounds.outWidth > 0 && bounds.outHeight > 0) { "图片读取失败" }
+    var sampleSize = 1
+    while (maxOf(bounds.outWidth, bounds.outHeight) / sampleSize > 1440) sampleSize *= 2
+    val options = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    val decoded = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+        ?: throw IllegalArgumentException("图片读取失败")
+    val scale = minOf(1f, 720f / decoded.width)
+    val scaled = if (scale < 1f) android.graphics.Bitmap.createScaledBitmap(
+        decoded,
+        (decoded.width * scale).toInt().coerceAtLeast(1),
+        (decoded.height * scale).toInt().coerceAtLeast(1),
+        true,
+    ) else decoded
+    val bytes = ByteArrayOutputStream().use { output ->
+        scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 62, output)
+        output.toByteArray()
+    }
+    if (scaled !== decoded) scaled.recycle()
+    decoded.recycle()
+    return "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+}
+
+private fun decodeSavingsProofImage(source: String): android.graphics.Bitmap? = runCatching {
+    val encoded = source.substringAfter("base64,", source)
+    val bytes = Base64.decode(encoded, Base64.DEFAULT)
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+}.getOrNull()
+
+@Composable
+private fun NativeProofImageViewer(source: String, onDismiss: () -> Unit) {
+    val bitmap = remember(source) { decodeSavingsProofImage(source) }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Column(
+            Modifier.fillMaxSize().background(Color.Black.copy(alpha = .96f)).clickable { onDismiss() }
+                .padding(18.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (bitmap != null) {
+                Image(bitmap.asImageBitmap(), contentDescription = "图片凭证大图", modifier = Modifier.fillMaxWidth().weight(1f), contentScale = ContentScale.Fit)
+            } else {
+                Text("图片无法读取", color = Color.White)
+            }
+            TextButton(onClick = onDismiss) { Text("关闭", color = Color.White) }
         }
     }
 }
@@ -2403,6 +2861,12 @@ private fun depositTypeLabel(value: String): String = when (value) {
     "HELP_DEPOSIT" -> "代存"
     "FIXED_TERM" -> "定期存款"
     else -> "个人储蓄"
+}
+
+private fun savingsPlanStatusLabel(value: String): String = when (value) {
+    "COMPLETED" -> "已完成"
+    "SKIPPED" -> "已跳过"
+    else -> "待存入"
 }
 
 private fun assetTypeLabel(value: String): String = when (value) {
