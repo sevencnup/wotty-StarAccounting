@@ -48,7 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -105,12 +104,25 @@ internal fun NativeSettingsScreen(
     onToggleCategoryRule: suspend (NativeCategoryRule) -> Unit,
     onDeleteCategoryRule: suspend (NativeCategoryRule) -> Unit,
 ) {
+    val uiPreferences = LocalNativeUiPreferences.current
     var subscriptionsOpen by remember { mutableStateOf(false) }
     var categoryRulesOpen by remember { mutableStateOf(false) }
     var csvExportOpen by remember { mutableStateOf(false) }
     var csvImportOpen by remember { mutableStateOf(false) }
+    var languageOpen by remember { mutableStateOf(false) }
+    var fontOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
+    val languageLabel = when (uiPreferences.value.language) {
+        NativeLanguageChoice.SYSTEM -> "跟随系统"
+        NativeLanguageChoice.ZH_CN -> "简体中文"
+        NativeLanguageChoice.EN_US -> "英文"
+    }
+    val fontLabel = when (uiPreferences.value.font) {
+        NativeFontChoice.SMALL -> "较小"
+        NativeFontChoice.STANDARD -> "标准"
+        NativeFontChoice.LARGE -> "较大"
+    }
     LazyColumn(
         modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp),
@@ -172,6 +184,11 @@ internal fun NativeSettingsScreen(
             )
         }
         item {
+            SettingsSectionTitle("界面显示", "选择界面语言和文字大小")
+            SettingsMenuRow("语言", languageLabel, SettingsBlue, Icons.Default.Info) { languageOpen = true }
+            SettingsMenuRow("字体大小", fontLabel, SettingsAmber, Icons.Default.Settings) { fontOpen = true }
+        }
+        item {
             SettingsSectionTitle("应用信息", "纯 Kotlin · Jetpack Compose")
             SettingsMenuRow("帮助与反馈", "数据同步和周期支出的说明", SettingsBlue, Icons.Default.Info) { helpOpen = true }
             SettingsMenuRow("关于星会计", "版本 ${BuildConfig.VERSION_NAME}", SettingsAmber, Icons.Default.Settings) { aboutOpen = true }
@@ -211,6 +228,20 @@ internal fun NativeSettingsScreen(
             onDismiss = { csvImportOpen = false },
             onPick = onPickBills,
             onConfirm = onConfirmBillImport,
+        )
+    }
+    if (languageOpen) {
+        NativeLanguageSheet(
+            selected = uiPreferences.value.language,
+            onSelect = uiPreferences::selectLanguage,
+            onDismiss = { languageOpen = false },
+        )
+    }
+    if (fontOpen) {
+        NativeFontSheet(
+            selected = uiPreferences.value.font,
+            onSelect = uiPreferences::selectFont,
+            onDismiss = { fontOpen = false },
         )
     }
     if (helpOpen) {
@@ -396,6 +427,84 @@ private fun NativeCsvImportSheet(
                 }
             }
             Text("目前支持 CSV。XLS/XLSX 文件请先另存为 CSV。", color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(bottom = 14.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeLanguageSheet(
+    selected: NativeLanguageChoice,
+    onSelect: (NativeLanguageChoice) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val choices = listOf(
+        Triple(NativeLanguageChoice.SYSTEM, "跟随系统", "使用设备的语言偏好"),
+        Triple(NativeLanguageChoice.ZH_CN, "简体中文", "固定使用简体中文"),
+        Triple(NativeLanguageChoice.EN_US, "英文", "固定使用英文"),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("语言", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("跟随系统会按设备当前首选语言显示。", color = SettingsMuted, fontSize = 11.sp)
+            SettingsPanel {
+                choices.forEachIndexed { index, (choice, title, detail) ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onSelect(choice) }.padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(title, color = SettingsInk, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(detail, color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        }
+                        Text(if (selected == choice) "✓" else "", color = SettingsBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (index < choices.lastIndex) HorizontalDivider(color = SettingsLine)
+                }
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("完成") }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeFontSheet(
+    selected: NativeFontChoice,
+    onSelect: (NativeFontChoice) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val choices = listOf(
+        Triple(NativeFontChoice.SMALL, "较小", 13.sp),
+        Triple(NativeFontChoice.STANDARD, "标准", 16.sp),
+        Triple(NativeFontChoice.LARGE, "较大", 19.sp),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 18.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text("字体大小", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text("设置会应用到全部页面，并与系统无障碍字号叠加。", color = SettingsMuted, fontSize = 11.sp)
+            SettingsPanel {
+                choices.forEachIndexed { index, (choice, title, sampleSize) ->
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { onSelect(choice) }.padding(vertical = 10.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("Aa", color = SettingsBlue, fontSize = sampleSize, fontWeight = FontWeight.Bold, modifier = Modifier.width(48.dp))
+                        Text(title, color = SettingsInk, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Text(if (selected == choice) "✓" else "", color = SettingsBlue, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                    if (index < choices.lastIndex) HorizontalDivider(color = SettingsLine)
+                }
+            }
+            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) { Text("完成") }
         }
     }
 }
