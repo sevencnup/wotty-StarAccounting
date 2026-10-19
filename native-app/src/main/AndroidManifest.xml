@@ -5,7 +5,7 @@
         android:allowBackup="true"
         android:usesCleartextTraffic="true"
         android:icon="@drawable/ic_launcher_native"
-        android:label="星会计 原生版"
+        android:label="${appLabel}"
         android:roundIcon="@drawable/ic_launcher_native"
         android:supportsRtl="true"
         android:theme="@style/Theme.StarkNative">
