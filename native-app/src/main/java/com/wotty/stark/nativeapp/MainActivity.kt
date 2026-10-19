@@ -3274,11 +3274,13 @@ private fun ConsumptionScreen(
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var selectedAccount by remember { mutableStateOf("全部账户") }
     var query by remember { mutableStateOf("") }
+    var detailQuery by remember { mutableStateOf("") }
     LaunchedEffect(month) {
         selectedType = "全部"
         selectedCategory = null
         selectedAccount = "全部账户"
         query = ""
+        detailQuery = ""
     }
     val selectedYear = month.toIntOrNull()?.takeIf { month.length == 4 }
     val monthValue = runCatching { YearMonth.parse(month) }.getOrElse { YearMonth.now() }
@@ -3300,6 +3302,13 @@ private fun ConsumptionScreen(
             }
         }
         .sortedByDescending { it.date }
+    val detailMatchedEntries = visibleEntries.filter { entry ->
+        val normalizedQuery = detailQuery.trim()
+        normalizedQuery.isBlank() || listOf(
+            entry.analysisCategory(), entry.category, entry.merchant, entry.description, entry.platform,
+        ).any { it.contains(normalizedQuery, ignoreCase = true) }
+    }
+    val detailEntries = detailMatchedEntries.sortedByDescending { it.date }.take(5)
     val analysisEntries = visibleEntries.filter { it.analysisType() == EntryType.EXPENSE || it.analysisType() == EntryType.INCOME }
     val categoryType = if (selectedType == "收入") EntryType.INCOME else EntryType.EXPENSE
     val categoryEntries = analysisEntries.filter { it.analysisType() == categoryType }
@@ -3337,9 +3346,8 @@ private fun ConsumptionScreen(
         .sortedByDescending { it.second }
     val flowEdges = analysisEntries.filter { it.analysisType() == platformType }
         .groupBy { normalizeConsumptionPlatform(it.platform) to it.analysisCategory() }
-        .map { (key, rows) -> ConsumptionFlowEdge(key.first, key.second, rows.sumOf { it.amount }, rows.size) }
-        .sortedByDescending { it.amount }
-        .take(10)
+        .map { (key, rows) -> NativeConsumptionFlowEdge(key.first, key.second, rows.sumOf { it.amount }, rows.size) }
+        .sortedByDescending(NativeConsumptionFlowEdge::amount)
     val merchantTotals = analysisEntries.filter { it.analysisType() == platformType }
         .groupBy { it.merchant.trim().ifBlank { "其他商家" } }
         .map { (name, rows) -> name to rows.sumOf { it.amount } }
@@ -3444,17 +3452,15 @@ private fun ConsumptionScreen(
                 }
             }
         }
-        if (flowEdges.isNotEmpty()) {
-            item {
-                ConsumptionFlowCard(
-                    edges = flowEdges,
-                    flowTypeLabel = if (selectedType == "收入") "收入" else "支出",
-                    selectedAccount = selectedAccount,
-                    selectedCategory = selectedCategory,
-                    onPlatformClick = { platform -> selectedAccount = if (selectedAccount == platform) "全部账户" else platform },
-                    onCategoryClick = { category -> selectedCategory = if (selectedCategory == category) null else category },
-                )
-            }
+        item {
+            NativeConsumptionSankeyCard(
+                edges = flowEdges,
+                flowTypeLabel = if (selectedType == "收入") "收入" else "支出",
+                selectedAccount = selectedAccount,
+                selectedCategory = selectedCategory,
+                onPlatformClick = { platform -> selectedAccount = if (selectedAccount == platform) "全部账户" else platform },
+                onCategoryClick = { category -> selectedCategory = if (selectedCategory == category) null else category },
+            )
         }
         if (merchantTotals.isNotEmpty()) {
             item {
@@ -3489,21 +3495,42 @@ private fun ConsumptionScreen(
                 }
             }
         }
+        item {
+            WebReplicaCard(padding = 14.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Column {
+                        Text("流水明细", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("${visibleEntries.size} 笔筛选结果 · 显示最近 ${detailEntries.size} 笔", color = Muted, fontSize = 10.sp)
+                    }
+                    if (detailQuery.isNotBlank()) TextButton(onClick = { detailQuery = "" }) { Text("清除搜索") }
+                }
+                OutlinedTextField(
+                    value = detailQuery,
+                    onValueChange = { detailQuery = it },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                    singleLine = true,
+                    placeholder = { Text("在当前筛选结果中搜索") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
+                    shape = RoundedCornerShape(14.dp),
+                )
+            }
+        }
         if (visibleEntries.isEmpty()) {
             item {
-                WebReplicaCard(padding = 22.dp) {
+                WebReplicaCard(padding = 20.dp) {
                     Text(if (selectedCategory != null) "这个分类没有匹配账单" else "当前范围还没有账单", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text("记一笔后，收支和分类统计会显示在这里。", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                 }
             }
-        } else {
+        } else if (detailEntries.isEmpty()) {
             item {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("账单明细", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("${visibleEntries.size} 笔", color = Muted, fontSize = 11.sp)
+                WebReplicaCard(padding = 20.dp) {
+                    Text("当前筛选结果中没有匹配流水", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text("可以更换关键词，或清除二次搜索。", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                 }
             }
-            items(visibleEntries, key = { it.id }) { entry ->
+        } else {
+            items(detailEntries, key = { it.id }) { entry ->
                 LedgerRow(entry, showActions = true, onEdit = onEditEntry, onDelete = onDeleteEntry)
             }
         }
@@ -3617,77 +3644,6 @@ private fun compactMoney(amount: Double): String = when {
     amount >= 10000 -> "${(amount / 10000).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}万"
     amount >= 1000 -> "${(amount / 1000).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}k"
     else -> amount.toLong().toString()
-}
-
-private data class ConsumptionFlowEdge(
-    val platform: String,
-    val category: String,
-    val amount: Double,
-    val count: Int,
-)
-
-@Composable
-private fun ConsumptionFlowCard(
-    edges: List<ConsumptionFlowEdge>,
-    flowTypeLabel: String,
-    selectedAccount: String,
-    selectedCategory: String?,
-    onPlatformClick: (String) -> Unit,
-    onCategoryClick: (String) -> Unit,
-) {
-    val total = edges.sumOf { it.amount }.coerceAtLeast(.01)
-    val platformColors = mapOf(
-        "微信" to Color(0xFF10A66A),
-        "支付宝" to Color(0xFF2A78D6),
-        "银行卡" to Color(0xFF008300),
-        "现金" to Color(0xFFEDA100),
-        "其他" to Color(0xFF7164B8),
-    )
-    WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-        Text(if (flowTypeLabel == "收入") "收入流向" else "消费流向", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        Text("账户 → 分类 · 按${flowTypeLabel}金额关联，点击两端筛选", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 10.dp))
-        edges.forEach { edge ->
-            val color = platformColors[edge.platform] ?: Blue
-            val fraction = (edge.amount / total).toFloat().coerceIn(0f, 1f)
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    edge.platform,
-                    modifier = Modifier.widthIn(min = 52.dp, max = 92.dp).clip(RoundedCornerShape(8.dp))
-                        .background(if (selectedAccount == edge.platform) color.copy(alpha = .16f) else color.copy(alpha = .08f))
-                        .clickable { onPlatformClick(edge.platform) }
-                        .padding(horizontal = 7.dp, vertical = 6.dp),
-                    color = color,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text("  →  ", color = Muted, fontSize = 12.sp)
-                Text(
-                    edge.category,
-                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
-                        .background(if (selectedCategory == edge.category) SoftBlue else Color(0xFFF4F7FB))
-                        .clickable { onCategoryClick(edge.category) }
-                        .padding(horizontal = 7.dp, vertical = 6.dp),
-                    color = Ink,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.width(8.dp))
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("¥ ${moneyFormat.format(edge.amount)}", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    Text("${edge.count} 笔", color = Muted, fontSize = 9.sp)
-                }
-            }
-            Spacer(Modifier.height(5.dp))
-            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Line)) {
-                Box(Modifier.fillMaxWidth(fraction).height(4.dp).clip(CircleShape).background(color.copy(alpha = .8f)))
-            }
-            Spacer(Modifier.height(9.dp))
-        }
-    }
 }
 
 @Composable
