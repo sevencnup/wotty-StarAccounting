@@ -151,6 +151,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.YearMonth
 import java.util.Locale
+import kotlin.math.roundToInt
 import java.util.UUID
 import android.graphics.BitmapFactory
 import okhttp3.OkHttpClient
@@ -1365,6 +1366,18 @@ private fun StarkNativeApp() {
         selectedBudgetPeriod == "MONTHLY" && apiPreferences.token.isBlank() -> monthlyBudget
         else -> 0.0
     }
+    val homeDashboardSummary = remember(
+        entries.toList(), remoteBudgets, remoteLoans, remoteSavings, remoteSavingsPlans, selectedMonth,
+    ) {
+        buildNativeHomeDashboardSummary(
+            entries = entries.toList(),
+            budgets = remoteBudgets,
+            loans = remoteLoans,
+            savingsGoals = remoteSavings,
+            savingsPlans = remoteSavingsPlans,
+            reportingPeriod = selectedMonth,
+        )
+    }
     var csvExportStatus by remember { mutableStateOf("导出当前账本全部流水为 UTF-8 CSV") }
     var exportingCsv by remember { mutableStateOf(false) }
     var csvImportStatus by remember { mutableStateOf("选择 CSV 后先预览，再确认导入") }
@@ -1789,6 +1802,7 @@ private fun StarkNativeApp() {
                     remoteLoans = remoteLoans,
                     remoteSavings = remoteSavings,
                     remoteSavingsPlans = remoteSavingsPlans,
+                    dashboardSummary = homeDashboardSummary,
                     onHomeMetricChange = {
                         homeMetric = it
                         ledgerStore.saveHomeDisplayPreferences(it, balancePeriod)
@@ -2126,12 +2140,7 @@ private fun StarkNativeApp() {
             },
         )
         HomeOverlay.DIAGNOSTIC -> HomeSummaryDialog(
-            title = "财务诊断",
-            description = "本期收支概览",
-            income = entries.filter { it.type == EntryType.INCOME && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
-            expense = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
-            budget = homePeriodBudget,
-            onBudgetChange = null,
+            summary = homeDashboardSummary,
             onDismiss = { homeOverlay = null },
             onOpenTransactions = { homeOverlay = null; selectedTab = RootTab.CONSUMPTION },
         )
@@ -2439,6 +2448,7 @@ private fun HomeScreen(
     remoteLoans: List<NativeLoan>,
     remoteSavings: List<NativeSavingsGoal>,
     remoteSavingsPlans: List<NativeSavingsPlan>,
+    dashboardSummary: NativeHomeDashboardSummary,
     onHomeMetricChange: (HomeMetric) -> Unit,
     onBalancePeriodChange: (BalancePeriod) -> Unit,
     onSalaryDayClick: () -> Unit,
@@ -2539,8 +2549,8 @@ private fun HomeScreen(
                 onOpenSavings = { onSelectTab(RootTab.SAVINGS) },
             )
         }
-        item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets, entries, selectedMonth) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
-        item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteAssets, remoteLoans, remoteSavings, remoteSavingsPlans, onOpenOverlay, onSelectTab) }
+        item { WebReplicaDiagnosticBanner(dashboardSummary) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
+        item { WebReplicaCompass(dashboardSummary, actualBalance, remoteAssets, remoteLoans, remoteSavings, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(reportingEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
         item { WebReplicaCashflowTrend(entries, month, selectedYear) }
@@ -3077,24 +3087,19 @@ private fun BudgetSegment(label: String, value: Double, color: Color, modifier: 
 }
 
 @Composable
-private fun WebReplicaDiagnosticBanner(
-    income: Double,
-    expense: Double,
-    periodBudget: Double,
-    budgets: List<NativeBudget>,
-    entries: List<LedgerEntry>,
-    reportingMonth: String,
-    onOpen: () -> Unit,
-) {
-    val warning = expense > income && income > 0
-    val isYearlyRange = reportingMonth.length == 4
-    val budgetAlert = budgets.any { budget ->
-        budget.scopeType == "GLOBAL" && budget.amount > 0.0 &&
-            (budget.period == if (isYearlyRange) "YEARLY" else "MONTHLY") &&
-            calculateNativeBudgetSpent(entries, budget, reportingMonth, expense) / budget.amount * 100 >= budget.alertPercent
+private fun WebReplicaDiagnosticBanner(summary: NativeHomeDashboardSummary, onOpen: () -> Unit) {
+    val budget = summary.budgetAlerts.firstOrNull()
+    val hasRisk = budget?.tone == "danger" || budget?.tone == "warn"
+    val topInsight = summary.insights.firstOrNull()
+    val headline = topInsight?.detail ?: budget?.let {
+        "${it.title}已消耗 ${it.percent.roundToInt()}%，结余处于合理区间"
+    } ?: if (summary.reportingPeriod.length == 4) {
+        "本年度现金流平稳，无超支或临近违约风险"
+    } else {
+        "本月现金流平稳，无超支或临近违约风险"
     }
-    val warningLabel = if (isYearlyRange) "本年度支出偏高，建议关注预算" else "本月支出偏高，建议关注预算"
-    val calmLabel = if (isYearlyRange) "本年度现金流平稳，无超支或临近违约风险" else "本月现金流平稳，无超支或临近违约风险"
+    val title = if (hasRisk) "预算需关注" else "财务诊断"
+    val accent = if (hasRisk) Color(0xFFE11D48) else Blue
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -3104,36 +3109,60 @@ private fun WebReplicaDiagnosticBanner(
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(Color(0xFFEAF6FF)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
+        Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(accent.copy(alpha = .09f)), contentAlignment = Alignment.Center) {
+            Icon(Icons.Default.AutoGraph, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
-                Text("财务诊断", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (warning || budgetAlert || (periodBudget > 0 && expense > periodBudget)) warningLabel else calmLabel, color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text(headline, color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text("查看  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-private fun WebReplicaCompass(income: Double, expense: Double, actualBalance: Double, monthlyBudget: Double, remoteAssets: List<NativeAsset>, remoteLoans: List<NativeLoan>, remoteSavings: List<NativeSavingsGoal>, remoteSavingsPlans: List<NativeSavingsPlan>, onOpenOverlay: (HomeOverlay) -> Unit, onSelectTab: (RootTab) -> Unit) {
+private fun WebReplicaCompass(
+    summary: NativeHomeDashboardSummary,
+    actualBalance: Double,
+    remoteAssets: List<NativeAsset>,
+    remoteLoans: List<NativeLoan>,
+    remoteSavings: List<NativeSavingsGoal>,
+    onOpenOverlay: (HomeOverlay) -> Unit,
+    onSelectTab: (RootTab) -> Unit,
+) {
     val netWorth = nativeAssetOverview(remoteAssets, remoteSavings, remoteLoans, actualBalance).netWorth
-    val base = if (monthlyBudget > 0) monthlyBudget else income
-    val usedPercent = if (base > 0) (expense / base * 100).toInt().coerceIn(0, 100) else 0
+    val budget = summary.budgetAlerts.firstOrNull()
+    val budgetPercent = budget?.percent?.roundToInt() ?: 0
+    val budgetLeft = budget?.let { (100 - budgetPercent).coerceAtLeast(0) } ?: 100
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             CompassTile("净资产", "¥ " + moneyFormat.format(netWorth), "资产减去关联负债", Green, Icons.Default.CheckCircle, Modifier.weight(1f)) { onSelectTab(RootTab.ASSETS) }
-            CompassTile("预算余量", (100 - usedPercent).toString() + "%", "已用 " + usedPercent + "%", Blue, Icons.Default.PieChart, Modifier.weight(1f)) { onOpenOverlay(HomeOverlay.BUDGET) }
+            CompassTile(
+                "预算余量",
+                "$budgetLeft%",
+                if (budget?.tone == "danger") "已超支" else "已用 ${budgetPercent}%",
+                Blue,
+                Icons.Default.PieChart,
+                Modifier.weight(1f),
+            ) { onOpenOverlay(HomeOverlay.BUDGET) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            val loan = remoteLoans.filter { it.status == "ACTIVE" }.sumOf { it.remainingAmount }
-            val activeGoals = remoteSavings.filter { it.status == "ACTIVE" }
-            val savingsTarget = activeGoals.sumOf { savingsGoalTarget(it, remoteSavingsPlans) }
-            val savingsCurrent = activeGoals.sumOf { savingsGoalSaved(it, remoteSavingsPlans) }
-            val savingsPercent = if (savingsTarget > 0) (savingsCurrent / savingsTarget * 100).coerceIn(0.0, 100.0) else 0.0
-            CompassTile("待还贷款", if (loan > 0) "¥ ${moneyFormat.format(loan)}" else "无待还", if (loan > 0) "近期还款" else "状态良好", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f)) { onSelectTab(RootTab.LOANS) }
-            CompassTile("储蓄达成", "${percentLabel(savingsPercent)}%", if (remoteSavings.isEmpty()) "暂无计划" else "计划进行中", Amber, Icons.Default.Savings, Modifier.weight(1f)) { onSelectTab(RootTab.SAVINGS) }
+            val dueDays = summary.nextLoanDueDays
+            val loanValue = when {
+                dueDays == null -> "无待还"
+                dueDays <= 0 -> "今天"
+                else -> "${dueDays}天后"
+            }
+            CompassTile("待还贷款", loanValue, if (dueDays == null) "状态良好" else "近期还款", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f)) { onSelectTab(RootTab.LOANS) }
+            CompassTile(
+                "储蓄达成",
+                "${percentLabel(summary.savingProgressPercent)}%",
+                if (remoteSavings.isEmpty() && summary.savingProgressPercent == 0.0) "暂无计划" else "计划进行中",
+                Amber,
+                Icons.Default.Savings,
+                Modifier.weight(1f),
+            ) { onSelectTab(RootTab.SAVINGS) }
         }
     }
 }
@@ -4364,50 +4393,114 @@ private fun TransactionSearchDialog(entries: List<LedgerEntry>, onDismiss: () ->
 
 @Composable
 private fun HomeSummaryDialog(
-    title: String,
-    description: String,
-    income: Double,
-    expense: Double,
-    budget: Double,
-    onBudgetChange: ((Double) -> Unit)?,
+    summary: NativeHomeDashboardSummary,
     onDismiss: () -> Unit,
     onOpenTransactions: () -> Unit,
 ) {
-    var budgetText by remember(budget) { mutableStateOf(if (budget > 0) moneyFormat.format(budget) else "") }
-    val net = income - expense
+    val budget = summary.budgetAlerts.firstOrNull()
+    val hasRisk = budget?.tone == "danger" || budget?.tone == "warn"
+    val title = if (hasRisk) "预算需关注" else "财务诊断"
+    val headline = summary.insights.firstOrNull()?.detail ?: budget?.let {
+        "${it.title}已消耗 ${it.percent.roundToInt()}%，结余处于合理区间"
+    } ?: if (summary.reportingPeriod.length == 4) {
+        "本年度现金流平稳，无超支或临近违约风险"
+    } else {
+        "本月现金流平稳，无超支或临近违约风险"
+    }
+    val accent = if (hasRisk) Color(0xFFE11D48) else Blue
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(26.dp),
         containerColor = Color(0xFFFBFCFE),
         title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(description, color = Muted, fontSize = 12.sp)
-                SummaryMetric("收入", income, Green)
-                SummaryMetric("支出", expense, Red)
-                SummaryMetric("净变动", net, if (net >= 0) Blue else Red)
-                if (onBudgetChange != null) {
-                    OutlinedTextField(
-                        value = budgetText,
-                        onValueChange = { budgetText = it.filter { char -> char.isDigit() || char == '.' } },
-                        label = { Text("月预算") },
-                        prefix = { Text("¥ ") },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    )
+            Column(
+                modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                        .background(if (hasRisk) Color(0xFFFFF1F2) else Color(0xFFEFF6FF))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(Icons.Default.AutoGraph, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(9.dp))
+                    Column {
+                        Text(title, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(headline, color = Color(0xFF526174), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                    }
+                }
+
+                DiagnosticSectionTitle("现金流概览")
+                SummaryMetric("本期收入", summary.income, Green)
+                SummaryMetric("本期支出", summary.expense, Red)
+                SummaryMetric("本期结余", summary.balance, if (summary.balance >= 0) Blue else Red)
+
+                DiagnosticSectionTitle("诊断明细")
+                if (summary.insights.isEmpty()) {
+                    Text("本期现金流平稳，无超支或临近违约风险", color = Muted, fontSize = 12.sp)
+                } else {
+                    summary.insights.forEach { insight ->
+                        Row(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                .background(Color.White).padding(11.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            Box(
+                                Modifier.padding(top = 5.dp).size(7.dp).clip(CircleShape)
+                                    .background(diagnosticToneColor(insight.tone)),
+                            )
+                            Spacer(Modifier.width(9.dp))
+                            Column {
+                                Text(insight.title, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text(insight.detail, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                            }
+                        }
+                    }
+                }
+
+                if (summary.budgetAlerts.isNotEmpty()) {
+                    DiagnosticSectionTitle("预算管理")
+                    summary.budgetAlerts.forEach { alert ->
+                        Column(
+                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                                .background(Color.White).padding(11.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text(alert.title, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                                Text("¥ ${moneyFormat.format(alert.spent)} / ¥ ${moneyFormat.format(alert.budget)}", color = Color(0xFF526174), fontSize = 10.sp)
+                            }
+                            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8EDF3))) {
+                                Box(
+                                    Modifier.fillMaxWidth((alert.percent / 100.0).toFloat().coerceIn(0f, 1f))
+                                        .height(6.dp).clip(RoundedCornerShape(4.dp))
+                                        .background(diagnosticToneColor(alert.tone)),
+                                )
+                            }
+                            Text("已使用 ${alert.percent.roundToInt()}%", color = Muted, fontSize = 10.sp)
+                        }
+                    }
                 }
             }
         },
         dismissButton = {
             TextButton(onClick = onOpenTransactions) { Text("查看账单") }
         },
-        confirmButton = {
-            TextButton(onClick = {
-                onBudgetChange?.invoke(budgetText.toDoubleOrNull() ?: 0.0)
-                onDismiss()
-            }) { Text("关闭") }
-        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
     )
+}
+
+@Composable
+private fun DiagnosticSectionTitle(title: String) {
+    Text(title, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+}
+
+private fun diagnosticToneColor(tone: String): Color = when (tone) {
+    "danger" -> Color(0xFFE11D48)
+    "warn" -> Color(0xFFF59E0B)
+    else -> Blue
 }
 
 @Composable
