@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -144,9 +145,10 @@ internal fun NativeSettingsScreen(
                         Text(if (apiPreferences.token.isBlank()) "本地账本" else "云端账本", color = SettingsInk, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         Text(apiStatus, color = if (apiPreferences.token.isBlank()) SettingsMuted else SettingsGreen, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
                         if (apiPreferences.token.isNotBlank()) {
+                            Text("当前使用独立云端账本；退出后可回到本地数据。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
                             Text(apiPreferences.baseUrl, color = SettingsMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                         } else {
-                            Text("数据保存在此设备；连接云端后使用独立云端账本。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                            Text("数据保存在此设备；云端账本与本地账本彼此独立，不会合并。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
                         }
                     }
                     Icon(Icons.Default.CloudSync, contentDescription = null, tint = SettingsBlue, modifier = Modifier.size(22.dp))
@@ -156,7 +158,7 @@ internal fun NativeSettingsScreen(
                         Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                         Text("刷新数据")
                     }
-                    TextButton(onClick = onOpenApi) { Text(if (apiPreferences.token.isBlank()) "连接云端" else "账号设置") }
+                    TextButton(onClick = onOpenApi) { Text(if (apiPreferences.token.isBlank()) "连接云端" else "切换云端账户") }
                 }
             }
         }
@@ -208,7 +210,7 @@ internal fun NativeSettingsScreen(
         }
         item {
             SettingsSectionTitle("应用信息", "纯 Kotlin · Jetpack Compose")
-            SettingsMenuRow("帮助与反馈", "数据同步和周期支出的说明", SettingsBlue, Icons.Default.Info) { helpOpen = true }
+            SettingsMenuRow("帮助与反馈", "数据来源、账单导入和反馈渠道", SettingsBlue, Icons.Default.Info) { helpOpen = true }
             SettingsMenuRow("关于星会计", "版本 ${BuildConfig.VERSION_NAME}", SettingsAmber, Icons.Default.Settings) { aboutOpen = true }
         }
     }
@@ -286,32 +288,10 @@ internal fun NativeSettingsScreen(
         )
     }
     if (helpOpen) {
-        AlertDialog(
-            onDismissRequest = { helpOpen = false },
-            title = { Text("帮助与反馈") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("云端同步失败时，请检查服务地址和网络后点“刷新数据”。")
-                    Text("订阅/扣费管理会按设定日期补记流水；同一订阅、同一月份只生成一笔。")
-                    Text("自动记录只用于个人账目规划，不会实际扣款。")
-                }
-            },
-            confirmButton = { TextButton(onClick = { helpOpen = false }) { Text("知道了") } },
-        )
+        NativeHelpSheet(onDismiss = { helpOpen = false })
     }
     if (aboutOpen) {
-        AlertDialog(
-            onDismissRequest = { aboutOpen = false },
-            title = { Text("星会计") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Text("版本 ${BuildConfig.VERSION_NAME}")
-                    Text("本地优先、可连接云端的个人财务管理工具。")
-                    Text("原生实现：Kotlin + Jetpack Compose")
-                }
-            },
-            confirmButton = { TextButton(onClick = { aboutOpen = false }) { Text("关闭") } },
-        )
+        NativeAboutSheet(onDismiss = { aboutOpen = false })
     }
 }
 
@@ -500,6 +480,110 @@ private fun NativeAccountSettingsSheet(
             }
             Spacer(Modifier.height(6.dp))
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeHelpSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 790.dp).verticalScroll(rememberScrollState())
+                .navigationBarsPadding().padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("帮助与反馈", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("数据来源、账单导入和问题反馈", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                TextButton(onClick = onDismiss) { Text("完成") }
+            }
+            SettingsPanel {
+                Text("数据没有加载出来怎么办？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("先确认当前使用本地账本还是云端账本。云端模式下检查服务地址、网络和后端数据库，再点“刷新数据”；连接失败时不会切到本地数据。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+            }
+            SettingsPanel {
+                Text("账单导入支持什么格式？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("纯 Kotlin 版支持微信、支付宝和本应用导出的 CSV 文件。XLS/XLSX 请先用 Excel 或 WPS 另存为 CSV，再选择导入。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+            }
+            SettingsPanel {
+                Text("本地和云端数据会合并吗？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("不会。本地账本保存在当前设备，云端账本由服务器保存；连接或退出云端不会把两边的账单合并。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+            }
+            SettingsPanel {
+                Text("Web 端和原生版有什么不同？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("纯 Kotlin 版是 Android 原生应用；Web 版可在 PC、iOS、鸿蒙等设备的浏览器中使用。不同版本的功能会逐步补齐。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+            }
+            SettingsPanel {
+                Text("反馈与帮助", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                ExternalSettingsLink("国际站点端反馈", "github.com/sevencnup/wotty-StarAccounting/issues", "https://github.com/sevencnup/wotty-StarAccounting/issues")
+                HorizontalDivider(color = SettingsLine)
+                ExternalSettingsLink("国内站点端反馈", "sevencn.com/software/staraccounting", "https://sevencn.com/software/staraccounting")
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeAboutSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 790.dp).verticalScroll(rememberScrollState())
+                .navigationBarsPadding().padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("关于星会计", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("纯 Kotlin · Jetpack Compose", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                TextButton(onClick = onDismiss) { Text("完成") }
+            }
+            SettingsPanel {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(SettingsBlue.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = SettingsBlue, modifier = Modifier.size(25.dp))
+                    }
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text("星会计", color = SettingsInk, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("版本 ${BuildConfig.VERSION_NAME}", color = SettingsMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                    }
+                }
+                Text("本地优先、可连接云端的个人财务管理工具。", color = SettingsMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 12.dp))
+                Text("原生实现：Kotlin + Jetpack Compose", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+            }
+            SettingsPanel {
+                Text("相关网站", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                ExternalSettingsLink("博客", "sevencn.com", "https://sevencn.com")
+                HorizontalDivider(color = SettingsLine)
+                ExternalSettingsLink("项目网站", "s.wotty.app", "https://s.wotty.app")
+                HorizontalDivider(color = SettingsLine)
+                ExternalSettingsLink("开源地址", "github.com/sevencnup/wotty-StarAccounting", "https://github.com/sevencnup/wotty-StarAccounting")
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ExternalSettingsLink(title: String, address: String, url: String) {
+    val uriHandler = LocalUriHandler.current
+    Row(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp))
+            .clickable { runCatching { uriHandler.openUri(url) } }
+            .padding(vertical = 10.dp, horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, color = SettingsBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Text(address, color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+        Text("↗", color = SettingsBlue, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
