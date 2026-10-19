@@ -91,12 +91,15 @@ internal fun NativeSettingsScreen(
     subscriptions: List<NativeSubscription>,
     categoryRules: List<NativeCategoryRule>,
     transactions: List<LedgerEntry>,
+    savingsPlans: List<NativeSavingsPlan>,
+    ledgerAccount: NativeLedgerAccount,
     csvExportStatus: String,
     csvImportStatus: String,
     pendingCsvImport: NativeBillImportPreview?,
     importErrors: List<NativeImportError>,
     importingCsv: Boolean,
     onOpenApi: () -> Unit,
+    onSaveBalanceBaseline: suspend (Double, String) -> Unit,
     onRefresh: () -> Unit,
     onChangePassword: suspend (String, String) -> Unit,
     onLoadRegistrationStatus: suspend () -> Boolean,
@@ -122,6 +125,7 @@ internal fun NativeSettingsScreen(
     var logoutConfirmOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
+    var balanceBaselineOpen by remember { mutableStateOf(false) }
     val languageLabel = when (uiPreferences.value.language) {
         NativeLanguageChoice.SYSTEM -> "跟随系统"
         NativeLanguageChoice.ZH_CN -> "简体中文"
@@ -197,6 +201,21 @@ internal fun NativeSettingsScreen(
             SettingsSectionTitle("界面显示", "选择界面语言和文字大小")
             SettingsMenuRow("语言", languageLabel, SettingsBlue, Icons.Default.Info) { languageOpen = true }
             SettingsMenuRow("字体大小", fontLabel, SettingsAmber, Icons.Default.Settings) { fontOpen = true }
+        }
+        item {
+            SettingsSectionTitle("账本余额", "设置账户余额基准，后续按真实账单累计")
+            val baselineDate = ledgerAccount.openingBalanceDate?.take(10)
+            val baselineDetail = if (baselineDate == null || ledgerAccount.openingBalance == null) {
+                "尚未设置 · 首页结余沿用现有账本余额"
+            } else {
+                "基准 $baselineDate · ¥ ${"%,.2f".format(Locale.getDefault(), ledgerAccount.openingBalance)}"
+            }
+            SettingsMenuRow(
+                "余额基准",
+                baselineDetail,
+                SettingsGreen,
+                Icons.Default.ReceiptLong,
+            ) { balanceBaselineOpen = true }
         }
         if (apiPreferences.token.isNotBlank()) {
             item {
@@ -292,6 +311,15 @@ internal fun NativeSettingsScreen(
     }
     if (aboutOpen) {
         NativeAboutSheet(onDismiss = { aboutOpen = false })
+    }
+    if (balanceBaselineOpen) {
+        NativeLedgerBalanceSheet(
+            account = ledgerAccount,
+            entries = transactions,
+            savingsPlans = savingsPlans,
+            onDismiss = { balanceBaselineOpen = false },
+            onSave = onSaveBalanceBaseline,
+        )
     }
 }
 
