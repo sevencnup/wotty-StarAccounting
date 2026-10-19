@@ -100,6 +100,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
@@ -108,6 +109,8 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ImageBitmap
@@ -306,7 +309,7 @@ private data class NativeHomePreferences(
     val monthlyBudget: Double,
 )
 
-private data class NativeApiPreferences(
+internal data class NativeApiPreferences(
     val baseUrl: String,
     val token: String,
     val accountId: String,
@@ -427,6 +430,25 @@ private class NativeLedgerStore(context: Context) {
 
     fun deleteAsset(scope: String, accountId: String, assetId: String) {
         database.delete(scope, accountId, "assets", assetId)
+    }
+
+    fun loadSubscriptions(scope: String, accountId: String): List<NativeSubscription> =
+        database.readAll(scope, accountId, "subscriptions").mapNotNull { raw ->
+            runCatching { JSONObject(raw).toNativeSubscription(accountId) }.getOrNull()
+        }
+
+    fun saveSubscriptionsState(scope: String, accountId: String, subscriptions: List<NativeSubscription>) {
+        database.replaceAll(scope, accountId, "subscriptions", subscriptions.map { subscription ->
+            NativeStoredEntity(subscription.id, subscription.toPayload().toString(), subscription.updatedAt)
+        })
+    }
+
+    fun saveSubscription(scope: String, accountId: String, subscription: NativeSubscription) {
+        database.upsert(scope, accountId, "subscriptions", NativeStoredEntity(subscription.id, subscription.toPayload().toString(), subscription.updatedAt))
+    }
+
+    fun deleteSubscription(scope: String, accountId: String, subscriptionId: String) {
+        database.delete(scope, accountId, "subscriptions", subscriptionId)
     }
 
     fun loadLoans(scope: String, accountId: String): List<NativeLoan> =
@@ -712,6 +734,21 @@ private class NativeApiClient {
         deleteJson(config, "/api/assets/" + java.net.URLEncoder.encode(id, "UTF-8"), "资产")
     }
 
+    suspend fun loadSubscriptions(config: NativeApiPreferences): List<NativeSubscription> = withContext(Dispatchers.IO) {
+        val rows = getJsonArray(config, "/api/subscriptions?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+        buildList {
+            for (index in 0 until rows.length()) rows.optJSONObject(index)?.let { add(it.toNativeSubscription(config.accountId)) }
+        }
+    }
+
+    suspend fun saveSubscription(config: NativeApiPreferences, subscription: NativeSubscription) {
+        postJson(config, "/api/subscriptions", subscription.toPayload(), "周期支出保存失败")
+    }
+
+    suspend fun deleteSubscription(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/subscriptions/" + java.net.URLEncoder.encode(id, "UTF-8"), "周期支出")
+    }
+
     private suspend fun getJsonArray(config: NativeApiPreferences, path: String): JSONArray = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(config.baseUrl.trimEnd('/') + path)
@@ -992,6 +1029,23 @@ private fun StarkNativeApp() {
     var remoteLoans by remember { mutableStateOf<List<NativeLoan>>(emptyList()) }
     var remoteSavings by remember { mutableStateOf<List<NativeSavingsGoal>>(emptyList()) }
     var remoteSavingsPlans by remember { mutableStateOf<List<NativeSavingsPlan>>(emptyList()) }
+    var remoteSubscriptions by remember {
+        mutableStateOf(
+            ledgerStore.loadSubscriptions(
+                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
+                apiPreferences.accountId.ifBlank { "local" },
+            ),
+        )
+    }
+
+    val lifecycleContext = LocalContext.current as? ComponentActivity
+    DisposableEffect(lifecycleContext) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshVersion += 1
+        }
+        lifecycleContext?.lifecycle?.addObserver(observer)
+        onDispose { lifecycleContext?.lifecycle?.removeObserver(observer) }
+    }
 
     LaunchedEffect(apiPreferences.token, apiPreferences.baseUrl, apiPreferences.accountId, refreshVersion) {
         val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
@@ -1002,10 +1056,19 @@ private fun StarkNativeApp() {
         actualBalance = cached.actualBalance
         remoteAssets = ledgerStore.loadAssets(scope, accountId)
         remoteLoans = ledgerStore.loadLoans(scope, accountId)
+        remoteSubscriptions = ledgerStore.loadSubscriptions(scope, accountId)
         if (apiPreferences.token.isBlank()) {
             remoteBudgets = emptyList()
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
             remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
+            val dueEntries = buildDueSubscriptionEntries(remoteSubscriptions, entries.toList(), accountId, apiPreferences.userId.ifBlank { "local-user" })
+            if (dueEntries.isNotEmpty()) {
+                val nextEntries = (dueEntries + entries.toList()).sortedByDescending { it.date }
+                actualBalance -= dueEntries.sumOf { it.amount }
+                entries.clear()
+                entries.addAll(nextEntries)
+                ledgerStore.save(scope, accountId, actualBalance, nextEntries)
+            }
             apiStatus = "未连接云端"
             return@LaunchedEffect
         }
@@ -1020,11 +1083,20 @@ private fun StarkNativeApp() {
             val loans = apiClient.loadLoans(apiPreferences)
             val savings = apiClient.loadSavingsGoals(apiPreferences)
             val savingsPlans = apiClient.loadSavingsPlans(apiPreferences, savings.map { it.id })
+            val subscriptions = apiClient.loadSubscriptions(apiPreferences)
+            val dueEntries = buildDueSubscriptionEntries(
+                subscriptions,
+                remote.entries,
+                accountId,
+                apiPreferences.userId.ifBlank { "local-user" },
+            )
+            dueEntries.forEach { apiClient.saveEntry(apiPreferences, it) }
+            val synchronizedEntries = (dueEntries + remote.entries).distinctBy { it.id }.sortedByDescending { it.date }
             entries.clear()
-            entries.addAll(remote.entries)
+            entries.addAll(synchronizedEntries)
             remoteAssets = assets
             if (balance != null) actualBalance = balance
-            ledgerStore.save(scope, accountId, actualBalance, remote.entries)
+            ledgerStore.save(scope, accountId, actualBalance, synchronizedEntries)
             ledgerStore.saveAssetsState(scope, accountId, assets)
             remoteBudgets = budgets
             remoteLoans = loans
@@ -1032,7 +1104,9 @@ private fun StarkNativeApp() {
             remoteSavings = savings
             remoteSavingsPlans = savingsPlans
             ledgerStore.saveSavingsState(scope, accountId, savings, savingsPlans)
-            apiStatus = "已同步 ${remote.entries.size} 笔"
+            remoteSubscriptions = subscriptions
+            ledgerStore.saveSubscriptionsState(scope, accountId, subscriptions)
+            apiStatus = "已同步 ${synchronizedEntries.size} 笔${if (dueEntries.isNotEmpty()) " · 自动记账 ${dueEntries.size} 笔" else ""}"
         }.onFailure { error ->
             apiStatus = if (cached.entries.isNotEmpty()) {
                 "同步失败，显示本机缓存：${error.message ?: "请重试"}"
@@ -1209,8 +1283,34 @@ private fun StarkNativeApp() {
                     modifier = Modifier.padding(insets),
                     apiPreferences = apiPreferences,
                     apiStatus = apiStatus,
+                    subscriptions = remoteSubscriptions,
                     onOpenApi = { homeOverlay = HomeOverlay.API },
                     onRefresh = { refreshVersion += 1 },
+                    onSaveSubscription = { subscription ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val updated = subscription.copy(
+                            userId = apiPreferences.userId.ifBlank { subscription.userId.ifBlank { "local-user" } },
+                            accountId = accountId,
+                            createdAt = subscription.createdAt.ifBlank { now },
+                            updatedAt = now,
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveSubscription(apiPreferences, updated)
+                        ledgerStore.saveSubscription(scope, accountId, updated)
+                        remoteSubscriptions = remoteSubscriptions.filterNot { it.id == updated.id } + updated
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地周期支出已保存" else "云端周期支出已保存"
+                        refreshVersion += 1
+                    },
+                    onDeleteSubscription = { subscription ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        if (apiPreferences.token.isNotBlank()) apiClient.deleteSubscription(apiPreferences, subscription.id)
+                        ledgerStore.deleteSubscription(scope, accountId, subscription.id)
+                        remoteSubscriptions = remoteSubscriptions.filterNot { it.id == subscription.id }
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地周期支出已删除" else "云端周期支出已删除"
+                        refreshVersion += 1
+                    },
                 )
             }
         }
@@ -3125,44 +3225,6 @@ private fun NativeProofImageViewer(source: String, onDismiss: () -> Unit) {
                 Text("图片无法读取", color = Color.White)
             }
             TextButton(onClick = onDismiss) { Text("关闭", color = Color.White) }
-        }
-    }
-}
-
-@Composable
-private fun NativeSettingsScreen(
-    modifier: Modifier,
-    apiPreferences: NativeApiPreferences,
-    apiStatus: String,
-    onOpenApi: () -> Unit,
-    onRefresh: () -> Unit,
-) {
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { NativePageHeader("设置", "账本连接与应用信息") }
-        item {
-            WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("云端账本", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text(apiStatus, color = if (apiPreferences.token.isBlank()) Muted else Green, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
-                        if (apiPreferences.token.isNotBlank()) {
-                            Text(apiPreferences.baseUrl, color = Muted, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                    Icon(Icons.Default.CloudSync, contentDescription = null, tint = Blue, modifier = Modifier.size(22.dp))
-                }
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = onRefresh, enabled = apiPreferences.token.isNotBlank()) { Text("刷新数据") }
-                    TextButton(onClick = onOpenApi) { Text(if (apiPreferences.token.isBlank()) "连接账本" else "账号设置") }
-                }
-            }
-        }
-        item {
-            WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-                Text("纯 KT 原生版", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text("Kotlin + Jetpack Compose · ${BuildConfig.VERSION_NAME}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 5.dp))
-                Text("本地账本和更多设置项正在逐步接入。", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
-            }
         }
     }
 }
