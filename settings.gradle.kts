@@ -14,3 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "wotty-stark"
+include(":native-app")
