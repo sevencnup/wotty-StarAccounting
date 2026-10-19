@@ -311,6 +311,8 @@ private data class NativeHomePreferences(
     val selectedMonth: String,
     val salaryDay: Int,
     val monthlyBudget: Double,
+    val homeMetric: HomeMetric,
+    val balancePeriod: BalancePeriod,
 )
 
 internal data class NativeApiPreferences(
@@ -679,6 +681,8 @@ private class NativeLedgerStore(context: Context) {
             selectedMonth = preferences.getString("selectedMonth", YearMonth.now().toString()) ?: YearMonth.now().toString(),
             salaryDay = (preferences.getInt("salaryDay", 15)).coerceIn(1, 28),
             monthlyBudget = preferences.getString("monthlyBudget", "0")?.toDoubleOrNull()?.coerceAtLeast(0.0) ?: 0.0,
+            homeMetric = HomeMetric.values().firstOrNull { it.name == preferences.getString("homeMetric", HomeMetric.EXPENSE.name) } ?: HomeMetric.EXPENSE,
+            balancePeriod = BalancePeriod.values().firstOrNull { it.name == preferences.getString("balancePeriod", BalancePeriod.MONTH.name) } ?: BalancePeriod.MONTH,
         )
     }
 
@@ -687,6 +691,13 @@ private class NativeLedgerStore(context: Context) {
             .putString("selectedMonth", selectedMonth)
             .putInt("salaryDay", salaryDay.coerceIn(1, 28))
             .putString("monthlyBudget", monthlyBudget.coerceAtLeast(0.0).toString())
+            .apply()
+    }
+
+    fun saveHomeDisplayPreferences(homeMetric: HomeMetric, balancePeriod: BalancePeriod) {
+        preferences.edit()
+            .putString("homeMetric", homeMetric.name)
+            .putString("balancePeriod", balancePeriod.name)
             .apply()
     }
 
@@ -1245,6 +1256,8 @@ private fun StarkNativeApp() {
     var selectedMonth by remember { mutableStateOf(homePreferences.selectedMonth) }
     var salaryDay by remember { mutableStateOf(homePreferences.salaryDay) }
     var monthlyBudget by remember { mutableDoubleStateOf(homePreferences.monthlyBudget) }
+    var homeMetric by remember { mutableStateOf(homePreferences.homeMetric) }
+    var balancePeriod by remember { mutableStateOf(homePreferences.balancePeriod) }
     val snapshot = remember { ledgerStore.load("LOCAL", "local") }
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
@@ -1705,12 +1718,22 @@ private fun StarkNativeApp() {
                     actualBalance = actualBalance,
                     selectedMonth = selectedMonth,
                     salaryDay = salaryDay,
+                    metric = homeMetric,
+                    balancePeriod = balancePeriod,
                     monthlyBudget = homePeriodBudget,
                     remoteBudgets = remoteBudgets,
                     remoteAssets = remoteAssets,
                     remoteLoans = remoteLoans,
                     remoteSavings = remoteSavings,
                     remoteSavingsPlans = remoteSavingsPlans,
+                    onHomeMetricChange = {
+                        homeMetric = it
+                        ledgerStore.saveHomeDisplayPreferences(it, balancePeriod)
+                    },
+                    onBalancePeriodChange = {
+                        balancePeriod = it
+                        ledgerStore.saveHomeDisplayPreferences(homeMetric, it)
+                    },
                     onSalaryDayClick = { homeOverlay = HomeOverlay.SALARY_DAY },
                     onOpenOverlay = { homeOverlay = it },
                     onSelectTab = { selectedTab = it },
@@ -2314,43 +2337,60 @@ private fun HomeScreen(
     actualBalance: Double,
     selectedMonth: String,
     salaryDay: Int,
+    metric: HomeMetric,
+    balancePeriod: BalancePeriod,
     monthlyBudget: Double,
     remoteBudgets: List<NativeBudget>,
     remoteAssets: List<NativeAsset>,
     remoteLoans: List<NativeLoan>,
     remoteSavings: List<NativeSavingsGoal>,
     remoteSavingsPlans: List<NativeSavingsPlan>,
+    onHomeMetricChange: (HomeMetric) -> Unit,
+    onBalancePeriodChange: (BalancePeriod) -> Unit,
     onSalaryDayClick: () -> Unit,
     onOpenOverlay: (HomeOverlay) -> Unit,
     onSelectTab: (RootTab) -> Unit,
     apiStatus: String,
 ) {
-    var metric by remember { mutableStateOf(HomeMetric.EXPENSE) }
-    var balancePeriod by remember { mutableStateOf(BalancePeriod.MONTH) }
     val month = runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
     val selectedYear = selectedMonth.toIntOrNull()?.takeIf { selectedMonth.length == 4 }
+    val allEntries = entries.toList()
     val savingsPlanPeriod = nativeSavingsPlanPeriod(selectedMonth, salaryDay)
     val savingsPlanAllocation = remember(remoteSavings, remoteSavingsPlans, savingsPlanPeriod) {
         summarizeNativeSavingsPlanAllocation(remoteSavings, remoteSavingsPlans, savingsPlanPeriod)
     }
-    val matchingEntries = entries.toList()
+    val matchingEntries = allEntries
     val matchedSavingsExpenses = remember(savingsPlanAllocation.expenseItems, matchingEntries, savingsPlanPeriod, salaryDay) {
         matchNativeSavingsPlanExpensesWithBills(savingsPlanAllocation.expenseItems, matchingEntries, savingsPlanPeriod, salaryDay)
     }
-    val periodEntries = entries.filter { entry ->
+    val allocationCashflow = remember(allEntries, remoteSavingsPlans, selectedMonth, salaryDay) {
+        calculateNativeSalaryCycleAllocation(allEntries, remoteSavingsPlans, selectedMonth, salaryDay)
+    }
+    val allocationTitle = if (selectedYear != null) "全年资金分配" else "本期资金分配"
+    val allocationDescription = if (selectedYear != null) {
+        "收入扣除实际消费、还款和储蓄后的安排金额"
+    } else {
+        "发薪周期 ${allocationCashflow.range.label}"
+    }
+    val salaryCycleRange = if (selectedYear == null) nativeSalaryCycleRange(selectedMonth, salaryDay) else null
+    val reportingEntries = allEntries.filter { entry ->
         val date = runCatching { LocalDate.parse(entry.transactionDate) }.getOrNull()
         date != null && if (selectedYear != null) {
             date.year == selectedYear
-        } else if (metric == HomeMetric.BALANCE && balancePeriod == BalancePeriod.SALARY) {
-            date >= month.atDay(salaryDay) && date < month.atDay(salaryDay).plusMonths(1)
         } else {
             date.year == month.year && date.monthValue == month.monthValue
         }
     }
-    val income = periodEntries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
-    val expense = periodEntries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
-    val repayment = periodEntries.filter { it.isRepayment() }.sumOf { it.amount }
-    val savings = periodEntries.filter { it.isSavings() }.sumOf { it.amount }
+    val heroEntries = if (selectedYear == null && metric == HomeMetric.BALANCE && balancePeriod == BalancePeriod.SALARY && salaryCycleRange != null) {
+        allEntries.filter { entry ->
+            val date = runCatching { LocalDate.parse(entry.transactionDate) }.getOrNull()
+            date != null && date >= salaryCycleRange.startInclusive && date < salaryCycleRange.endExclusive
+        }
+    } else {
+        reportingEntries
+    }
+    val income = reportingEntries.filter { it.type == EntryType.INCOME }.sumOf { it.amount }
+    val expense = reportingEntries.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
     val value = when (metric) {
         HomeMetric.BALANCE -> actualBalance
         HomeMetric.EXPENSE -> expense
@@ -2359,8 +2399,8 @@ private fun HomeScreen(
     val monthLabel = if (selectedYear != null) "${selectedYear}年" else "${month.year}年${month.monthValue}月"
     val label = when (metric) {
         HomeMetric.BALANCE -> "当前结余"
-        HomeMetric.EXPENSE -> if (balancePeriod == BalancePeriod.SALARY) "本期支出" else "本月支出"
-        HomeMetric.INCOME -> if (balancePeriod == BalancePeriod.SALARY) "本期收入" else "本月收入"
+        HomeMetric.EXPENSE -> if (selectedYear != null) "全年支出" else "本月支出"
+        HomeMetric.INCOME -> if (selectedYear != null) "全年收入" else "本月收入"
     }
 
     LazyColumn(
@@ -2374,7 +2414,7 @@ private fun HomeScreen(
                 metric = metric,
                 monthLabel = monthLabel,
                 onMonthClick = { onOpenOverlay(HomeOverlay.MONTH) },
-                onMetricChange = { metric = it },
+                onMetricChange = onHomeMetricChange,
             )
             Spacer(Modifier.height(11.dp))
             WebReplicaHero(
@@ -2382,23 +2422,23 @@ private fun HomeScreen(
                 period = balancePeriod,
                 label = label,
                 value = value,
-                count = periodEntries.size,
+                count = heroEntries.size,
                 monthLabel = monthLabel,
                 salaryDay = salaryDay,
-                onPeriodChange = { balancePeriod = it },
+                onPeriodChange = onBalancePeriodChange,
                 onSalaryDayClick = onSalaryDayClick,
                 onDetails = { onSelectTab(RootTab.CONSUMPTION) },
             )
         }
         item {
             WebReplicaBudgetCard(
-                income = income,
-                expense = expense,
-                repayment = repayment,
-                savings = savings,
+                income = allocationCashflow.income,
+                expense = allocationCashflow.expense,
+                repayment = allocationCashflow.repayment,
+                savings = allocationCashflow.savings,
                 actualBalance = actualBalance,
-                monthlyBudget = monthlyBudget,
-                monthLabel = monthLabel,
+                periodTitle = allocationTitle,
+                periodDescription = allocationDescription,
                 savingsPlanAllocation = savingsPlanAllocation,
                 matchedSavingsExpenses = matchedSavingsExpenses,
                 onManageBudget = { onOpenOverlay(HomeOverlay.BUDGET) },
@@ -2407,7 +2447,7 @@ private fun HomeScreen(
         }
         item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets, entries, selectedMonth) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
         item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteAssets, remoteLoans, remoteSavings, remoteSavingsPlans, onOpenOverlay, onSelectTab) }
-        item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
+        item { WebReplicaExpenseStructure(reportingEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
         item { WebReplicaCashflowTrend(entries, month, selectedYear) }
     }
@@ -2725,17 +2765,18 @@ private fun WebReplicaBudgetCard(
     repayment: Double,
     savings: Double,
     actualBalance: Double,
-    monthlyBudget: Double,
-    monthLabel: String,
+    periodTitle: String,
+    periodDescription: String,
     savingsPlanAllocation: NativeSavingsPlanAllocation,
     matchedSavingsExpenses: List<NativeSavingsExpenseMatch>,
     onManageBudget: () -> Unit,
     onOpenSavings: () -> Unit,
 ) {
     var planExpanded by remember { mutableStateOf(false) }
-    val allocationBase = if (monthlyBudget > 0.0) monthlyBudget else income
     val allocated = expense + repayment + savings
-    val available = allocationBase - allocated
+    val allocationBase = maxOf(income, allocated, 1.0)
+    val allocationPercent = if (income > 0.0) allocated / income * 100.0 else 0.0
+    val available = income - allocated
     WebReplicaCard {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onManageBudget).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE2F3FF)), contentAlignment = Alignment.Center) {
@@ -2743,8 +2784,8 @@ private fun WebReplicaBudgetCard(
             }
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(monthLabel + "资金分配", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text("收入扣除实际消费、还款和储蓄后的安排金额", color = Color(0xFF7B8CA3), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(periodTitle, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(periodDescription, color = Color(0xFF7B8CA3), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text("预算管理  ›", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         }
@@ -2752,16 +2793,21 @@ private fun WebReplicaBudgetCard(
         Row(Modifier.fillMaxWidth()) {
             BudgetAmount("可支配预算", available, "可继续安排 ¥ ${moneyFormat.format(available)}", Modifier.weight(1f))
             Box(Modifier.width(1.dp).height(64.dp).background(Line))
-            BudgetAmount("收入", allocationBase, "已分配 ¥ ${moneyFormat.format(allocated)}", Modifier.weight(1f).padding(start = 14.dp))
+            BudgetAmount("收入", income, "已分配 ¥ ${moneyFormat.format(allocated)}", Modifier.weight(1f).padding(start = 14.dp))
         }
         Spacer(Modifier.height(11.dp))
         Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color(0xFFEAF0F7))) {
-            if (allocationBase > 0) {
-                Row(Modifier.fillMaxWidth().height(7.dp)) {
-                    val denominator = allocationBase.coerceAtLeast(0.01)
-                    if (expense > 0) Box(Modifier.fillMaxWidth((expense / denominator).toFloat().coerceIn(0f, 1f)).height(7.dp).background(Color(0xFF0EA5E9)))
-                }
+            Row(Modifier.fillMaxWidth().height(7.dp)) {
+                if (expense > 0) Box(Modifier.weight((expense / allocationBase).toFloat()).fillMaxHeight().background(Color(0xFF0EA5E9)))
+                if (repayment > 0) Box(Modifier.weight((repayment / allocationBase).toFloat()).fillMaxHeight().background(Color(0xFFF59E0B)))
+                if (savings > 0) Box(Modifier.weight((savings / allocationBase).toFloat()).fillMaxHeight().background(Color(0xFF10B981)))
+                val remainingShare = (allocationBase - allocated).coerceAtLeast(0.0)
+                if (remainingShare > 0.0) Spacer(Modifier.weight((remainingShare / allocationBase).toFloat()).fillMaxHeight())
             }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 5.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text("已分配占收入", color = Color(0xFF94A3B8), fontSize = 9.sp)
+            Text(if (income > 0.0) "${String.format(Locale.ROOT, "%.2f", allocationPercent)}%" else "—", color = Ink, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
         }
         Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth()) {
@@ -2779,7 +2825,7 @@ private fun WebReplicaBudgetCard(
             Spacer(Modifier.width(6.dp))
             Text("¥ " + moneyFormat.format(actualBalance), color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
-            Text("余额单独展示，不重复计入本月扣减", color = Color(0xFF8492A7), fontSize = 9.sp)
+            Text(if (periodTitle == "全年资金分配") "余额单独展示，不重复计入全年扣减" else "余额单独展示，不重复计入本期扣减", color = Color(0xFF8492A7), fontSize = 9.sp)
         }
         if (savingsPlanAllocation.planCount > 0) {
             HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
