@@ -16,8 +16,8 @@ android {
         applicationId = "com.wotty.stark.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10031
-        versionName = "0.19.0-dev.1"
+        versionCode = 10032
+        versionName = "0.20.0-dev.1"
         manifestPlaceholders["appLabel"] = "星会计 原生版"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
