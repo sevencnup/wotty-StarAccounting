@@ -415,6 +415,25 @@ private class NativeLedgerStore(context: Context) {
         return NativeLedgerSnapshot(storedBalance?.toDoubleOrNull() ?: 0.0, entries)
     }
 
+    fun loadLedgerAccount(scope: String, accountId: String, userId: String): NativeLedgerAccount {
+        val raw = database.readAll(scope, accountId, "accounts").firstOrNull()
+        return raw?.let { runCatching { JSONObject(it).toNativeLedgerAccount(accountId, userId) }.getOrNull() }
+            ?: NativeLedgerAccount(
+                id = accountId,
+                name = if (scope == "LOCAL") "本地账本" else "云端账本",
+                ownerId = userId,
+            )
+    }
+
+    fun saveLedgerAccount(scope: String, accountId: String, account: NativeLedgerAccount) {
+        database.upsert(
+            scope,
+            accountId,
+            "accounts",
+            NativeStoredEntity(account.id, account.toPayload().toString(), account.updatedAt),
+        )
+    }
+
     fun save(scope: String, accountId: String, actualBalance: Double, entries: List<LedgerEntry>) {
         val rows = JSONArray()
         entries.forEach { rows.put(entryJson(it)) }
@@ -874,6 +893,27 @@ private class NativeApiClient {
         }
     }
 
+    suspend fun loadLedgerAccount(config: NativeApiPreferences): NativeLedgerAccount? = withContext(Dispatchers.IO) {
+        val accountId = java.net.URLEncoder.encode(config.accountId, "UTF-8")
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/accounts/$accountId")
+            .header("Authorization", "Bearer ${config.token}")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "账本余额基准读取失败" })
+            }
+            if (raw.isBlank() || raw.trim() == "null") return@withContext null
+            JSONObject(raw).toNativeLedgerAccount(config.accountId, config.userId)
+        }
+    }
+
+    suspend fun saveLedgerAccount(config: NativeApiPreferences, account: NativeLedgerAccount) {
+        postJson(config, "/api/accounts", account.toPayload(), "账本余额基准保存失败")
+    }
+
     suspend fun loadAssets(config: NativeApiPreferences): List<NativeAsset> {
         val rows = getJsonArray(config, "/api/assets?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
         return buildList {
@@ -1260,6 +1300,15 @@ private fun StarkNativeApp() {
     var balancePeriod by remember { mutableStateOf(homePreferences.balancePeriod) }
     val snapshot = remember { ledgerStore.load("LOCAL", "local") }
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
+    var ledgerAccount by remember {
+        mutableStateOf(
+            ledgerStore.loadLedgerAccount(
+                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
+                apiPreferences.accountId.ifBlank { "local" },
+                apiPreferences.userId.ifBlank { "local-user" },
+            ),
+        )
+    }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
     var refreshVersion by remember { mutableStateOf(0) }
     var remoteAssets by remember {
@@ -1305,6 +1354,8 @@ private fun StarkNativeApp() {
             ),
         )
     }
+    val currentEntries = entries.toList()
+    val currentLedgerBalance = calculateNativeLedgerBalance(ledgerAccount, currentEntries, remoteSavingsPlans) ?: actualBalance
     val selectedBudgetPeriod = if (selectedMonth.length == 4) "YEARLY" else "MONTHLY"
     val configuredPeriodBudget = remoteBudgets
         .filter { it.scopeType == "GLOBAL" && it.period == selectedBudgetPeriod }
@@ -1400,6 +1451,7 @@ private fun StarkNativeApp() {
         val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
         val accountId = apiPreferences.accountId.ifBlank { "local" }
         val cached = ledgerStore.load(scope, accountId)
+        ledgerAccount = ledgerStore.loadLedgerAccount(scope, accountId, apiPreferences.userId.ifBlank { "local-user" })
         entries.clear()
         entries.addAll(cached.entries)
         actualBalance = cached.actualBalance
@@ -1431,6 +1483,7 @@ private fun StarkNativeApp() {
             }
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
             remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
+            calculateNativeLedgerBalance(ledgerAccount, entries.toList(), remoteSavingsPlans)?.let { actualBalance = it }
             val dueEntries = buildDueSubscriptionEntries(remoteSubscriptions, entries.toList(), accountId, apiPreferences.userId.ifBlank { "local-user" })
             if (dueEntries.isNotEmpty()) {
                 val nextEntries = (dueEntries + entries.toList()).sortedByDescending { it.date }
@@ -1447,6 +1500,7 @@ private fun StarkNativeApp() {
         apiStatus = "正在同步…"
         runCatching {
             val remote = apiClient.loadSnapshot(apiPreferences)
+            val account = apiClient.loadLedgerAccount(apiPreferences) ?: ledgerAccount
             val assets = apiClient.loadAssets(apiPreferences)
             val balance = apiClient.loadBalance(apiPreferences)
             val budgets = apiClient.loadBudgets(apiPreferences)
@@ -1466,8 +1520,11 @@ private fun StarkNativeApp() {
             val synchronizedEntries = (dueEntries + remote.entries).distinctBy { it.id }.sortedByDescending { it.date }
             entries.clear()
             entries.addAll(synchronizedEntries)
+            ledgerAccount = account
+            ledgerStore.saveLedgerAccount(scope, accountId, account)
             remoteAssets = assets
             if (balance != null) actualBalance = balance
+            calculateNativeLedgerBalance(account, synchronizedEntries, savingsPlans)?.let { actualBalance = it }
             ledgerStore.save(scope, accountId, actualBalance, synchronizedEntries)
             ledgerStore.saveAssetsState(scope, accountId, assets)
             remoteBudgets = budgets
@@ -1714,8 +1771,8 @@ private fun StarkNativeApp() {
             when (tab) {
                 RootTab.HOME -> HomeScreen(
                     modifier = Modifier.padding(insets),
-                    entries = entries,
-                    actualBalance = actualBalance,
+                    entries = currentEntries,
+                    actualBalance = currentLedgerBalance,
                     selectedMonth = selectedMonth,
                     salaryDay = salaryDay,
                     metric = homeMetric,
@@ -1839,7 +1896,7 @@ private fun StarkNativeApp() {
                     assets = remoteAssets,
                     savingsGoals = remoteSavings,
                     loans = remoteLoans,
-                    fallbackBalance = actualBalance,
+                    fallbackBalance = currentLedgerBalance,
                     connected = apiPreferences.token.isNotBlank(),
                     onConnect = { homeOverlay = HomeOverlay.API },
                     onOpenSavings = { selectedTab = RootTab.SAVINGS },
@@ -1877,12 +1934,35 @@ private fun StarkNativeApp() {
                     subscriptions = remoteSubscriptions,
                     categoryRules = remoteCategoryRules,
                     transactions = entries.toList(),
+                    savingsPlans = remoteSavingsPlans,
+                    ledgerAccount = ledgerAccount,
                     csvExportStatus = csvExportStatus,
                     csvImportStatus = csvImportStatus,
                     pendingCsvImport = pendingCsvImport,
                     importErrors = remoteImportErrors,
                     importingCsv = importingCsv,
                     onOpenApi = { homeOverlay = HomeOverlay.API },
+                    onSaveBalanceBaseline = { balance, date ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val updated = ledgerAccount.copy(
+                            id = accountId,
+                            ownerId = apiPreferences.userId.ifBlank { ledgerAccount.ownerId.ifBlank { "local-user" } },
+                            openingBalance = balance,
+                            openingBalanceDate = date,
+                            createdAt = ledgerAccount.createdAt.ifBlank { now },
+                            updatedAt = now,
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveLedgerAccount(apiPreferences, updated)
+                        ledgerStore.saveLedgerAccount(scope, accountId, updated)
+                        ledgerAccount = updated
+                        calculateNativeLedgerBalance(updated, entries.toList(), remoteSavingsPlans)?.let { updatedBalance ->
+                            actualBalance = updatedBalance
+                            ledgerStore.save(scope, accountId, updatedBalance, entries.toList())
+                        }
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地余额基准已保存" else "云端余额基准已保存"
+                    },
                     onRefresh = { refreshVersion += 1 },
                     onChangePassword = { newPassword, confirmPassword ->
                         apiClient.changePassword(apiPreferences, newPassword, confirmPassword)
