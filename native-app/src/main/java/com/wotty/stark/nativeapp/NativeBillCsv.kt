@@ -1,5 +1,7 @@
 package com.wotty.stark.nativeapp
 
+import android.util.Xml
+import java.io.ByteArrayInputStream
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -7,6 +9,8 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
+import java.util.zip.ZipInputStream
+import org.xmlpull.v1.XmlPullParser
 
 private val nativeBillCsvHeaders = listOf(
     "流水ID",
@@ -235,6 +239,16 @@ private fun parseNativeAmount(value: String): Double? {
 
 private fun parseNativeDate(value: String): String? {
     val raw = value.trim().replace('T', ' ')
+    val excelSerial = raw.toBigDecimalOrNull()?.takeIf { it >= BigDecimal("20_000") && it < BigDecimal("100_000") }
+    if (excelSerial != null) {
+        return runCatching {
+            val wholeDays = excelSerial.toLong()
+            val fraction = excelSerial.subtract(BigDecimal.valueOf(wholeDays))
+            val nanosOfDay = fraction.multiply(BigDecimal("86400000000000")).toLong()
+            LocalDate.of(1899, 12, 30).atStartOfDay().plusDays(wholeDays).plusNanos(nanosOfDay)
+                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT))
+        }.getOrNull()
+    }
     val pattern = Regex("^(\\d{2,4})[-/.年](\\d{1,2})[-/.月](\\d{1,2})日?(?:\\s+(\\d{1,2}):(\\d{1,2})(?::(\\d{1,2}))?)?$")
     val match = pattern.matchEntire(raw)
     if (match != null) {
@@ -292,7 +306,173 @@ internal fun parseNativeBillCsv(
 ): NativeBillImportPreview {
     val withoutBom = content.removePrefix("\uFEFF")
     val parsed = parseNativeCsvRecords(withoutBom)
-    val headerIndex = parsed.records.indexOfFirst { row ->
+    return parseNativeBillRecords(parsed.records, parsed.issues, fileName, accountId, userId)
+}
+
+internal fun decodeNativeBillCsv(bytes: ByteArray): String {
+    val utf8 = bytes.toString(Charsets.UTF_8)
+    return if ('\uFFFD' in utf8) {
+        bytes.toString(java.nio.charset.Charset.forName("GB18030"))
+    } else {
+        utf8
+    }
+}
+
+internal fun parseNativeBillXlsx(
+    bytes: ByteArray,
+    fileName: String,
+    accountId: String,
+    userId: String,
+): NativeBillImportPreview {
+    require(bytes.size <= MAX_XLSX_FILE_BYTES) { "XLSX 文件过大，请先拆分或压缩账单文件" }
+    val archive = readXlsxParts(bytes)
+    val workbookXml = archive["xl/workbook.xml"] ?: error("工作簿缺少有效目录")
+    val relationsXml = archive["xl/_rels/workbook.xml.rels"]
+    val firstSheetRelation = workbookFirstSheetRelation(workbookXml)
+    val sheetPath = relationsXml?.let { resolveWorksheetPath(it, firstSheetRelation) }
+        ?: "xl/worksheets/sheet1.xml"
+    val sheetXml = archive[sheetPath] ?: error("工作簿的第一个工作表无法读取")
+    val sharedStrings = archive["xl/sharedStrings.xml"]?.let(::parseXlsxSharedStrings).orEmpty()
+    val records = parseXlsxWorksheet(sheetXml, sharedStrings)
+    require(records.isNotEmpty()) { "工作簿中没有可读取的行" }
+    return parseNativeBillRecords(records, emptyList(), fileName, accountId, userId)
+}
+
+private const val MAX_XLSX_FILE_BYTES = 25 * 1024 * 1024
+private const val MAX_XLSX_UNPACKED_BYTES = 100 * 1024 * 1024
+private const val OOXML_RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+private fun readXlsxParts(bytes: ByteArray): Map<String, ByteArray> {
+    val wanted = mutableMapOf<String, ByteArray>()
+    var totalBytes = 0L
+    ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
+        while (true) {
+            val entry = zip.nextEntry ?: break
+            val name = entry.name
+            val needed = name == "xl/workbook.xml" ||
+                name == "xl/_rels/workbook.xml.rels" ||
+                name == "xl/sharedStrings.xml" ||
+                name.startsWith("xl/worksheets/") && name.endsWith(".xml")
+            if (!entry.isDirectory && needed) {
+                val data = zip.readBytes()
+                totalBytes += data.size
+                require(totalBytes <= MAX_XLSX_UNPACKED_BYTES) { "XLSX 工作簿解压后过大，无法安全读取" }
+                wanted[name] = data
+            }
+        }
+    }
+    require(wanted.isNotEmpty()) { "文件不是有效的 XLSX 工作簿" }
+    return wanted
+}
+
+private fun newXlsxParser(bytes: ByteArray): XmlPullParser = Xml.newPullParser().apply {
+    setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, true)
+    setInput(ByteArrayInputStream(bytes), "UTF-8")
+}
+
+private fun workbookFirstSheetRelation(workbookXml: ByteArray): String {
+    val parser = newXlsxParser(workbookXml)
+    while (parser.next() != XmlPullParser.END_DOCUMENT) {
+        if (parser.eventType == XmlPullParser.START_TAG && parser.name == "sheet") {
+            return parser.getAttributeValue(OOXML_RELATIONSHIP_NAMESPACE, "id")
+                ?: parser.getAttributeValue(null, "r:id")
+                ?: error("工作簿没有指定第一个工作表")
+        }
+    }
+    error("工作簿中没有工作表")
+}
+
+private fun resolveWorksheetPath(relationsXml: ByteArray, relationId: String): String? {
+    val parser = newXlsxParser(relationsXml)
+    while (parser.next() != XmlPullParser.END_DOCUMENT) {
+        if (parser.eventType != XmlPullParser.START_TAG || parser.name != "Relationship") continue
+        if (parser.getAttributeValue(null, "Id") != relationId) continue
+        val target = parser.getAttributeValue(null, "Target") ?: return null
+        val normalized = target.removePrefix("/").removePrefix("./")
+        return if (normalized.startsWith("xl/")) normalized else "xl/$normalized"
+    }
+    return null
+}
+
+private fun parseXlsxSharedStrings(xml: ByteArray): List<String> {
+    val result = mutableListOf<String>()
+    val parser = newXlsxParser(xml)
+    var inString = false
+    var value = StringBuilder()
+    while (parser.next() != XmlPullParser.END_DOCUMENT) {
+        when {
+            parser.eventType == XmlPullParser.START_TAG && parser.name == "si" -> {
+                inString = true
+                value = StringBuilder()
+            }
+            parser.eventType == XmlPullParser.START_TAG && parser.name == "t" && inString -> value.append(parser.nextText())
+            parser.eventType == XmlPullParser.END_TAG && parser.name == "si" -> {
+                result += value.toString()
+                inString = false
+            }
+        }
+    }
+    return result
+}
+
+private fun parseXlsxWorksheet(xml: ByteArray, sharedStrings: List<String>): List<NativeCsvRecord> {
+    val rows = sortedMapOf<Int, MutableMap<Int, String>>()
+    val parser = newXlsxParser(xml)
+    var rowIndex = -1
+    var nextColumnIndex = 0
+    var cellColumnIndex: Int? = null
+    var cellType = ""
+    var cellValue = ""
+    var inlineValue = StringBuilder()
+
+    while (parser.next() != XmlPullParser.END_DOCUMENT) {
+        when {
+            parser.eventType == XmlPullParser.START_TAG && parser.name == "row" -> {
+                rowIndex = (parser.getAttributeValue(null, "r")?.toIntOrNull()?.minus(1)) ?: (rowIndex + 1)
+                rows.getOrPut(rowIndex) { sortedMapOf() }
+                nextColumnIndex = 0
+            }
+            parser.eventType == XmlPullParser.START_TAG && parser.name == "c" -> {
+                val reference = parser.getAttributeValue(null, "r").orEmpty()
+                cellColumnIndex = reference.takeWhile(Char::isLetter).uppercase(Locale.ROOT).fold(0) { value, char ->
+                    value * 26 + (char.code - 'A'.code + 1)
+                }.takeIf { it > 0 }?.minus(1) ?: nextColumnIndex
+                cellType = parser.getAttributeValue(null, "t").orEmpty()
+                cellValue = ""
+                inlineValue = StringBuilder()
+            }
+            parser.eventType == XmlPullParser.START_TAG && parser.name == "v" && cellColumnIndex != null -> cellValue = parser.nextText()
+            parser.eventType == XmlPullParser.START_TAG && parser.name == "t" && cellType == "inlineStr" -> inlineValue.append(parser.nextText())
+            parser.eventType == XmlPullParser.END_TAG && parser.name == "c" && rowIndex >= 0 -> {
+                val columnIndex = cellColumnIndex ?: nextColumnIndex
+                val value = when (cellType) {
+                    "s" -> sharedStrings.getOrNull(cellValue.toIntOrNull() ?: -1).orEmpty()
+                    "inlineStr" -> inlineValue.toString()
+                    else -> cellValue
+                }
+                rows.getOrPut(rowIndex) { sortedMapOf() }[columnIndex] = value
+                nextColumnIndex = columnIndex + 1
+                cellColumnIndex = null
+                cellType = ""
+            }
+        }
+    }
+
+    return rows.filterValues { cells -> cells.values.any(String::isNotBlank) }.map { (index, cellsByColumn) ->
+        val lastColumn = cellsByColumn.keys.maxOrNull() ?: -1
+        val cells = (0..lastColumn).map { cellsByColumn[it].orEmpty() }
+        NativeCsvRecord(cells, index + 1, cells.joinToString(",", transform = ::escapeCsvCell))
+    }
+}
+
+private fun parseNativeBillRecords(
+    records: List<NativeCsvRecord>,
+    parseIssues: List<NativeBillImportIssue>,
+    fileName: String,
+    accountId: String,
+    userId: String,
+): NativeBillImportPreview {
+    val headerIndex = records.indexOfFirst { row ->
         val headers = row.cells
         val stark = listOf("流水ID", "日期", "类型", "平台", "金额").all { marker ->
             nativeHeaderIndex(headers, listOf(marker)) >= 0
@@ -303,18 +483,18 @@ internal fun parseNativeBillCsv(
             )
     }
     if (headerIndex < 0) {
-        val issue = NativeBillImportIssue(1, withoutBom.lineSequence().firstOrNull().orEmpty(), "无法识别账单表头，请选择微信、支付宝或本应用导出的 CSV")
-        return NativeBillImportPreview(fileName, nativeSourceFor(emptyList(), fileName), emptyList(), parsed.issues + issue)
+        val issue = NativeBillImportIssue(1, records.firstOrNull()?.rawData.orEmpty(), "无法识别账单表头，请选择微信、支付宝或本应用导出的 CSV 或 XLSX 文件")
+        return NativeBillImportPreview(fileName, nativeSourceFor(emptyList(), fileName), emptyList(), parseIssues + issue)
     }
 
-    val header = parsed.records[headerIndex]
+    val header = records[headerIndex]
     val headers = header.cells
     val source = nativeSourceFor(headers, fileName)
     val rows = mutableListOf<NativeBillImportItem>()
-    val issues = parsed.issues.toMutableList()
+    val issues = parseIssues.toMutableList()
     val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
 
-    parsed.records.drop(headerIndex + 1).forEach { record ->
+    records.drop(headerIndex + 1).forEach { record ->
         val amountNames = listOf("金额", "金额(元)", "金额（元）", "金额/元", "交易金额")
         val dateNames = listOf("日期", "交易时间", "交易日期", "支付时间", "交易创建时间", "付款时间", "交易修改时间")
         val amountText = nativeCell(record, headers, amountNames)

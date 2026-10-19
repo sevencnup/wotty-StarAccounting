@@ -514,6 +514,7 @@ private fun NativeAccountSettingsSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NativeHelpSheet(onDismiss: () -> Unit) {
+    val language = LocalNativeUiPreferences.current.value.language
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -534,7 +535,7 @@ private fun NativeHelpSheet(onDismiss: () -> Unit) {
             }
             SettingsPanel {
                 Text("账单导入支持什么格式？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("纯 Kotlin 版支持微信、支付宝和本应用导出的 CSV 文件。XLS/XLSX 请先用 Excel 或 WPS 另存为 CSV，再选择导入。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                Text(translateNativeText("支持微信、支付宝官方 CSV、XLSX 文件，以及本应用导出的 CSV 备份。旧式 XLS 请先另存为 XLSX 或 CSV。工作簿读取第一个工作表。", language), color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
             }
             SettingsPanel {
                 Text("本地和云端数据会合并吗？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -668,6 +669,7 @@ private fun NativeCsvImportSheet(
     onPick: () -> Unit,
     onConfirm: suspend () -> Unit,
 ) {
+    val language = LocalNativeUiPreferences.current.value.language
     val scope = rememberCoroutineScope()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val importableCount = preview?.rows?.count { it.duplicateReason == null } ?: 0
@@ -767,7 +769,7 @@ private fun NativeCsvImportSheet(
                     )
                 }
             }
-            Text("目前支持 CSV。XLS/XLSX 文件请先另存为 CSV。", color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(bottom = 14.dp))
+            Text(translateNativeText("支持 CSV、XLSX；工作簿按第一个工作表读取。确认前不会写入账本。旧式 XLS 请另存为 XLSX 或 CSV。", language), color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(bottom = 14.dp))
         }
     }
 }
