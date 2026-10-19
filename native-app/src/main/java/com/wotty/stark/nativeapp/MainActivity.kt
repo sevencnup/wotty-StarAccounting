@@ -1,6 +1,7 @@
 package com.wotty.stark.nativeapp
 
 import android.os.Bundle
+import android.os.Build
 import android.content.Context
 import android.graphics.Typeface
 import android.net.Uri
@@ -323,6 +324,17 @@ private data class NativeRemoteSnapshot(
     val entries: List<LedgerEntry>,
     val actualBalance: Double?,
 )
+
+private const val NATIVE_EMULATOR_API_BASE_URL = "http://10.0.2.2:12367"
+
+private fun isNativeAndroidEmulator(): Boolean =
+    Build.FINGERPRINT.startsWith("generic", ignoreCase = true) ||
+        Build.MODEL.contains("Emulator", ignoreCase = true) ||
+        Build.HARDWARE.contains("goldfish", ignoreCase = true) ||
+        Build.HARDWARE.contains("ranchu", ignoreCase = true)
+
+private fun defaultNativeApiBaseUrl(): String =
+    if (isNativeAndroidEmulator()) NATIVE_EMULATOR_API_BASE_URL else ""
 
 private data class NativeBudget(val amount: Double, val category: String, val period: String)
 internal data class NativeLoan(
@@ -660,12 +672,20 @@ private class NativeLedgerStore(context: Context) {
             .apply()
     }
 
-    fun loadApiPreferences(): NativeApiPreferences = NativeApiPreferences(
-        baseUrl = preferences.getString("apiBaseUrl", "http://10.0.2.2:12367") ?: "http://10.0.2.2:12367",
-        token = preferences.getString("apiToken", "") ?: "",
-        accountId = preferences.getString("apiAccountId", "") ?: "",
-        userId = preferences.getString("apiUserId", "") ?: "",
-    )
+    fun loadApiPreferences(): NativeApiPreferences {
+        val savedBaseUrl = preferences.getString("apiBaseUrl", null)?.trim().orEmpty()
+        val baseUrl = when {
+            savedBaseUrl.isBlank() -> defaultNativeApiBaseUrl()
+            savedBaseUrl.trimEnd('/').equals(NATIVE_EMULATOR_API_BASE_URL, ignoreCase = true) && !isNativeAndroidEmulator() -> ""
+            else -> savedBaseUrl
+        }
+        return NativeApiPreferences(
+            baseUrl = baseUrl,
+            token = preferences.getString("apiToken", "") ?: "",
+            accountId = preferences.getString("apiAccountId", "") ?: "",
+            userId = preferences.getString("apiUserId", "") ?: "",
+        )
+    }
 
     fun saveApiPreferences(baseUrl: String, token: String, accountId: String, userId: String) {
         preferences.edit()
@@ -4158,15 +4178,30 @@ private fun ApiLoginDialog(
     var baseUrl by remember(preferences.baseUrl) { mutableStateOf(preferences.baseUrl) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var logoutConfirmOpen by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = RoundedCornerShape(26.dp),
         containerColor = Color(0xFFFBFCFE),
-        title = { Text("云端数据", fontWeight = FontWeight.Bold) },
+        title = { Text(if (preferences.token.isBlank()) "连接云端账户" else "切换云端账户", fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("接入 API 后，首页会读取云端真实流水和账户资产。", color = Muted, fontSize = 12.sp, lineHeight = 18.sp)
-                OutlinedTextField(value = baseUrl, onValueChange = { baseUrl = it }, label = { Text("API 地址") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                Text(
+                    if (preferences.token.isBlank()) "登录后会切换到服务器单独保存的云端账本；本地账本不会改变。"
+                    else "登录其他账户会切换到该账户独立的云端账本；本地账本不会改变。",
+                    color = Muted,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+                OutlinedTextField(
+                    value = baseUrl,
+                    onValueChange = { baseUrl = it },
+                    label = { Text("API 地址") },
+                    placeholder = { Text("输入云端 API 服务地址") },
+                    supportingText = { Text("请输入手机当前网络可以访问的后端地址。") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("邮箱") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = password, onValueChange = { password = it }, label = { Text("密码") }, singleLine = true, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
                 Text(status, color = if (status.startsWith("已同步")) Green else Muted, fontSize = 11.sp)
@@ -4174,7 +4209,7 @@ private fun ApiLoginDialog(
         },
         dismissButton = {
             Row {
-                if (preferences.token.isNotBlank()) TextButton(onClick = onLogout) { Text("退出云端", color = Red) }
+                if (preferences.token.isNotBlank()) TextButton(onClick = { logoutConfirmOpen = true }) { Text("退出云端", color = Red) }
                 TextButton(onClick = onDismiss) { Text("取消") }
             }
         },
@@ -4182,6 +4217,22 @@ private fun ApiLoginDialog(
             TextButton(onClick = { if (baseUrl.isNotBlank() && email.isNotBlank() && password.isNotBlank()) onLogin(baseUrl, email, password) }) { Text("登录并同步") }
         },
     )
+    if (logoutConfirmOpen) {
+        AlertDialog(
+            onDismissRequest = { logoutConfirmOpen = false },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color(0xFFFBFCFE),
+            title = { Text("退出云端账户？", fontWeight = FontWeight.Bold) },
+            text = { Text("退出后继续使用本地账本，云端数据不会删除。") },
+            dismissButton = { TextButton(onClick = { logoutConfirmOpen = false }) { Text("取消") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    logoutConfirmOpen = false
+                    onLogout()
+                }) { Text("退出云端", color = Red) }
+            },
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
