@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.content.Context
 import android.graphics.Typeface
 import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Base64
 import android.view.View
 import java.io.ByteArrayOutputStream
@@ -148,6 +149,8 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.YearMonth
+import java.util.Locale
+import java.util.UUID
 import android.graphics.BitmapFactory
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -498,6 +501,41 @@ private class NativeLedgerStore(context: Context) {
         )
     }
 
+    fun saveImportedLedgerBatch(
+        scope: String,
+        accountId: String,
+        actualBalance: Double,
+        allEntries: List<LedgerEntry>,
+        importedEntries: List<LedgerEntry>,
+        updatedLoans: List<NativeLoan>,
+    ) {
+        val records = buildList {
+            importedEntries.forEach { add("transactions" to storedEntry(it)) }
+            updatedLoans.forEach { loan ->
+                add("loans" to NativeStoredEntity(loan.id, loan.toPayload().toString(), loan.updatedAt))
+            }
+        }
+        database.upsertEntities(scope, accountId, records)
+        val rows = JSONArray().apply { allEntries.forEach { put(entryJson(it)) } }
+        val editor = preferences.edit()
+            .putString("actualBalance_${scope}_$accountId", actualBalance.toString())
+            .putString("entries_${scope}_$accountId", rows.toString())
+        if (scope == "LOCAL") {
+            editor.putString("actualBalance", actualBalance.toString())
+                .putString("entries", rows.toString())
+        }
+        editor.apply()
+    }
+
+    fun loadImportErrors(scope: String, accountId: String): List<NativeImportError> =
+        database.readAll(scope, accountId, "importErrorLogs").mapNotNull { raw ->
+            runCatching { JSONObject(raw).toNativeImportError(accountId) }.getOrNull()
+        }.sortedByDescending(NativeImportError::createdAt)
+
+    fun saveImportError(scope: String, accountId: String, error: NativeImportError) {
+        database.upsert(scope, accountId, "importErrorLogs", NativeStoredEntity(error.id, error.toPayload().toString(), error.createdAt))
+    }
+
     fun loadSavingsGoals(scope: String, accountId: String): List<NativeSavingsGoal> =
         database.readAll(scope, accountId, "savingsGoals").mapNotNull(::parseNativeSavingsGoal)
 
@@ -779,6 +817,17 @@ private class NativeApiClient {
         postJson(config, "/api/category-rules", rule.toPayload(), "归类规则保存失败")
     }
 
+    suspend fun loadImportErrors(config: NativeApiPreferences): List<NativeImportError> = withContext(Dispatchers.IO) {
+        val rows = getJsonArray(config, "/api/import-errors?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+        buildList {
+            for (index in 0 until rows.length()) rows.optJSONObject(index)?.let { add(it.toNativeImportError(config.accountId)) }
+        }.sortedByDescending(NativeImportError::createdAt)
+    }
+
+    suspend fun saveImportError(config: NativeApiPreferences, error: NativeImportError) {
+        postJson(config, "/api/import-errors", error.toPayload(), "导入错误记录保存失败")
+    }
+
     suspend fun deleteCategoryRule(config: NativeApiPreferences, id: String) {
         deleteJson(config, "/api/category-rules/" + java.net.URLEncoder.encode(id, "UTF-8"), "归类规则")
     }
@@ -884,6 +933,46 @@ private class NativeApiClient {
     suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry) = withContext(Dispatchers.IO) {
         val payload = transactionPayload(config, entry)
         postTransactionPayload(config, payload)
+    }
+
+    suspend fun importTransactions(config: NativeApiPreferences, entries: List<LedgerEntry>): NativeBillImportResult = withContext(Dispatchers.IO) {
+        require(config.token.isNotBlank()) { "请先连接云端账本" }
+        require(config.accountId.isNotBlank()) { "云端账户没有可用账本" }
+        val items = JSONArray().apply { entries.forEach { put(transactionPayload(config, it)) } }
+        val account = java.net.URLEncoder.encode(config.accountId, "UTF-8")
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/transactions/import?accountId=$account")
+            .header("Authorization", "Bearer ${config.token}")
+            .post(items.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "云端账单导入失败" })
+            }
+            val result = JSONObject(raw)
+            val failed = result.optJSONArray("failedRows") ?: JSONArray()
+            NativeBillImportResult(
+                imported = result.optInt("imported"),
+                skipped = result.optInt("skipped"),
+                errors = result.optInt("errors"),
+                failedRows = buildList {
+                    for (index in 0 until failed.length()) {
+                        val row = failed.optJSONObject(index) ?: continue
+                        add(
+                            NativeImportFailedRow(
+                                lineNumber = row.optInt("lineNumber"),
+                                rawData = row.optString("rawData"),
+                                errorMessage = row.optString("errorMessage", "账单保存失败"),
+                                errorType = row.optString("errorType", "IMPORT"),
+                            ),
+                        )
+                    }
+                },
+                loanRepayments = result.optInt("loanRepayments"),
+                loanRepaymentAmount = result.optDouble("loanRepaymentAmount"),
+            )
+        }
     }
 
     suspend fun saveLoanRepayment(config: NativeApiPreferences, entry: LedgerEntry) = withContext(Dispatchers.IO) {
@@ -1079,8 +1168,19 @@ private fun StarkNativeApp() {
             ),
         )
     }
+    var remoteImportErrors by remember {
+        mutableStateOf(
+            ledgerStore.loadImportErrors(
+                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
+                apiPreferences.accountId.ifBlank { "local" },
+            ),
+        )
+    }
     var csvExportStatus by remember { mutableStateOf("导出当前账本全部流水为 UTF-8 CSV") }
     var exportingCsv by remember { mutableStateOf(false) }
+    var csvImportStatus by remember { mutableStateOf("选择 CSV 后先预览，再确认导入") }
+    var pendingCsvImport by remember { mutableStateOf<NativeBillImportPreview?>(null) }
+    var importingCsv by remember { mutableStateOf(false) }
     val csvExportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/csv"),
     ) { uri ->
@@ -1110,6 +1210,44 @@ private fun StarkNativeApp() {
             }
         }
     }
+    val csvImportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri == null) {
+            csvImportStatus = "已取消选择文件，账本数据未更改"
+        } else {
+            importingCsv = true
+            csvImportStatus = "正在读取账单…"
+            coroutineScope.launch {
+                runCatching {
+                    val fileName = withContext(Dispatchers.IO) {
+                        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+                            if (cursor.moveToFirst()) cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME)) else null
+                        } ?: "账单.csv"
+                    }
+                    require(fileName.endsWith(".csv", ignoreCase = true)) { "目前只支持 CSV 文件，请先将 XLS/XLSX 另存为 CSV" }
+                    val content = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                            ?: throw IllegalStateException("无法读取所选文件")
+                    }
+                    val accountId = apiPreferences.accountId.ifBlank { "local" }
+                    val userId = apiPreferences.userId.ifBlank { "local-user" }
+                    val parsed = withContext(Dispatchers.Default) {
+                        parseNativeBillCsv(content, fileName, accountId, userId)
+                    }
+                    pendingCsvImport = markNativeBillDuplicates(parsed, entries.toList())
+                    csvImportStatus = if (parsed.rows.isEmpty() && parsed.issues.isNotEmpty()) {
+                        "未识别到可导入流水，请检查文件格式"
+                    } else {
+                        "已读取 ${parsed.fileName}：识别 ${parsed.source.label}账单，可导入 ${parsed.rows.size} 笔"
+                    }
+                }.onFailure { error ->
+                    csvImportStatus = "导入失败：${error.message ?: "无法读取文件，请检查 CSV 格式"}"
+                }
+                importingCsv = false
+            }
+        }
+    }
 
     val lifecycleContext = LocalContext.current as? ComponentActivity
     DisposableEffect(lifecycleContext) {
@@ -1131,6 +1269,8 @@ private fun StarkNativeApp() {
         remoteLoans = ledgerStore.loadLoans(scope, accountId)
         remoteSubscriptions = ledgerStore.loadSubscriptions(scope, accountId)
         remoteCategoryRules = ledgerStore.loadCategoryRules(scope, accountId)
+        val cachedImportErrors = ledgerStore.loadImportErrors(scope, accountId)
+        remoteImportErrors = cachedImportErrors
         if (apiPreferences.token.isBlank()) {
             remoteBudgets = emptyList()
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
@@ -1159,6 +1299,7 @@ private fun StarkNativeApp() {
             val savingsPlans = apiClient.loadSavingsPlans(apiPreferences, savings.map { it.id })
             val subscriptions = apiClient.loadSubscriptions(apiPreferences)
             val categoryRules = apiClient.loadCategoryRules(apiPreferences)
+            val importErrors = apiClient.loadImportErrors(apiPreferences)
             val dueEntries = buildDueSubscriptionEntries(
                 subscriptions,
                 remote.entries,
@@ -1183,6 +1324,10 @@ private fun StarkNativeApp() {
             ledgerStore.saveSubscriptionsState(scope, accountId, subscriptions)
             remoteCategoryRules = categoryRules
             ledgerStore.saveCategoryRulesState(scope, accountId, categoryRules)
+            val mergedImportErrors = (importErrors + cachedImportErrors.filter { local -> importErrors.none { it.id == local.id } })
+                .sortedByDescending(NativeImportError::createdAt)
+            remoteImportErrors = mergedImportErrors
+            mergedImportErrors.forEach { ledgerStore.saveImportError(scope, accountId, it) }
             apiStatus = "已同步 ${synchronizedEntries.size} 笔${if (dueEntries.isNotEmpty()) " · 自动记账 ${dueEntries.size} 笔" else ""}"
         }.onFailure { error ->
             apiStatus = if (cached.entries.isNotEmpty()) {
@@ -1190,6 +1335,208 @@ private fun StarkNativeApp() {
             } else {
                 error.message ?: "云端同步失败"
             }
+        }
+    }
+
+    suspend fun persistImportError(error: NativeImportError) {
+        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+        val accountId = apiPreferences.accountId.ifBlank { "local" }
+        ledgerStore.saveImportError(scope, accountId, error)
+        if (apiPreferences.token.isNotBlank()) {
+            runCatching { apiClient.saveImportError(apiPreferences, error) }
+        }
+        remoteImportErrors = (listOf(error) + remoteImportErrors.filterNot { it.id == error.id })
+            .sortedByDescending(NativeImportError::createdAt)
+    }
+
+    suspend fun resolveImportErrors(fileName: String) {
+        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+        val accountId = apiPreferences.accountId.ifBlank { "local" }
+        val resolved = remoteImportErrors.filter { it.fileName == fileName && !it.resolved }.map { it.copy(resolved = true) }
+        resolved.forEach { error ->
+            ledgerStore.saveImportError(scope, accountId, error)
+            if (apiPreferences.token.isNotBlank()) runCatching { apiClient.saveImportError(apiPreferences, error) }
+        }
+        if (resolved.isNotEmpty()) {
+            val byId = resolved.associateBy(NativeImportError::id)
+            remoteImportErrors = remoteImportErrors.map { byId[it.id] ?: it }
+        }
+    }
+
+    suspend fun confirmCsvImport() {
+        val preview = pendingCsvImport ?: return
+        if (importingCsv) return
+        importingCsv = true
+        csvImportStatus = "正在导入 ${preview.rows.count { it.duplicateReason == null }} 笔${preview.source.label}账单…"
+        try {
+            val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+            val accountId = apiPreferences.accountId.ifBlank { "local" }
+            val duplicateCount = preview.rows.count { it.duplicateReason != null }
+            val candidates = preview.rows.filter { it.duplicateReason == null }
+            val categorizedEntries = applyNativeImportRules(candidates.map { it.entry }, remoteCategoryRules)
+            val preparedRows = candidates.zip(categorizedEntries).map { (row, entry) ->
+                val matchedLoan = matchNativeLoanRepayment(entry, remoteLoans)
+                val linked = if (matchedLoan == null) entry else entry.copy(
+                    type = EntryType.REPAYMENT,
+                    category = "还款 · ${entry.platform}",
+                    loanId = matchedLoan.id,
+                )
+                row.copy(entry = linked, duplicateReason = null)
+            }
+            var result = NativeBillImportResult(imported = 0, skipped = duplicateCount, errors = 0)
+            var failedPreviewRows = emptyList<NativeBillImportItem>()
+            val errorLogs = mutableListOf<NativeImportError>()
+            val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+
+            if (apiPreferences.token.isNotBlank()) {
+                if (preparedRows.isNotEmpty()) {
+                    val remoteResult = apiClient.importTransactions(apiPreferences, preparedRows.map { it.entry })
+                    result = remoteResult.copy(skipped = remoteResult.skipped + duplicateCount)
+                    remoteResult.failedRows.forEach { failure ->
+                        val row = preparedRows.getOrNull(failure.lineNumber - 1)
+                        if (row != null) failedPreviewRows = failedPreviewRows + row
+                        errorLogs += NativeImportError(
+                            id = "import-error-${UUID.randomUUID()}",
+                            userId = apiPreferences.userId.ifBlank { "local-user" },
+                            accountId = accountId,
+                            fileName = preview.fileName,
+                            lineNumber = row?.lineNumber ?: failure.lineNumber,
+                            rawData = failure.rawData.ifBlank { row?.rawData.orEmpty() },
+                            errorMessage = failure.errorMessage,
+                            errorType = failure.errorType,
+                            resolved = false,
+                            createdAt = now,
+                        )
+                    }
+                    if (remoteResult.errors > remoteResult.failedRows.size) {
+                        errorLogs += NativeImportError(
+                            id = "import-error-${UUID.randomUUID()}", userId = apiPreferences.userId.ifBlank { "local-user" },
+                            accountId = accountId, fileName = preview.fileName, lineNumber = 0,
+                            rawData = "", errorMessage = "${remoteResult.errors - remoteResult.failedRows.size} 笔账单导入失败，服务端未返回逐行原因",
+                            errorType = "IMPORT", resolved = false, createdAt = now,
+                        )
+                    }
+                }
+            } else if (preparedRows.isNotEmpty()) {
+                val existingIds = entries.mapTo(mutableSetOf()) { it.id }
+                val existingOrders = entries.mapNotNullTo(mutableSetOf()) { it.orderId?.takeIf(String::isNotBlank) }
+                val nextEntries = entries.toList().toMutableList()
+                val nextLoans = remoteLoans.toMutableList()
+                val touchedLoanIds = mutableSetOf<String>()
+                val importedEntries = mutableListOf<LedgerEntry>()
+                var skipped = duplicateCount
+                var failed = 0
+                var loanRepayments = 0
+                var loanAmount = 0.0
+                val retryRows = mutableListOf<NativeBillImportItem>()
+
+                preparedRows.forEach { row ->
+                    val entry = row.entry
+                    val duplicateReason = when {
+                        entry.id in existingIds -> "流水 ID 已存在"
+                        !entry.orderId.isNullOrBlank() && entry.orderId in existingOrders -> "订单号已存在"
+                        else -> null
+                    }
+                    if (duplicateReason != null) {
+                        skipped += 1
+                        return@forEach
+                    }
+                    val linkedLoanIndex = if (entry.type == EntryType.REPAYMENT && !entry.loanId.isNullOrBlank()) {
+                        nextLoans.indexOfFirst { it.id == entry.loanId }
+                    } else {
+                        -1
+                    }
+                    if (entry.type == EntryType.REPAYMENT && !entry.loanId.isNullOrBlank() && linkedLoanIndex < 0) {
+                        failed += 1
+                        retryRows += row
+                        errorLogs += NativeImportError(
+                            id = "import-error-${UUID.randomUUID()}", userId = apiPreferences.userId.ifBlank { "local-user" },
+                            accountId = accountId, fileName = preview.fileName, lineNumber = row.lineNumber,
+                            rawData = row.rawData, errorMessage = "关联贷款不存在，账单没有写入", errorType = "IMPORT",
+                            resolved = false, createdAt = now,
+                        )
+                        return@forEach
+                    }
+                    if (linkedLoanIndex >= 0) {
+                        val loan = nextLoans[linkedLoanIndex]
+                        val amount = java.math.BigDecimal.valueOf(entry.amount)
+                        val remaining = java.math.BigDecimal.valueOf(loan.remainingAmount.coerceAtLeast(0.0))
+                        val reduced = amount.min(remaining)
+                        val nextRemaining = remaining.subtract(reduced).max(java.math.BigDecimal.ZERO)
+                            .setScale(2, java.math.RoundingMode.HALF_UP).toDouble()
+                        val paidPeriods = if (loan.monthlyPayment > 0.0 && entry.amount >= loan.monthlyPayment) {
+                            (loan.paidPeriods + 1).coerceAtMost(loan.periods)
+                        } else loan.paidPeriods
+                        nextLoans[linkedLoanIndex] = loan.copy(
+                            remainingAmount = nextRemaining,
+                            paidPeriods = paidPeriods,
+                            status = if (nextRemaining <= 0.0) "PAID_OFF" else loan.status,
+                            updatedAt = now,
+                        )
+                        touchedLoanIds += loan.id
+                        if (reduced > java.math.BigDecimal.ZERO) {
+                            loanRepayments += 1
+                            loanAmount += reduced.toDouble()
+                        }
+                    }
+                    existingIds += entry.id
+                    entry.orderId?.takeIf(String::isNotBlank)?.let(existingOrders::add)
+                    nextEntries.add(0, entry)
+                    importedEntries += entry
+                }
+                val updatedLoans = nextLoans.filter { it.id in touchedLoanIds }
+                ledgerStore.saveImportedLedgerBatch(scope, accountId, actualBalance, nextEntries, importedEntries, updatedLoans)
+                entries.clear()
+                entries.addAll(nextEntries)
+                remoteLoans = nextLoans
+                failedPreviewRows = retryRows
+                result = NativeBillImportResult(
+                    imported = importedEntries.size,
+                    skipped = skipped,
+                    errors = failed,
+                    failedRows = retryRows.map { row ->
+                        NativeImportFailedRow(row.lineNumber, row.rawData, "关联贷款不存在，账单没有写入", "IMPORT")
+                    },
+                    loanRepayments = loanRepayments,
+                    loanRepaymentAmount = loanAmount,
+                )
+            }
+
+            preview.issues.forEach { issue ->
+                errorLogs += NativeImportError(
+                    id = "import-error-${UUID.randomUUID()}",
+                    userId = apiPreferences.userId.ifBlank { "local-user" },
+                    accountId = accountId,
+                    fileName = preview.fileName,
+                    lineNumber = issue.lineNumber,
+                    rawData = issue.rawData,
+                    errorMessage = issue.message,
+                    errorType = issue.errorType,
+                    resolved = false,
+                    createdAt = now,
+                )
+            }
+
+            if (failedPreviewRows.isEmpty() && preview.issues.isEmpty()) {
+                resolveImportErrors(preview.fileName)
+            }
+            errorLogs.forEach { persistImportError(it) }
+            val errorCount = result.errors + preview.issues.size
+            val repaymentSummary = if (result.loanRepayments > 0) {
+                "，自动关联 ${result.loanRepayments} 笔还款（¥${"%.2f".format(Locale.ROOT, result.loanRepaymentAmount)}）"
+            } else ""
+            csvImportStatus = "已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 $errorCount 行$repaymentSummary" +
+                if (failedPreviewRows.isNotEmpty()) "；失败账单已保留，可再次确认重试" else ""
+            pendingCsvImport = if (failedPreviewRows.isNotEmpty()) {
+                preview.copy(rows = failedPreviewRows, issues = emptyList())
+            } else {
+                null
+            }
+            if (result.imported > 0) refreshVersion += 1
+        } catch (error: Throwable) {
+            csvImportStatus = "导入失败：${error.message ?: "账单未完成写入，请检查连接后重试"}"
+        } finally {
+            importingCsv = false
         }
     }
 
@@ -1364,6 +1711,10 @@ private fun StarkNativeApp() {
                     categoryRules = remoteCategoryRules,
                     transactions = entries.toList(),
                     csvExportStatus = csvExportStatus,
+                    csvImportStatus = csvImportStatus,
+                    pendingCsvImport = pendingCsvImport,
+                    importErrors = remoteImportErrors,
+                    importingCsv = importingCsv,
                     onOpenApi = { homeOverlay = HomeOverlay.API },
                     onRefresh = { refreshVersion += 1 },
                     onExportBills = {
@@ -1375,6 +1726,11 @@ private fun StarkNativeApp() {
                             csvExportLauncher.launch("star-accounting-bills-$date.csv")
                         }
                     },
+                    onPickBills = {
+                        csvImportStatus = "正在选择账单文件…"
+                        csvImportLauncher.launch(arrayOf("text/*", "text/csv", "application/csv", "application/vnd.ms-excel"))
+                    },
+                    onConfirmBillImport = ::confirmCsvImport,
                     onSaveSubscription = { subscription ->
                         val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
                         val accountId = apiPreferences.accountId.ifBlank { "local" }
