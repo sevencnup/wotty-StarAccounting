@@ -336,7 +336,6 @@ private fun isNativeAndroidEmulator(): Boolean =
 private fun defaultNativeApiBaseUrl(): String =
     if (isNativeAndroidEmulator()) NATIVE_EMULATOR_API_BASE_URL else ""
 
-private data class NativeBudget(val amount: Double, val category: String, val period: String)
 internal data class NativeLoan(
     val id: String,
     val platform: String,
@@ -445,6 +444,25 @@ private class NativeLedgerStore(context: Context) {
 
     fun deleteAsset(scope: String, accountId: String, assetId: String) {
         database.delete(scope, accountId, "assets", assetId)
+    }
+
+    fun loadBudgets(scope: String, accountId: String): List<NativeBudget> =
+        database.readAll(scope, accountId, "budgets").mapNotNull { raw ->
+            runCatching { JSONObject(raw).toNativeBudget(accountId) }.getOrNull()
+        }
+
+    fun saveBudgetsState(scope: String, accountId: String, budgets: List<NativeBudget>) {
+        database.replaceAll(scope, accountId, "budgets", budgets.map { budget ->
+            NativeStoredEntity(budget.id, budget.toPayload().toString(), budget.updatedAt)
+        })
+    }
+
+    fun saveBudget(scope: String, accountId: String, budget: NativeBudget) {
+        database.upsert(scope, accountId, "budgets", NativeStoredEntity(budget.id, budget.toPayload().toString(), budget.updatedAt))
+    }
+
+    fun deleteBudget(scope: String, accountId: String, budgetId: String) {
+        database.delete(scope, accountId, "budgets", budgetId)
     }
 
     fun loadSubscriptions(scope: String, accountId: String): List<NativeSubscription> =
@@ -919,7 +937,15 @@ private class NativeApiClient {
 
     suspend fun loadBudgets(config: NativeApiPreferences): List<NativeBudget> = withContext(Dispatchers.IO) {
         val rows = getJsonArray(config, "/api/budgets?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
-        buildList { for (i in 0 until rows.length()) rows.optJSONObject(i)?.let { add(NativeBudget(it.optDouble("amount"), it.optString("category", "全局预算"), it.optString("period", "MONTHLY"))) } }
+        buildList { for (i in 0 until rows.length()) rows.optJSONObject(i)?.let { add(it.toNativeBudget(config.accountId)) } }
+    }
+
+    suspend fun saveBudget(config: NativeApiPreferences, budget: NativeBudget) {
+        postJson(config, "/api/budgets", budget.toPayload(), "预算保存失败")
+    }
+
+    suspend fun deleteBudget(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/budgets/" + java.net.URLEncoder.encode(id, "UTF-8"), "预算")
     }
 
     suspend fun loadLoans(config: NativeApiPreferences): List<NativeLoan> = withContext(Dispatchers.IO) {
@@ -1231,7 +1257,14 @@ private fun StarkNativeApp() {
             ),
         )
     }
-    var remoteBudgets by remember { mutableStateOf<List<NativeBudget>>(emptyList()) }
+    var remoteBudgets by remember {
+        mutableStateOf(
+            ledgerStore.loadBudgets(
+                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
+                apiPreferences.accountId.ifBlank { "local" },
+            ),
+        )
+    }
     var remoteLoans by remember { mutableStateOf<List<NativeLoan>>(emptyList()) }
     var remoteSavings by remember { mutableStateOf<List<NativeSavingsGoal>>(emptyList()) }
     var remoteSavingsPlans by remember { mutableStateOf<List<NativeSavingsPlan>>(emptyList()) }
@@ -1258,6 +1291,15 @@ private fun StarkNativeApp() {
                 apiPreferences.accountId.ifBlank { "local" },
             ),
         )
+    }
+    val selectedBudgetPeriod = if (selectedMonth.length == 4) "YEARLY" else "MONTHLY"
+    val configuredPeriodBudget = remoteBudgets
+        .filter { it.scopeType == "GLOBAL" && it.period == selectedBudgetPeriod }
+        .sumOf(NativeBudget::amount)
+    val homePeriodBudget = when {
+        configuredPeriodBudget > 0.0 -> configuredPeriodBudget
+        selectedBudgetPeriod == "MONTHLY" && apiPreferences.token.isBlank() -> monthlyBudget
+        else -> 0.0
     }
     var csvExportStatus by remember { mutableStateOf("导出当前账本全部流水为 UTF-8 CSV") }
     var exportingCsv by remember { mutableStateOf(false) }
@@ -1349,13 +1391,31 @@ private fun StarkNativeApp() {
         entries.addAll(cached.entries)
         actualBalance = cached.actualBalance
         remoteAssets = ledgerStore.loadAssets(scope, accountId)
+        val cachedBudgets = ledgerStore.loadBudgets(scope, accountId)
+        remoteBudgets = cachedBudgets
         remoteLoans = ledgerStore.loadLoans(scope, accountId)
         remoteSubscriptions = ledgerStore.loadSubscriptions(scope, accountId)
         remoteCategoryRules = ledgerStore.loadCategoryRules(scope, accountId)
         val cachedImportErrors = ledgerStore.loadImportErrors(scope, accountId)
         remoteImportErrors = cachedImportErrors
         if (apiPreferences.token.isBlank()) {
-            remoteBudgets = emptyList()
+            if (cachedBudgets.isEmpty() && monthlyBudget > 0.0) {
+                val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                val migratedBudget = newNativeBudget(
+                    id = "native-budget-legacy-monthly",
+                    userId = apiPreferences.userId.ifBlank { "local-user" },
+                    accountId = accountId,
+                    amount = monthlyBudget,
+                    period = "MONTHLY",
+                    alertPercent = 80,
+                    createdAt = now,
+                    updatedAt = now,
+                )
+                ledgerStore.saveBudget(scope, accountId, migratedBudget)
+                remoteBudgets = listOf(migratedBudget)
+                monthlyBudget = 0.0
+                ledgerStore.saveHomePreferences(selectedMonth, salaryDay, 0.0)
+            }
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
             remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
             val dueEntries = buildDueSubscriptionEntries(remoteSubscriptions, entries.toList(), accountId, apiPreferences.userId.ifBlank { "local-user" })
@@ -1398,6 +1458,7 @@ private fun StarkNativeApp() {
             ledgerStore.save(scope, accountId, actualBalance, synchronizedEntries)
             ledgerStore.saveAssetsState(scope, accountId, assets)
             remoteBudgets = budgets
+            ledgerStore.saveBudgetsState(scope, accountId, budgets)
             remoteLoans = loans
             ledgerStore.saveLoansState(scope, accountId, loans)
             remoteSavings = savings
@@ -1644,7 +1705,7 @@ private fun StarkNativeApp() {
                     actualBalance = actualBalance,
                     selectedMonth = selectedMonth,
                     salaryDay = salaryDay,
-                    monthlyBudget = monthlyBudget,
+                    monthlyBudget = homePeriodBudget,
                     remoteBudgets = remoteBudgets,
                     remoteAssets = remoteAssets,
                     remoteLoans = remoteLoans,
@@ -1925,25 +1986,34 @@ private fun StarkNativeApp() {
             onDismiss = { homeOverlay = null },
         )
         HomeOverlay.SEARCH -> TransactionSearchDialog(entries, onDismiss = { homeOverlay = null })
-        HomeOverlay.BUDGET -> HomeSummaryDialog(
-            title = "本月资金分配",
-            description = "预算管理",
-            income = entries.filter { it.type == EntryType.INCOME && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
-            expense = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
-            budget = monthlyBudget,
-            onBudgetChange = {
-                monthlyBudget = it
-                ledgerStore.saveHomePreferences(selectedMonth, salaryDay, it)
-            },
+        HomeOverlay.BUDGET -> NativeBudgetManagementSheet(
+            budgets = remoteBudgets,
+            accountId = apiPreferences.accountId.ifBlank { "local" },
+            userId = apiPreferences.userId.ifBlank { "local-user" },
             onDismiss = { homeOverlay = null },
-            onOpenTransactions = { homeOverlay = null; selectedTab = RootTab.CONSUMPTION },
+            onSave = { budget ->
+                val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                val accountId = apiPreferences.accountId.ifBlank { "local" }
+                if (apiPreferences.token.isNotBlank()) apiClient.saveBudget(apiPreferences, budget)
+                ledgerStore.saveBudget(scope, accountId, budget)
+                remoteBudgets = (remoteBudgets.filterNot { it.id == budget.id } + budget).sortedByDescending(NativeBudget::updatedAt)
+                apiStatus = if (apiPreferences.token.isBlank()) "本地预算已保存" else "云端预算已保存"
+            },
+            onDelete = { budget ->
+                val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                val accountId = apiPreferences.accountId.ifBlank { "local" }
+                if (apiPreferences.token.isNotBlank()) apiClient.deleteBudget(apiPreferences, budget.id)
+                ledgerStore.deleteBudget(scope, accountId, budget.id)
+                remoteBudgets = remoteBudgets.filterNot { it.id == budget.id }
+                apiStatus = if (apiPreferences.token.isBlank()) "本地预算已删除" else "云端预算已删除"
+            },
         )
         HomeOverlay.DIAGNOSTIC -> HomeSummaryDialog(
             title = "财务诊断",
             description = "本期收支概览",
             income = entries.filter { it.type == EntryType.INCOME && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
             expense = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) }.sumOf { it.amount },
-            budget = monthlyBudget,
+            budget = homePeriodBudget,
             onBudgetChange = null,
             onDismiss = { homeOverlay = null },
             onOpenTransactions = { homeOverlay = null; selectedTab = RootTab.CONSUMPTION },
@@ -2328,7 +2398,6 @@ private fun HomeScreen(
                 savings = savings,
                 actualBalance = actualBalance,
                 monthlyBudget = monthlyBudget,
-                remoteBudgets = remoteBudgets,
                 monthLabel = monthLabel,
                 savingsPlanAllocation = savingsPlanAllocation,
                 matchedSavingsExpenses = matchedSavingsExpenses,
@@ -2336,7 +2405,7 @@ private fun HomeScreen(
                 onOpenSavings = { onSelectTab(RootTab.SAVINGS) },
             )
         }
-        item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
+        item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets, entries, selectedMonth) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
         item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteAssets, remoteLoans, remoteSavings, remoteSavingsPlans, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
@@ -2657,7 +2726,6 @@ private fun WebReplicaBudgetCard(
     savings: Double,
     actualBalance: Double,
     monthlyBudget: Double,
-    remoteBudgets: List<NativeBudget>,
     monthLabel: String,
     savingsPlanAllocation: NativeSavingsPlanAllocation,
     matchedSavingsExpenses: List<NativeSavingsExpenseMatch>,
@@ -2665,9 +2733,7 @@ private fun WebReplicaBudgetCard(
     onOpenSavings: () -> Unit,
 ) {
     var planExpanded by remember { mutableStateOf(false) }
-    val allocationIncome = if (monthlyBudget > 0.0) monthlyBudget else income
-    val configuredBudget = remoteBudgets.filter { it.period == "MONTHLY" }.sumOf { it.amount }
-    val allocationBase = if (configuredBudget > 0.0) configuredBudget else allocationIncome
+    val allocationBase = if (monthlyBudget > 0.0) monthlyBudget else income
     val allocated = expense + repayment + savings
     val available = allocationBase - allocated
     WebReplicaCard {
@@ -2871,9 +2937,24 @@ private fun BudgetSegment(label: String, value: Double, color: Color, modifier: 
 }
 
 @Composable
-private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, monthlyBudget: Double, remoteBudgets: List<NativeBudget>, onOpen: () -> Unit) {
-    val configuredBudget = remoteBudgets.filter { it.period == "MONTHLY" }.sumOf { it.amount }
+private fun WebReplicaDiagnosticBanner(
+    income: Double,
+    expense: Double,
+    periodBudget: Double,
+    budgets: List<NativeBudget>,
+    entries: List<LedgerEntry>,
+    reportingMonth: String,
+    onOpen: () -> Unit,
+) {
     val warning = expense > income && income > 0
+    val isYearlyRange = reportingMonth.length == 4
+    val budgetAlert = budgets.any { budget ->
+        budget.scopeType == "GLOBAL" && budget.amount > 0.0 &&
+            (budget.period == if (isYearlyRange) "YEARLY" else "MONTHLY") &&
+            calculateNativeBudgetSpent(entries, budget, reportingMonth, expense) / budget.amount * 100 >= budget.alertPercent
+    }
+    val warningLabel = if (isYearlyRange) "本年度支出偏高，建议关注预算" else "本月支出偏高，建议关注预算"
+    val calmLabel = if (isYearlyRange) "本年度现金流平稳，无超支或临近违约风险" else "本月现金流平稳，无超支或临近违约风险"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2889,7 +2970,7 @@ private fun WebReplicaDiagnosticBanner(income: Double, expense: Double, monthlyB
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
                 Text("财务诊断", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Text(if (warning || (monthlyBudget > 0 && expense > monthlyBudget) || (configuredBudget > 0 && expense > configuredBudget)) "本月支出偏高，建议关注预算" else "本月现金流平稳，无超支或临近违约风险", color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (warning || budgetAlert || (periodBudget > 0 && expense > periodBudget)) warningLabel else calmLabel, color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text("查看  ›", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
     }
