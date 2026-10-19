@@ -29,6 +29,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Label
@@ -86,8 +87,10 @@ internal fun NativeSettingsScreen(
     subscriptions: List<NativeSubscription>,
     categoryRules: List<NativeCategoryRule>,
     transactions: List<LedgerEntry>,
+    csvExportStatus: String,
     onOpenApi: () -> Unit,
     onRefresh: () -> Unit,
+    onExportBills: () -> Unit,
     onSaveSubscription: suspend (NativeSubscription) -> Unit,
     onDeleteSubscription: suspend (NativeSubscription) -> Unit,
     onSaveCategoryRule: suspend (NativeCategoryRule) -> Int,
@@ -96,6 +99,7 @@ internal fun NativeSettingsScreen(
 ) {
     var subscriptionsOpen by remember { mutableStateOf(false) }
     var categoryRulesOpen by remember { mutableStateOf(false) }
+    var csvExportOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     LazyColumn(
@@ -128,7 +132,7 @@ internal fun NativeSettingsScreen(
             }
         }
         item {
-            SettingsSectionTitle("账单管理", "周期支出按规则自动写入当前账本")
+            SettingsSectionTitle("账单管理", "管理分类规则、周期支出并导出账单")
             SettingsMenuRow(
                 title = "订阅/扣费管理",
                 detail = if (subscriptions.isEmpty()) "保险、房租等固定支出 · 尚未设置" else "${subscriptions.count { it.isActive }} 项自动记账中 · 共 ${subscriptions.size} 项",
@@ -142,6 +146,13 @@ internal fun NativeSettingsScreen(
                 color = SettingsBlue,
                 icon = Icons.Default.Label,
                 onClick = { categoryRulesOpen = true },
+            )
+            SettingsMenuRow(
+                title = "导出账单",
+                detail = "当前账本全部流水 · UTF-8 CSV",
+                color = SettingsBlue,
+                icon = Icons.Default.Download,
+                onClick = { csvExportOpen = true },
             )
         }
         item {
@@ -166,6 +177,13 @@ internal fun NativeSettingsScreen(
             onSave = onSaveCategoryRule,
             onToggle = onToggleCategoryRule,
             onDelete = onDeleteCategoryRule,
+        )
+    }
+    if (csvExportOpen) {
+        NativeCsvExportSheet(
+            status = csvExportStatus,
+            onDismiss = { csvExportOpen = false },
+            onExport = onExportBills,
         )
     }
     if (helpOpen) {
@@ -195,6 +213,48 @@ internal fun NativeSettingsScreen(
             },
             confirmButton = { TextButton(onClick = { aboutOpen = false }) { Text("关闭") } },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeCsvExportSheet(
+    status: String,
+    onDismiss: () -> Unit,
+    onExport: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().navigationBarsPadding().imePadding().padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("导出账单", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("将当前账本的流水保存为 CSV 文件", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                TextButton(onClick = onDismiss) { Text("完成") }
+            }
+            SettingsPanel {
+                Text("导出范围", color = SettingsInk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("包含当前账本的全部收入、支出、转账和还款流水。文件采用 UTF-8 编码，保留分类、备注归类、商户、支付方式、订单号和贷款关联信息。", color = SettingsMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+            SettingsInlineMessage(
+                status,
+                if (status.startsWith("已导出")) SettingsGreen else if (status.startsWith("导出失败")) SettingsRed else SettingsMuted,
+            )
+            Button(
+                onClick = onExport,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = SettingsBlue),
+                shape = RoundedCornerShape(14.dp),
+            ) {
+                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("选择保存位置", modifier = Modifier.padding(start = 7.dp), fontWeight = FontWeight.SemiBold)
+            }
+            Text("取消保存面板不会改动账本；导出的文件由你选择保存位置。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(bottom = 18.dp))
+        }
     }
 }
 
