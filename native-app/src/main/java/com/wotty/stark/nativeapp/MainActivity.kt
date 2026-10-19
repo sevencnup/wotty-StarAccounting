@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -44,6 +45,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -59,6 +61,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -217,6 +221,8 @@ private enum class RootTab(val label: String, val iconResource: Int) {
 private enum class EntryType(val label: String, val color: Color) {
     EXPENSE("支出", Red),
     INCOME("收入", Green),
+    TRANSFER("转账", Amber),
+    REPAYMENT("还款", Red),
 }
 
 private enum class HomeMetric(val label: String) {
@@ -241,17 +247,42 @@ private enum class HomeOverlay {
 }
 
 private data class LedgerEntry(
-    val id: Long,
+    val id: String,
     val title: String,
     val category: String,
     val amount: Double,
     val type: EntryType,
     val dayLabel: String,
     val transactionDate: String = LocalDate.now().toString(),
+    val date: String = transactionDate,
+    val merchant: String = "",
+    val description: String = "",
+    val platform: String = "现金",
+    val orderId: String? = null,
+    val paymentMethod: String? = null,
+    val status: String? = null,
+    val loanId: String? = null,
+    val remarkCategory: String? = null,
+    val userId: String = "",
+    val accountId: String = "",
+    val createdAt: String = "",
+    val updatedAt: String = "",
 )
 
 private fun LedgerEntry.isRepayment(): Boolean =
-    type == EntryType.EXPENSE && (category.contains("还款") || title.contains("还款") || title.contains("贷款"))
+    type == EntryType.REPAYMENT || (type == EntryType.EXPENSE && (category.contains("还款") || title.contains("还款") || title.contains("贷款")))
+
+private fun LedgerEntry.analysisType(): EntryType =
+    if (!remarkCategory.isNullOrBlank()) EntryType.EXPENSE else type
+
+private fun LedgerEntry.analysisCategory(): String =
+    remarkCategory?.trim()?.takeIf(String::isNotEmpty) ?: category.substringBefore(" ·")
+
+private fun LedgerEntry.balanceChange(): Double = when (analysisType()) {
+    EntryType.INCOME -> amount
+    EntryType.EXPENSE, EntryType.REPAYMENT -> -amount
+    EntryType.TRANSFER -> 0.0
+}
 
 private fun LedgerEntry.isSavings(): Boolean =
     type == EntryType.EXPENSE && (category.contains("储蓄") || category.contains("存款") || title.contains("储蓄") || title.contains("存款"))
@@ -310,46 +341,118 @@ private data class NativeSavingsPlan(
 
 private class NativeLedgerStore(context: Context) {
     private val preferences = context.getSharedPreferences("native-ledger", Context.MODE_PRIVATE)
+    private val database = NativeEntityDatabase(context.applicationContext)
 
-    fun load(): NativeLedgerSnapshot {
-        val storedEntries = preferences.getString("entries", null) ?: return NativeLedgerSnapshot(916.35, sampleEntries())
-        return runCatching {
-            val rows = JSONArray(storedEntries)
-            val entries = List(rows.length()) { index ->
-                val item = rows.getJSONObject(index)
-                LedgerEntry(
-                    id = item.getLong("id"),
-                    title = item.getString("title"),
-                    category = item.getString("category"),
-                    amount = item.getDouble("amount"),
-                    type = EntryType.valueOf(item.getString("type")),
-                    dayLabel = item.getString("dayLabel"),
-                    transactionDate = item.optString("transactionDate", LocalDate.now().toString()),
-                )
-            }
-            NativeLedgerSnapshot(preferences.getString("actualBalance", "916.35")?.toDoubleOrNull() ?: 916.35, entries)
-        }.getOrElse { NativeLedgerSnapshot(916.35, sampleEntries()) }
-    }
-
-    fun save(actualBalance: Double, entries: List<LedgerEntry>) {
-        val rows = JSONArray()
-        entries.forEach { entry ->
-            rows.put(
-                JSONObject()
-                    .put("id", entry.id)
-                    .put("title", entry.title)
-                    .put("category", entry.category)
-                    .put("amount", entry.amount)
-                    .put("type", entry.type.name)
-                    .put("dayLabel", entry.dayLabel)
-                    .put("transactionDate", entry.transactionDate),
-            )
+    fun load(scope: String = "LOCAL", accountId: String = "local"): NativeLedgerSnapshot {
+        val cacheKey = "entries_${scope}_$accountId"
+        val balanceKey = "actualBalance_${scope}_$accountId"
+        val persisted = database.readAll(scope, accountId, "transactions")
+        val legacyJson = if (scope == "LOCAL") {
+            preferences.getString(cacheKey, null) ?: preferences.getString("entries", null)
+        } else {
+            preferences.getString(cacheKey, null)
         }
-        preferences.edit()
-            .putString("actualBalance", actualBalance.toString())
-            .putString("entries", rows.toString())
-            .apply()
+        val entries = when {
+            persisted.isNotEmpty() -> persisted.mapNotNull(::parseEntry)
+            legacyJson != null -> parseEntryArray(legacyJson).also { migrated ->
+                if (migrated.isNotEmpty()) {
+                    database.replaceAll(scope, accountId, "transactions", migrated.map(::storedEntry))
+                }
+            }
+            scope == "LOCAL" -> sampleEntries()
+            else -> emptyList()
+        }
+        val storedBalance = preferences.getString(balanceKey, null)
+            ?: if (scope == "LOCAL") preferences.getString("actualBalance", "916.35") else "0"
+        return NativeLedgerSnapshot(storedBalance?.toDoubleOrNull() ?: 0.0, entries)
     }
+
+    fun save(scope: String, accountId: String, actualBalance: Double, entries: List<LedgerEntry>) {
+        val rows = JSONArray()
+        entries.forEach { rows.put(entryJson(it)) }
+        database.replaceAll(scope, accountId, "transactions", entries.map(::storedEntry))
+        val editor = preferences.edit()
+            .putString("actualBalance_${scope}_$accountId", actualBalance.toString())
+            .putString("entries_${scope}_$accountId", rows.toString())
+        if (scope == "LOCAL") {
+            editor.putString("actualBalance", actualBalance.toString())
+                .putString("entries", rows.toString())
+        }
+        editor.apply()
+    }
+
+    private fun parseEntryArray(raw: String): List<LedgerEntry> = runCatching {
+        val rows = JSONArray(raw)
+        List(rows.length()) { index -> parseEntry(rows.getJSONObject(index).toString()) }
+            .filterNotNull()
+    }.getOrDefault(emptyList())
+
+    private fun parseEntry(raw: String): LedgerEntry? = runCatching {
+        val item = JSONObject(raw)
+        val oldCategory = item.optString("category", "未分类")
+        val platform = item.optString("platform").ifBlank {
+            oldCategory.substringAfter(" ·", "现金").ifBlank { "现金" }
+        }
+        val category = item.optString("categoryName").ifBlank {
+            oldCategory.substringBefore(" ·").ifBlank { "未分类" }
+        }
+        val transactionDate = item.optString("transactionDate").ifBlank {
+            item.optString("date", LocalDate.now().toString()).take(10)
+        }
+        val merchant = item.optString("merchant")
+        val description = item.optString("description").ifBlank { item.optString("title") }
+        LedgerEntry(
+            id = item.optString("id").ifBlank { "legacy-${System.nanoTime()}" },
+            title = item.optString("title").ifBlank { merchant.ifBlank { description.ifBlank { category } } },
+            category = "$category · $platform",
+            amount = item.optDouble("amount", 0.0),
+            type = runCatching { EntryType.valueOf(item.optString("type", "EXPENSE")) }.getOrDefault(EntryType.EXPENSE),
+            dayLabel = item.optString("dayLabel").ifBlank { transactionDate },
+            transactionDate = transactionDate,
+            date = item.optString("date").ifBlank { transactionDate },
+            merchant = merchant,
+            description = description,
+            platform = platform,
+            orderId = item.optString("orderId").takeIf(String::isNotBlank),
+            paymentMethod = item.optString("paymentMethod").takeIf(String::isNotBlank),
+            status = item.optString("status").takeIf(String::isNotBlank),
+            loanId = item.optString("loanId").takeIf(String::isNotBlank),
+            remarkCategory = item.optString("remarkCategory").takeIf(String::isNotBlank),
+            userId = item.optString("userId"),
+            accountId = item.optString("accountId"),
+            createdAt = item.optString("createdAt"),
+            updatedAt = item.optString("updatedAt"),
+        )
+    }.getOrNull()
+
+    private fun storedEntry(entry: LedgerEntry) = NativeStoredEntity(
+        id = entry.id,
+        payload = entryJson(entry).toString(),
+        updatedAt = entry.updatedAt.ifBlank { entry.date },
+    )
+
+    private fun entryJson(entry: LedgerEntry) = JSONObject()
+        .put("id", entry.id)
+        .put("title", entry.title)
+        .put("category", entry.category.substringBefore(" ·"))
+        .put("categoryName", entry.category.substringBefore(" ·"))
+        .put("platform", entry.platform.ifBlank { entry.category.substringAfter(" ·", "现金") })
+        .put("amount", entry.amount)
+        .put("type", entry.type.name)
+        .put("dayLabel", entry.dayLabel)
+        .put("transactionDate", entry.transactionDate)
+        .put("date", entry.date)
+        .put("merchant", entry.merchant)
+        .put("description", entry.description)
+        .put("orderId", entry.orderId)
+        .put("paymentMethod", entry.paymentMethod)
+        .put("status", entry.status)
+        .put("loanId", entry.loanId)
+        .put("remarkCategory", entry.remarkCategory)
+        .put("userId", entry.userId)
+        .put("accountId", entry.accountId)
+        .put("createdAt", entry.createdAt)
+        .put("updatedAt", entry.updatedAt)
 
     fun loadHomePreferences(): NativeHomePreferences {
         return NativeHomePreferences(
@@ -413,35 +516,56 @@ private class NativeApiClient {
     suspend fun loadSnapshot(config: NativeApiPreferences): NativeRemoteSnapshot = withContext(Dispatchers.IO) {
         require(config.token.isNotBlank()) { "请先登录云端账户" }
         require(config.accountId.isNotBlank()) { "云端账户没有可用账本" }
-        val request = Request.Builder()
-            .url(config.baseUrl.trimEnd('/') + "/api/transactions?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8") + "&page=1&pageSize=500")
-            .header("Authorization", "Bearer ${config.token}")
-            .get()
-            .build()
-        client.newCall(request).execute().use { response ->
-            val raw = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw IllegalStateException(JSONObject(raw).optString("error", "云端流水读取失败"))
-            val rows = JSONArray(raw)
-            val entries = buildList {
-                for (index in 0 until rows.length()) {
-                    val row = rows.optJSONObject(index) ?: continue
-                    val type = runCatching { EntryType.valueOf(row.optString("type", "EXPENSE")) }.getOrDefault(EntryType.EXPENSE)
-                    val date = row.optString("date", LocalDate.now().toString()).take(10)
-                    add(
-                        LedgerEntry(
-                            id = row.optString("id").hashCode().toLong(),
-                            title = row.optString("merchant").ifBlank { row.optString("description").ifBlank { row.optString("category", "未命名流水") } },
-                            category = row.optString("category", "未分类") + " · " + row.optString("platform", "云端"),
-                            amount = row.optDouble("amount", 0.0),
-                            type = type,
-                            dayLabel = date,
-                            transactionDate = date,
-                        ),
-                    )
-                }
+        val accountQuery = java.net.URLEncoder.encode(config.accountId, "UTF-8")
+        val allRows = mutableListOf<JSONObject>()
+        var page = 1
+        while (true) {
+            val request = Request.Builder()
+                .url(config.baseUrl.trimEnd('/') + "/api/transactions?accountId=$accountQuery&page=$page&pageSize=500")
+                .header("Authorization", "Bearer ${config.token}")
+                .get()
+                .build()
+            val pageRows = client.newCall(request).execute().use { response ->
+                val raw = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IllegalStateException(JSONObject(raw).optString("error", "云端流水读取失败"))
+                JSONArray(raw)
             }
-            NativeRemoteSnapshot(entries = entries, actualBalance = null)
+            for (index in 0 until pageRows.length()) pageRows.optJSONObject(index)?.let(allRows::add)
+            if (pageRows.length() < 500) break
+            page += 1
         }
+        val entries = allRows.map { row ->
+            val type = runCatching { EntryType.valueOf(row.optString("type", "EXPENSE")) }.getOrDefault(EntryType.EXPENSE)
+            val rawDate = row.optString("date", LocalDate.now().toString())
+            val date = rawDate.take(10)
+            val category = row.optString("category", "未分类")
+            val platform = row.optString("platform", "云端")
+            val merchant = row.optString("merchant")
+            val description = row.optString("description")
+            LedgerEntry(
+                id = row.optString("id"),
+                title = merchant.ifBlank { description.ifBlank { category } },
+                category = "$category · $platform",
+                amount = row.optDouble("amount", 0.0),
+                type = type,
+                dayLabel = date,
+                transactionDate = date,
+                date = rawDate,
+                merchant = merchant,
+                description = description,
+                platform = platform,
+                orderId = row.optString("orderId").takeIf(String::isNotBlank),
+                paymentMethod = row.optString("paymentMethod").takeIf(String::isNotBlank),
+                status = row.optString("status").takeIf(String::isNotBlank),
+                loanId = row.optString("loanId").takeIf(String::isNotBlank),
+                remarkCategory = row.optString("remarkCategory").takeIf(String::isNotBlank),
+                userId = row.optString("userId"),
+                accountId = row.optString("accountId"),
+                createdAt = row.optString("createdAt"),
+                updatedAt = row.optString("updatedAt"),
+            )
+        }
+        NativeRemoteSnapshot(entries = entries, actualBalance = null)
     }
 
     suspend fun loadBalance(config: NativeApiPreferences): Double? = withContext(Dispatchers.IO) {
@@ -552,37 +676,64 @@ private class NativeApiClient {
         return result
     }
 
-    suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry): Boolean = withContext(Dispatchers.IO) {
+    suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry) = withContext(Dispatchers.IO) {
         val now = java.time.LocalDateTime.now().toString().replace('T', ' ')
+        val rawDate = entry.date.ifBlank { entry.transactionDate }.let { value ->
+            if (value.length == 10) "$value 12:00:00" else value
+        }
         val payload = JSONObject()
-            .put("id", "native-${entry.id}")
-            .put("userId", config.userId)
-            .put("accountId", config.accountId)
+            .put("id", entry.id)
+            .put("userId", entry.userId.ifBlank { config.userId })
+            .put("accountId", entry.accountId.ifBlank { config.accountId })
             .put("amount", entry.amount)
             .put("type", entry.type.name)
             .put("category", entry.category.substringBefore(" ·"))
-            .put("platform", entry.category.substringAfter(" ·", "现金"))
-            .put("merchant", entry.title)
-            .put("date", "${entry.transactionDate} 12:00:00")
-            .put("description", entry.title)
-            .put("createdAt", now)
+            .put("platform", entry.platform.ifBlank { entry.category.substringAfter(" ·", "现金") })
+            .put("merchant", entry.merchant.ifBlank { JSONObject.NULL })
+            .put("date", rawDate)
+            .put("description", entry.description.ifBlank { JSONObject.NULL })
+            .put("orderId", entry.orderId ?: JSONObject.NULL)
+            .put("paymentMethod", entry.paymentMethod ?: JSONObject.NULL)
+            .put("status", entry.status ?: JSONObject.NULL)
+            .put("loanId", entry.loanId ?: JSONObject.NULL)
+            .put("remarkCategory", entry.remarkCategory ?: JSONObject.NULL)
+            .put("createdAt", entry.createdAt.ifBlank { now })
             .put("updatedAt", now)
         val request = Request.Builder()
             .url(config.baseUrl.trimEnd('/') + "/api/transactions")
             .header("Authorization", "Bearer ${config.token}")
             .post(payload.toString().toRequestBody("application/json".toMediaType()))
             .build()
-        client.newCall(request).execute().use { it.isSuccessful }
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val raw = response.body?.string().orEmpty()
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "云端流水保存失败" })
+            }
+        }
+    }
+
+    suspend fun deleteEntry(config: NativeApiPreferences, entryId: String) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/transactions/" + java.net.URLEncoder.encode(entryId, "UTF-8"))
+            .header("Authorization", "Bearer ${config.token}")
+            .delete()
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val raw = response.body?.string().orEmpty()
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "云端流水删除失败" })
+            }
+        }
     }
 }
 
 private fun sampleEntries(): List<LedgerEntry> {
     val today = LocalDate.now()
     return listOf(
-        LedgerEntry(1, "工资入账", "工资收入 · 银行卡", 6917.18, EntryType.INCOME, "今天 09:01", today.toString()),
-        LedgerEntry(2, "午餐", "餐饮美食 · 微信", 28.00, EntryType.EXPENSE, "今天 12:26", today.toString()),
-        LedgerEntry(3, "地铁出行", "交通出行 · 支付宝", 4.00, EntryType.EXPENSE, "昨天 18:32", today.minusDays(1).toString()),
-        LedgerEntry(4, "超市采购", "生活消费 · 微信", 86.50, EntryType.EXPENSE, "昨天 17:06", today.minusDays(1).toString()),
+        LedgerEntry("demo-1", "工资入账", "工资收入 · 银行卡", 6917.18, EntryType.INCOME, "今天 09:01", today.toString(), merchant = "工资入账", platform = "银行卡"),
+        LedgerEntry("demo-2", "午餐", "餐饮美食 · 微信", 28.00, EntryType.EXPENSE, "今天 12:26", today.toString(), merchant = "午餐", platform = "微信"),
+        LedgerEntry("demo-3", "地铁出行", "交通出行 · 支付宝", 4.00, EntryType.EXPENSE, "昨天 18:32", today.minusDays(1).toString(), merchant = "地铁出行", platform = "支付宝"),
+        LedgerEntry("demo-4", "超市采购", "生活消费 · 微信", 86.50, EntryType.EXPENSE, "昨天 17:06", today.minusDays(1).toString(), merchant = "超市采购", platform = "微信"),
     )
 }
 
@@ -619,6 +770,10 @@ private fun StarkNativeTheme(content: @Composable () -> Unit) {
 private fun StarkNativeApp() {
     var selectedTab by remember { mutableStateOf(RootTab.HOME) }
     var entrySheetOpen by remember { mutableStateOf(false) }
+    var editingEntry by remember { mutableStateOf<LedgerEntry?>(null) }
+    var deleteCandidate by remember { mutableStateOf<LedgerEntry?>(null) }
+    var deleteError by remember { mutableStateOf("") }
+    var deletingEntry by remember { mutableStateOf(false) }
     var homeOverlay by remember { mutableStateOf<HomeOverlay?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val ledgerStore = remember { NativeLedgerStore(context.applicationContext) }
@@ -630,7 +785,7 @@ private fun StarkNativeApp() {
     var selectedMonth by remember { mutableStateOf(homePreferences.selectedMonth) }
     var salaryDay by remember { mutableStateOf(homePreferences.salaryDay) }
     var monthlyBudget by remember { mutableDoubleStateOf(homePreferences.monthlyBudget) }
-    val snapshot = remember { ledgerStore.load() }
+    val snapshot = remember { ledgerStore.load("LOCAL", "local") }
     var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
     val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
     var refreshVersion by remember { mutableStateOf(0) }
@@ -641,6 +796,12 @@ private fun StarkNativeApp() {
     var remoteSavingsPlans by remember { mutableStateOf<List<NativeSavingsPlan>>(emptyList()) }
 
     LaunchedEffect(apiPreferences.token, apiPreferences.baseUrl, apiPreferences.accountId, refreshVersion) {
+        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+        val accountId = apiPreferences.accountId.ifBlank { "local" }
+        val cached = ledgerStore.load(scope, accountId)
+        entries.clear()
+        entries.addAll(cached.entries)
+        actualBalance = cached.actualBalance
         if (apiPreferences.token.isBlank()) {
             remoteAssets = emptyList()
             remoteBudgets = emptyList()
@@ -663,13 +824,18 @@ private fun StarkNativeApp() {
             entries.addAll(remote.entries)
             remoteAssets = assets
             if (balance != null) actualBalance = balance
+            ledgerStore.save(scope, accountId, actualBalance, remote.entries)
             remoteBudgets = budgets
             remoteLoans = loans
             remoteSavings = savings
             remoteSavingsPlans = savingsPlans
             apiStatus = "已同步 ${remote.entries.size} 笔"
         }.onFailure { error ->
-            apiStatus = error.message ?: "云端同步失败"
+            apiStatus = if (cached.entries.isNotEmpty()) {
+                "同步失败，显示本机缓存：${error.message ?: "请重试"}"
+            } else {
+                error.message ?: "云端同步失败"
+            }
         }
     }
 
@@ -679,7 +845,7 @@ private fun StarkNativeApp() {
             NativeBottomBar(
                 selectedTab = selectedTab,
                 onTabSelected = { selectedTab = it },
-                onAddEntry = { entrySheetOpen = true },
+                onAddEntry = { editingEntry = null; entrySheetOpen = true },
             )
         },
     ) { insets ->
@@ -710,6 +876,8 @@ private fun StarkNativeApp() {
                     month = selectedMonth,
                     onMonthClick = { homeOverlay = HomeOverlay.MONTH },
                     onSearch = { homeOverlay = HomeOverlay.SEARCH },
+                    onEditEntry = { editingEntry = it; entrySheetOpen = true },
+                    onDeleteEntry = { deleteCandidate = it; deleteError = "" },
                 )
                 RootTab.SAVINGS -> SavingsOverviewScreen(
                     modifier = Modifier.padding(insets),
@@ -813,33 +981,64 @@ private fun StarkNativeApp() {
         null -> Unit
     }
 
-    if (entrySheetOpen) {
-        QuickEntrySheet(
-            onClose = { entrySheetOpen = false },
-            onSave = { title, amount, type, category, platform ->
-                entries.add(
-                    0,
-                    LedgerEntry(
-                        id = System.nanoTime(),
-                        title = title.ifBlank { if (type == EntryType.INCOME) "新增收入" else "新增支出" },
-                        category = "$category · $platform",
-                        amount = amount,
-                        type = type,
-                        dayLabel = "刚刚",
-                    ),
-                )
-                actualBalance += if (type == EntryType.INCOME) amount else -amount
-                ledgerStore.save(actualBalance, entries)
-                if (apiPreferences.token.isNotBlank()) {
-                    val saved = entries.firstOrNull()
-                    if (saved != null) {
-                        coroutineScope.launch {
-                            runCatching { apiClient.saveEntry(apiPreferences, saved) }
-                                .onFailure { apiStatus = "本地已保存，云端同步失败" }
+    if (deleteCandidate != null) {
+        AlertDialog(
+            onDismissRequest = { if (!deletingEntry) { deleteCandidate = null; deleteError = "" } },
+            shape = RoundedCornerShape(24.dp),
+            containerColor = Color(0xFFFBFCFE),
+            title = { Text("删除这笔流水？", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("${deleteCandidate?.title} · ¥${moneyFormat.format(deleteCandidate?.amount ?: 0.0)}", color = Muted)
+                    if (deleteError.isNotBlank()) Text(deleteError, color = Red, fontSize = 12.sp)
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !deletingEntry, onClick = { deleteCandidate = null; deleteError = "" }) { Text("取消") }
+            },
+            confirmButton = {
+                TextButton(enabled = !deletingEntry, onClick = {
+                    val target = deleteCandidate ?: return@TextButton
+                    deletingEntry = true
+                    coroutineScope.launch {
+                        try {
+                            if (apiPreferences.token.isNotBlank()) apiClient.deleteEntry(apiPreferences, target.id)
+                            entries.removeAll { it.id == target.id }
+                            actualBalance -= target.balanceChange()
+                            val dataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                            ledgerStore.save(dataScope, apiPreferences.accountId.ifBlank { "local" }, actualBalance, entries)
+                            if (apiPreferences.token.isNotBlank()) apiStatus = "已删除流水"
+                            deleteCandidate = null
+                            deleteError = ""
+                        } catch (error: Throwable) {
+                            deleteError = error.message ?: "删除失败，请检查网络后重试"
+                        } finally {
+                            deletingEntry = false
                         }
                     }
-                }
-                entrySheetOpen = false
+                }) { Text(if (deletingEntry) "删除中…" else "删除", color = Red) }
+            },
+        )
+    }
+
+    if (entrySheetOpen) {
+        QuickEntrySheet(
+            existing = editingEntry,
+            onClose = { entrySheetOpen = false; editingEntry = null },
+            onSave = { entry ->
+                val oldEntry = entries.firstOrNull { it.id == entry.id }
+                val saved = entry.copy(
+                    userId = entry.userId.ifBlank { apiPreferences.userId },
+                    accountId = entry.accountId.ifBlank { apiPreferences.accountId },
+                )
+                if (apiPreferences.token.isNotBlank()) apiClient.saveEntry(apiPreferences, saved)
+                val existingIndex = entries.indexOfFirst { it.id == saved.id }
+                if (existingIndex >= 0) entries[existingIndex] = saved else entries.add(0, saved)
+                actualBalance += saved.balanceChange() - (oldEntry?.balanceChange() ?: 0.0)
+                val dataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                val scopeAccountId = apiPreferences.accountId.ifBlank { "local" }
+                ledgerStore.save(dataScope, scopeAccountId, actualBalance, entries)
+                if (apiPreferences.token.isNotBlank()) apiStatus = "已保存流水"
             },
         )
     }
@@ -1473,9 +1672,17 @@ private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 13.dp, r
 }
 
 @Composable
-private fun LedgerRow(entry: LedgerEntry) {
+private fun LedgerRow(
+    entry: LedgerEntry,
+    showActions: Boolean = false,
+    onEdit: (LedgerEntry) -> Unit = {},
+    onDelete: (LedgerEntry) -> Unit = {},
+) {
+    val effectiveType = entry.analysisType()
     val (icon, iconTone) = when {
-        entry.type == EntryType.INCOME -> Icons.Default.Payments to Green
+        effectiveType == EntryType.INCOME -> Icons.Default.Payments to Green
+        entry.isRepayment() -> Icons.Default.ArrowDownward to Amber
+        effectiveType == EntryType.TRANSFER -> Icons.AutoMirrored.Filled.Notes to Blue
         entry.category.contains("交通") -> Icons.Default.TrendingDown to Amber
         entry.category.contains("生活") -> Icons.Default.AccountBalanceWallet to Blue
         else -> Icons.Default.Payments to Red
@@ -1497,14 +1704,30 @@ private fun LedgerRow(entry: LedgerEntry) {
         Spacer(Modifier.width(11.dp))
         Column(Modifier.weight(1f)) {
             Text(entry.title, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${entry.category} · ${entry.dayLabel}", color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${entry.analysisCategory()} · ${entry.platform} · ${entry.dayLabel}", color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(
-            text = if (entry.type == EntryType.INCOME) "+¥${moneyFormat.format(entry.amount)}" else "-¥${moneyFormat.format(entry.amount)}",
-            color = if (entry.type == EntryType.INCOME) Green else Ink,
+            text = when (effectiveType) {
+                EntryType.INCOME -> "+¥${moneyFormat.format(entry.amount)}"
+                EntryType.TRANSFER -> "↔¥${moneyFormat.format(entry.amount)}"
+                else -> "-¥${moneyFormat.format(entry.amount)}"
+            },
+            color = when (effectiveType) {
+                EntryType.INCOME -> Green
+                EntryType.TRANSFER -> Blue
+                else -> Ink
+            },
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
         )
+        if (showActions) {
+            IconButton(onClick = { onEdit(entry) }) {
+                Icon(Icons.Default.Edit, contentDescription = "编辑流水", tint = Blue, modifier = Modifier.size(18.dp))
+            }
+            IconButton(onClick = { onDelete(entry) }) {
+                Icon(Icons.Default.Delete, contentDescription = "删除流水", tint = Red, modifier = Modifier.size(18.dp))
+            }
+        }
     }
 }
 
@@ -1515,23 +1738,84 @@ private fun ConsumptionScreen(
     month: String,
     onMonthClick: () -> Unit,
     onSearch: () -> Unit,
+    onEditEntry: (LedgerEntry) -> Unit,
+    onDeleteEntry: (LedgerEntry) -> Unit,
 ) {
     var selectedType by remember { mutableStateOf("全部") }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
+    var selectedAccount by remember { mutableStateOf("全部账户") }
+    var query by remember { mutableStateOf("") }
+    LaunchedEffect(month) {
+        selectedType = "全部"
+        selectedCategory = null
+        selectedAccount = "全部账户"
+        query = ""
+    }
+    val selectedYear = month.toIntOrNull()?.takeIf { month.length == 4 }
+    val monthValue = runCatching { YearMonth.parse(month) }.getOrElse { YearMonth.now() }
+    val periodLabel = if (selectedYear != null) "${selectedYear}年全年" else "${monthValue.year}年${monthValue.monthValue}月"
     val monthEntries = entries.filter { it.transactionDate.startsWith(month) }
-    val expenseEntries = monthEntries.filter { it.type == EntryType.EXPENSE }
-    val incomeEntries = monthEntries.filter { it.type == EntryType.INCOME }
+    val expenseEntries = monthEntries.filter { it.analysisType() == EntryType.EXPENSE }
+    val incomeEntries = monthEntries.filter { it.analysisType() == EntryType.INCOME }
+    val accountOptions = listOf("全部账户") + monthEntries.map { normalizeConsumptionPlatform(it.platform) }.distinct().sorted()
     val visibleEntries = when (selectedType) {
-        "支出" -> monthEntries.filter { it.type == EntryType.EXPENSE }
-        "收入" -> monthEntries.filter { it.type == EntryType.INCOME }
+        "支出" -> monthEntries.filter { it.analysisType() == EntryType.EXPENSE }
+        "收入" -> monthEntries.filter { it.analysisType() == EntryType.INCOME }
         else -> monthEntries
-    }.let { rows -> if (selectedCategory == null) rows else rows.filter { it.category.substringBefore(" ·") == selectedCategory } }
-    val categories = expenseEntries.groupBy { it.category.substringBefore(" ·") }
+    }.let { rows -> if (selectedCategory == null) rows else rows.filter { it.analysisCategory() == selectedCategory } }
+        .let { rows -> if (selectedAccount == "全部账户") rows else rows.filter { normalizeConsumptionPlatform(it.platform) == selectedAccount } }
+        .let { rows ->
+            if (query.isBlank()) rows else rows.filter { entry ->
+                listOf(entry.title, entry.merchant, entry.description, entry.analysisCategory(), entry.platform)
+                    .any { it.contains(query.trim(), ignoreCase = true) }
+            }
+        }
+        .sortedByDescending { it.date }
+    val analysisEntries = visibleEntries.filter { it.analysisType() == EntryType.EXPENSE || it.analysisType() == EntryType.INCOME }
+    val categoryType = if (selectedType == "收入") EntryType.INCOME else EntryType.EXPENSE
+    val categoryEntries = analysisEntries.filter { it.analysisType() == categoryType }
+    val categories = categoryEntries.groupBy { it.analysisCategory() }
         .mapValues { (_, rows) -> rows.sumOf { it.amount } }
         .toList()
         .sortedByDescending { it.second }
     val expenseTotal = expenseEntries.sumOf { it.amount }
     val incomeTotal = incomeEntries.sumOf { it.amount }
+    val trendMonths = if (selectedYear != null) {
+        (1..12).map { LocalDate.of(selectedYear, it, 1) }
+    } else {
+        (1..monthValue.lengthOfMonth()).map { day -> monthValue.atDay(day) }
+    }
+    val trendIncome = trendMonths.map { date ->
+        analysisEntries.asSequence().filter { it.analysisType() == EntryType.INCOME }
+            .filter { entry -> if (selectedYear != null) entry.transactionDate.startsWith("${date.year}-%02d".format(date.monthValue)) else entry.transactionDate == date.toString() }
+            .sumOf { it.amount }
+    }
+    val trendExpense = trendMonths.map { date ->
+        analysisEntries.asSequence().filter { it.analysisType() == EntryType.EXPENSE }
+            .filter { entry -> if (selectedYear != null) entry.transactionDate.startsWith("${date.year}-%02d".format(date.monthValue)) else entry.transactionDate == date.toString() }
+            .sumOf { it.amount }
+    }
+    val trendLabels = trendMonths.mapIndexed { index, date ->
+        val dayLabel = index == 0 || date.dayOfMonth % 5 == 0 ||
+            (index == trendMonths.lastIndex && date.dayOfMonth % 5 >= 2)
+        if (selectedYear != null) "${date.monthValue}月" else if (dayLabel) "${date.dayOfMonth}日" else ""
+    }
+    val platformType = if (selectedType == "收入") EntryType.INCOME else EntryType.EXPENSE
+    val platformTotals = analysisEntries.filter { it.analysisType() == platformType }
+        .groupBy { normalizeConsumptionPlatform(it.platform) }
+        .mapValues { (_, rows) -> rows.sumOf { it.amount } }
+        .toList()
+        .sortedByDescending { it.second }
+    val flowEdges = analysisEntries.filter { it.analysisType() == platformType }
+        .groupBy { normalizeConsumptionPlatform(it.platform) to it.analysisCategory() }
+        .map { (key, rows) -> ConsumptionFlowEdge(key.first, key.second, rows.sumOf { it.amount }, rows.size) }
+        .sortedByDescending { it.amount }
+        .take(10)
+    val merchantTotals = analysisEntries.filter { it.analysisType() == platformType }
+        .groupBy { it.merchant.trim().ifBlank { "其他商家" } }
+        .map { (name, rows) -> name to rows.sumOf { it.amount } }
+        .sortedByDescending { it.second }
+        .take(10)
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -1546,10 +1830,21 @@ private fun ConsumptionScreen(
             ) {
                 Column {
                     Text("消费分析", color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                    Text("按月份查看收支与账单", color = Muted, fontSize = 12.sp)
+                    Text("按月份或全年查看收支与账单", color = Muted, fontSize = 12.sp)
                 }
                 IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "搜索账单", tint = Ink) }
             }
+        }
+        item {
+            androidx.compose.material3.OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                placeholder = { Text("搜索商户、分类或备注") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
+                shape = RoundedCornerShape(15.dp),
+            )
         }
         item {
             Row(
@@ -1557,13 +1852,13 @@ private fun ConsumptionScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                FilterChip(month, selected = true, onClick = onMonthClick)
+                FilterChip(periodLabel, selected = true, onClick = onMonthClick)
                 Text("${monthEntries.size} 笔账单", color = Muted, fontSize = 12.sp)
             }
         }
         item {
             WebReplicaCard(padding = 16.dp, radius = 20.dp) {
-                Text("本月支出", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("${periodLabel}支出", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(4.dp))
                 Text("¥ ${moneyFormat.format(expenseTotal)}", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Black)
                 Spacer(Modifier.height(13.dp))
@@ -1573,26 +1868,78 @@ private fun ConsumptionScreen(
                 }
             }
         }
+        item { ConsumptionTrendCard(trendIncome, trendExpense, trendLabels, periodLabel) }
         item {
             WebReplicaCard(padding = 15.dp, radius = 18.dp) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
-                        Text("支出分类", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("点击分类筛选账单", color = Muted, fontSize = 11.sp)
+                        Text(if (selectedType == "收入") "收入来源构成" else "支出分类构成", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("${categories.size} 个分类 · 点击筛选账单", color = Muted, fontSize = 11.sp)
                     }
                     if (selectedCategory != null) TextButton(onClick = { selectedCategory = null }) { Text("清除筛选") }
                 }
                 Spacer(Modifier.height(8.dp))
+                if (categories.isNotEmpty()) {
+                    EChartsExpenseRoseChart(categories, categories.sumOf { it.second })
+                }
                 if (categories.isEmpty()) {
-                    Text("这个月还没有支出记录", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
+                    Text("当前范围没有${if (selectedType == "收入") "收入" else "支出"}记录", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
                 } else {
-                    categories.take(6).forEach { (name, amount) ->
+                    categories.take(8).forEach { (name, amount) ->
                         CategoryAmountRow(
                             name = name,
                             amount = amount,
-                            total = expenseTotal,
+                            total = categories.sumOf { it.second },
                             selected = selectedCategory == name,
                             onClick = { selectedCategory = if (selectedCategory == name) null else name },
+                        )
+                    }
+                }
+            }
+        }
+        item { ConsumptionRhythmCard(analysisEntries, month, selectedType == "收入") }
+        if (platformTotals.isNotEmpty()) {
+            item {
+                WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+                    Text(if (selectedType == "收入") "账户收入拆分" else "账户支出拆分", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("按支付账户汇总当前${if (selectedYear != null) "年度" else "月份"}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 9.dp))
+                    platformTotals.forEach { (account, amount) ->
+                        CategoryAmountRow(
+                            name = account,
+                            amount = amount,
+                            total = platformTotals.sumOf { it.second },
+                            selected = selectedAccount == account,
+                            onClick = { selectedAccount = if (selectedAccount == account) "全部账户" else account },
+                        )
+                    }
+                }
+            }
+        }
+        if (flowEdges.isNotEmpty()) {
+            item {
+                ConsumptionFlowCard(
+                    edges = flowEdges,
+                    flowTypeLabel = if (selectedType == "收入") "收入" else "支出",
+                    selectedAccount = selectedAccount,
+                    selectedCategory = selectedCategory,
+                    onPlatformClick = { platform -> selectedAccount = if (selectedAccount == platform) "全部账户" else platform },
+                    onCategoryClick = { category -> selectedCategory = if (selectedCategory == category) null else category },
+                )
+            }
+        }
+        if (merchantTotals.isNotEmpty()) {
+            item {
+                WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+                    Text(if (selectedType == "收入") "收入来源排行" else "商家消费排行", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("金额最高的前 ${merchantTotals.size} 项", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
+                    val merchantTotal = merchantTotals.sumOf { it.second }
+                    merchantTotals.forEachIndexed { index, (merchant, amount) ->
+                        CategoryAmountRow(
+                            name = "${index + 1}. $merchant",
+                            amount = amount,
+                            total = merchantTotal,
+                            selected = false,
+                            onClick = { query = merchant.takeUnless { it == "其他商家" }.orEmpty() },
                         )
                     }
                 }
@@ -1606,18 +1953,210 @@ private fun ConsumptionScreen(
                 if (selectedCategory != null) FilterChip(selectedCategory!!, true) { selectedCategory = null }
             }
         }
+        item {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                accountOptions.forEach { account ->
+                    FilterChip(account, selectedAccount == account) { selectedAccount = account }
+                }
+            }
+        }
         if (visibleEntries.isEmpty()) {
             item {
                 WebReplicaCard(padding = 22.dp) {
-                    Text(if (selectedCategory != null) "这个分类没有匹配账单" else "这个月还没有账单", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(if (selectedCategory != null) "这个分类没有匹配账单" else "当前范围还没有账单", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                     Text("记一笔后，收支和分类统计会显示在这里。", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
                 }
             }
         } else {
             item {
-                Text("账单明细", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 2.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("账单明细", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("${visibleEntries.size} 笔", color = Muted, fontSize = 11.sp)
+                }
             }
-            items(visibleEntries, key = { it.id }) { LedgerRow(it) }
+            items(visibleEntries, key = { it.id }) { entry ->
+                LedgerRow(entry, showActions = true, onEdit = onEditEntry, onDelete = onDeleteEntry)
+            }
+        }
+    }
+}
+
+private fun normalizeConsumptionPlatform(value: String): String {
+    val platform = value.trim()
+    return when {
+        platform == "微信" || platform.contains("微信") -> "微信"
+        platform == "支付宝" || platform.contains("支付宝") -> "支付宝"
+        platform == "银行卡" || Regex("银行|信用卡|储蓄卡").containsMatchIn(platform) -> "银行卡"
+        platform == "现金" || platform.contains("现金") -> "现金"
+        platform.isBlank() || platform == "其他" -> "其他"
+        else -> "其他"
+    }
+}
+
+@Composable
+private fun ConsumptionTrendCard(income: List<Double>, expense: List<Double>, labels: List<String>, periodLabel: String) {
+    WebReplicaCard(padding = 14.dp, radius = 20.dp) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column {
+                Text("收支趋势", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("$periodLabel · 按当前筛选范围", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                TrendLegend("收入", Color(0xFF2A78D6))
+                TrendLegend("支出", Color(0xFFEB6834))
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        EChartsCashflowTrend(income, expense, labels)
+    }
+}
+
+@Composable
+private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, incomeMode: Boolean) {
+    val selectedYear = period.toIntOrNull()?.takeIf { period.length == 4 }
+    val targetType = if (incomeMode) EntryType.INCOME else EntryType.EXPENSE
+    val matchingEntries = entries.filter { it.analysisType() == targetType }
+    val cellColors = listOf(Color(0xFFF1F5F9), Color(0xFFDDEBFA), Color(0xFFACCEF2), Color(0xFF74A9E4), Color(0xFF397BC8))
+
+    WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+        Text(if (incomeMode) "收入节律" else "消费节律", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(if (selectedYear != null) "每月${if (incomeMode) "收入" else "支出"}热度" else "每天${if (incomeMode) "收入" else "支出"}热度", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 10.dp))
+        if (selectedYear != null) {
+            val monthly = (1..12).map { monthNumber ->
+                val prefix = "%04d-%02d".format(selectedYear, monthNumber)
+                monthNumber to matchingEntries.filter { it.transactionDate.startsWith(prefix) }.sumOf { it.amount }
+            }
+            val maximum = monthly.maxOfOrNull { it.second }?.coerceAtLeast(1.0) ?: 1.0
+            monthly.chunked(3).forEach { row ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    row.forEach { (monthNumber, amount) ->
+                        val level = if (amount <= 0.0) 0 else ((amount / maximum) * 4).toInt().coerceIn(1, 4)
+                        Column(
+                            Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(10.dp)).background(cellColors[level]).padding(horizontal = 7.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text("${monthNumber}月", color = Ink, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                            Text(if (amount == 0.0) "—" else "¥${compactMoney(amount)}", color = if (level >= 3) Color.White else Muted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Clip)
+                        }
+                    }
+                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+                Spacer(Modifier.height(7.dp))
+            }
+        } else {
+            val monthValue = runCatching { YearMonth.parse(period) }.getOrElse { YearMonth.now() }
+            val days = (1..monthValue.lengthOfMonth()).map { day ->
+                val key = monthValue.atDay(day).toString()
+                day to matchingEntries.filter { it.transactionDate == key }.sumOf { it.amount }
+            }
+            val maximum = days.maxOfOrNull { it.second }?.coerceAtLeast(1.0) ?: 1.0
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("一", "二", "三", "四", "五", "六", "日").forEach { weekday ->
+                    Text(weekday, Modifier.weight(1f), color = Muted, fontSize = 10.sp, textAlign = TextAlign.Center)
+                }
+            }
+            val leading = monthValue.atDay(1).dayOfWeek.value - 1
+            val cells = buildList<Pair<Int?, Double>> {
+                repeat(leading) { add(null to 0.0) }
+                addAll(days.map { it.first to it.second })
+                repeat((7 - size % 7) % 7) { add(null to 0.0) }
+            }
+            cells.chunked(7).forEach { week ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    week.forEach { (day, amount) ->
+                        if (day == null) {
+                            Spacer(Modifier.weight(1f).height(35.dp))
+                        } else {
+                            val level = if (amount <= 0.0) 0 else ((amount / maximum) * 4).toInt().coerceIn(1, 4)
+                            Column(
+                                Modifier.weight(1f).height(35.dp).clip(RoundedCornerShape(7.dp)).background(cellColors[level]).padding(horizontal = 3.dp, vertical = 3.dp),
+                                verticalArrangement = Arrangement.SpaceBetween,
+                            ) {
+                                Text(day.toString(), color = if (level >= 3) Color.White else Ink, fontSize = 9.sp, lineHeight = 10.sp)
+                                if (amount > 0.0) Text(compactMoney(amount), color = if (level >= 3) Color.White else Muted, fontSize = 7.sp, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+private fun compactMoney(amount: Double): String = when {
+    amount >= 10000 -> "${(amount / 10000).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}万"
+    amount >= 1000 -> "${(amount / 1000).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}k"
+    else -> amount.toLong().toString()
+}
+
+private data class ConsumptionFlowEdge(
+    val platform: String,
+    val category: String,
+    val amount: Double,
+    val count: Int,
+)
+
+@Composable
+private fun ConsumptionFlowCard(
+    edges: List<ConsumptionFlowEdge>,
+    flowTypeLabel: String,
+    selectedAccount: String,
+    selectedCategory: String?,
+    onPlatformClick: (String) -> Unit,
+    onCategoryClick: (String) -> Unit,
+) {
+    val total = edges.sumOf { it.amount }.coerceAtLeast(.01)
+    val platformColors = mapOf(
+        "微信" to Color(0xFF10A66A),
+        "支付宝" to Color(0xFF2A78D6),
+        "银行卡" to Color(0xFF008300),
+        "现金" to Color(0xFFEDA100),
+        "其他" to Color(0xFF7164B8),
+    )
+    WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+        Text(if (flowTypeLabel == "收入") "收入流向" else "消费流向", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text("账户 → 分类 · 按${flowTypeLabel}金额关联，点击两端筛选", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 10.dp))
+        edges.forEach { edge ->
+            val color = platformColors[edge.platform] ?: Blue
+            val fraction = (edge.amount / total).toFloat().coerceIn(0f, 1f)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    edge.platform,
+                    modifier = Modifier.widthIn(min = 52.dp, max = 92.dp).clip(RoundedCornerShape(8.dp))
+                        .background(if (selectedAccount == edge.platform) color.copy(alpha = .16f) else color.copy(alpha = .08f))
+                        .clickable { onPlatformClick(edge.platform) }
+                        .padding(horizontal = 7.dp, vertical = 6.dp),
+                    color = color,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text("  →  ", color = Muted, fontSize = 12.sp)
+                Text(
+                    edge.category,
+                    modifier = Modifier.weight(1f).clip(RoundedCornerShape(8.dp))
+                        .background(if (selectedCategory == edge.category) SoftBlue else Color(0xFFF4F7FB))
+                        .clickable { onCategoryClick(edge.category) }
+                        .padding(horizontal = 7.dp, vertical = 6.dp),
+                    color = Ink,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("¥ ${moneyFormat.format(edge.amount)}", color = Ink, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    Text("${edge.count} 笔", color = Muted, fontSize = 9.sp)
+                }
+            }
+            Spacer(Modifier.height(5.dp))
+            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Line)) {
+                Box(Modifier.fillMaxWidth(fraction).height(4.dp).clip(CircleShape).background(color.copy(alpha = .8f)))
+            }
+            Spacer(Modifier.height(9.dp))
         }
     }
 }
@@ -2222,13 +2761,30 @@ private fun ApiLoginDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QuickEntrySheet(onClose: () -> Unit, onSave: (String, Double, EntryType, String, String) -> Unit) {
-    var type by remember { mutableStateOf(EntryType.EXPENSE) }
-    var title by remember { mutableStateOf("") }
-    var amountText by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("日常消费") }
-    var platform by remember { mutableStateOf("现金") }
+private fun QuickEntrySheet(
+    existing: LedgerEntry?,
+    onClose: () -> Unit,
+    onSave: suspend (LedgerEntry) -> Unit,
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var type by remember(existing?.id) { mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: EntryType.EXPENSE) }
+    var merchant by remember(existing?.id) { mutableStateOf(existing?.merchant.orEmpty()) }
+    var description by remember(existing?.id) { mutableStateOf(existing?.description.orEmpty()) }
+    var amountText by remember(existing?.id) { mutableStateOf(existing?.amount?.toString().orEmpty()) }
+    var category by remember(existing?.id) { mutableStateOf(existing?.category?.substringBefore(" ·") ?: "餐饮") }
+    var platform by remember(existing?.id) { mutableStateOf(existing?.platform ?: "支付宝") }
+    var selectedDate by remember(existing?.id) { mutableStateOf(existing?.transactionDate ?: LocalDate.now().toString()) }
+    var selectedTime by remember(existing?.id) { mutableStateOf(existing?.date?.substringAfter(" ")?.take(5)?.takeIf(String::isNotBlank) ?: "12:00") }
+    var saving by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val categories = when (type) {
+        EntryType.INCOME -> listOf("工资", "奖金", "兼职", "经营收入", "报销", "退款", "租金", "利息分红", "补贴", "二手转卖", "理财", "其他")
+        EntryType.TRANSFER -> listOf("转账")
+        else -> listOf("餐饮", "外卖", "买菜", "购物", "交通", "公交地铁", "打车", "住房", "房租", "水费", "电费", "燃气", "网费", "日用", "医疗", "教育", "娱乐", "会员订阅", "保险", "还款", "其他")
+    }
+    val dateParts = runCatching { LocalDate.parse(selectedDate) }.getOrElse { LocalDate.now() }
 
     ModalBottomSheet(
         onDismissRequest = onClose,
@@ -2236,20 +2792,33 @@ private fun QuickEntrySheet(onClose: () -> Unit, onSave: (String, Double, EntryT
         containerColor = Color(0xFFFBFCFE),
         dragHandle = { Box(Modifier.padding(top = 10.dp).width(36.dp).height(4.dp).clip(CircleShape).background(Color(0xFFD7DFEA))) },
     ) {
-        Column(Modifier.fillMaxWidth().padding(start = 22.dp, end = 22.dp, bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(
+            Modifier.fillMaxWidth()
+                .heightIn(max = 760.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(start = 22.dp, end = 22.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
-                    Text("记一笔", color = Ink, fontWeight = FontWeight.Black, fontSize = 23.sp)
-                    Text("记录真实的收入或支出，保存后立即更新余额", color = Muted, fontSize = 11.sp)
+                    Text(if (existing == null) "记一笔" else "编辑流水", color = Ink, fontWeight = FontWeight.Black, fontSize = 23.sp)
+                    Text("填写金额、分类、账户和发生时间", color = Muted, fontSize = 11.sp)
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "关闭", tint = Muted) }
             }
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFFEAF0F7)).padding(4.dp)) {
-                EntryType.entries.forEach { item ->
+                EntryType.entries.filter { it != EntryType.REPAYMENT }.forEach { item ->
                     val selected = item == type
                     Text(
                         item.label,
-                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (selected) Color.White else Color.Transparent).clickable { type = item }.padding(vertical = 12.dp),
+                        modifier = Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (selected) Color.White else Color.Transparent).clickable {
+                            type = item
+                            category = when (item) {
+                                EntryType.INCOME -> "工资"
+                                EntryType.TRANSFER -> "转账"
+                                else -> "餐饮"
+                            }
+                        }.padding(vertical = 12.dp),
                         textAlign = TextAlign.Center,
                         color = if (selected) item.color else Muted,
                         fontWeight = FontWeight.Bold,
@@ -2257,16 +2826,90 @@ private fun QuickEntrySheet(onClose: () -> Unit, onSave: (String, Double, EntryT
                     )
                 }
             }
-            NativeInput(label = "备注", value = title, onValueChange = { title = it }, placeholder = "例如：晚餐、工资")
+            NativeInput(label = "商户 / 名称", value = merchant, onValueChange = { merchant = it }, placeholder = "例如：便利店、公司工资")
             NativeInput(label = "金额", value = amountText, onValueChange = { amountText = it.filter { char -> char.isDigit() || char == '.' } }, placeholder = "0.00", isAmount = true)
             Text("分类", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            ChoiceRow(listOf("日常消费", "餐饮美食", "交通出行", "购物消费", "工资收入"), category) { category = it }
+            ChoiceRow(categories, category, onSelect = { category = it })
             Text("账户 / 平台", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            ChoiceRow(listOf("现金", "银行卡", "微信", "支付宝"), platform) { platform = it }
+            ChoiceRow(listOf("支付宝", "微信", "银行卡", "现金", "其他"), platform, onSelect = { platform = it })
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(Modifier.weight(1f)) {
+                    Text("日期", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    TextButton(onClick = {
+                        android.app.DatePickerDialog(
+                            context,
+                            { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day).toString() },
+                            dateParts.year,
+                            dateParts.monthValue - 1,
+                            dateParts.dayOfMonth,
+                        ).show()
+                    }) { Text(selectedDate) }
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("時間", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    TextButton(onClick = {
+                        val hour = selectedTime.substringBefore(":").toIntOrNull() ?: 12
+                        val minute = selectedTime.substringAfter(":", "00").toIntOrNull() ?: 0
+                        android.app.TimePickerDialog(
+                            context,
+                            { _, chosenHour, chosenMinute -> selectedTime = "%02d:%02d".format(chosenHour, chosenMinute) },
+                            hour,
+                            minute,
+                            true,
+                        ).show()
+                    }) { Text(selectedTime) }
+                }
+            }
+            NativeInput(label = "备注", value = description, onValueChange = { description = it }, placeholder = "可选")
+            if (saveError.isNotBlank()) Text(saveError, color = Red, fontSize = 12.sp)
             val amount = amountText.toDoubleOrNull() ?: 0.0
             Text(
-                text = if (amount > 0) "保存 ¥ ${moneyFormat.format(amount)}" else "请输入金额",
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(if (amount > 0) type.color else Color(0xFFCCD5E2)).clickable(enabled = amount > 0) { onSave(title, amount, type, if (type == EntryType.INCOME) "工资收入" else category, platform) }.padding(vertical = 16.dp),
+                text = when {
+                    saving -> "保存中…"
+                    amount > 0 -> "${if (existing == null) "保存" else "保存修改"} ¥ ${moneyFormat.format(amount)}"
+                    else -> "请输入金额"
+                },
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .background(if (amount > 0 && !saving) type.color else Color(0xFFCCD5E2))
+                    .clickable(enabled = amount > 0 && !saving) {
+                        val now = java.time.LocalDateTime.now().toString().replace('T', ' ')
+                        val dateTime = "$selectedDate $selectedTime:00"
+                        val entry = LedgerEntry(
+                            id = existing?.id ?: "native-${java.util.UUID.randomUUID()}",
+                            title = merchant.ifBlank { description.ifBlank { category } },
+                            category = "$category · $platform",
+                            amount = amount,
+                            type = type,
+                            dayLabel = dateTime.take(16),
+                            transactionDate = selectedDate,
+                            date = dateTime,
+                            merchant = merchant.trim(),
+                            description = description.trim(),
+                            platform = platform,
+                            orderId = existing?.orderId,
+                            paymentMethod = existing?.paymentMethod,
+                            status = existing?.status,
+                            loanId = existing?.loanId,
+                            remarkCategory = existing?.remarkCategory,
+                            userId = existing?.userId.orEmpty(),
+                            accountId = existing?.accountId.orEmpty(),
+                            createdAt = existing?.createdAt?.ifBlank { now } ?: now,
+                            updatedAt = now,
+                        )
+                        coroutineScope.launch {
+                            saving = true
+                            saveError = ""
+                            try {
+                                onSave(entry)
+                                onClose()
+                            } catch (error: Throwable) {
+                                saveError = error.message ?: "保存失败，请检查网络后重试"
+                            } finally {
+                                saving = false
+                            }
+                        }
+                    }
+                    .padding(vertical = 16.dp),
                 textAlign = TextAlign.Center,
                 color = Color.White,
                 fontWeight = FontWeight.Black,

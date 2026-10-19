@@ -16,13 +16,21 @@ android {
         applicationId = "com.wotty.stark.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10001
-        versionName = "0.2.0-dev.1"
+        versionCode = 10002
+        versionName = "0.3.0-dev.1"
+        manifestPlaceholders["appLabel"] = "星会计 原生版"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+        debug {
+            val debugSuffix = providers.gradleProperty("nativeDebugApplicationIdSuffix").orNull
+            if (!debugSuffix.isNullOrBlank()) {
+                applicationIdSuffix = debugSuffix
+                manifestPlaceholders["appLabel"] = "星会计 原生版（调试副本）"
+            }
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -66,7 +74,13 @@ dependencies {
 
 val archivedDebugApkName = providers.provider {
     val timestamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(Date())
-    "wotty-stark-native-debug-v${android.defaultConfig.versionName}-c${android.defaultConfig.versionCode}-$timestamp.apk"
+    val debugSuffix = providers.gradleProperty("nativeDebugApplicationIdSuffix").orNull.orEmpty()
+        .removePrefix(".")
+        .replace('.', '-')
+        .takeIf(String::isNotBlank)
+        ?.let { "-$it" }
+        .orEmpty()
+    "wotty-stark-native$debugSuffix-debug-v${android.defaultConfig.versionName}-c${android.defaultConfig.versionCode}-$timestamp.apk"
 }
 
 tasks.register<Copy>("archiveNativeDebugApk") {
