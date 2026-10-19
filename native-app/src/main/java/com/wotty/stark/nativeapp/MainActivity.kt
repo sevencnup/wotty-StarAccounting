@@ -142,6 +142,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.text.DecimalFormat
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.YearMonth
 import android.graphics.BitmapFactory
@@ -319,7 +320,7 @@ private data class NativeRemoteSnapshot(
 
 private data class NativeBudget(val amount: Double, val category: String, val period: String)
 private data class NativeAsset(val id: String, val name: String, val type: String, val balance: Double, val currency: String)
-private data class NativeLoan(
+internal data class NativeLoan(
     val id: String,
     val platform: String,
     val totalAmount: Double,
@@ -327,7 +328,47 @@ private data class NativeLoan(
     val monthlyPayment: Double,
     val dueDate: Int,
     val status: String,
+    val periods: Int = 12,
+    val paidPeriods: Int = 0,
+    val matchKeywords: String? = null,
+    val userId: String = "",
+    val accountId: String = "",
+    val createdAt: String = "",
+    val updatedAt: String = "",
 )
+
+private fun JSONObject.toNativeLoan(accountIdFallback: String = ""): NativeLoan = NativeLoan(
+    id = optString("id"),
+    platform = optString("platform", "贷款").ifBlank { "贷款" },
+    totalAmount = optDouble("totalAmount", 0.0).takeIf(Double::isFinite) ?: 0.0,
+    remainingAmount = optDouble("remainingAmount", 0.0).takeIf(Double::isFinite) ?: 0.0,
+    monthlyPayment = optDouble("monthlyPayment", 0.0).takeIf(Double::isFinite) ?: 0.0,
+    dueDate = optInt("dueDate", 20).coerceIn(1, 31),
+    status = optString("status", "ACTIVE").ifBlank { "ACTIVE" },
+    periods = optInt("periods", 12).coerceAtLeast(1),
+    paidPeriods = optInt("paidPeriods", 0).coerceAtLeast(0),
+    matchKeywords = if (isNull("matchKeywords")) null else optString("matchKeywords").takeIf { it.isNotBlank() && it != "null" },
+    userId = optString("userId"),
+    accountId = optString("accountId").ifBlank { accountIdFallback },
+    createdAt = optString("createdAt"),
+    updatedAt = optString("updatedAt"),
+)
+
+private fun NativeLoan.toPayload(): JSONObject = JSONObject()
+    .put("id", id)
+    .put("userId", userId)
+    .put("accountId", accountId)
+    .put("platform", platform)
+    .put("totalAmount", totalAmount)
+    .put("remainingAmount", remainingAmount)
+    .put("periods", periods)
+    .put("paidPeriods", paidPeriods)
+    .put("monthlyPayment", monthlyPayment)
+    .put("dueDate", dueDate)
+    .put("status", status)
+    .put("matchKeywords", matchKeywords ?: JSONObject.NULL)
+    .put("createdAt", createdAt)
+    .put("updatedAt", updatedAt)
 private class NativeLedgerStore(context: Context) {
     private val preferences = context.getSharedPreferences("native-ledger", Context.MODE_PRIVATE)
     private val database = NativeEntityDatabase(context.applicationContext)
@@ -368,6 +409,34 @@ private class NativeLedgerStore(context: Context) {
                 .putString("entries", rows.toString())
         }
         editor.apply()
+    }
+
+    fun loadLoans(scope: String, accountId: String): List<NativeLoan> =
+        database.readAll(scope, accountId, "loans").mapNotNull { raw ->
+            runCatching { JSONObject(raw).toNativeLoan(accountId) }.getOrNull()
+        }
+
+    fun saveLoansState(scope: String, accountId: String, loans: List<NativeLoan>) {
+        database.replaceAll(scope, accountId, "loans", loans.map { NativeStoredEntity(it.id, it.toPayload().toString(), it.updatedAt) })
+    }
+
+    fun saveLoan(scope: String, accountId: String, loan: NativeLoan) {
+        database.upsert(scope, accountId, "loans", NativeStoredEntity(loan.id, loan.toPayload().toString(), loan.updatedAt))
+    }
+
+    fun deleteLoan(scope: String, accountId: String, loanId: String) {
+        database.delete(scope, accountId, "loans", loanId)
+    }
+
+    fun saveLoanRepayment(scope: String, accountId: String, loan: NativeLoan, entry: LedgerEntry) {
+        database.upsertEntities(
+            scope,
+            accountId,
+            listOf(
+                "loans" to NativeStoredEntity(loan.id, loan.toPayload().toString(), loan.updatedAt),
+                "transactions" to storedEntry(entry),
+            ),
+        )
     }
 
     fun loadSavingsGoals(scope: String, accountId: String): List<NativeSavingsGoal> =
@@ -647,19 +716,17 @@ private class NativeApiClient {
         val rows = getJsonArray(config, "/api/loans?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
         buildList {
             for (i in 0 until rows.length()) rows.optJSONObject(i)?.let {
-                add(
-                    NativeLoan(
-                        id = it.optString("id"),
-                        platform = it.optString("platform", "贷款"),
-                        totalAmount = it.optDouble("totalAmount"),
-                        remainingAmount = it.optDouble("remainingAmount"),
-                        monthlyPayment = it.optDouble("monthlyPayment"),
-                        dueDate = it.optInt("dueDate"),
-                        status = it.optString("status", "ACTIVE"),
-                    ),
-                )
+                add(it.toNativeLoan(config.accountId))
             }
         }
+    }
+
+    suspend fun saveLoan(config: NativeApiPreferences, loan: NativeLoan) {
+        postJson(config, "/api/loans", loan.toPayload(), "贷款数据保存失败")
+    }
+
+    suspend fun deleteLoan(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/loans/" + java.net.URLEncoder.encode(id, "UTF-8"), "贷款")
     }
 
     suspend fun loadSavingsGoals(config: NativeApiPreferences): List<NativeSavingsGoal> = withContext(Dispatchers.IO) {
@@ -682,11 +749,11 @@ private class NativeApiClient {
     }
 
     suspend fun saveSavingsGoal(config: NativeApiPreferences, goal: NativeSavingsGoal) {
-        postJson(config, "/api/savings-goals", goal.toPayload(config.userId))
+        postJson(config, "/api/savings-goals", goal.toPayload(config.userId), "储蓄目标保存失败")
     }
 
     suspend fun saveSavingsPlan(config: NativeApiPreferences, plan: NativeSavingsPlan) {
-        postJson(config, "/api/savings-plans", plan.toPayload())
+        postJson(config, "/api/savings-plans", plan.toPayload(), "储蓄计划保存失败")
     }
 
     suspend fun deleteSavingsGoal(config: NativeApiPreferences, id: String) {
@@ -711,7 +778,7 @@ private class NativeApiClient {
         }
     }
 
-    private suspend fun postJson(config: NativeApiPreferences, path: String, payload: JSONObject) = withContext(Dispatchers.IO) {
+    private suspend fun postJson(config: NativeApiPreferences, path: String, payload: JSONObject, fallbackMessage: String = "云端数据保存失败") = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(config.baseUrl.trimEnd('/') + path)
             .header("Authorization", "Bearer ${config.token}")
@@ -720,17 +787,82 @@ private class NativeApiClient {
         client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 val raw = response.body?.string().orEmpty()
-                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "储蓄数据保存失败" })
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { fallbackMessage })
             }
         }
     }
 
     suspend fun saveEntry(config: NativeApiPreferences, entry: LedgerEntry) = withContext(Dispatchers.IO) {
+        val payload = transactionPayload(config, entry)
+        postTransactionPayload(config, payload)
+    }
+
+    suspend fun saveLoanRepayment(config: NativeApiPreferences, entry: LedgerEntry) = withContext(Dispatchers.IO) {
+        val loanId = entry.loanId?.takeIf(String::isNotBlank)
+            ?: throw IllegalArgumentException("还款记录缺少关联贷款")
+        val existing = getTransaction(config, entry.id)
+        if (existing != null && !existing.isNull("id")) {
+            val linkedLoanId = existing.optString("loanId").takeIf(String::isNotBlank)
+            if (linkedLoanId == loanId) return@withContext
+            if (linkedLoanId != null) throw IllegalStateException("这笔流水已关联到其他贷款")
+            if (existing.optString("type") != EntryType.REPAYMENT.name) throw IllegalStateException("还款流水编号已被其他账单占用")
+        } else {
+            postTransactionPayload(config, transactionPayload(config, entry.copy(loanId = null)))
+        }
+
+        val path = "/api/transactions/loan-repayments?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8")
+        val payload = JSONArray().put(transactionPayload(config, entry))
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + path)
+            .header("Authorization", "Bearer ${config.token}")
+            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "贷款还款关联失败" })
+            }
+            val applied = runCatching { JSONObject(raw).optInt("applied") }.getOrDefault(0)
+            if (applied > 0) return@use
+        }
+
+        val verified = getTransaction(config, entry.id)
+        if (verified?.optString("loanId") != loanId) throw IllegalStateException("贷款未更新，请检查连接后重试")
+    }
+
+    private suspend fun getTransaction(config: NativeApiPreferences, id: String): JSONObject? = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/transactions/" + java.net.URLEncoder.encode(id, "UTF-8"))
+            .header("Authorization", "Bearer ${config.token}")
+            .get()
+            .build()
+        client.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "还款记录读取失败" })
+            if (raw.isBlank() || raw == "null") null else JSONObject(raw)
+        }
+    }
+
+    private suspend fun postTransactionPayload(config: NativeApiPreferences, payload: JSONObject) = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(config.baseUrl.trimEnd('/') + "/api/transactions")
+            .header("Authorization", "Bearer ${config.token}")
+            .post(payload.toString().toRequestBody("application/json".toMediaType()))
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val raw = response.body?.string().orEmpty()
+                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "云端流水保存失败" })
+            }
+        }
+    }
+
+    private fun transactionPayload(config: NativeApiPreferences, entry: LedgerEntry): JSONObject {
         val now = java.time.LocalDateTime.now().toString().replace('T', ' ')
         val rawDate = entry.date.ifBlank { entry.transactionDate }.let { value ->
             if (value.length == 10) "$value 12:00:00" else value
         }
-        val payload = JSONObject()
+        return JSONObject()
             .put("id", entry.id)
             .put("userId", entry.userId.ifBlank { config.userId })
             .put("accountId", entry.accountId.ifBlank { config.accountId })
@@ -748,17 +880,6 @@ private class NativeApiClient {
             .put("remarkCategory", entry.remarkCategory ?: JSONObject.NULL)
             .put("createdAt", entry.createdAt.ifBlank { now })
             .put("updatedAt", now)
-        val request = Request.Builder()
-            .url(config.baseUrl.trimEnd('/') + "/api/transactions")
-            .header("Authorization", "Bearer ${config.token}")
-            .post(payload.toString().toRequestBody("application/json".toMediaType()))
-            .build()
-        client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                val raw = response.body?.string().orEmpty()
-                throw IllegalStateException(runCatching { JSONObject(raw).optString("error") }.getOrNull().orEmpty().ifBlank { "云端流水保存失败" })
-            }
-        }
     }
 
     suspend fun deleteEntry(config: NativeApiPreferences, entryId: String) = withContext(Dispatchers.IO) {
@@ -854,10 +975,10 @@ private fun StarkNativeApp() {
         entries.clear()
         entries.addAll(cached.entries)
         actualBalance = cached.actualBalance
+        remoteLoans = ledgerStore.loadLoans(scope, accountId)
         if (apiPreferences.token.isBlank()) {
             remoteAssets = emptyList()
             remoteBudgets = emptyList()
-            remoteLoans = emptyList()
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
             remoteSavingsPlans = ledgerStore.loadSavingsPlans(scope, accountId)
             apiStatus = "未连接云端"
@@ -881,6 +1002,7 @@ private fun StarkNativeApp() {
             ledgerStore.save(scope, accountId, actualBalance, remote.entries)
             remoteBudgets = budgets
             remoteLoans = loans
+            ledgerStore.saveLoansState(scope, accountId, loans)
             remoteSavings = savings
             remoteSavingsPlans = savingsPlans
             ledgerStore.saveSavingsState(scope, accountId, savings, savingsPlans)
@@ -944,11 +1066,81 @@ private fun StarkNativeApp() {
                     onNewGoal = { savingsEditorGoal = null; savingsEditorOpen = true },
                     onEditGoal = { goal -> savingsEditorGoal = goal; savingsEditorOpen = true },
                 )
-                RootTab.LOANS -> LoansOverviewScreen(
+                RootTab.LOANS -> NativeLoanOverviewScreen(
                     modifier = Modifier.padding(insets),
                     loans = remoteLoans,
+                    entries = entries,
+                    reportingMonth = selectedMonth,
+                    accountId = apiPreferences.accountId.ifBlank { "local" },
+                    userId = apiPreferences.userId.ifBlank { "local-user" },
                     connected = apiPreferences.token.isNotBlank(),
                     onConnect = { homeOverlay = HomeOverlay.API },
+                    onSaveLoan = { loan ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val updated = loan.copy(
+                            userId = apiPreferences.userId.ifBlank { loan.userId.ifBlank { "local-user" } },
+                            accountId = accountId,
+                            createdAt = loan.createdAt.ifBlank { now },
+                            updatedAt = now,
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveLoan(apiPreferences, updated)
+                        ledgerStore.saveLoan(scope, accountId, updated)
+                        remoteLoans = remoteLoans.filterNot { it.id == updated.id } + updated
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地贷款已保存" else "云端贷款已保存"
+                        refreshVersion += 1
+                    },
+                    onDeleteLoan = { loan ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        if (apiPreferences.token.isNotBlank()) apiClient.deleteLoan(apiPreferences, loan.id)
+                        ledgerStore.deleteLoan(scope, accountId, loan.id)
+                        remoteLoans = remoteLoans.filterNot { it.id == loan.id }
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地贷款已删除" else "云端贷款已删除"
+                        refreshVersion += 1
+                    },
+                    onSaveRepayment = { loan, amount, date, note, transactionId ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val paidAmount = (amount.coerceAtMost(loan.remainingAmount) * 100.0).toLong() / 100.0
+                        val remaining = ((loan.remainingAmount - paidAmount).coerceAtLeast(0.0) * 100.0).toLong() / 100.0
+                        val reachedInstallment = loan.monthlyPayment > 0.0 && paidAmount >= loan.monthlyPayment
+                        val updatedLoan = loan.copy(
+                            remainingAmount = remaining,
+                            paidPeriods = (loan.paidPeriods + if (reachedInstallment) 1 else 0).coerceAtMost(loan.periods),
+                            status = if (remaining <= 0.0) "PAID_OFF" else if (loan.status == "PAID_OFF") "ACTIVE" else loan.status,
+                            updatedAt = now,
+                        )
+                        val transactionDate = "$date 12:00:00"
+                        val repayment = LedgerEntry(
+                            id = transactionId,
+                            title = loan.platform,
+                            category = "还款 · ${loan.platform}",
+                            amount = paidAmount,
+                            type = EntryType.REPAYMENT,
+                            dayLabel = date,
+                            transactionDate = date,
+                            date = transactionDate,
+                            merchant = loan.platform,
+                            description = note,
+                            platform = loan.platform,
+                            status = "COMPLETED",
+                            loanId = loan.id,
+                            userId = loan.userId.ifBlank { apiPreferences.userId.ifBlank { "local-user" } },
+                            accountId = accountId,
+                            createdAt = now,
+                            updatedAt = now,
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveLoanRepayment(apiPreferences, repayment)
+                        ledgerStore.saveLoanRepayment(scope, accountId, updatedLoan, repayment)
+                        entries.removeAll { it.id == repayment.id }
+                        entries.add(0, repayment)
+                        remoteLoans = remoteLoans.filterNot { it.id == updatedLoan.id } + updatedLoan
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地还款已记录" else "云端还款已记录"
+                        refreshVersion += 1
+                    },
                 )
                 RootTab.ASSETS -> AssetsOverviewScreen(
                     modifier = Modifier.padding(insets),
@@ -2876,44 +3068,6 @@ private fun NativeProofImageViewer(source: String, onDismiss: () -> Unit) {
                 Text("图片无法读取", color = Color.White)
             }
             TextButton(onClick = onDismiss) { Text("关闭", color = Color.White) }
-        }
-    }
-}
-
-@Composable
-private fun LoansOverviewScreen(modifier: Modifier, loans: List<NativeLoan>, connected: Boolean, onConnect: () -> Unit) {
-    val activeLoans = loans.filter { it.status == "ACTIVE" }
-    val remaining = activeLoans.sumOf { it.remainingAmount }
-    val monthly = activeLoans.sumOf { it.monthlyPayment }
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { NativePageHeader("贷款管理", "待还余额、月供与还款日期") }
-        item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OverviewMetricCard("待还总额", remaining, Modifier.weight(1f), Red)
-                OverviewMetricCard("每月月供", monthly, Modifier.weight(1f), Blue)
-            }
-        }
-        if (!connected) item { CloudConnectNotice("连接云端账本后查看贷款", onConnect) }
-        if (activeLoans.isEmpty()) {
-            item { EmptyPageCard(if (connected) "还没有进行中的贷款" else "尚无本地贷款", "贷款新增、编辑和还款登记正在接入原生页面。") }
-        } else {
-            item { Text("贷款明细", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-            items(activeLoans, key = { it.id }) { loan ->
-                WebReplicaCard(padding = 15.dp, radius = 17.dp) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(loan.platform, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text(if (loan.dueDate > 0) "每月 ${loan.dueDate} 日还款" else "还款日期未设置", color = Muted, fontSize = 11.sp)
-                        }
-                        Text("剩余 ¥ ${moneyFormat.format(loan.remainingAmount)}", color = Red, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    }
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp), color = Line)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("原始金额 ¥ ${moneyFormat.format(loan.totalAmount)}", color = Muted, fontSize = 11.sp)
-                        Text("月供 ¥ ${moneyFormat.format(loan.monthlyPayment)}", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
         }
     }
 }
