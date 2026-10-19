@@ -116,6 +116,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -224,7 +225,7 @@ private enum class RootTab(val label: String, val iconResource: Int) {
     SETTINGS("设置", R.drawable.nav_settings),
 }
 
-private enum class EntryType(val label: String, val color: Color) {
+internal enum class EntryType(val label: String, val color: Color) {
     EXPENSE("支出", Red),
     INCOME("收入", Green),
     TRANSFER("转账", Amber),
@@ -252,7 +253,7 @@ private enum class HomeOverlay {
     API,
 }
 
-private data class LedgerEntry(
+internal data class LedgerEntry(
     val id: String,
     val title: String,
     val category: String,
@@ -1269,6 +1270,14 @@ private fun HomeScreen(
     var balancePeriod by remember { mutableStateOf(BalancePeriod.MONTH) }
     val month = runCatching { YearMonth.parse(selectedMonth) }.getOrElse { YearMonth.now() }
     val selectedYear = selectedMonth.toIntOrNull()?.takeIf { selectedMonth.length == 4 }
+    val savingsPlanPeriod = nativeSavingsPlanPeriod(selectedMonth, salaryDay)
+    val savingsPlanAllocation = remember(remoteSavings, remoteSavingsPlans, savingsPlanPeriod) {
+        summarizeNativeSavingsPlanAllocation(remoteSavings, remoteSavingsPlans, savingsPlanPeriod)
+    }
+    val matchingEntries = entries.toList()
+    val matchedSavingsExpenses = remember(savingsPlanAllocation.expenseItems, matchingEntries, savingsPlanPeriod, salaryDay) {
+        matchNativeSavingsPlanExpensesWithBills(savingsPlanAllocation.expenseItems, matchingEntries, savingsPlanPeriod, salaryDay)
+    }
     val periodEntries = entries.filter { entry ->
         val date = runCatching { LocalDate.parse(entry.transactionDate) }.getOrNull()
         date != null && if (selectedYear != null) {
@@ -1322,7 +1331,22 @@ private fun HomeScreen(
                 onDetails = { onSelectTab(RootTab.CONSUMPTION) },
             )
         }
-        item { WebReplicaBudgetCard(income, expense, repayment, savings, actualBalance, monthlyBudget, remoteBudgets, monthLabel) { onOpenOverlay(HomeOverlay.BUDGET) } }
+        item {
+            WebReplicaBudgetCard(
+                income = income,
+                expense = expense,
+                repayment = repayment,
+                savings = savings,
+                actualBalance = actualBalance,
+                monthlyBudget = monthlyBudget,
+                remoteBudgets = remoteBudgets,
+                monthLabel = monthLabel,
+                savingsPlanAllocation = savingsPlanAllocation,
+                matchedSavingsExpenses = matchedSavingsExpenses,
+                onManageBudget = { onOpenOverlay(HomeOverlay.BUDGET) },
+                onOpenSavings = { onSelectTab(RootTab.SAVINGS) },
+            )
+        }
         item { WebReplicaDiagnosticBanner(income, expense, monthlyBudget, remoteBudgets) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
         item { WebReplicaCompass(income, expense, actualBalance, monthlyBudget, remoteLoans, remoteSavings, remoteSavingsPlans, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(periodEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
@@ -1635,7 +1659,21 @@ private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: Str
 }
 
 @Composable
-private fun WebReplicaBudgetCard(income: Double, expense: Double, repayment: Double, savings: Double, actualBalance: Double, monthlyBudget: Double, remoteBudgets: List<NativeBudget>, monthLabel: String, onManageBudget: () -> Unit) {
+private fun WebReplicaBudgetCard(
+    income: Double,
+    expense: Double,
+    repayment: Double,
+    savings: Double,
+    actualBalance: Double,
+    monthlyBudget: Double,
+    remoteBudgets: List<NativeBudget>,
+    monthLabel: String,
+    savingsPlanAllocation: NativeSavingsPlanAllocation,
+    matchedSavingsExpenses: List<NativeSavingsExpenseMatch>,
+    onManageBudget: () -> Unit,
+    onOpenSavings: () -> Unit,
+) {
+    var planExpanded by remember { mutableStateOf(false) }
     val allocationIncome = if (monthlyBudget > 0.0) monthlyBudget else income
     val configuredBudget = remoteBudgets.filter { it.period == "MONTHLY" }.sumOf { it.amount }
     val allocationBase = if (configuredBudget > 0.0) configuredBudget else allocationIncome
@@ -1685,6 +1723,134 @@ private fun WebReplicaBudgetCard(income: Double, expense: Double, repayment: Dou
             Text("¥ " + moneyFormat.format(actualBalance), color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
             Text("余额单独展示，不重复计入本月扣减", color = Color(0xFF8492A7), fontSize = 9.sp)
+        }
+        if (savingsPlanAllocation.planCount > 0) {
+            HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
+            val periodLabel = if (savingsPlanAllocation.period.matches(Regex("\\d{4}"))) {
+                "${savingsPlanAllocation.period} 年度计划"
+            } else {
+                "${savingsPlanAllocation.period} 储蓄计划"
+            }
+            val statusParts = buildList {
+                if (savingsPlanAllocation.completedPlanCount > 0 || savingsPlanAllocation.recordedDeposit > 0.0) {
+                    add("已存 ¥ ${moneyFormat.format(savingsPlanAllocation.recordedDeposit)} · ${savingsPlanAllocation.completedPlanCount} 项已完成")
+                }
+                if (savingsPlanAllocation.pendingPlanCount > 0 || savingsPlanAllocation.pendingDeposit > 0.0) {
+                    add("待存 ¥ ${moneyFormat.format(savingsPlanAllocation.pendingDeposit)} · ${savingsPlanAllocation.pendingPlanCount} 项待存")
+                }
+                if (savingsPlanAllocation.skippedPlanCount > 0) add("${savingsPlanAllocation.skippedPlanCount} 项已跳过")
+                if (isEmpty()) add("预计存 ¥ ${moneyFormat.format(savingsPlanAllocation.plannedDeposit)}")
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { planExpanded = !planExpanded }.padding(vertical = 3.dp),
+                ) {
+                    Text("储蓄计划安排", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "$periodLabel · ${statusParts.joinToString(" · ")}",
+                        color = Color(0xFF7B8CA3),
+                        fontSize = 9.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    "储蓄计划  ›",
+                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenSavings).padding(horizontal = 5.dp, vertical = 7.dp),
+                    color = Blue,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Icon(
+                    Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (planExpanded) "收起储蓄计划" else "展开储蓄计划",
+                    tint = Color(0xFF64748B),
+                    modifier = Modifier.size(18.dp).rotate(if (planExpanded) 180f else 0f).clickable { planExpanded = !planExpanded },
+                )
+            }
+            AnimatedVisibility(visible = planExpanded) {
+                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Text("计划表金额仅供参考，不参与上方实际分配计算", color = Color(0xFF8492A7), fontSize = 9.sp)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        SavingsPlanMetric("固定支出", savingsPlanAllocation.fixedExpense, Modifier.weight(1f), Color(0xFF667085))
+                        SavingsPlanMetric("临时支出", savingsPlanAllocation.temporaryExpense, Modifier.weight(1f), Amber)
+                        SavingsPlanMetric("预计存入", savingsPlanAllocation.plannedDeposit, Modifier.weight(1f), Green)
+                    }
+                    if (savingsPlanAllocation.expenseItems.isNotEmpty()) {
+                        Text("计划支出明细", color = Ink, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        matchedSavingsExpenses.forEachIndexed { index, match ->
+                            if (index > 0) HorizontalDivider(color = Color(0xFFF0F3F7))
+                            SavingsPlanExpenseMatchRow(match)
+                        }
+                    }
+                    if (savingsPlanAllocation.plannedSalary > 0.0 || savingsPlanAllocation.previousBalance > 0.0) {
+                        val remaining = savingsPlanAllocation.projectedRemaining
+                        Text(
+                            "计划工资 ¥ ${moneyFormat.format(savingsPlanAllocation.plannedSalary)} · 上月结余 ¥ ${moneyFormat.format(savingsPlanAllocation.previousBalance)}" +
+                                (remaining?.let { " · 预计余款 ¥ ${moneyFormat.format(it)}" } ?: ""),
+                            color = Color(0xFF8492A7),
+                            fontSize = 9.sp,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavingsPlanMetric(label: String, value: Double, modifier: Modifier, color: Color) {
+    Column(
+        modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFFF6F8FB)).padding(horizontal = 8.dp, vertical = 7.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(label, color = Color(0xFF64748B), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text("¥ ${moneyFormat.format(value)}", color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun SavingsPlanExpenseMatchRow(match: NativeSavingsExpenseMatch) {
+    val statusColor = when (match.status) {
+        NativeSavingsExpenseMatchStatus.MATCHED -> Green
+        NativeSavingsExpenseMatchStatus.PARTIAL -> Amber
+        NativeSavingsExpenseMatchStatus.OVER -> Red
+        NativeSavingsExpenseMatchStatus.UNMATCHED -> if (match.item.kind == NativeSavingsExpenseKind.TEMPORARY) Amber else Color(0xFF94A3B8)
+    }
+    val statusLabel = when (match.status) {
+        NativeSavingsExpenseMatchStatus.MATCHED -> "已达计划"
+        NativeSavingsExpenseMatchStatus.PARTIAL -> "部分记账"
+        NativeSavingsExpenseMatchStatus.OVER -> "超出计划"
+        NativeSavingsExpenseMatchStatus.UNMATCHED -> if (match.item.kind == NativeSavingsExpenseKind.TEMPORARY) "临时" else "固定"
+    }
+    val marker = when (match.status) {
+        NativeSavingsExpenseMatchStatus.MATCHED -> "✓"
+        NativeSavingsExpenseMatchStatus.OVER -> "!"
+        NativeSavingsExpenseMatchStatus.PARTIAL -> "·"
+        NativeSavingsExpenseMatchStatus.UNMATCHED -> ""
+    }
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(18.dp).clip(CircleShape).background(statusColor.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
+                if (marker.isNotEmpty()) Text(marker, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                else Box(Modifier.size(6.dp).clip(CircleShape).background(statusColor))
+            }
+            Spacer(Modifier.width(6.dp))
+            Column(Modifier.weight(1f)) {
+                Text(match.item.name, color = Ink, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(statusLabel, color = statusColor, fontSize = 8.sp, maxLines = 1)
+            }
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text("¥ ${moneyFormat.format(match.item.amount)}", color = Ink, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            if (match.matchedTransactionCount > 0) {
+                Text(
+                    "账单合计 ¥ ${moneyFormat.format(match.matchedAmount)} · ${match.matchedTransactionCount} 笔",
+                    color = statusColor,
+                    fontSize = 8.sp,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
