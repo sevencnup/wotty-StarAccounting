@@ -451,6 +451,25 @@ private class NativeLedgerStore(context: Context) {
         database.delete(scope, accountId, "subscriptions", subscriptionId)
     }
 
+    fun loadCategoryRules(scope: String, accountId: String): List<NativeCategoryRule> =
+        database.readAll(scope, accountId, "categoryRules").mapNotNull { raw ->
+            runCatching { JSONObject(raw).toNativeCategoryRule(accountId) }.getOrNull()
+        }
+
+    fun saveCategoryRulesState(scope: String, accountId: String, rules: List<NativeCategoryRule>) {
+        database.replaceAll(scope, accountId, "categoryRules", rules.map { rule ->
+            NativeStoredEntity(rule.id, rule.toPayload().toString(), rule.updatedAt)
+        })
+    }
+
+    fun saveCategoryRule(scope: String, accountId: String, rule: NativeCategoryRule) {
+        database.upsert(scope, accountId, "categoryRules", NativeStoredEntity(rule.id, rule.toPayload().toString(), rule.updatedAt))
+    }
+
+    fun deleteCategoryRule(scope: String, accountId: String, ruleId: String) {
+        database.delete(scope, accountId, "categoryRules", ruleId)
+    }
+
     fun loadLoans(scope: String, accountId: String): List<NativeLoan> =
         database.readAll(scope, accountId, "loans").mapNotNull { raw ->
             runCatching { JSONObject(raw).toNativeLoan(accountId) }.getOrNull()
@@ -749,6 +768,21 @@ private class NativeApiClient {
         deleteJson(config, "/api/subscriptions/" + java.net.URLEncoder.encode(id, "UTF-8"), "周期支出")
     }
 
+    suspend fun loadCategoryRules(config: NativeApiPreferences): List<NativeCategoryRule> = withContext(Dispatchers.IO) {
+        val rows = getJsonArray(config, "/api/category-rules?accountId=" + java.net.URLEncoder.encode(config.accountId, "UTF-8"))
+        buildList {
+            for (index in 0 until rows.length()) rows.optJSONObject(index)?.let { add(it.toNativeCategoryRule(config.accountId)) }
+        }
+    }
+
+    suspend fun saveCategoryRule(config: NativeApiPreferences, rule: NativeCategoryRule) {
+        postJson(config, "/api/category-rules", rule.toPayload(), "归类规则保存失败")
+    }
+
+    suspend fun deleteCategoryRule(config: NativeApiPreferences, id: String) {
+        deleteJson(config, "/api/category-rules/" + java.net.URLEncoder.encode(id, "UTF-8"), "归类规则")
+    }
+
     private suspend fun getJsonArray(config: NativeApiPreferences, path: String): JSONArray = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(config.baseUrl.trimEnd('/') + path)
@@ -1037,6 +1071,14 @@ private fun StarkNativeApp() {
             ),
         )
     }
+    var remoteCategoryRules by remember {
+        mutableStateOf(
+            ledgerStore.loadCategoryRules(
+                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
+                apiPreferences.accountId.ifBlank { "local" },
+            ),
+        )
+    }
 
     val lifecycleContext = LocalContext.current as? ComponentActivity
     DisposableEffect(lifecycleContext) {
@@ -1057,6 +1099,7 @@ private fun StarkNativeApp() {
         remoteAssets = ledgerStore.loadAssets(scope, accountId)
         remoteLoans = ledgerStore.loadLoans(scope, accountId)
         remoteSubscriptions = ledgerStore.loadSubscriptions(scope, accountId)
+        remoteCategoryRules = ledgerStore.loadCategoryRules(scope, accountId)
         if (apiPreferences.token.isBlank()) {
             remoteBudgets = emptyList()
             remoteSavings = ledgerStore.loadSavingsGoals(scope, accountId)
@@ -1084,6 +1127,7 @@ private fun StarkNativeApp() {
             val savings = apiClient.loadSavingsGoals(apiPreferences)
             val savingsPlans = apiClient.loadSavingsPlans(apiPreferences, savings.map { it.id })
             val subscriptions = apiClient.loadSubscriptions(apiPreferences)
+            val categoryRules = apiClient.loadCategoryRules(apiPreferences)
             val dueEntries = buildDueSubscriptionEntries(
                 subscriptions,
                 remote.entries,
@@ -1106,6 +1150,8 @@ private fun StarkNativeApp() {
             ledgerStore.saveSavingsState(scope, accountId, savings, savingsPlans)
             remoteSubscriptions = subscriptions
             ledgerStore.saveSubscriptionsState(scope, accountId, subscriptions)
+            remoteCategoryRules = categoryRules
+            ledgerStore.saveCategoryRulesState(scope, accountId, categoryRules)
             apiStatus = "已同步 ${synchronizedEntries.size} 笔${if (dueEntries.isNotEmpty()) " · 自动记账 ${dueEntries.size} 笔" else ""}"
         }.onFailure { error ->
             apiStatus = if (cached.entries.isNotEmpty()) {
@@ -1284,6 +1330,8 @@ private fun StarkNativeApp() {
                     apiPreferences = apiPreferences,
                     apiStatus = apiStatus,
                     subscriptions = remoteSubscriptions,
+                    categoryRules = remoteCategoryRules,
+                    transactions = entries.toList(),
                     onOpenApi = { homeOverlay = HomeOverlay.API },
                     onRefresh = { refreshVersion += 1 },
                     onSaveSubscription = { subscription ->
@@ -1309,6 +1357,54 @@ private fun StarkNativeApp() {
                         ledgerStore.deleteSubscription(scope, accountId, subscription.id)
                         remoteSubscriptions = remoteSubscriptions.filterNot { it.id == subscription.id }
                         apiStatus = if (apiPreferences.token.isBlank()) "本地周期支出已删除" else "云端周期支出已删除"
+                        refreshVersion += 1
+                    },
+                    onSaveCategoryRule = { rule ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                        val updated = rule.copy(
+                            userId = apiPreferences.userId.ifBlank { rule.userId.ifBlank { "local-user" } },
+                            accountId = accountId,
+                            createdAt = rule.createdAt.ifBlank { now },
+                            updatedAt = now,
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveCategoryRule(apiPreferences, updated)
+                        val categorized = applyNativeCategoryRule(entries.toList(), updated, now)
+                        val changed = categorized.filterIndexed { index, entry ->
+                            entry.remarkCategory != entries.getOrNull(index)?.remarkCategory
+                        }
+                        if (apiPreferences.token.isNotBlank()) changed.forEach { apiClient.saveEntry(apiPreferences, it) }
+                        ledgerStore.saveCategoryRule(scope, accountId, updated)
+                        if (changed.isNotEmpty()) {
+                            entries.clear()
+                            entries.addAll(categorized)
+                            ledgerStore.save(scope, accountId, actualBalance, categorized)
+                        }
+                        remoteCategoryRules = remoteCategoryRules.filterNot { it.id == updated.id } + updated
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地归类规则已保存" else "云端归类规则已保存"
+                        refreshVersion += 1
+                        changed.size
+                    },
+                    onToggleCategoryRule = { rule ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        val updated = rule.copy(
+                            updatedAt = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),
+                        )
+                        if (apiPreferences.token.isNotBlank()) apiClient.saveCategoryRule(apiPreferences, updated)
+                        ledgerStore.saveCategoryRule(scope, accountId, updated)
+                        remoteCategoryRules = remoteCategoryRules.map { if (it.id == updated.id) updated else it }
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地归类规则状态已更新" else "云端归类规则状态已更新"
+                        refreshVersion += 1
+                    },
+                    onDeleteCategoryRule = { rule ->
+                        val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+                        val accountId = apiPreferences.accountId.ifBlank { "local" }
+                        if (apiPreferences.token.isNotBlank()) apiClient.deleteCategoryRule(apiPreferences, rule.id)
+                        ledgerStore.deleteCategoryRule(scope, accountId, rule.id)
+                        remoteCategoryRules = remoteCategoryRules.filterNot { it.id == rule.id }
+                        apiStatus = if (apiPreferences.token.isBlank()) "本地归类规则已删除" else "云端归类规则已删除"
                         refreshVersion += 1
                     },
                 )

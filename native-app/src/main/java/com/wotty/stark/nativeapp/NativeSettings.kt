@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
@@ -83,12 +84,18 @@ internal fun NativeSettingsScreen(
     apiPreferences: NativeApiPreferences,
     apiStatus: String,
     subscriptions: List<NativeSubscription>,
+    categoryRules: List<NativeCategoryRule>,
+    transactions: List<LedgerEntry>,
     onOpenApi: () -> Unit,
     onRefresh: () -> Unit,
     onSaveSubscription: suspend (NativeSubscription) -> Unit,
     onDeleteSubscription: suspend (NativeSubscription) -> Unit,
+    onSaveCategoryRule: suspend (NativeCategoryRule) -> Int,
+    onToggleCategoryRule: suspend (NativeCategoryRule) -> Unit,
+    onDeleteCategoryRule: suspend (NativeCategoryRule) -> Unit,
 ) {
     var subscriptionsOpen by remember { mutableStateOf(false) }
+    var categoryRulesOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     LazyColumn(
@@ -129,6 +136,13 @@ internal fun NativeSettingsScreen(
                 icon = Icons.Default.ReceiptLong,
                 onClick = { subscriptionsOpen = true },
             )
+            SettingsMenuRow(
+                title = "账单归类规则",
+                detail = if (categoryRules.isEmpty()) "按关键词把转账等账单归入消费分类" else "${categoryRules.count { it.isActive }} 条启用 · 共 ${categoryRules.size} 条规则",
+                color = SettingsBlue,
+                icon = Icons.Default.Label,
+                onClick = { categoryRulesOpen = true },
+            )
         }
         item {
             SettingsSectionTitle("应用信息", "纯 Kotlin · Jetpack Compose")
@@ -142,6 +156,16 @@ internal fun NativeSettingsScreen(
             onDismiss = { subscriptionsOpen = false },
             onSave = onSaveSubscription,
             onDelete = onDeleteSubscription,
+        )
+    }
+    if (categoryRulesOpen) {
+        NativeCategoryRuleManagerSheet(
+            rules = categoryRules,
+            transactions = transactions,
+            onDismiss = { categoryRulesOpen = false },
+            onSave = onSaveCategoryRule,
+            onToggle = onToggleCategoryRule,
+            onDelete = onDeleteCategoryRule,
         )
     }
     if (helpOpen) {
