@@ -51,6 +51,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,6 +97,10 @@ internal fun NativeSettingsScreen(
     importingCsv: Boolean,
     onOpenApi: () -> Unit,
     onRefresh: () -> Unit,
+    onChangePassword: suspend (String, String) -> Unit,
+    onLoadRegistrationStatus: suspend () -> Boolean,
+    onSetRegistrationEnabled: suspend (Boolean, String) -> Boolean,
+    onLogout: () -> Unit,
     onExportBills: () -> Unit,
     onPickBills: () -> Unit,
     onConfirmBillImport: suspend () -> Unit,
@@ -111,6 +117,8 @@ internal fun NativeSettingsScreen(
     var csvImportOpen by remember { mutableStateOf(false) }
     var languageOpen by remember { mutableStateOf(false) }
     var fontOpen by remember { mutableStateOf(false) }
+    var accountOpen by remember { mutableStateOf(false) }
+    var logoutConfirmOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     val languageLabel = when (uiPreferences.value.language) {
@@ -188,6 +196,16 @@ internal fun NativeSettingsScreen(
             SettingsMenuRow("语言", languageLabel, SettingsBlue, Icons.Default.Info) { languageOpen = true }
             SettingsMenuRow("字体大小", fontLabel, SettingsAmber, Icons.Default.Settings) { fontOpen = true }
         }
+        if (apiPreferences.token.isNotBlank()) {
+            item {
+                SettingsSectionTitle("云端账户", "管理账户安全和新用户注册")
+                SettingsMenuRow("账户设置", "修改密码、管理注册", SettingsBlue, Icons.Default.Info) { accountOpen = true }
+                TextButton(
+                    onClick = { logoutConfirmOpen = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                ) { Text("退出登录", color = SettingsRed) }
+            }
+        }
         item {
             SettingsSectionTitle("应用信息", "纯 Kotlin · Jetpack Compose")
             SettingsMenuRow("帮助与反馈", "数据同步和周期支出的说明", SettingsBlue, Icons.Default.Info) { helpOpen = true }
@@ -244,6 +262,29 @@ internal fun NativeSettingsScreen(
             onDismiss = { fontOpen = false },
         )
     }
+    if (accountOpen && apiPreferences.token.isNotBlank()) {
+        NativeAccountSettingsSheet(
+            onDismiss = { accountOpen = false },
+            onChangePassword = onChangePassword,
+            onLoadRegistrationStatus = onLoadRegistrationStatus,
+            onSetRegistrationEnabled = onSetRegistrationEnabled,
+        )
+    }
+    if (logoutConfirmOpen) {
+        AlertDialog(
+            onDismissRequest = { logoutConfirmOpen = false },
+            title = { Text("退出云端账户？", fontWeight = FontWeight.Bold) },
+            text = { Text("退出后继续使用本地账本，云端数据不会删除。") },
+            dismissButton = { TextButton(onClick = { logoutConfirmOpen = false }) { Text("取消") } },
+            confirmButton = {
+                TextButton(onClick = {
+                    onLogout()
+                    logoutConfirmOpen = false
+                    accountOpen = false
+                }) { Text("退出登录", color = SettingsRed) }
+            },
+        )
+    }
     if (helpOpen) {
         AlertDialog(
             onDismissRequest = { helpOpen = false },
@@ -271,6 +312,194 @@ internal fun NativeSettingsScreen(
             },
             confirmButton = { TextButton(onClick = { aboutOpen = false }) { Text("关闭") } },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeAccountSettingsSheet(
+    onDismiss: () -> Unit,
+    onChangePassword: suspend (String, String) -> Unit,
+    onLoadRegistrationStatus: suspend () -> Boolean,
+    onSetRegistrationEnabled: suspend (Boolean, String) -> Boolean,
+) {
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var passwordError by remember { mutableStateOf("") }
+    var passwordMessage by remember { mutableStateOf("") }
+    var passwordSubmitting by remember { mutableStateOf(false) }
+    var registrationEnabled by remember { mutableStateOf(false) }
+    var registrationLoading by remember { mutableStateOf(true) }
+    var registrationStatusLoaded by remember { mutableStateOf(false) }
+    var registrationSubmitting by remember { mutableStateOf(false) }
+    var adminKey by remember { mutableStateOf("") }
+    var registrationError by remember { mutableStateOf("") }
+    var registrationMessage by remember { mutableStateOf("") }
+
+    suspend fun reloadRegistrationStatus() {
+        registrationLoading = true
+        registrationError = ""
+        try {
+            registrationEnabled = onLoadRegistrationStatus()
+            registrationStatusLoaded = true
+        } catch (error: Exception) {
+            registrationError = error.message ?: "无法读取注册状态"
+            registrationStatusLoaded = false
+        } finally {
+            registrationLoading = false
+        }
+    }
+
+    LaunchedEffect(Unit) { reloadRegistrationStatus() }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 790.dp).verticalScroll(rememberScrollState())
+                .navigationBarsPadding().imePadding().padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("账户设置", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("管理密码和新用户注册", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                TextButton(onClick = onDismiss) { Text("完成") }
+            }
+
+            SettingsPanel {
+                Text("修改密码", color = SettingsInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("新密码至少需要 8 位。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp, bottom = 7.dp))
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it; passwordError = ""; passwordMessage = "" },
+                    label = { Text("新密码") },
+                    placeholder = { Text("请输入新密码") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it; passwordError = ""; passwordMessage = "" },
+                    label = { Text("确认新密码") },
+                    placeholder = { Text("请再次输入新密码") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth().padding(top = 7.dp),
+                )
+                if (passwordError.isNotBlank()) SettingsInlineMessage(passwordError, SettingsRed)
+                if (passwordMessage.isNotBlank()) SettingsInlineMessage(passwordMessage, SettingsGreen)
+                Button(
+                    onClick = {
+                        passwordError = when {
+                            newPassword.isBlank() || confirmPassword.isBlank() -> "请完整填写密码信息"
+                            newPassword.length < 8 -> "新密码至少需要 8 位"
+                            newPassword != confirmPassword -> "两次输入的新密码不一致"
+                            else -> ""
+                        }
+                        if (passwordError.isNotBlank()) {
+                            passwordMessage = ""
+                        } else {
+                            scope.launch {
+                                passwordSubmitting = true
+                                passwordError = ""
+                                passwordMessage = ""
+                                try {
+                                    onChangePassword(newPassword, confirmPassword)
+                                    newPassword = ""
+                                    confirmPassword = ""
+                                    passwordMessage = "密码修改成功，请妥善保管新密码。"
+                                } catch (error: Exception) {
+                                    passwordError = error.message ?: "密码修改失败，请稍后重试"
+                                } finally {
+                                    passwordSubmitting = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !passwordSubmitting,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(46.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SettingsBlue),
+                    shape = RoundedCornerShape(13.dp),
+                ) {
+                    Text(if (passwordSubmitting) "提交中..." else "确认修改密码", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            SettingsPanel {
+                Text("新用户注册", color = SettingsInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    when {
+                        registrationLoading -> "正在读取注册状态..."
+                        registrationEnabled -> "当前允许新用户注册。"
+                        else -> "当前已关闭新用户注册。"
+                    },
+                    color = SettingsMuted,
+                    fontSize = 10.sp,
+                    modifier = Modifier.padding(top = 3.dp, bottom = 7.dp),
+                )
+                OutlinedTextField(
+                    value = adminKey,
+                    onValueChange = { adminKey = it; registrationError = ""; registrationMessage = "" },
+                    label = { Text("管理员恢复密钥") },
+                    placeholder = { Text("输入部署管理员恢复密钥") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text("密钥只用于本次提交，不会保存在设备中。", color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 5.dp))
+                if (registrationError.isNotBlank()) SettingsInlineMessage(registrationError, SettingsRed)
+                if (registrationMessage.isNotBlank()) SettingsInlineMessage(registrationMessage, SettingsGreen)
+                if (!registrationStatusLoaded && !registrationLoading) {
+                    TextButton(onClick = { scope.launch { reloadRegistrationStatus() } }, modifier = Modifier.align(Alignment.End)) {
+                        Text("重试读取")
+                    }
+                }
+                Button(
+                    onClick = {
+                        if (adminKey.isBlank()) {
+                            registrationError = "请输入管理员恢复密钥"
+                            registrationMessage = ""
+                        } else {
+                            scope.launch {
+                                registrationSubmitting = true
+                                registrationError = ""
+                                registrationMessage = ""
+                                val requestedState = !registrationEnabled
+                                try {
+                                    registrationEnabled = onSetRegistrationEnabled(requestedState, adminKey.trim())
+                                    registrationMessage = if (registrationEnabled) "已开启新用户注册" else "已关闭新用户注册"
+                                } catch (error: Exception) {
+                                    registrationError = error.message ?: "注册设置更新失败"
+                                } finally {
+                                    adminKey = ""
+                                    registrationSubmitting = false
+                                }
+                            }
+                        }
+                    },
+                    enabled = registrationStatusLoaded && !registrationLoading && !registrationSubmitting,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(46.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (registrationEnabled) SettingsRed else SettingsGreen),
+                    shape = RoundedCornerShape(13.dp),
+                ) {
+                    Text(
+                        when {
+                            registrationSubmitting -> "提交中..."
+                            registrationEnabled -> "关闭新用户注册"
+                            else -> "开启新用户注册"
+                        },
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+        }
     }
 }
 
