@@ -1079,6 +1079,37 @@ private fun StarkNativeApp() {
             ),
         )
     }
+    var csvExportStatus by remember { mutableStateOf("导出当前账本全部流水为 UTF-8 CSV") }
+    var exportingCsv by remember { mutableStateOf(false) }
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri == null) {
+            csvExportStatus = "已取消导出，账本数据未更改"
+            exportingCsv = false
+        } else {
+            exportingCsv = true
+            coroutineScope.launch {
+                val exportEntries = entries.toList()
+                csvExportStatus = "正在导出 ${exportEntries.size} 笔账单…"
+                runCatching {
+                    val csv = serializeNativeTransactionsToCsv(exportEntries)
+                    withContext(Dispatchers.IO) {
+                        val output = context.contentResolver.openOutputStream(uri, "wt")
+                            ?: throw IllegalStateException("无法打开选择的保存位置")
+                        output.use { stream ->
+                            stream.write(byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte()))
+                            stream.write(csv.toByteArray(Charsets.UTF_8))
+                        }
+                    }
+                    csvExportStatus = "已导出 ${exportEntries.size} 笔账单"
+                }.onFailure { error ->
+                    csvExportStatus = "导出失败：${error.message ?: "请检查保存位置后重试"}"
+                }
+                exportingCsv = false
+            }
+        }
+    }
 
     val lifecycleContext = LocalContext.current as? ComponentActivity
     DisposableEffect(lifecycleContext) {
@@ -1332,8 +1363,18 @@ private fun StarkNativeApp() {
                     subscriptions = remoteSubscriptions,
                     categoryRules = remoteCategoryRules,
                     transactions = entries.toList(),
+                    csvExportStatus = csvExportStatus,
                     onOpenApi = { homeOverlay = HomeOverlay.API },
                     onRefresh = { refreshVersion += 1 },
+                    onExportBills = {
+                        if (exportingCsv) {
+                            csvExportStatus = "正在导出账单…"
+                        } else {
+                            csvExportStatus = "正在选择保存位置…"
+                            val date = LocalDate.now().format(DateTimeFormatter.ISO_DATE)
+                            csvExportLauncher.launch("star-accounting-bills-$date.csv")
+                        }
+                    },
                     onSaveSubscription = { subscription ->
                         val scope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
                         val accountId = apiPreferences.accountId.ifBlank { "local" }
