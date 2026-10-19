@@ -70,6 +70,16 @@ internal class NativeEntityDatabase(context: Context) :
         write(writableDatabase, scope, accountId, entityType, record)
     }
 
+    fun upsertEntities(scope: String, accountId: String, records: List<Pair<String, NativeStoredEntity>>) {
+        writableDatabase.beginTransaction()
+        try {
+            records.forEach { (entityType, record) -> write(writableDatabase, scope, accountId, entityType, record) }
+            writableDatabase.setTransactionSuccessful()
+        } finally {
+            writableDatabase.endTransaction()
+        }
+    }
+
     fun delete(scope: String, accountId: String, entityType: String, entityId: String) {
         writableDatabase.delete(
             TABLE_ENTITIES,
