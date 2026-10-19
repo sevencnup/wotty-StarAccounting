@@ -710,6 +710,9 @@ object DatabaseFactory {
             .where { Transactions.accountId eq accountId }
             .mapNotNull { it[Transactions.orderId] }
             .toMutableSet()
+        val existingTransactionIds = Transactions.selectAll()
+            .where { Transactions.accountId eq accountId }
+            .mapTo(mutableSetOf()) { it[Transactions.id] }
         var imported = 0
         var skipped = 0
         var errors = 0
@@ -719,8 +722,9 @@ object DatabaseFactory {
 
         items.forEachIndexed { index, payload ->
             runCatching {
+                val transactionId = payload.getString("id")
                 val orderId = payload.getNullableString("orderId")
-                if (!orderId.isNullOrBlank() && orderId in existingOrderIds) {
+                if (transactionId in existingTransactionIds || (!orderId.isNullOrBlank() && orderId in existingOrderIds)) {
                     skipped += 1
                 } else {
                     val normalizedValues = payload.toMutableMap()
@@ -730,6 +734,7 @@ object DatabaseFactory {
                     validateImportedLoanRepayment(normalizedPayload, accountId, userId)
                     upsertTransaction(normalizedPayload)
                     val repaymentAmount = applyImportedLoanRepayment(normalizedPayload, accountId, userId)
+                    existingTransactionIds += transactionId
                     if (!orderId.isNullOrBlank()) existingOrderIds += orderId
                     imported += 1
                     if (repaymentAmount > BigDecimal.ZERO) {

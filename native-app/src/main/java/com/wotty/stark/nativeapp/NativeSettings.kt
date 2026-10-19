@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Label
@@ -69,6 +70,7 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 
 private val SettingsInk = Color(0xFF1F2937)
@@ -88,9 +90,15 @@ internal fun NativeSettingsScreen(
     categoryRules: List<NativeCategoryRule>,
     transactions: List<LedgerEntry>,
     csvExportStatus: String,
+    csvImportStatus: String,
+    pendingCsvImport: NativeBillImportPreview?,
+    importErrors: List<NativeImportError>,
+    importingCsv: Boolean,
     onOpenApi: () -> Unit,
     onRefresh: () -> Unit,
     onExportBills: () -> Unit,
+    onPickBills: () -> Unit,
+    onConfirmBillImport: suspend () -> Unit,
     onSaveSubscription: suspend (NativeSubscription) -> Unit,
     onDeleteSubscription: suspend (NativeSubscription) -> Unit,
     onSaveCategoryRule: suspend (NativeCategoryRule) -> Int,
@@ -100,6 +108,7 @@ internal fun NativeSettingsScreen(
     var subscriptionsOpen by remember { mutableStateOf(false) }
     var categoryRulesOpen by remember { mutableStateOf(false) }
     var csvExportOpen by remember { mutableStateOf(false) }
+    var csvImportOpen by remember { mutableStateOf(false) }
     var helpOpen by remember { mutableStateOf(false) }
     var aboutOpen by remember { mutableStateOf(false) }
     LazyColumn(
@@ -132,7 +141,7 @@ internal fun NativeSettingsScreen(
             }
         }
         item {
-            SettingsSectionTitle("账单管理", "管理分类规则、周期支出并导出账单")
+            SettingsSectionTitle("账单管理", "管理分类规则、周期支出并导入导出账单")
             SettingsMenuRow(
                 title = "订阅/扣费管理",
                 detail = if (subscriptions.isEmpty()) "保险、房租等固定支出 · 尚未设置" else "${subscriptions.count { it.isActive }} 项自动记账中 · 共 ${subscriptions.size} 项",
@@ -146,6 +155,13 @@ internal fun NativeSettingsScreen(
                 color = SettingsBlue,
                 icon = Icons.Default.Label,
                 onClick = { categoryRulesOpen = true },
+            )
+            SettingsMenuRow(
+                title = "导入账单",
+                detail = if (importErrors.count { !it.resolved } == 0) "微信、支付宝或本应用 CSV · 确认后写入当前账本" else "${importErrors.count { !it.resolved }} 条导入问题待处理",
+                color = SettingsBlue,
+                icon = Icons.Default.CloudDownload,
+                onClick = { csvImportOpen = true },
             )
             SettingsMenuRow(
                 title = "导出账单",
@@ -184,6 +200,17 @@ internal fun NativeSettingsScreen(
             status = csvExportStatus,
             onDismiss = { csvExportOpen = false },
             onExport = onExportBills,
+        )
+    }
+    if (csvImportOpen) {
+        NativeCsvImportSheet(
+            status = csvImportStatus,
+            preview = pendingCsvImport,
+            importErrors = importErrors,
+            importing = importingCsv,
+            onDismiss = { csvImportOpen = false },
+            onPick = onPickBills,
+            onConfirm = onConfirmBillImport,
         )
     }
     if (helpOpen) {
@@ -254,6 +281,121 @@ private fun NativeCsvExportSheet(
                 Text("选择保存位置", modifier = Modifier.padding(start = 7.dp), fontWeight = FontWeight.SemiBold)
             }
             Text("取消保存面板不会改动账本；导出的文件由你选择保存位置。", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(bottom = 18.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NativeCsvImportSheet(
+    status: String,
+    preview: NativeBillImportPreview?,
+    importErrors: List<NativeImportError>,
+    importing: Boolean,
+    onDismiss: () -> Unit,
+    onPick: () -> Unit,
+    onConfirm: suspend () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val importableCount = preview?.rows?.count { it.duplicateReason == null } ?: 0
+    val duplicateCount = preview?.rows?.count { it.duplicateReason != null } ?: 0
+    val statusColor = when {
+        status.startsWith("导入失败") -> SettingsRed
+        status.startsWith("已导入") || status.startsWith("已保存") -> SettingsGreen
+        else -> SettingsMuted
+    }
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 790.dp).navigationBarsPadding().imePadding().padding(horizontal = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(11.dp),
+        ) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("导入账单", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("微信、支付宝或本应用导出的 CSV", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                TextButton(onClick = onDismiss) { Text("完成") }
+            }
+            SettingsPanel {
+                Text("导入前会先预览并标出重复流水。重复项会跳过；只有你确认后，账单才会写入当前账本。", color = SettingsMuted, fontSize = 11.sp)
+                Button(
+                    onClick = onPick,
+                    enabled = !importing,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SettingsBlue),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(17.dp))
+                    Text(if (preview == null) "选择 CSV 文件" else "重新选择文件", modifier = Modifier.padding(start = 7.dp), fontWeight = FontWeight.SemiBold)
+                }
+            }
+            if (preview != null) {
+                SettingsPanel {
+                    Text(preview.fileName, color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("来源：${preview.source.label}  ·  可导入 $importableCount 笔  ·  重复 $duplicateCount 笔  ·  异常 ${preview.issues.size} 行", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                }
+                LazyColumn(
+                    Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(preview.rows.take(30), key = { "row-${it.lineNumber}" }) { row ->
+                        SettingsPanel {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("第 ${row.lineNumber} 行 · ${row.entry.title.ifBlank { row.entry.category }}", color = SettingsInk, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("${row.entry.category.substringBefore(" ·")} · ${row.entry.date.take(10)}", color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp))
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("¥${"%.2f".format(Locale.ROOT, row.entry.amount)}", color = SettingsInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    if (row.duplicateReason != null) Text("跳过：${row.duplicateReason}", color = SettingsAmber, fontSize = 8.sp)
+                                }
+                            }
+                        }
+                    }
+                    if (preview.rows.size > 30) item { Text("仅预览前 30 笔，确认后会处理全部账单。", color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(4.dp)) }
+                    items(preview.issues.take(8), key = { "issue-${it.lineNumber}-${it.message}" }) { issue ->
+                        SettingsPanel {
+                            Text("第 ${issue.lineNumber} 行 · ${issue.message}", color = SettingsRed, fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
+            if (importErrors.any { !it.resolved }) {
+                SettingsPanel {
+                    Text("最近导入问题", color = SettingsInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    importErrors.filterNot { it.resolved }.take(4).forEach { error ->
+                        Text(
+                            "${error.fileName}${if (error.lineNumber > 0) " · 第 ${error.lineNumber} 行" else ""}：${error.errorMessage}",
+                            color = SettingsRed,
+                            fontSize = 9.sp,
+                            modifier = Modifier.padding(top = 5.dp),
+                        )
+                    }
+                }
+            }
+            SettingsInlineMessage(status, statusColor)
+            if (preview != null) {
+                Button(
+                    onClick = { scope.launch { onConfirm() } },
+                    enabled = !importing,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = SettingsGreen),
+                    shape = RoundedCornerShape(14.dp),
+                ) {
+                    Text(
+                        when {
+                            importing -> "正在导入…"
+                            importableCount > 0 -> "确认导入 $importableCount 笔"
+                            preview.issues.isNotEmpty() -> "保存错误记录"
+                            else -> "确认并跳过重复项"
+                        },
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            Text("目前支持 CSV。XLS/XLSX 文件请先另存为 CSV。", color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(bottom = 14.dp))
         }
     }
 }
