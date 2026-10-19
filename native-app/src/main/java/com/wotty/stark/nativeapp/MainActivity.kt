@@ -95,11 +95,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1089,27 +1089,38 @@ private val moneyFormat = DecimalFormat("#,##0.00")
 
 @Composable
 private fun StarkNativeTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = MaterialTheme.colorScheme.copy(
-            primary = Blue,
-            secondary = Green,
-            background = Canvas,
-            surface = Color.White,
-            onBackground = Ink,
-            onSurface = Ink,
-        ),
+    val context = LocalContext.current
+    val preferences = remember(context) { NativeUiPreferences(context) }
+    val settings = preferences.value
+    val selectedFont = settings.font
+    val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+    val localizedContext = remember(context, settings.language) { nativeLocalizedContext(context, settings.language) }
+    SideEffect { applyNativeProcessLocale(settings.language) }
+    CompositionLocalProvider(
+        LocalNativeUiPreferences provides preferences,
+        androidx.compose.ui.platform.LocalDensity provides nativeFontDensity(baseDensity, selectedFont),
+        androidx.compose.ui.platform.LocalContext provides localizedContext,
     ) {
-        // Web uses Microsoft YaHei UI around 400/500. Android's medium
-        // system face keeps Chinese glyphs from falling into an overly thin
-        // fallback while the individual home styles still control hierarchy.
-        CompositionLocalProvider(
-            androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(
-                fontFamily = StarkFontFamily,
-                fontWeight = FontWeight.Normal,
-                lineHeight = TextUnit.Unspecified,
+        MaterialTheme(
+            colorScheme = MaterialTheme.colorScheme.copy(
+                primary = Blue,
+                secondary = Green,
+                background = Canvas,
+                surface = Color.White,
+                onBackground = Ink,
+                onSurface = Ink,
             ),
         ) {
-            content()
+            // Match the Web app's medium system face while retaining each component's hierarchy.
+            CompositionLocalProvider(
+                androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(
+                    fontFamily = StarkFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    lineHeight = TextUnit.Unspecified,
+                ),
+            ) {
+                content()
+            }
         }
     }
 }
@@ -2332,6 +2343,7 @@ private data class RoseChartSegment(val label: String, val value: Double, val co
 
 @Composable
 private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = Modifier) {
+    val language = LocalNativeUiPreferences.current.value.language
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val total = data.sumOf { it.value }.coerceAtLeast(0.01)
         val center = Offset(size.width / 2f, size.height / 2f)
@@ -2366,7 +2378,7 @@ private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = M
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     textAlign = if (lineEnd.x >= center.x) android.graphics.Paint.Align.LEFT else android.graphics.Paint.Align.RIGHT
                 }
-                drawText(segment.label, lineEnd.x + if (lineEnd.x >= center.x) 3.dp.toPx() else -3.dp.toPx(), lineEnd.y + 3.dp.toPx(), paint)
+                drawText(translateNativeText(segment.label, language), lineEnd.x + if (lineEnd.x >= center.x) 3.dp.toPx() else -3.dp.toPx(), lineEnd.y + 3.dp.toPx(), paint)
             } }
             startAngle += sweep
         }
@@ -2376,6 +2388,7 @@ private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = M
 
 @Composable
 private fun NativeCashflowChart(incomes: List<Double>, expenses: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
+    val language = LocalNativeUiPreferences.current.value.language
     androidx.compose.foundation.Canvas(modifier = modifier) {
         val left = 6.dp.toPx()
         val right = size.width - 5.dp.toPx()
@@ -2400,7 +2413,7 @@ private fun NativeCashflowChart(incomes: List<Double>, expenses: List<Double>, l
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     textAlign = android.graphics.Paint.Align.CENTER
                 }
-                drawText(label, groupStart + groupWidth / 2f, size.height - 5.dp.toPx(), paint)
+                drawText(translateNativeText(label, language), groupStart + groupWidth / 2f, size.height - 5.dp.toPx(), paint)
             } }
         }
     }
