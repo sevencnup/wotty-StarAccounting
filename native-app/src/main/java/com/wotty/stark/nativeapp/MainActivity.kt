@@ -3697,155 +3697,197 @@ private fun SavingsOverviewScreen(
     val completedPlans = plans.count { it.status == "COMPLETED" }
     val pendingPlans = plans.count { it.status == "PENDING" }
     val skippedPlans = plans.count { it.status == "SKIPPED" }
-    val pendingAmount = plans.filter { it.status == "PENDING" }.sumOf { it.amount.coerceAtLeast(0.0) }
     val completionRate = if (plans.isEmpty()) 0.0 else completedPlans.toDouble() / plans.size * 100
     val remainingTarget = (target - saved).coerceAtLeast(0.0)
     val plansByYear = plans.groupBy { plan ->
         plan.month.takeIf { it.matches(Regex("\\d{4}-(0[1-9]|1[0-2])")) }?.take(4) ?: "未设置"
     }.entries.sortedWith(compareByDescending { it.key.toIntOrNull() ?: -1 })
-    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { NativePageHeader("储蓄计划", "目标、累计存入与完成进度") }
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { NativePageHeader("储蓄", "目标、累计存入与完成进度") }
         item {
-            Text(
-                "＋ 新建储蓄目标",
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Blue)
-                    .clickable(onClick = onNewGoal).padding(vertical = 13.dp),
-                color = Color.White,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-        }
-        item {
-            WebReplicaCard(padding = 13.dp, radius = 16.dp) {
-                Text("规划提醒", color = Amber, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("本页面用于安排储蓄计划和记录实际存入，不会实际转移资金。", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp))
-            }
-        }
-        item {
-            WebReplicaCard(padding = 17.dp, radius = 20.dp) {
-                Text("累计存入", color = Muted, fontSize = 12.sp)
-                Text("¥ ${moneyFormat.format(saved)}", color = Ink, fontSize = 27.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(12.dp))
-                Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Line)) {
-                    Box(Modifier.fillMaxWidth((progress / 100).toFloat()).height(7.dp).clip(CircleShape).background(Green))
-                }
-                Spacer(Modifier.height(7.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("目标 ¥ ${moneyFormat.format(target)}", color = Muted, fontSize = 11.sp)
-                    Text("${percentLabel(progress)}%", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Card(
+                shape = RoundedCornerShape(15.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8DC)),
+                border = BorderStroke(1.dp, Color(0xFFF4D78A)),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp)) {
+                    Text("规划提醒", color = Color(0xFF9A6700), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("本项目只用于规划，不能实际存入资金，请合理规划资金存放。", color = Color(0xFF785811), fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
         }
         item {
-            WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column {
-                        Text("本月计划", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text(currentMonth, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+            WebReplicaCard(padding = 15.dp, radius = 20.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("储蓄总览", color = Green, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("¥ ${moneyFormat.format(saved)}", color = Ink, fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                        Text("${goals.size} 个储蓄目标", color = Muted, fontSize = 11.sp, maxLines = 1)
+                        Spacer(Modifier.height(11.dp))
+                        Box(Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(Color(0xFFDAE6F1))) {
+                            Box(Modifier.fillMaxWidth((progress / 100).toFloat()).height(8.dp).clip(CircleShape).background(Green))
+                        }
+                        Spacer(Modifier.height(7.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("目标 ¥ ${moneyFormat.format(target)}", color = Muted, fontSize = 10.sp, maxLines = 1)
+                            Text("剩余 ¥ ${moneyFormat.format(remainingTarget)}", color = Muted, fontSize = 10.sp, maxLines = 1)
+                        }
                     }
-                    Text("已存 ¥ ${moneyFormat.format(currentMonthSaved)}", color = Green, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    SavingsProgressRing(progress)
                 }
-                Spacer(Modifier.height(9.dp))
-                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Line)) {
-                    val fraction = if (currentMonthPlanned <= 0.0) 0f else (currentMonthSaved / currentMonthPlanned).toFloat().coerceIn(0f, 1f)
-                    Box(Modifier.fillMaxWidth(fraction).height(6.dp).clip(CircleShape).background(Green))
-                }
-                Text("计划 ¥ ${moneyFormat.format(currentMonthPlanned)}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 7.dp))
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                WebReplicaCard(modifier = Modifier.weight(1f), padding = 11.dp, radius = 15.dp) {
-                    Text("目标缺口", color = Muted, fontSize = 10.sp)
-                    Text("¥ ${moneyFormat.format(remainingTarget)}", color = Amber, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                WebReplicaCard(modifier = Modifier.weight(1f), padding = 9.dp, radius = 15.dp) {
+                    Text("本月计划", color = Muted, fontSize = 10.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("¥ ${moneyFormat.format(currentMonthPlanned)}", color = Ink, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(
+                        if (currentMonthPlans.isEmpty()) "暂无储蓄计划" else "已存 ¥ ${moneyFormat.format(currentMonthSaved)}",
+                        color = Muted,
+                        fontSize = 9.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                WebReplicaCard(modifier = Modifier.weight(1f), padding = 11.dp, radius = 15.dp) {
-                    Text("待存金额", color = Muted, fontSize = 10.sp)
-                    Text("¥ ${moneyFormat.format(pendingAmount)}", color = Blue, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                WebReplicaCard(modifier = Modifier.weight(1f), padding = 9.dp, radius = 15.dp) {
+                    Text("目标缺口", color = Muted, fontSize = 10.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("¥ ${moneyFormat.format(remainingTarget)}", color = Amber, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("目标剩余金额", color = Muted, fontSize = 9.5.sp, maxLines = 1)
                 }
-                WebReplicaCard(modifier = Modifier.weight(1f), padding = 11.dp, radius = 15.dp) {
-                    Text("计划完成率", color = Muted, fontSize = 10.sp)
-                    Text("${percentLabel(completionRate)}%", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Text("$completedPlans 已完成 · $pendingPlans 待存${if (skippedPlans > 0) " · $skippedPlans 跳过" else ""}", color = Muted, fontSize = 8.sp, maxLines = 1)
+                WebReplicaCard(modifier = Modifier.weight(1f), padding = 9.dp, radius = 15.dp) {
+                    Text("完成率", color = Muted, fontSize = 10.5.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    Text("${percentLabel(completionRate)}%", color = Green, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(
+                        "$completedPlans 已完成 · $pendingPlans 待存${if (skippedPlans > 0) " · $skippedPlans 跳过" else ""}",
+                        color = Muted,
+                        fontSize = 9.5.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
         }
         if (!connected) item {
-            CloudConnectNotice("本地目标仅保存在本机；登录后查看当前云端账本", onConnect)
-        }
-        if (displayGoals.isEmpty()) {
-            item {
-                EmptyPageCard(
-                    title = if (connected) "还没有活跃储蓄目标" else "尚无本地储蓄目标",
-                    detail = "创建目标后，可安排单月或隔月计划并记录实际存入。",
-                )
+            WebReplicaCard(padding = 8.dp, radius = 14.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("本地目标仅保存在本机，连接后可查看云端账本", color = Muted, fontSize = 10.5.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("连接", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onConnect).padding(horizontal = 8.dp, vertical = 6.dp))
+                }
             }
-        } else {
-            item { Text("目标组", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-            items(displayGoals, key = { it.id }) { goal ->
-                val goalTarget = savingsGoalTarget(goal, plans)
-                val goalSaved = savingsGoalSaved(goal, plans)
-                val goalProgress = if (goalTarget <= 0.0) 0.0 else (goalSaved / goalTarget * 100).coerceIn(0.0, 100.0)
-                WebReplicaCard(modifier = Modifier.clickable { onEditGoal(goal) }, padding = 15.dp, radius = 17.dp) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(goal.name, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text("${depositTypeLabel(goal.depositType)}${goal.deadline.takeIf { it.isNotBlank() }?.let { " · 截止 $it" }.orEmpty()}", color = Muted, fontSize = 11.sp)
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("${percentLabel(goalProgress)}%", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text("编辑计划 ›", color = Blue, fontSize = 10.sp)
-                        }
+        }
+        item {
+            WebReplicaCard(padding = 12.dp, radius = 20.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column(Modifier.weight(1f)) {
+                        Text("目标组", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("活跃目标与存入进度", color = Muted, fontSize = 10.5.sp, modifier = Modifier.padding(top = 2.dp))
                     }
-                    Spacer(Modifier.height(10.dp))
-                    Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Line)) {
-                        Box(Modifier.fillMaxWidth((goalProgress / 100).toFloat()).height(6.dp).clip(CircleShape).background(Green))
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("已存 ¥ ${moneyFormat.format(goalSaved)}", color = Muted, fontSize = 11.sp)
-                        Text("目标 ¥ ${moneyFormat.format(goalTarget)}", color = Muted, fontSize = 11.sp)
+                    Text("＋ 新建", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(Blue).clickable(onClick = onNewGoal).padding(horizontal = 11.dp, vertical = 8.dp))
+                }
+                if (displayGoals.isEmpty()) {
+                    Text(if (connected) "还没有活跃储蓄目标" else "尚无本地储蓄目标", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 12.dp))
+                    Text("创建目标后，可安排单月或隔月计划并记录实际存入。", color = Muted, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(top = 3.dp))
+                } else {
+                    Column(Modifier.fillMaxWidth().padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        displayGoals.forEach { goal ->
+                            val goalTarget = savingsGoalTarget(goal, plans)
+                            val goalSaved = savingsGoalSaved(goal, plans)
+                            val goalProgress = if (goalTarget <= 0.0) 0.0 else (goalSaved / goalTarget * 100).coerceIn(0.0, 100.0)
+                            Column(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFF9FBFD))
+                                    .clickable { onEditGoal(goal) }.padding(horizontal = 10.dp, vertical = 9.dp),
+                            ) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text(depositTypeLabel(goal.depositType), color = Muted, fontSize = 10.sp, maxLines = 1)
+                                        Text(goal.name, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                                        Text(goal.deadline.takeIf { it.isNotBlank() }?.let { "截止 $it" } ?: "未设置期限", color = Muted, fontSize = 10.sp, maxLines = 1, modifier = Modifier.padding(top = 2.dp))
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("${percentLabel(goalProgress)}%", color = Green, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                        Text("编辑目标 ›", color = Blue, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
+                                    }
+                                }
+                                Spacer(Modifier.height(7.dp))
+                                Box(Modifier.fillMaxWidth().height(5.dp).clip(CircleShape).background(Line)) {
+                                    Box(Modifier.fillMaxWidth((goalProgress / 100).toFloat()).height(5.dp).clip(CircleShape).background(Green))
+                                }
+                                Row(Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("已存 ¥ ${moneyFormat.format(goalSaved)}", color = Muted, fontSize = 10.sp, maxLines = 1)
+                                    Text("还差 ¥ ${moneyFormat.format((goalTarget - goalSaved).coerceAtLeast(0.0))}", color = Muted, fontSize = 10.sp, maxLines = 1)
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
-        item { Text("月度计划", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+        item {
+            Column(Modifier.fillMaxWidth()) {
+                Text("最近计划", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("按计划月份查看实际存入进度", color = Muted, fontSize = 10.5.sp, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
         if (plans.isEmpty()) {
             item {
                 EmptyPageCard(
-                    title = "暂无月度计划",
+                    title = "暂无储蓄计划",
                     detail = "创建月度计划后，可在这里记录实际存入金额和凭证。",
                 )
             }
         } else {
             plansByYear.forEach { (year, yearPlans) ->
                 item {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (year == "未设置") year else "$year 年", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text("${yearPlans.size} 项计划", color = Muted, fontSize = 10.sp)
-                    }
-                }
-                items(yearPlans.sortedByDescending { it.month }, key = { it.id }) { plan ->
-                    val goal = goals.firstOrNull { it.id == plan.goalId }
-                    val recordedAmount = savingsPlanRecordedAmount(plan)
-                    WebReplicaCard(padding = 14.dp, radius = 16.dp) {
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Column(Modifier.weight(1f)) {
-                                Text(goal?.name ?: "储蓄计划", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                Text("${plan.month} · ${savingsPlanStatusLabel(plan.status)}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
-                            }
-                            Text(if (plan.status == "COMPLETED") "+¥ ${moneyFormat.format(recordedAmount)}" else "计划 ¥ ${moneyFormat.format(plan.amount)}", color = if (plan.status == "COMPLETED") Green else Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    WebReplicaCard(padding = 11.dp, radius = 18.dp) {
+                        Row(Modifier.fillMaxWidth().padding(bottom = 5.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(if (year == "未设置") year else "$year 年", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            Text("${yearPlans.size} 项计划", color = Muted, fontSize = 10.sp)
                         }
-                        Spacer(Modifier.height(9.dp))
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("已存 ¥ ${moneyFormat.format(recordedAmount)} / ¥ ${moneyFormat.format(plan.amount)}", color = Muted, fontSize = 10.sp)
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (!plan.proofImage.isNullOrBlank()) {
-                                    TextButton(onClick = { previewProofImage = plan.proofImage }) { Text("查看凭证", fontSize = 11.sp) }
+                        yearPlans.sortedByDescending { it.month }.forEachIndexed { index, plan ->
+                            val goal = goals.firstOrNull { it.id == plan.goalId }
+                            val recordedAmount = savingsPlanRecordedAmount(plan)
+                            val planProgress = if (plan.amount <= 0.0) 0f else (recordedAmount / plan.amount).toFloat().coerceIn(0f, 1f)
+                            if (index > 0) HorizontalDivider(color = Line, thickness = 1.dp, modifier = Modifier.padding(vertical = 7.dp))
+                            Column(Modifier.fillMaxWidth()) {
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    val statusColor = when (plan.status) {
+                                        "COMPLETED" -> Green
+                                        "SKIPPED" -> Muted
+                                        else -> Amber
+                                    }
+                                    Box(Modifier.size(28.dp).clip(RoundedCornerShape(9.dp)).background(statusColor.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
+                                        Text(if (plan.status == "COMPLETED") "✓" else if (plan.status == "SKIPPED") "—" else "·", color = statusColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Column(Modifier.weight(1f)) {
+                                        Text(goal?.name ?: "储蓄计划", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text("${plan.month} · ${savingsPlanStatusLabel(plan.status)}", color = Muted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
+                                    }
+                                    Text(
+                                        if (plan.status == "COMPLETED") "+¥ ${moneyFormat.format(recordedAmount)}" else "¥ ${moneyFormat.format(plan.amount)}",
+                                        color = if (plan.status == "COMPLETED") Green else if (plan.status == "SKIPPED") Muted else Amber,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                    )
                                 }
-                                TextButton(onClick = { onRecordPlan(plan) }, enabled = goal != null) {
-                                    Text(if (plan.status == "COMPLETED") "修改记录" else "实际存入", fontSize = 11.sp)
+                                Box(Modifier.fillMaxWidth().padding(start = 36.dp, top = 7.dp).height(4.dp).clip(CircleShape).background(Line)) {
+                                    Box(Modifier.fillMaxWidth(planProgress).height(4.dp).clip(CircleShape).background(Green))
+                                }
+                                Row(Modifier.fillMaxWidth().padding(start = 36.dp, top = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("已存 ¥ ${moneyFormat.format(recordedAmount)} / 计划 ¥ ${moneyFormat.format(plan.amount)}", color = Muted, fontSize = 9.5.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        if (!plan.proofImage.isNullOrBlank()) {
+                                            Text("凭证", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.Medium, modifier = Modifier.clip(RoundedCornerShape(7.dp)).clickable { previewProofImage = plan.proofImage }.padding(horizontal = 6.dp, vertical = 5.dp))
+                                        }
+                                        Text(
+                                            if (plan.status == "COMPLETED") "修改记录" else "实际存入",
+                                            color = if (plan.status == "COMPLETED") Green else Blue,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.clip(RoundedCornerShape(7.dp)).clickable(enabled = goal != null) { if (goal != null) onRecordPlan(plan) }.padding(horizontal = 6.dp, vertical = 5.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -3855,6 +3897,39 @@ private fun SavingsOverviewScreen(
         }
     }
     previewProofImage?.let { proof -> NativeProofImageViewer(proof, onDismiss = { previewProofImage = null }) }
+}
+
+@Composable
+private fun SavingsProgressRing(progress: Double) {
+    Box(Modifier.size(76.dp), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
+            val strokeWidth = 6.dp.toPx()
+            val inset = strokeWidth / 2f
+            val ringSize = Size(size.width - strokeWidth, size.height - strokeWidth)
+            drawArc(
+                color = Color(0xFFD6E3EF),
+                startAngle = -90f,
+                sweepAngle = 360f,
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = ringSize,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+            )
+            drawArc(
+                color = Green,
+                startAngle = -90f,
+                sweepAngle = (progress.coerceIn(0.0, 100.0) * 3.6).toFloat(),
+                useCenter = false,
+                topLeft = Offset(inset, inset),
+                size = ringSize,
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+            )
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("${percentLabel(progress)}%", color = Ink, fontSize = 15.sp, lineHeight = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text("总进度", color = Muted, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp))
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
