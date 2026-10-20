@@ -54,10 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
@@ -245,13 +242,11 @@ internal fun NativeLoanOverviewScreen(
                     }
                     estimatedCompletionYear?.let { LoanPill("预计 $it 年结清", LoanGreen) }
                 }
-                LoanForecastChart(forecast, Modifier.fillMaxWidth().padding(top = 12.dp).height(132.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    (0 until 6).forEach { index ->
-                        val month = YearMonth.now().plusMonths(index.toLong())
-                        Text("${month.monthValue}月", color = LoanMuted, fontSize = 10.sp)
-                    }
-                }
+                LoanForecastChart(
+                    forecast,
+                    (0 until 6).map { index -> "${YearMonth.now().plusMonths(index.toLong()).monthValue}月" },
+                    Modifier.fillMaxWidth().padding(top = 12.dp).height(150.dp),
+                )
                 Text("统计收入范围：$reportingMonth", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
@@ -446,64 +441,21 @@ private fun LoanProgressRing(progress: Double, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun LoanForecastChart(values: List<Double>, modifier: Modifier = Modifier) {
-    ComposeCanvas(modifier) {
-        val top = 10f
-        val bottom = size.height - 11f
-        val maxValue = (values.maxOrNull() ?: 0.0).coerceAtLeast(1.0)
-        val points = values.mapIndexed { index, value ->
-            val x = if (values.size <= 1) size.width / 2f else size.width * index / (values.size - 1).toFloat()
-            val y = bottom - (bottom - top) * (value / maxValue).toFloat()
-            Offset(x, y)
-        }
-        repeat(3) { index ->
-            val y = top + (bottom - top) * index / 2f
-            drawLine(Color(0xFFEFF3F7), Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
-        }
-        if (points.isNotEmpty()) {
-            val fillPath = Path().apply {
-                moveTo(points.first().x, bottom)
-                lineTo(points.first().x, points.first().y)
-                points.drop(1).forEach { lineTo(it.x, it.y) }
-                lineTo(points.last().x, bottom)
-                close()
-            }
-            drawPath(
-                fillPath,
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0x480A966B), Color.Transparent),
-                    startY = top,
-                    endY = bottom,
-                ),
-            )
-            val path = Path().apply {
-                moveTo(points.first().x, points.first().y)
-                points.drop(1).forEach { lineTo(it.x, it.y) }
-            }
-            drawPath(path, LoanGreen, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
-            points.forEach { drawCircle(LoanGreen, radius = 3.dp.toPx(), center = it) }
-        }
-    }
+private fun LoanForecastChart(values: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
+    NativeEChart(
+        option = NativeEChartOptions.loanForecast(values, labels),
+        modifier = modifier,
+    )
 }
 
 @Composable
 private fun LoanDonut(debts: List<LoanDebtShare>, modifier: Modifier = Modifier) {
-    Box(modifier, contentAlignment = Alignment.Center) {
-        ComposeCanvas(Modifier.fillMaxSize()) {
-            val total = debts.sumOf { it.loan.remainingAmount }.coerceAtLeast(0.0)
-            var start = -90f
-            val stroke = 17.dp.toPx()
-            debts.forEach { item ->
-                val sweep = if (total > 0.0) (item.loan.remainingAmount / total * 360.0).toFloat() else 0f
-                drawArc(item.color, start, sweep, false, style = Stroke(stroke, cap = StrokeCap.Butt))
-                start += sweep
-            }
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("${debts.size}", color = LoanInk, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-            Text("笔贷款", color = LoanMuted, fontSize = 8.sp)
-        }
-    }
+    NativeEChart(
+        option = NativeEChartOptions.donut(debts.map { item ->
+            NativeEChartSlice(item.loan.platform, item.loan.remainingAmount, item.color.toEChartHex())
+        }),
+        modifier = modifier,
+    )
 }
 
 @Composable
