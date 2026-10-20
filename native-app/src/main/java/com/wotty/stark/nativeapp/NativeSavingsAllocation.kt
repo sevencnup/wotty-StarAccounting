@@ -230,9 +230,9 @@ internal fun matchNativeSavingsPlanExpensesWithBills(
     }.getOrNull()
     val cycleEnd = cycleStart?.plusMonths(1)
     val periodExpenses = entries.filter { entry ->
-        val classifiedType = if (!entry.remarkCategory.isNullOrBlank()) EntryType.EXPENSE else entry.type
-        if (classifiedType != EntryType.EXPENSE) return@filter false
-        val date = runCatching { LocalDate.parse(entry.transactionDate.take(10)) }.getOrNull() ?: return@filter false
+        if (entry.type != EntryType.EXPENSE) return@filter false
+        val date = runCatching { LocalDate.parse(entry.transactionDate.ifBlank { entry.date }.take(10)) }.getOrNull()
+            ?: return@filter false
         if (annual) {
             date.year.toString() == reportingPeriod
         } else {
