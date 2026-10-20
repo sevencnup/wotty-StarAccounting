@@ -1,6 +1,7 @@
 package com.wotty.stark.nativeapp
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,10 +34,11 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
@@ -151,7 +153,7 @@ internal fun nativeAssetOverview(
     loans: List<NativeLoan>,
     fallbackBalance: Double = 0.0,
 ): NativeAssetOverview {
-    val positive = assets.filter { it.balance > 0.0 }
+    val positive = assets.filter { it.balance >= 0.0 }
     val negative = assets.filter { it.balance < 0.0 }
     val savingsTotal = savingsGoals.sumOf { it.currentAmount.coerceAtLeast(0.0) }
     val loanTotal = loans.asSequence()
@@ -229,7 +231,7 @@ internal fun NativeAssetsOverviewScreen(
     LazyColumn(
         modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 104.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -244,47 +246,53 @@ internal fun NativeAssetsOverviewScreen(
             }
         }
         item {
-            AssetCard {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("规划提醒", color = AssetBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
-                    Text("余额仅用于个人资金规划，需要根据实际情况更新。", color = AssetMuted, fontSize = 11.sp)
+            Card(
+                shape = RoundedCornerShape(15.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8DC)),
+                border = BorderStroke(1.dp, Color(0xFFF4D78A)),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp)) {
+                    Text("规划提醒", color = Color(0xFF9A6700), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("余额仅用于个人资金规划，需要根据实际情况更新。", color = Color(0xFF785811), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
         }
         item {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                AssetPill(if (connected) "云端账本" else "本地账本", if (connected) AssetGreen else AssetBlue)
-                if (!connected) {
-                    TextButton(onClick = onConnect) { Text("连接云端", color = AssetBlue, fontSize = 11.sp) }
-                }
-            }
-        }
-        item {
-            AssetCard(padding = 16.dp, color = Color(0xFFF8FBFF)) {
+            AssetCard(padding = 8.dp) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("资产负债全景", color = AssetBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            Spacer(Modifier.width(8.dp))
-                            AssetPill(if (overview.netWorth >= 0.0) "结构稳健" else "负债关注", if (overview.netWorth >= 0.0) AssetGreen else AssetRed)
-                        }
-                        Text("净资产估值", color = AssetMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
-                        Text("¥ ${assetMoney(overview.netWorth)}", color = if (overview.netWorth >= 0.0) AssetInk else AssetRed, fontSize = 27.sp, fontWeight = FontWeight.Black)
-                        Text(
-                            if (overview.netWorth >= 0.0) "资产能够覆盖当前全部负债" else "负债高于资产，建议优先关注高息负债",
-                            color = AssetMuted,
-                            fontSize = 10.sp,
-                            modifier = Modifier.padding(top = 3.dp),
-                        )
+                    Text(
+                        if (connected) "云端账本 · 已连接" else "云端未连接 · 当前数据保存在本地账本",
+                        color = AssetMuted,
+                        fontSize = 10.5.sp,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (!connected) {
+                        Text("连接", color = AssetBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onConnect).padding(horizontal = 8.dp, vertical = 6.dp))
                     }
-                    AssetProgressRing(overview.assetShare, Modifier.size(72.dp))
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            }
+        }
+        item {
+            AssetCard(padding = 16.dp) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("资产负债全景", color = AssetGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    AssetPill(if (overview.netWorth >= 0.0) "结构稳健" else "负债关注", if (overview.netWorth >= 0.0) AssetGreen else AssetRed)
+                }
+                Text("净资产估值", color = AssetMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 13.dp))
+                Text("¥ ${assetMoney(overview.netWorth)}", color = if (overview.netWorth >= 0.0) AssetGreen else AssetRed, fontSize = 29.sp, lineHeight = 33.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                Text(
+                    if (overview.netWorth >= 0.0) "资产能够充足覆盖当前全部负债" else "负债高于资产，建议优先降低高息债务",
+                    color = AssetMuted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AssetAmountTile("资产总额", overview.assetTotal, AssetGreen, Modifier.weight(1f))
                     AssetAmountTile("负债总额", overview.liabilityTotal, AssetRed, Modifier.weight(1f))
                 }
-                Canvas(Modifier.fillMaxWidth().padding(top = 12.dp).height(10.dp)) {
+                Canvas(Modifier.fillMaxWidth().padding(top = 14.dp).height(9.dp)) {
                     val assetWidth = size.width * (overview.assetShare / 100.0).toFloat().coerceIn(0f, 1f)
                     drawRoundRect(color = Color(0xFFE65E6E), size = size, cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height / 2f))
                     if (assetWidth > 0f) {
@@ -292,8 +300,8 @@ internal fun NativeAssetsOverviewScreen(
                     }
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 5.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("资产占比 ${overview.assetShare.toInt()}%", color = AssetMuted, fontSize = 9.sp)
-                    Text("负债占比 ${(100.0 - overview.assetShare).toInt()}%", color = AssetMuted, fontSize = 9.sp)
+                    Text("资产占比 ${overview.assetShare.toInt()}%", color = AssetMuted, fontSize = 10.sp)
+                    Text("负债占比 ${(100.0 - overview.assetShare).toInt()}%", color = AssetMuted, fontSize = 10.sp)
                 }
             }
         }
@@ -314,23 +322,23 @@ internal fun NativeAssetsOverviewScreen(
             AssetCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("资产配置构成", color = AssetInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("资金分布与占比分析", color = AssetMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text("资产配置构成", color = AssetInk, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("资金分布与占比分析", color = AssetMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                     AssetPill("${overview.groups.size} 类配置", AssetBlue)
                 }
                 if (overview.groups.isEmpty()) {
-                    Text("暂无资产配置数据", color = AssetMuted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 24.dp))
+                    Text("暂无资产配置数据", color = AssetMuted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 } else {
-                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AssetDonut(overview.groups, Modifier.size(116.dp))
-                        Column(Modifier.weight(1f).padding(start = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        AssetDonut(overview.groups, Modifier.size(112.dp))
+                        Column(Modifier.fillMaxWidth().padding(top = 9.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             overview.groups.forEach { group ->
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Box(Modifier.size(8.dp).clip(CircleShape).background(group.color))
-                                    Text(group.label, color = AssetInk, fontSize = 10.sp, modifier = Modifier.weight(1f).padding(start = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("${assetPercent(if (overview.assetTotal > 0.0) group.amount / overview.assetTotal * 100.0 else 0.0)}%", color = AssetMuted, fontSize = 9.sp)
-                                    Text("¥ ${assetMoney(group.amount)}", color = AssetInk, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 5.dp))
+                                    Text(group.label, color = AssetInk, fontSize = 12.sp, modifier = Modifier.weight(1f).padding(start = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("${assetPercent(if (overview.assetTotal > 0.0) group.amount / overview.assetTotal * 100.0 else 0.0)}%", color = AssetMuted, fontSize = 11.sp)
+                                    Text("¥ ${assetMoney(group.amount)}", color = AssetInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 7.dp))
                                 }
                             }
                         }
@@ -342,8 +350,8 @@ internal fun NativeAssetsOverviewScreen(
             AssetCard {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("资产与负债明细", color = AssetInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("各资金账户与借贷清单", color = AssetMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text("资产与负债明细", color = AssetInk, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("各资金账户与借贷清单", color = AssetMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                     AssetPill("${assets.size + (if (savingsGoals.isNotEmpty()) 1 else 0) + (if (loans.isNotEmpty()) 1 else 0)} 项关联", AssetBlue)
                 }
@@ -352,6 +360,7 @@ internal fun NativeAssetsOverviewScreen(
                     title = "正向资产",
                     amount = overview.assetTotal,
                     color = AssetGreen,
+                    surface = Color(0xFFF5FAF7),
                 ) {
                     if (overview.positiveAssets.isEmpty() && overview.savingsTotal <= 0.0 && assets.isEmpty() && fallbackBalance > 0.0) {
                         AssetLedgerRow("账本余额", "本地余额", "¥ ${assetMoney(fallbackBalance)}", AssetBlue)
@@ -375,8 +384,8 @@ internal fun NativeAssetsOverviewScreen(
                         AssetEmpty("暂无资产账户")
                     }
                 }
-                HorizontalDivider(color = AssetLine, modifier = Modifier.padding(vertical = 12.dp))
-                AssetLedgerGroup("应还负债", overview.liabilityTotal, AssetRed) {
+                Spacer(Modifier.height(12.dp))
+                AssetLedgerGroup("应还负债", overview.liabilityTotal, AssetRed, Color(0xFFFEF7F6)) {
                     overview.negativeAssets.forEach { item ->
                         val style = nativeAssetTypes.firstOrNull { it.type == item.type } ?: nativeAssetTypes.last()
                         AssetEntityRow(
@@ -568,8 +577,8 @@ private fun AssetCard(
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
     Column(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(19.dp)).background(color)
-            .border(1.dp, AssetLine, RoundedCornerShape(19.dp)).padding(padding),
+        modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(color)
+            .border(1.dp, AssetLine, RoundedCornerShape(20.dp)).padding(padding),
         content = content,
     )
 }
@@ -579,24 +588,10 @@ private fun AssetPill(text: String, color: Color) {
     Text(
         text,
         color = color,
-        fontSize = 9.sp,
+        fontSize = 10.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.clip(CircleShape).background(color.copy(alpha = .1f)).padding(horizontal = 8.dp, vertical = 5.dp),
     )
-}
-
-@Composable
-private fun AssetProgressRing(percent: Double, modifier: Modifier = Modifier) {
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().padding(4.dp)) {
-            drawArc(Color(0xFFE6EDF5), -90f, 360f, false, style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round))
-            drawArc(AssetGreen, -90f, 360f * (percent / 100.0).toFloat().coerceIn(0f, 1f), false, style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round))
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("${percent.toInt()}%", color = AssetInk, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            Text("资产占比", color = AssetMuted, fontSize = 8.sp)
-        }
-    }
 }
 
 @Composable
@@ -612,7 +607,7 @@ private fun AssetDonut(groups: List<NativeAssetGroup>, modifier: Modifier = Modi
             }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("资产", color = AssetMuted, fontSize = 9.sp)
+            Text("资产", color = AssetMuted, fontSize = 10.sp)
             Text("${groups.size}类", color = AssetInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -621,7 +616,7 @@ private fun AssetDonut(groups: List<NativeAssetGroup>, modifier: Modifier = Modi
 @Composable
 private fun AssetAmountTile(title: String, amount: Double, color: Color, modifier: Modifier = Modifier) {
     Column(modifier.clip(RoundedCornerShape(13.dp)).background(color.copy(alpha = .08f)).padding(10.dp)) {
-        Text(title, color = AssetMuted, fontSize = 10.sp)
+        Text(title, color = AssetMuted, fontSize = 10.5.sp)
         Text("¥ ${assetMoney(amount)}", color = color, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp), maxLines = 1)
     }
 }
@@ -629,20 +624,21 @@ private fun AssetAmountTile(title: String, amount: Double, color: Color, modifie
 @Composable
 private fun AssetMetric(title: String, value: String, note: String, color: Color, modifier: Modifier = Modifier) {
     Column(modifier.clip(RoundedCornerShape(15.dp)).background(Color.White).border(1.dp, AssetLine, RoundedCornerShape(15.dp)).padding(10.dp)) {
-        Text(title, color = AssetMuted, fontSize = 9.sp, maxLines = 1)
-        Text(value, color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp), maxLines = 1)
-        Text(note, color = AssetMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(title, color = AssetMuted, fontSize = 10.5.sp, maxLines = 1)
+        Text(value, color = color, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(note, color = AssetMuted, fontSize = 9.5.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-private fun AssetLedgerGroup(title: String, amount: Double, color: Color, content: @Composable () -> Unit) {
-    Column {
+private fun AssetLedgerGroup(title: String, amount: Double, color: Color, surface: Color, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(surface).border(1.dp, AssetLine.copy(alpha = .65f), RoundedCornerShape(16.dp)).padding(11.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            Text("¥ ${assetMoney(amount)}", color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(CircleShape).background(color.copy(alpha = .1f)).padding(horizontal = 8.dp, vertical = 4.dp))
+            Spacer(Modifier.weight(1f))
+            Text("¥ ${assetMoney(amount)}", color = color, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
-        Column(Modifier.padding(top = 5.dp)) { content() }
+        Column(Modifier.padding(top = 6.dp)) { content() }
     }
 }
 
@@ -659,13 +655,13 @@ private fun AssetEntityRow(
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(30.dp).clip(CircleShape).background(color.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
-            Text(short, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text(short, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         }
         Column(Modifier.weight(1f).padding(start = 9.dp)) {
-            Text(title, color = AssetInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = AssetMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
+            Text(title, color = AssetInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = AssetMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp), maxLines = 1)
         }
-        Text(amount, color = if (isLiability) AssetRed else AssetInk, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(amount, color = if (isLiability) AssetRed else AssetInk, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
         IconButton(onClick = onEdit, modifier = Modifier.size(34.dp)) { Icon(Icons.Default.Edit, contentDescription = "编辑$title", tint = AssetBlue, modifier = Modifier.size(16.dp)) }
         IconButton(onClick = onDelete, modifier = Modifier.size(34.dp)) { Icon(Icons.Default.Delete, contentDescription = "删除$title", tint = AssetRed, modifier = Modifier.size(16.dp)) }
     }
@@ -688,17 +684,17 @@ private fun AssetLedgerRow(
             if (icon != null) Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(15.dp)) else Text("·", color = color, fontWeight = FontWeight.Bold)
         }
         Column(Modifier.weight(1f).padding(start = 9.dp)) {
-            Text(title, color = AssetInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, color = AssetMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(title, color = AssetInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(subtitle, color = AssetMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
         }
-        Text(amount, color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        Text(amount, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
         if (onClick != null) Icon(Icons.Default.ArrowForward, contentDescription = "查看$title", tint = AssetMuted, modifier = Modifier.padding(start = 5.dp).size(14.dp))
     }
 }
 
 @Composable
 private fun AssetEmpty(text: String) {
-    Text(text, color = AssetMuted, fontSize = 10.sp, modifier = Modifier.padding(vertical = 12.dp))
+    Text(text, color = AssetMuted, fontSize = 11.sp, modifier = Modifier.padding(vertical = 12.dp))
 }
 
 private fun assetTypeLabel(type: String): String = nativeAssetTypes.firstOrNull { it.type == type }?.label ?: "其他资产"
