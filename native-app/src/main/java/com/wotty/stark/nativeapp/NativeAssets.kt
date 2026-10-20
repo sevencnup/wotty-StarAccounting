@@ -55,8 +55,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -596,21 +594,12 @@ private fun AssetPill(text: String, color: Color) {
 
 @Composable
 private fun AssetDonut(groups: List<NativeAssetGroup>, modifier: Modifier = Modifier) {
-    Box(modifier, contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize().padding(4.dp)) {
-            val total = groups.sumOf { it.amount }.takeIf { it > 0.0 } ?: 1.0
-            var start = -90f
-            groups.forEach { group ->
-                val sweep = (group.amount / total * 360.0).toFloat()
-                drawArc(group.color, start, sweep, false, style = Stroke(width = 14.dp.toPx(), cap = StrokeCap.Butt))
-                start += sweep
-            }
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("资产", color = AssetMuted, fontSize = 10.sp)
-            Text("${groups.size}类", color = AssetInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
+    NativeEChart(
+        option = NativeEChartOptions.donut(groups.map { group ->
+            NativeEChartSlice(group.label, group.amount, group.color.toEChartHex())
+        }),
+        modifier = modifier,
+    )
 }
 
 @Composable

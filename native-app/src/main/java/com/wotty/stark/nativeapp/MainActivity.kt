@@ -3,7 +3,6 @@ package com.wotty.stark.nativeapp
 import android.os.Bundle
 import android.os.Build
 import android.content.Context
-import android.graphics.Typeface
 import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Base64
@@ -32,6 +31,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -117,6 +117,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -126,8 +127,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -2564,7 +2563,7 @@ private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>, monthLabel: S
         if (categories.isEmpty()) {
             Text("本月暂无支出记录", modifier = Modifier.fillMaxWidth().padding(vertical = 25.dp), color = Color(0xFF94A3B8), fontSize = 12.sp, textAlign = TextAlign.Center)
         } else {
-            EChartsExpenseRoseChart(categories, total)
+            EChartsExpenseDonut(categories, total)
         }
     }
 }
@@ -2645,16 +2644,12 @@ private fun TrendLegend(label: String, color: Color) {
 }
 
 @Composable
-private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, total: Double) {
-    val colors = listOf(Color(0xFF0EA5E9), Color(0xFF10B981), Color(0xFFF59E0B), Color(0xFFFB7185), Color(0xFF8B5CF6))
-    val visible = categories.take(4).toMutableList()
-    val other = categories.drop(4).sumOf { it.second }
-    if (other > 0) visible += "其他" to other
-    val data = visible.mapIndexed { index, (name, amount) ->
-        RoseChartSegment(name, amount, colors[index % colors.size])
-    }
-            Box(Modifier.fillMaxWidth().height(190.dp)) {
-        NativeRoseChart(data, Modifier.fillMaxSize())
+private fun EChartsExpenseDonut(categories: List<Pair<String, Double>>, total: Double) {
+    Box(Modifier.fillMaxWidth().height(190.dp)) {
+        NativeEChart(
+            option = NativeEChartOptions.categoryDonut(categories),
+            modifier = Modifier.fillMaxSize(),
+        )
         Text(
             "¥ ${moneyFormat.format(total)}",
             modifier = Modifier.align(Alignment.Center),
@@ -2667,100 +2662,11 @@ private fun EChartsExpenseRoseChart(categories: List<Pair<String, Double>>, tota
 
 @Composable
 private fun EChartsCashflowTrend(incomes: List<Double>, expenses: List<Double>, labels: List<String>) {
-    NativeCashflowChart(
-        incomes = incomes,
-        expenses = expenses,
-        labels = labels,
+    NativeEChart(
+        option = NativeEChartOptions.cashflowTrend(incomes, expenses, labels),
         modifier = Modifier.fillMaxWidth().height(124.dp),
     )
 }
-
-private data class RoseChartSegment(val label: String, val value: Double, val color: Color)
-
-@Composable
-private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = Modifier) {
-    val language = LocalNativeUiPreferences.current.value.language
-    androidx.compose.foundation.Canvas(modifier = modifier) {
-        val total = data.sumOf { it.value }.coerceAtLeast(0.01)
-        val center = Offset(size.width / 2f, size.height / 2f)
-        val baseRadius = size.minDimension * .14f
-        val maxRadius = size.minDimension * .38f
-        var startAngle = -90f
-        data.forEach { segment ->
-            val sweep = ((segment.value / total) * 360f).toFloat().coerceAtLeast(7f)
-            val radius = baseRadius + ((segment.value / data.maxOf { it.value }.coerceAtLeast(.01)) * (maxRadius - baseRadius)).toFloat()
-            drawArc(
-                color = segment.color,
-                startAngle = startAngle + 2f,
-                sweepAngle = (sweep - 4f).coerceAtLeast(3f),
-                useCenter = true,
-                topLeft = Offset(center.x - radius, center.y - radius),
-                size = Size(radius * 2f, radius * 2f),
-            )
-            val middle = Math.toRadians((startAngle + sweep / 2f).toDouble())
-            val lineStart = Offset(
-                center.x + kotlin.math.cos(middle).toFloat() * (radius + 3.dp.toPx()),
-                center.y + kotlin.math.sin(middle).toFloat() * (radius + 3.dp.toPx()),
-            )
-            val lineEnd = Offset(
-                center.x + kotlin.math.cos(middle).toFloat() * (radius + 17.dp.toPx()),
-                center.y + kotlin.math.sin(middle).toFloat() * (radius + 17.dp.toPx()),
-            )
-            drawLine(segment.color, lineStart, lineEnd, strokeWidth = 1.dp.toPx(), cap = StrokeCap.Round)
-            drawIntoCanvas { canvas -> canvas.nativeCanvas.apply {
-                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    color = segment.color.toAndroidColorInt()
-                    textSize = nativeReadableFontSize(10.sp).toPx()
-                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                    textAlign = if (lineEnd.x >= center.x) android.graphics.Paint.Align.LEFT else android.graphics.Paint.Align.RIGHT
-                }
-                drawText(translateNativeText(segment.label, language), lineEnd.x + if (lineEnd.x >= center.x) 3.dp.toPx() else -3.dp.toPx(), lineEnd.y + 3.dp.toPx(), paint)
-            } }
-            startAngle += sweep
-        }
-        drawCircle(Color.White, radius = baseRadius * .84f, center = center)
-    }
-}
-
-@Composable
-private fun NativeCashflowChart(incomes: List<Double>, expenses: List<Double>, labels: List<String>, modifier: Modifier = Modifier) {
-    val language = LocalNativeUiPreferences.current.value.language
-    androidx.compose.foundation.Canvas(modifier = modifier) {
-        val left = 6.dp.toPx()
-        val right = size.width - 5.dp.toPx()
-        val top = 7.dp.toPx()
-        val baseline = size.height - 22.dp.toPx()
-        val max = (incomes + expenses).maxOrNull()?.coerceAtLeast(1.0) ?: 1.0
-        drawLine(Color(0xFFE8EEF5), Offset(left, baseline), Offset(right, baseline), strokeWidth = 1.dp.toPx())
-        val groupWidth = (right - left) / labels.size
-        labels.forEachIndexed { index, label ->
-            val groupStart = left + groupWidth * index
-            val incomeHeight = (((baseline - top) * incomes[index] / max).toFloat())
-            val expenseHeight = (((baseline - top) * expenses[index] / max).toFloat())
-            val barWidth = (groupWidth * .25f).coerceAtMost(16.dp.toPx())
-            val incomeLeft = groupStart + groupWidth * .21f
-            val expenseLeft = groupStart + groupWidth * .54f
-            if (incomeHeight > 0f) drawRoundRect(Color(0xFF0060C0), Offset(incomeLeft, baseline - incomeHeight), Size(barWidth, incomeHeight), CornerRadius(3.dp.toPx(), 3.dp.toPx()))
-            if (expenseHeight > 0f) drawRoundRect(Color(0xFFF43F5E), Offset(expenseLeft, baseline - expenseHeight), Size(barWidth, expenseHeight), CornerRadius(3.dp.toPx(), 3.dp.toPx()))
-            drawIntoCanvas { canvas -> canvas.nativeCanvas.apply {
-                val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
-                    color = Color(0xFF94A3B8).toAndroidColorInt()
-                    textSize = nativeReadableFontSize(10.sp).toPx()
-                    typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-                    textAlign = android.graphics.Paint.Align.CENTER
-                }
-                drawText(translateNativeText(label, language), groupStart + groupWidth / 2f, size.height - 5.dp.toPx(), paint)
-            } }
-        }
-    }
-}
-
-private fun Color.toAndroidColorInt(): Int = android.graphics.Color.argb(
-    (alpha * 255).toInt(),
-    (red * 255).toInt(),
-    (green * 255).toInt(),
-    (blue * 255).toInt(),
-)
 
 @Composable
 private fun WebReplicaRecentTransactions(entries: List<LedgerEntry>, onAll: () -> Unit) {
@@ -2934,71 +2840,103 @@ private fun WebReplicaBudgetCard(
         }
         if (savingsPlanAllocation.planCount > 0) {
             HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
-            val periodLabel = if (savingsPlanAllocation.period.matches(Regex("\\d{4}"))) {
-                "${savingsPlanAllocation.period} 年度计划"
-            } else {
-                "${savingsPlanAllocation.period} 储蓄计划"
-            }
             val statusParts = buildList {
-                if (savingsPlanAllocation.completedPlanCount > 0 || savingsPlanAllocation.recordedDeposit > 0.0) {
+                if (savingsPlanAllocation.completedPlanCount > 0) {
                     add("已存 ¥ ${moneyFormat.format(savingsPlanAllocation.recordedDeposit)} · ${savingsPlanAllocation.completedPlanCount} 项已完成")
                 }
-                if (savingsPlanAllocation.pendingPlanCount > 0 || savingsPlanAllocation.pendingDeposit > 0.0) {
+                if (savingsPlanAllocation.pendingPlanCount > 0) {
                     add("待存 ¥ ${moneyFormat.format(savingsPlanAllocation.pendingDeposit)} · ${savingsPlanAllocation.pendingPlanCount} 项待存")
                 }
                 if (savingsPlanAllocation.skippedPlanCount > 0) add("${savingsPlanAllocation.skippedPlanCount} 项已跳过")
                 if (isEmpty()) add("预计存 ¥ ${moneyFormat.format(savingsPlanAllocation.plannedDeposit)}")
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { planExpanded = !planExpanded }.padding(vertical = 3.dp),
+                Row(
+                    Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp))
+                        .clickable { planExpanded = !planExpanded }.padding(vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Text("储蓄计划安排", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Text(
-                        "$periodLabel · ${statusParts.joinToString(" · ")}",
-                        color = Color(0xFF7B8CA3),
-                        fontSize = 9.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Column(Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("储蓄计划安排", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "${savingsPlanAllocation.period} · ${if (planExpanded) "计划表金额仅供参考，不参与上方实际分配计算" else statusParts.joinToString(" · ")}",
+                            color = Color(0xFF7B8CA3),
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(if (planExpanded) "收起" else "展开", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = null,
+                            tint = Blue,
+                            modifier = Modifier.size(18.dp).rotate(if (planExpanded) 180f else 0f),
+                        )
+                    }
                 }
                 Text(
                     "储蓄计划  ›",
-                    modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenSavings).padding(horizontal = 5.dp, vertical = 7.dp),
+                    modifier = Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenSavings).padding(horizontal = 5.dp, vertical = 7.dp),
                     color = Blue,
-                    fontSize = 9.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.SemiBold,
-                )
-                Icon(
-                    Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (planExpanded) "收起储蓄计划" else "展开储蓄计划",
-                    tint = Color(0xFF64748B),
-                    modifier = Modifier.size(18.dp).rotate(if (planExpanded) 180f else 0f).clickable { planExpanded = !planExpanded },
                 )
             }
             AnimatedVisibility(visible = planExpanded) {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    Text("计划表金额仅供参考，不参与上方实际分配计算", color = Color(0xFF8492A7), fontSize = 9.sp)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        SavingsPlanMetric("固定支出", savingsPlanAllocation.fixedExpense, Modifier.weight(1f), Color(0xFF667085))
-                        SavingsPlanMetric("临时支出", savingsPlanAllocation.temporaryExpense, Modifier.weight(1f), Amber)
-                        SavingsPlanMetric("预计存入", savingsPlanAllocation.plannedDeposit, Modifier.weight(1f), Green)
-                    }
-                    if (savingsPlanAllocation.expenseItems.isNotEmpty()) {
-                        Text("计划支出明细", color = Ink, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                        matchedSavingsExpenses.forEachIndexed { index, match ->
-                            if (index > 0) HorizontalDivider(color = Color(0xFFF0F3F7))
-                            SavingsPlanExpenseMatchRow(match)
+                    if (!savingsPlanAllocation.period.matches(Regex("\\d{4}")) &&
+                        (savingsPlanAllocation.plannedSalary > 0.0 || savingsPlanAllocation.previousBalance > 0.0)
+                    ) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            SavingsPlanSource("计划工资", savingsPlanAllocation.plannedSalary, Modifier.weight(1f))
+                            SavingsPlanSource("上月结余", savingsPlanAllocation.previousBalance, Modifier.weight(1f))
                         }
                     }
-                    if (savingsPlanAllocation.plannedSalary > 0.0 || savingsPlanAllocation.previousBalance > 0.0) {
+                    SavingsPlanMetrics(
+                        fixedExpense = savingsPlanAllocation.fixedExpense,
+                        temporaryExpense = savingsPlanAllocation.temporaryExpense,
+                        plannedDeposit = savingsPlanAllocation.plannedDeposit,
+                        recordedDeposit = savingsPlanAllocation.recordedDeposit,
+                        pendingDeposit = savingsPlanAllocation.pendingDeposit,
+                    )
+                    if (savingsPlanAllocation.expenseItems.isNotEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("计划支出明细", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                            Column(Modifier.heightIn(max = 148.dp).verticalScroll(rememberScrollState())) {
+                                matchedSavingsExpenses.forEachIndexed { index, match ->
+                                    if (index > 0) HorizontalDivider(color = Color(0xFFF0F3F7))
+                                    SavingsPlanExpenseMatchRow(match)
+                                }
+                            }
+                        }
+                    }
+                    if (!savingsPlanAllocation.period.matches(Regex("\\d{4}"))) {
                         val remaining = savingsPlanAllocation.projectedRemaining
-                        Text(
-                            "计划工资 ¥ ${moneyFormat.format(savingsPlanAllocation.plannedSalary)} · 上月结余 ¥ ${moneyFormat.format(savingsPlanAllocation.previousBalance)}" +
-                                (remaining?.let { " · 预计余款 ¥ ${moneyFormat.format(it)}" } ?: ""),
-                            color = Color(0xFF8492A7),
-                            fontSize = 9.sp,
-                        )
+                        if (remaining != null) {
+                            Row(
+                                Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(Color(0xFFEAF5EF)).padding(horizontal = 12.dp, vertical = 11.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(Modifier.weight(1f).padding(end = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text("发薪后预计可支配", color = Color(0xFF166534), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    Text("依据计划工资、结余和计划支出计算", color = Color(0xFF64748B), fontSize = 10.sp, lineHeight = 14.sp)
+                                }
+                                Text(
+                                    "${if (remaining < 0.0) "-" else ""}¥ ${moneyFormat.format(kotlin.math.abs(remaining))}",
+                                    color = if (remaining < 0.0) Color(0xFFB45309) else Color(0xFF0F766E),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                )
+                            }
+                        } else {
+                            Text("设置计划工资后显示预计可支配", color = Color(0xFF64748B), fontSize = 10.sp, lineHeight = 14.sp)
+                        }
                     }
                 }
             }
@@ -3007,13 +2945,95 @@ private fun WebReplicaBudgetCard(
 }
 
 @Composable
-private fun SavingsPlanMetric(label: String, value: Double, modifier: Modifier, color: Color) {
+private fun SavingsPlanMetric(label: String, value: Double, modifier: Modifier, detail: String? = null) {
     Column(
-        modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFFF6F8FB)).padding(horizontal = 8.dp, vertical = 7.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier.clip(RoundedCornerShape(10.dp)).background(Color(0xFFF5F8FC)).padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
-        Text(label, color = Color(0xFF64748B), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("¥ ${moneyFormat.format(value)}", color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label, color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            "¥ ${moneyFormat.format(value)}",
+            color = Color(0xFF1E293B),
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 14.sp,
+            maxLines = 2,
+            overflow = TextOverflow.Clip,
+        )
+        if (detail != null) Text(detail, color = Color(0xFF64748B), fontSize = 9.sp, lineHeight = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun SavingsPlanMetrics(
+    fixedExpense: Double,
+    temporaryExpense: Double,
+    plannedDeposit: Double,
+    recordedDeposit: Double,
+    pendingDeposit: Double,
+) {
+    val compact = LocalConfiguration.current.screenWidthDp <= 420
+    if (compact) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SavingsPlanMetric("固定支出", fixedExpense, Modifier.weight(1f).fillMaxHeight())
+                SavingsPlanMetric("临时支出", temporaryExpense, Modifier.weight(1f).fillMaxHeight())
+            }
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFFF5F8FC))
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("预计存", color = Color(0xFF64748B), fontSize = 10.sp)
+                Column(
+                    Modifier.weight(1f).padding(start = 8.dp),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Text(
+                        "¥ ${moneyFormat.format(plannedDeposit)}",
+                        color = Color(0xFF1E293B),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        lineHeight = 14.sp,
+                        maxLines = 1,
+                    )
+                    Text(
+                        "已存 ¥ ${moneyFormat.format(recordedDeposit)} · 待存 ¥ ${moneyFormat.format(pendingDeposit)}",
+                        color = Color(0xFF64748B),
+                        fontSize = 9.sp,
+                        lineHeight = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+    } else {
+        Row(
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SavingsPlanMetric("固定支出", fixedExpense, Modifier.weight(1f).fillMaxHeight())
+            SavingsPlanMetric("临时支出", temporaryExpense, Modifier.weight(1f).fillMaxHeight())
+            SavingsPlanMetric(
+                "预计存",
+                plannedDeposit,
+                Modifier.weight(1f).fillMaxHeight(),
+                detail = "已存 ¥ ${moneyFormat.format(recordedDeposit)} · 待存 ¥ ${moneyFormat.format(pendingDeposit)}",
+            )
+        }
+    }
+}
+
+@Composable
+private fun SavingsPlanSource(label: String, value: Double, modifier: Modifier) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
+        Text(" ¥ ${moneyFormat.format(value)}", color = Color(0xFF334155), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -3034,27 +3054,36 @@ private fun SavingsPlanExpenseMatchRow(match: NativeSavingsExpenseMatch) {
     val marker = when (match.status) {
         NativeSavingsExpenseMatchStatus.MATCHED -> "✓"
         NativeSavingsExpenseMatchStatus.OVER -> "!"
-        NativeSavingsExpenseMatchStatus.PARTIAL -> "·"
-        NativeSavingsExpenseMatchStatus.UNMATCHED -> ""
+        NativeSavingsExpenseMatchStatus.PARTIAL, NativeSavingsExpenseMatchStatus.UNMATCHED -> ""
     }
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(18.dp).clip(CircleShape).background(statusColor.copy(alpha = 0.13f)), contentAlignment = Alignment.Center) {
-                if (marker.isNotEmpty()) Text(marker, color = statusColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                else Box(Modifier.size(6.dp).clip(CircleShape).background(statusColor))
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Box(
+                Modifier.size(if (marker.isNotEmpty()) 12.dp else 6.dp)
+                    .clip(if (marker.isNotEmpty()) RoundedCornerShape(3.dp) else CircleShape)
+                    .background(
+                        when (match.status) {
+                            NativeSavingsExpenseMatchStatus.MATCHED -> Color(0xFFDCFCE7)
+                            NativeSavingsExpenseMatchStatus.OVER -> Color(0xFFFEE2E2)
+                            NativeSavingsExpenseMatchStatus.PARTIAL -> Color(0xFFFEF3C7)
+                            NativeSavingsExpenseMatchStatus.UNMATCHED -> if (match.item.kind == NativeSavingsExpenseKind.TEMPORARY) Amber else Color(0xFF0EA5E9)
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (marker.isNotEmpty()) {
+                    Text(marker, color = statusColor, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 10.sp)
+                }
             }
-            Spacer(Modifier.width(6.dp))
-            Column(Modifier.weight(1f)) {
-                Text(match.item.name, color = Ink, fontSize = 10.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(statusLabel, color = statusColor, fontSize = 8.sp, maxLines = 1)
-            }
+            Text(match.item.name, color = Color(0xFF475569), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(statusLabel, color = statusColor, fontSize = 9.sp, fontWeight = if (match.status == NativeSavingsExpenseMatchStatus.UNMATCHED) FontWeight.Normal else FontWeight.SemiBold, maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("¥ ${moneyFormat.format(match.item.amount)}", color = Ink, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            Text("¥ ${moneyFormat.format(match.item.amount)}", color = Color(0xFF334155), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             if (match.matchedTransactionCount > 0) {
                 Text(
                     "账单合计 ¥ ${moneyFormat.format(match.matchedAmount)} · ${match.matchedTransactionCount} 笔",
-                    color = statusColor,
+                    color = Color(0xFF64748B),
                     fontSize = 8.sp,
                     maxLines = 1,
                 )
@@ -3373,6 +3402,21 @@ private fun ConsumptionScreen(
         .mapValues { (_, rows) -> rows.sumOf { it.amount } }
         .toList()
         .sortedByDescending { it.second }
+    val platformSeries = platformTotals.map { (platform, _) ->
+        NativeEChartSeries(
+            name = platform,
+            color = NativeEChartOptions.colorForPlatform(platform),
+            values = trendMonths.map { date ->
+                analysisEntries.asSequence()
+                    .filter { it.analysisType() == platformType && normalizeConsumptionPlatform(it.platform) == platform }
+                    .filter { entry ->
+                        if (selectedYear != null) entry.transactionDate.startsWith("${date.year}-%02d".format(date.monthValue))
+                        else entry.transactionDate == date.toString()
+                    }
+                    .sumOf { it.amount }
+            },
+        )
+    }
     val flowEdges = analysisEntries.filter { it.analysisType() == platformType }
         .groupBy { normalizeConsumptionPlatform(it.platform) to it.analysisCategory() }
         .map { (key, rows) -> NativeConsumptionFlowEdge(key.first, key.second, rows.sumOf { it.amount }, rows.size) }
@@ -3500,62 +3544,108 @@ private fun ConsumptionScreen(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
                         Text(if (selectedType == "收入") "收入来源构成" else "支出分类构成", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        Text("${categories.size} 个分类 · 点击筛选账单", color = Muted, fontSize = 11.sp)
+                        Text("${categories.size} 个分类 · 金额占比", color = Muted, fontSize = 11.sp)
                     }
                     if (selectedCategory != null) TextButton(onClick = { selectedCategory = null }) { Text("清除筛选") }
                 }
-                Spacer(Modifier.height(8.dp))
+                val categoryTotal = categories.sumOf { it.second }
                 if (categories.isNotEmpty()) {
-                    EChartsExpenseRoseChart(categories, categories.sumOf { it.second })
-                }
-                if (categories.isEmpty()) {
-                    Text("当前范围没有${if (selectedType == "收入") "收入" else "支出"}记录", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
-                } else {
-                    categories.take(8).forEach { (name, amount) ->
-                        CategoryAmountRow(
-                            name = name,
-                            amount = amount,
-                            total = categories.sumOf { it.second },
-                            selected = selectedCategory == name,
-                            onClick = { selectedCategory = if (selectedCategory == name) null else name },
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        NativeEChart(
+                            option = NativeEChartOptions.categoryDonut(categories),
+                            modifier = Modifier.weight(1f).height(142.dp),
+                            onDataClick = { event ->
+                                if (event.name.isNotBlank()) selectedCategory = event.name.takeUnless { it == selectedCategory }
+                            },
                         )
+                        Column(
+                            Modifier.weight(1.15f).height(142.dp).verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            categories.forEachIndexed { index, (name, amount) ->
+                                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        Modifier.size(8.dp).clip(CircleShape)
+                                            .background(Color(android.graphics.Color.parseColor(NativeEChartOptions.colorForCategory(name, index)))),
+                                    )
+                                    Text(
+                                        name,
+                                        color = if (selectedCategory == name) Blue else Color(0xFF5C6880),
+                                        fontSize = 12.sp,
+                                        fontWeight = if (selectedCategory == name) FontWeight.Bold else FontWeight.Medium,
+                                        modifier = Modifier.weight(1f).padding(start = 6.dp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    val percent = if (categoryTotal > 0.0) amount / categoryTotal * 100.0 else 0.0
+                                    Text(String.format(java.util.Locale.US, "%.1f%%", percent), color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                     }
+                } else {
+                    Text("当前范围没有${if (selectedType == "收入") "收入" else "支出"}记录", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
                 }
             }
         }
         item { ConsumptionRhythmCard(analysisEntries, month, selectedType == "收入") }
-        if (merchantTotals.isNotEmpty()) {
-            item {
-                WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-                    Text(if (selectedType == "收入") "收入来源排行" else "商家消费排行", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("金额最高的前 ${merchantTotals.size} 项", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
-                    val merchantTotal = merchantTotals.sumOf { it.second }
-                    merchantTotals.forEachIndexed { index, (merchant, amount) ->
-                        CategoryAmountRow(
-                            name = "${index + 1}. $merchant",
-                            amount = amount,
-                            total = merchantTotal,
-                            selected = false,
-                            onClick = { query = merchant.takeUnless { it == "其他商家" }.orEmpty() },
-                        )
-                    }
+        item {
+            WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+                Text(if (selectedType == "收入") "收入来源排行" else "商家消费排行", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (selectedType == "收入") "收入金额前 ${merchantTotals.size} 名" else "消费金额前 ${merchantTotals.size} 名",
+                    color = Muted,
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 3.dp, bottom = 8.dp),
+                )
+                if (merchantTotals.isEmpty()) {
+                    Text(if (selectedType == "收入") "当前筛选下暂无收入来源" else "当前筛选下暂无商家支出", color = Muted, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(vertical = 52.dp))
+                } else {
+                    NativeEChart(
+                        option = NativeEChartOptions.merchantRanking(merchantTotals),
+                        modifier = Modifier.fillMaxWidth().height(272.dp),
+                        onDataClick = { event -> query = event.name.takeUnless { it == "其他商家" }.orEmpty() },
+                    )
                 }
             }
         }
-        if (platformTotals.isNotEmpty()) {
-            item {
-                WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-                    Text(if (selectedType == "收入") "账户收入拆分" else "账户支出拆分", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("按支付账户汇总当前${if (selectedYear != null) "年度" else "月份"}", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 9.dp))
-                    platformTotals.forEach { (account, amount) ->
-                        CategoryAmountRow(
-                            name = account,
-                            amount = amount,
-                            total = platformTotals.sumOf { it.second },
-                            selected = selectedAccount == account,
-                            onClick = { selectedAccount = if (selectedAccount == account) "全部账户" else account },
-                        )
+        item {
+            WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+                val platformChartTitle = when {
+                    selectedYear != null && selectedType == "收入" -> "每月平台收入"
+                    selectedYear != null -> "每月平台支出"
+                    selectedType == "收入" -> "每日平台收入"
+                    else -> "每日平台支出"
+                }
+                Text(platformChartTitle, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text("按账户拆分", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    platformSeries.forEach { series ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(Modifier.size(7.dp).clip(CircleShape).background(Color(android.graphics.Color.parseColor(series.color))))
+                            Text(series.name, color = Muted, fontSize = 10.sp, maxLines = 1)
+                        }
                     }
+                }
+                if (platformSeries.isNotEmpty()) {
+                    NativeEChart(
+                        option = NativeEChartOptions.platformBars(trendLabels, platformSeries),
+                        modifier = Modifier.fillMaxWidth().height(150.dp),
+                        onDataClick = { event ->
+                            val account = event.seriesName
+                            if (account.isNotBlank()) selectedAccount = account.takeUnless { selectedAccount == it } ?: "全部账户"
+                        },
+                    )
+                } else {
+                    Text("当前范围没有账户流水", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 16.dp))
                 }
             }
         }
@@ -3638,7 +3728,10 @@ private fun ConsumptionTrendCard(income: List<Double>, expense: List<Double>, la
             }
         }
         Spacer(Modifier.height(10.dp))
-        EChartsCashflowTrend(income, expense, labels)
+        NativeEChart(
+            option = NativeEChartOptions.cashflowTrend(income, expense, labels),
+            modifier = Modifier.fillMaxWidth().height(150.dp),
+        )
     }
 }
 
@@ -3647,7 +3740,7 @@ private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, in
     val selectedYear = period.toIntOrNull()?.takeIf { period.length == 4 }
     val targetType = if (incomeMode) EntryType.INCOME else EntryType.EXPENSE
     val matchingEntries = entries.filter { it.analysisType() == targetType }
-    val cellColors = listOf(Color(0xFFF1F5F9), Color(0xFFDDEBFA), Color(0xFFACCEF2), Color(0xFF74A9E4), Color(0xFF397BC8))
+    val cellColors = listOf(Color(0xFFF4F7FB), Color(0xFFE7F0FF), Color(0xFFB9D4FF), Color(0xFF3A86D6), Color(0xFF0060C0))
 
     WebReplicaCard(padding = 15.dp, radius = 18.dp) {
         Text(if (incomeMode) "收入节律" else "消费节律", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -3658,10 +3751,10 @@ private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, in
                 monthNumber to matchingEntries.filter { it.transactionDate.startsWith(prefix) }.sumOf { it.amount }
             }
             val maximum = monthly.maxOfOrNull { it.second }?.coerceAtLeast(1.0) ?: 1.0
-            monthly.chunked(3).forEach { row ->
+            monthly.chunked(4).forEach { row ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     row.forEach { (monthNumber, amount) ->
-                        val level = if (amount <= 0.0) 0 else ((amount / maximum) * 4).toInt().coerceIn(1, 4)
+                        val level = if (amount <= 0.0) 0 else kotlin.math.ceil((amount / maximum) * 4).toInt().coerceIn(1, 4)
                         Column(
                             Modifier.weight(1f).height(58.dp).clip(RoundedCornerShape(10.dp)).background(cellColors[level]).padding(horizontal = 7.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
@@ -3670,7 +3763,7 @@ private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, in
                             Text(if (amount == 0.0) "—" else "¥${compactMoney(amount)}", color = if (level >= 3) Color.White else Muted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Clip)
                         }
                     }
-                    repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
                 }
                 Spacer(Modifier.height(7.dp))
             }
@@ -3696,15 +3789,16 @@ private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, in
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     week.forEach { (day, amount) ->
                         if (day == null) {
-                            Spacer(Modifier.weight(1f).height(40.dp))
+                            Spacer(Modifier.weight(1f).aspectRatio(1f))
                         } else {
-                            val level = if (amount <= 0.0) 0 else ((amount / maximum) * 4).toInt().coerceIn(1, 4)
+                            val level = if (amount <= 0.0) 0 else kotlin.math.ceil((amount / maximum) * 4).toInt().coerceIn(1, 4)
                             Column(
-                                Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(7.dp)).background(cellColors[level]).padding(horizontal = 3.dp, vertical = 4.dp),
-                                verticalArrangement = Arrangement.SpaceBetween,
+                                Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(7.dp)).background(cellColors[level]).padding(horizontal = 3.dp, vertical = 4.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
                             ) {
-                                Text(day.toString(), color = if (level >= 3) Color.White else Ink, fontSize = 9.sp, lineHeight = 10.sp)
-                                if (amount > 0.0) Text(compactMoney(amount), color = if (level >= 3) Color.White else Muted, fontSize = 7.sp, maxLines = 1)
+                                Text(day.toString(), color = if (level >= 3) Color.White else Ink, fontSize = 10.sp, lineHeight = 11.sp)
+                                if (amount > 0.0) Text(compactMoney(amount), color = if (level >= 3) Color.White else Muted, fontSize = 8.sp, maxLines = 1)
                             }
                         }
                     }
