@@ -73,6 +73,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.MoreHoriz
@@ -100,6 +101,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text as MaterialText
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -134,11 +136,15 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -2557,7 +2563,7 @@ private fun HomeScreen(
         item { WebReplicaDiagnosticBanner(dashboardSummary) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
         item { WebReplicaCompass(dashboardSummary, actualBalance, remoteAssets, remoteLoans, remoteSavings, onOpenOverlay, onSelectTab) }
         item { WebReplicaExpenseStructure(reportingEntries, selectedYear != null) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
-        item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
+        item { WebReplicaAdvisoryCard(dashboardSummary) { onSelectTab(RootTab.SAVINGS) } }
         item { WebReplicaCashflowTrend(entries, month, selectedYear) }
     }
 }
@@ -2614,14 +2620,23 @@ private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>, annual: Boole
 }
 
 @Composable
-private fun WebReplicaAdvisoryCard(income: Double, expense: Double, monthlyBudget: Double, month: YearMonth) {
-    val dailyExpense = expense / month.lengthOfMonth().toDouble()
-    val healthy = income >= expense
-    val remainingBudget = (if (monthlyBudget > 0) monthlyBudget else income) - expense
+private fun WebReplicaAdvisoryCard(summary: NativeHomeDashboardSummary, onOpenSavings: () -> Unit) {
+    val language = LocalNativeUiPreferences.current.value.language
+    val annual = summary.reportingPeriod.length == 4
+    val periodDays = if (annual) {
+        java.time.Year.of(summary.reportingPeriod.toIntOrNull() ?: java.time.Year.now().value).length().toDouble()
+    } else {
+        runCatching { YearMonth.parse(summary.reportingPeriod).lengthOfMonth().toDouble() }.getOrDefault(30.0)
+    }
+    val dailyExpense = summary.expense / periodDays.coerceAtLeast(1.0)
+    val healthy = summary.balance >= 0.0
+    val budget = summary.budgetAlerts.firstOrNull()
+    val remainingBudget = budget?.let { (it.budget - it.spent).coerceAtLeast(0.0) } ?: 0.0
+    val dailyExpenseText = String.format(Locale.ROOT, "%.1f", dailyExpense)
     WebReplicaCard(padding = 14.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
+                Icon(Icons.Default.Explore, contentDescription = null, tint = Blue, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("财务行动建议", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
@@ -2634,14 +2649,36 @@ private fun WebReplicaAdvisoryCard(income: Double, expense: Double, monthlyBudge
             )
         }
         Spacer(Modifier.height(10.dp))
-        AdvisoryRow("1", "当前日均支出 ¥ ${moneyFormat.format(dailyExpense)}，若保持当前速率，预计月底可结余 ¥ ${moneyFormat.format((income - expense).coerceAtLeast(0.0))}。")
+        AdvisoryRow(
+            "1",
+            text = buildAnnotatedString {
+                append(translateNativeText("当前日均支出", language))
+                append(" ")
+                withStyle(SpanStyle(color = Ink, fontWeight = FontWeight.SemiBold)) { append("¥$dailyExpenseText") }
+                append(translateNativeText(if (annual) "，若保持当前速率，预计年底可结余" else "，若保持当前速率，预计月底可结余", language))
+                append(" ")
+                withStyle(SpanStyle(color = Ink, fontWeight = FontWeight.SemiBold)) { append("¥ ${moneyFormat.format(summary.balance.coerceAtLeast(0.0))}") }
+                append(translateNativeText("。", language))
+            },
+        )
         Spacer(Modifier.height(8.dp))
-        AdvisoryRow("2", "剩余总预算 ¥ ${moneyFormat.format(remainingBudget.coerceAtLeast(0.0))}，建议将富余资金分配至储蓄计划。")
+        AdvisoryRow(
+            "2",
+            text = buildAnnotatedString {
+                append(translateNativeText("剩余总预算", language))
+                append(" ")
+                withStyle(SpanStyle(color = Ink, fontWeight = FontWeight.SemiBold)) { append("¥ ${moneyFormat.format(remainingBudget)}") }
+                append(translateNativeText("，建议将富余资金分配至", language))
+                append(" ")
+                withStyle(SpanStyle(color = Blue, fontWeight = FontWeight.SemiBold)) { append(translateNativeText("储蓄计划 ›", language)) }
+            },
+            onClick = onOpenSavings,
+        )
     }
 }
 
 @Composable
-private fun AdvisoryRow(index: String, text: String) {
+private fun AdvisoryRow(index: String, text: AnnotatedString, onClick: (() -> Unit)? = null) {
     Row(verticalAlignment = Alignment.Top) {
         Text(
             index,
@@ -2652,7 +2689,13 @@ private fun AdvisoryRow(index: String, text: String) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.width(8.dp))
-        Text(text, color = Color(0xFF475569), fontSize = 11.sp, lineHeight = 16.sp)
+        MaterialText(
+            text = text,
+            modifier = if (onClick == null) Modifier else Modifier.clip(RoundedCornerShape(4.dp)).clickable(onClick = onClick),
+            color = Color(0xFF475569),
+            fontSize = nativeReadableFontSize(11.sp),
+            lineHeight = nativeReadableFontSize(16.sp),
+        )
     }
 }
 
