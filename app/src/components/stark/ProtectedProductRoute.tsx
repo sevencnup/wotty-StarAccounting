@@ -74,5 +74,5 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
   if (authorized) return <>{children}</>;
   if (loadError) return <main className="app-route-access-loading" role="alert">{loadError}</main>;
 
-  return <main className="app-route-access-loading" aria-busy="true">正在进入账本...</main>;
+  return null;
 }
