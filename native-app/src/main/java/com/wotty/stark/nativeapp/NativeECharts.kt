@@ -11,6 +11,7 @@ import android.util.Base64
 import android.util.Log
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.webkit.JavascriptInterface
 import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
@@ -22,11 +23,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,16 +78,14 @@ internal fun NativeEChart(
         )
     }
 
-    AndroidView(
-        factory = { chartView },
-        modifier = modifier.pointerInput(chartView, density) {
-            detectTapGestures { offset ->
-                chartView.dispatchNativeTap(offset.x / density, offset.y / density)
-            }
-        },
-        update = { it.setOption(optionJson) },
-        onRelease = { it.releaseChart() },
-    )
+    Box(modifier = modifier) {
+        AndroidView(
+            factory = { chartView },
+            modifier = Modifier.matchParentSize(),
+            update = { it.setOption(optionJson) },
+            onRelease = { it.releaseChart() },
+        )
+    }
 }
 
 private class NativeEChartWebView(
@@ -98,12 +96,15 @@ private class NativeEChartWebView(
     private var pendingOption: String? = null
     private var renderedChart: Bitmap? = null
     private val renderedChartPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
+    private var touchDownX = 0f
+    private var touchDownY = 0f
+    private var touchMoved = false
 
     init {
         setBackgroundColor(AndroidColor.TRANSPARENT)
-        // Compose owns gestures so chart taps can be dispatched without the WebView
-        // swallowing vertical LazyColumn or horizontal chart-scroll gestures.
-        isClickable = false
+        // The native WebView must own taps so ECharts hit testing receives real device input.
+        isClickable = true
         isFocusable = false
         isFocusableInTouchMode = false
         isVerticalScrollBarEnabled = false
@@ -213,7 +214,7 @@ private class NativeEChartWebView(
 
     fun dispatchNativeTap(cssX: Float, cssY: Float) {
         if (!pageReady) return
-        logChart("compose tap: ${cssX.roundToInt()},${cssY.roundToInt()}")
+        logChart("native tap: ${cssX.roundToInt()},${cssY.roundToInt()}")
         evaluateJavascript("window.dispatchNativeChartTap($cssX,$cssY)") { result -> logChart("tap hit: $result") }
     }
 
@@ -236,7 +237,35 @@ private class NativeEChartWebView(
         }
     }
 
-    override fun onTouchEvent(event: MotionEvent): Boolean = false
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                touchDownX = event.x
+                touchDownY = event.y
+                touchMoved = false
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val deltaX = event.x - touchDownX
+                val deltaY = event.y - touchDownY
+                if (deltaX * deltaX + deltaY * deltaY > touchSlop * touchSlop) touchMoved = true
+                return true
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!touchMoved) {
+                    val density = resources.displayMetrics.density
+                    dispatchNativeTap(event.x / density, event.y / density)
+                }
+                touchMoved = false
+                return true
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                touchMoved = true
+                return true
+            }
+        }
+        return true
+    }
 
     fun releaseChart() {
         pageReady = false
@@ -299,6 +328,56 @@ internal object NativeEChartOptions {
         "旅行" to "#9254de", "教育" to "#40a9ff", "其他" to "#bfbfbf",
     )
     private val palette = listOf("#2a78d6", "#1baf7a", "#eda100", "#eb6834", "#8b5cf6", "#f759ab", "#36cfc9", "#597ef7")
+
+    fun homeCashflowBars(
+        incomes: List<Double>,
+        expenses: List<Double>,
+        labels: List<String>,
+        emphasizedIndices: Set<Int>,
+        incomeName: String,
+        expenseName: String,
+    ): JSONObject {
+        fun barData(values: List<Double>, emphasizedColor: String, quietColor: String) = JSONArray().apply {
+            values.forEachIndexed { index, value ->
+                put(
+                    JSONObject()
+                        .put("value", value)
+                        .put("itemStyle", JSONObject().put("color", if (index in emphasizedIndices) emphasizedColor else quietColor)),
+                )
+            }
+        }
+
+        fun barSeries(name: String, values: List<Double>, emphasizedColor: String, quietColor: String) = JSONObject()
+            .put("name", name)
+            .put("type", "bar")
+            .put("barWidth", "24%")
+            .put("barGap", "28%")
+            .put("itemStyle", JSONObject().put("borderRadius", JSONArray().put(4).put(4).put(0).put(0)))
+            .put("data", barData(values, emphasizedColor, quietColor))
+
+        return JSONObject()
+            .put("animationDuration", 420)
+            .put("animationEasing", "cubicOut")
+            .put("grid", JSONObject().put("left", 4).put("right", 4).put("top", 8).put("bottom", 22))
+            .put("tooltip", JSONObject()
+                .put("trigger", "axis")
+                .put("confine", true)
+                .put("backgroundColor", "rgba(19, 27, 48, 0.92)")
+                .put("borderWidth", 0)
+                .put("padding", JSONArray().put(8).put(10))
+                .put("textStyle", JSONObject().put("color", "#ffffff").put("fontSize", 12))
+                .put("formatter", "{b}<br/>¥ {c}"))
+            .put("xAxis", JSONObject()
+                .put("type", "category")
+                .put("data", strings(labels))
+                .put("axisLine", JSONObject().put("lineStyle", JSONObject().put("color", "#e8eef5")))
+                .put("axisTick", JSONObject().put("show", false))
+                .put("axisLabel", JSONObject().put("color", "#94a3b8").put("fontSize", 10).put("margin", 8)))
+            .put("yAxis", JSONObject().put("type", "value").put("show", false).put("min", 0))
+            .put("series", JSONArray()
+                .put(barSeries(incomeName, incomes, "#0060c0", "#bae6fd"))
+                .put(barSeries(expenseName, expenses, "#f43f5e", "#fecdd3")))
+    }
 
     fun cashflowTrend(incomes: List<Double>, expenses: List<Double>, labels: List<String>): JSONObject {
         val maximumValue = ceil(((incomes + expenses).maxOrNull() ?: 8_000.0).coerceAtLeast(8_000.0) / 2_000.0) * 2_000.0
