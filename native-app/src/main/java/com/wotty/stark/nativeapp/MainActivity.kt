@@ -1776,6 +1776,7 @@ private fun StarkNativeApp() {
                     modifier = Modifier.padding(insets),
                     entries = currentEntries,
                     actualBalance = currentLedgerBalance,
+                    ledgerAccount = ledgerAccount,
                     selectedMonth = selectedMonth,
                     salaryDay = salaryDay,
                     metric = homeMetric,
@@ -2424,6 +2425,7 @@ private fun HomeScreen(
     modifier: Modifier,
     entries: List<LedgerEntry>,
     actualBalance: Double,
+    ledgerAccount: NativeLedgerAccount,
     selectedMonth: String,
     salaryDay: Int,
     metric: HomeMetric,
@@ -2453,6 +2455,13 @@ private fun HomeScreen(
     val matchedSavingsExpenses = remember(savingsPlanAllocation.expenseItems, matchingEntries, savingsPlanPeriod, salaryDay) {
         matchNativeSavingsPlanExpensesWithBills(savingsPlanAllocation.expenseItems, matchingEntries, savingsPlanPeriod, salaryDay)
     }
+    val nativeSalaryPlanSource = remember(allEntries, remoteSavingsPlans, savingsPlanPeriod, salaryDay, ledgerAccount) {
+        summarizeNativeSavingsPlanSource(allEntries, remoteSavingsPlans, savingsPlanPeriod, salaryDay, ledgerAccount)
+    }
+    val salaryPlanAvailable = if (nativeSalaryPlanSource.salaryRecordedAt != null && savingsPlanAllocation.planCount > 0) {
+        nativeSalaryPlanSource.salaryIncome + (nativeSalaryPlanSource.salaryCarryover ?: 0.0) -
+            savingsPlanAllocation.fixedExpense - savingsPlanAllocation.temporaryExpense - savingsPlanAllocation.plannedDeposit
+    } else null
     val allocationCashflow = remember(allEntries, remoteSavingsPlans, selectedMonth, salaryDay) {
         calculateNativeSalaryCycleAllocation(allEntries, remoteSavingsPlans, selectedMonth, salaryDay)
     }
@@ -2460,7 +2469,7 @@ private fun HomeScreen(
     val allocationDescription = if (selectedYear != null) {
         "收入扣除实际消费、还款和储蓄后的安排金额"
     } else {
-        "发薪周期 ${allocationCashflow.range.label}"
+        "发薪周期 ${allocationCashflow.range.label.replace(" 至 ", " – ")}"
     }
     val salaryCycleRange = if (selectedYear == null) nativeSalaryCycleRange(selectedMonth, salaryDay) else null
     val reportingEntries = allEntries.filter { entry ->
@@ -2531,6 +2540,8 @@ private fun HomeScreen(
                 periodDescription = allocationDescription,
                 savingsPlanAllocation = savingsPlanAllocation,
                 matchedSavingsExpenses = matchedSavingsExpenses,
+                salaryPlanSource = nativeSalaryPlanSource,
+                salaryPlanAvailable = salaryPlanAvailable,
                 onManageBudget = { onOpenOverlay(HomeOverlay.BUDGET) },
                 onOpenSavings = { onSelectTab(RootTab.SAVINGS) },
             )
@@ -2771,6 +2782,8 @@ private fun WebReplicaBudgetCard(
     periodDescription: String,
     savingsPlanAllocation: NativeSavingsPlanAllocation,
     matchedSavingsExpenses: List<NativeSavingsExpenseMatch>,
+    salaryPlanSource: NativeSavingsPlanSource,
+    salaryPlanAvailable: Double?,
     onManageBudget: () -> Unit,
     onOpenSavings: () -> Unit,
 ) {
@@ -2779,166 +2792,230 @@ private fun WebReplicaBudgetCard(
     val allocationBase = maxOf(income, allocated, 1.0)
     val allocationPercent = if (income > 0.0) allocated / income * 100.0 else 0.0
     val available = income - allocated
-    WebReplicaCard {
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onManageBudget).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(28.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE2F3FF)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.Category, contentDescription = null, tint = Color(0xFF0060C0), modifier = Modifier.size(17.dp))
-            }
-            Spacer(Modifier.width(8.dp))
-            Column(Modifier.weight(1f)) {
-                Text(periodTitle, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(periodDescription, color = Color(0xFF7B8CA3), fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-            Text("预算管理  ›", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(Modifier.fillMaxWidth()) {
-            BudgetAmount("可支配预算", available, "可继续安排 ¥ ${moneyFormat.format(available)}", Modifier.weight(1f))
-            Box(Modifier.width(1.dp).height(64.dp).background(Line))
-            BudgetAmount("收入", income, "已分配 ¥ ${moneyFormat.format(allocated)}", Modifier.weight(1f).padding(start = 14.dp))
-        }
-        Spacer(Modifier.height(11.dp))
-        Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color(0xFFEAF0F7))) {
-            Row(Modifier.fillMaxWidth().height(7.dp)) {
-                if (expense > 0) Box(Modifier.weight((expense / allocationBase).toFloat()).fillMaxHeight().background(Color(0xFF0EA5E9)))
-                if (repayment > 0) Box(Modifier.weight((repayment / allocationBase).toFloat()).fillMaxHeight().background(Color(0xFFF59E0B)))
-                if (savings > 0) Box(Modifier.weight((savings / allocationBase).toFloat()).fillMaxHeight().background(Color(0xFF10B981)))
-                val remainingShare = (allocationBase - allocated).coerceAtLeast(0.0)
-                if (remainingShare > 0.0) Spacer(Modifier.weight((remainingShare / allocationBase).toFloat()).fillMaxHeight())
-            }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 5.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text("已分配占收入", color = Color(0xFF94A3B8), fontSize = 9.sp)
-            Text(if (income > 0.0) "${String.format(Locale.ROOT, "%.2f", allocationPercent)}%" else "—", color = Ink, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth()) {
-            BudgetSegment("消费", expense, Color(0xFF0EA5E9), Modifier.weight(1f))
-            BudgetSegment("还款", repayment, Color(0xFFF59E0B), Modifier.weight(1f))
-        }
-        Spacer(Modifier.height(9.dp))
-        Row(Modifier.fillMaxWidth()) {
-            BudgetSegment("储蓄", savings, Color(0xFF10B981), Modifier.weight(1f))
-            BudgetSegment("剩余", available, Blue, Modifier.weight(1f), blueValue = true)
-        }
-        HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
-                Text("¥ " + moneyFormat.format(actualBalance), color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            }
-            Text(
-                if (periodTitle == "全年资金分配") "余额单独展示，不重复计入全年扣减" else "余额单独展示，不重复计入本期扣减",
-                modifier = Modifier.weight(1.6f),
-                color = Color(0xFF8492A7),
-                fontSize = 9.sp,
-                lineHeight = 13.sp,
-                textAlign = TextAlign.End,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (savingsPlanAllocation.planCount > 0) {
-            HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
-            val statusParts = buildList {
-                if (savingsPlanAllocation.completedPlanCount > 0) {
-                    add("已存 ¥ ${moneyFormat.format(savingsPlanAllocation.recordedDeposit)} · ${savingsPlanAllocation.completedPlanCount} 项已完成")
-                }
-                if (savingsPlanAllocation.pendingPlanCount > 0) {
-                    add("待存 ¥ ${moneyFormat.format(savingsPlanAllocation.pendingDeposit)} · ${savingsPlanAllocation.pendingPlanCount} 项待存")
-                }
-                if (savingsPlanAllocation.skippedPlanCount > 0) add("${savingsPlanAllocation.skippedPlanCount} 项已跳过")
-                if (isEmpty()) add("预计存 ¥ ${moneyFormat.format(savingsPlanAllocation.plannedDeposit)}")
-            }
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Row(
-                    Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp))
-                        .clickable { planExpanded = !planExpanded }.padding(vertical = 7.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("储蓄计划安排", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "${savingsPlanAllocation.period} · ${if (planExpanded) "计划表金额仅供参考，不参与上方实际分配计算" else statusParts.joinToString(" · ")}",
-                            color = Color(0xFF7B8CA3),
-                            fontSize = 10.sp,
-                            lineHeight = 14.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+    val compact = LocalConfiguration.current.screenWidthDp <= 420
+    val annual = savingsPlanAllocation.period.matches(Regex("\\d{4}"))
+
+    WebReplicaCard(padding = 0.dp) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 12.dp)) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable(onClick = onManageBudget)
+                    .padding(start = 16.dp, top = 15.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(13.dp),
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        BudgetAllocationTargetIcon()
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(periodTitle, color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                            Text(periodDescription, color = Color(0xFF7B8CA3), fontSize = 10.sp, lineHeight = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(if (planExpanded) "收起" else "展开", color = Blue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-                        Icon(
-                            Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = Blue,
-                            modifier = Modifier.size(18.dp).rotate(if (planExpanded) 180f else 0f),
-                        )
+                        Text("预算管理", color = Color(0xFF0060C0), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text("›", color = Color(0xFF0060C0), fontSize = 14.sp, lineHeight = 14.sp)
                     }
                 }
-                Text(
-                    "储蓄计划  ›",
-                    modifier = Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenSavings).padding(horizontal = 5.dp, vertical = 7.dp),
-                    color = Blue,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                    BudgetAmount("实际收支净额", available, "仅统计本期流水，不含上期结转", Modifier.weight(1f), negative = available < 0.0)
+                    Box(Modifier.width(1.dp).fillMaxHeight().background(Color(0x2E94A3B8)))
+                    BudgetAmount("收入", income, "已分配 ¥ " + moneyFormat.format(allocated), Modifier.weight(1f).padding(start = 14.dp))
+                }
+                Box(Modifier.fillMaxWidth().height(7.dp).clip(CircleShape).background(Color(0xBFE2E8F0))) {
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        listOf(
+                            expense to Color(0xFF0EA5E9),
+                            repayment to Color(0xFFF59E0B),
+                            savings to Color(0xFF10B981),
+                        ).filter { it.first > 0.0 }.forEach { (amount, color) ->
+                            Box(Modifier.weight((amount / allocationBase).toFloat()).widthIn(min = 3.dp).fillMaxHeight().clip(CircleShape).background(color))
+                        }
+                        val remainingShare = (allocationBase - allocated).coerceAtLeast(0.0)
+                        if (remainingShare > 0.0) Spacer(Modifier.weight((remainingShare / allocationBase).toFloat()).fillMaxHeight())
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 5.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("已分配占收入", color = Color(0xFF64748B), fontSize = 10.sp)
+                    Text(if (income > 0.0) String.format(Locale.ROOT, "%.2f", allocationPercent) + "%" else "—", color = Color(0xFF475569), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        BudgetSegment("消费", expense, Color(0xFF0EA5E9), Modifier.weight(1f))
+                        BudgetSegment("还款", repayment, Color(0xFFF59E0B), Modifier.weight(1f))
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                        BudgetSegment("储蓄", savings, Color(0xFF10B981), Modifier.weight(1f))
+                        BudgetSegment("剩余", available, Color(0xFF0060C0), Modifier.weight(1f), blueValue = true)
+                    }
+                }
             }
-            AnimatedVisibility(visible = planExpanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    if (!savingsPlanAllocation.period.matches(Regex("\\d{4}")) &&
-                        (savingsPlanAllocation.plannedSalary > 0.0 || savingsPlanAllocation.previousBalance > 0.0)
+            BudgetAssetsSummary(actualBalance, compact)
+            if (savingsPlanAllocation.planCount > 0) {
+                Column(Modifier.fillMaxWidth().padding(top = 13.dp)) {
+                    HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = Color(0xFFE7EDF3))
+                    Column(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, top = 13.dp, end = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(11.dp),
                     ) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            SavingsPlanSource("计划工资", savingsPlanAllocation.plannedSalary, Modifier.weight(1f))
-                            SavingsPlanSource("上月结余", savingsPlanAllocation.previousBalance, Modifier.weight(1f))
-                        }
-                    }
-                    SavingsPlanMetrics(
-                        fixedExpense = savingsPlanAllocation.fixedExpense,
-                        temporaryExpense = savingsPlanAllocation.temporaryExpense,
-                        plannedDeposit = savingsPlanAllocation.plannedDeposit,
-                        recordedDeposit = savingsPlanAllocation.recordedDeposit,
-                        pendingDeposit = savingsPlanAllocation.pendingDeposit,
-                    )
-                    if (savingsPlanAllocation.expenseItems.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("计划支出明细", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            Column(Modifier.heightIn(max = 148.dp).verticalScroll(rememberScrollState())) {
-                                matchedSavingsExpenses.forEachIndexed { index, match ->
-                                    if (index > 0) HorizontalDivider(color = Color(0xFFF0F3F7))
-                                    SavingsPlanExpenseMatchRow(match)
-                                }
+                        val statusParts = buildList {
+                            if (savingsPlanAllocation.completedPlanCount > 0) {
+                                add("已存 ¥ " + moneyFormat.format(savingsPlanAllocation.recordedDeposit) + " · " + savingsPlanAllocation.completedPlanCount + " 项已完成")
                             }
+                            if (savingsPlanAllocation.pendingPlanCount > 0) {
+                                add("待存 ¥ " + moneyFormat.format(savingsPlanAllocation.pendingDeposit) + " · " + savingsPlanAllocation.pendingPlanCount + " 项待存")
+                            }
+                            if (savingsPlanAllocation.skippedPlanCount > 0) add(savingsPlanAllocation.skippedPlanCount.toString() + " 项已跳过")
+                            if (isEmpty()) add("预计存 ¥ " + moneyFormat.format(savingsPlanAllocation.plannedDeposit))
                         }
-                    }
-                    if (!savingsPlanAllocation.period.matches(Regex("\\d{4}"))) {
-                        val remaining = savingsPlanAllocation.projectedRemaining
-                        if (remaining != null) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Row(
-                                Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(Color(0xFFEAF5EF)).padding(horizontal = 12.dp, vertical = 11.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
+                                Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp))
+                                    .clickable { planExpanded = !planExpanded }.padding(vertical = 7.dp),
                                 verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                Column(Modifier.weight(1f).padding(end = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                    Text("发薪后预计可支配", color = Color(0xFF166534), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                    Text("依据计划工资、结余和计划支出计算", color = Color(0xFF64748B), fontSize = 10.sp, lineHeight = 14.sp)
+                                Column(Modifier.weight(1f).padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                    Text("储蓄计划安排", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(
+                                        savingsPlanAllocation.period + " · " + if (planExpanded) "计划表金额仅供参考，不参与上方实际分配计算" else statusParts.joinToString(" · "),
+                                        color = Color(0xFF7B8CA3),
+                                        fontSize = 10.sp,
+                                        lineHeight = 14.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
                                 }
-                                Text(
-                                    "${if (remaining < 0.0) "-" else ""}¥ ${moneyFormat.format(kotlin.math.abs(remaining))}",
-                                    color = if (remaining < 0.0) Color(0xFFB45309) else Color(0xFF0F766E),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(if (planExpanded) "收起" else "展开", color = Color(0xFF0060C0), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                    Icon(
+                                        Icons.Default.KeyboardArrowDown,
+                                        contentDescription = null,
+                                        tint = Color(0xFF0060C0),
+                                        modifier = Modifier.size(14.dp).rotate(if (planExpanded) 180f else 0f),
+                                    )
+                                }
                             }
-                        } else {
-                            Text("设置计划工资后显示预计可支配", color = Color(0xFF64748B), fontSize = 10.sp, lineHeight = 14.sp)
+                            Row(
+                                Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp)).clickable(onClick = onOpenSavings)
+                                    .padding(horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text("储蓄计划", color = Color(0xFF0060C0), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                Text("›", color = Color(0xFF0060C0), fontSize = 14.sp, lineHeight = 14.sp)
+                            }
+                        }
+                        AnimatedVisibility(visible = planExpanded) {
+                            Column(verticalArrangement = Arrangement.spacedBy(11.dp)) {
+                                if (!annual && salaryPlanSource.salaryRecordedAt != null) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        SavingsPlanSource("已入账工资", salaryPlanSource.salaryIncome)
+                                        SavingsPlanSource("发薪前结转", salaryPlanSource.salaryCarryover)
+                                    }
+                                }
+                                SavingsPlanMetrics(
+                                    fixedExpense = savingsPlanAllocation.fixedExpense,
+                                    temporaryExpense = savingsPlanAllocation.temporaryExpense,
+                                    plannedDeposit = savingsPlanAllocation.plannedDeposit,
+                                    recordedDeposit = savingsPlanAllocation.recordedDeposit,
+                                    pendingDeposit = savingsPlanAllocation.pendingDeposit,
+                                )
+                                if (savingsPlanAllocation.expenseItems.isNotEmpty()) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("计划支出明细", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                        Column(Modifier.heightIn(max = 148.dp).verticalScroll(rememberScrollState())) {
+                                            matchedSavingsExpenses.forEachIndexed { index, match ->
+                                                if (index > 0) HorizontalDivider(color = Color(0xFFF0F3F7))
+                                                SavingsPlanExpenseMatchRow(match)
+                                            }
+                                        }
+                                    }
+                                }
+                                if (!annual) {
+                                    if (salaryPlanAvailable != null) {
+                                        val carryoverUnverified = salaryPlanSource.salaryCarryover == null
+                                        Row(
+                                            Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(Color(0xFFEAF5EF))
+                                                .padding(horizontal = 12.dp, vertical = 11.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            Column(Modifier.weight(1f).padding(end = 10.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                Text("发薪后预计可支配", color = Color(0xFF166534), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                                Text(
+                                                    if (carryoverUnverified) "发薪时的计划值，未包含未核实的上期结转" else "发薪时的计划值，实际记账另计",
+                                                    color = Color(0xFF64748B),
+                                                    fontSize = 10.sp,
+                                                    lineHeight = 14.sp,
+                                                )
+                                            }
+                                            Text(
+                                                (if (salaryPlanAvailable < 0.0) "-¥ " else "¥ ") + moneyFormat.format(kotlin.math.abs(salaryPlanAvailable)),
+                                                color = if (salaryPlanAvailable < 0.0) Color(0xFFB45309) else Color(0xFF0F766E),
+                                                fontSize = 15.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1,
+                                            )
+                                        }
+                                    } else {
+                                        Text("录入本月工资后显示预计可支配", color = Color(0xFF64748B), fontSize = 10.sp, lineHeight = 14.sp)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+@Composable
+private fun BudgetAllocationTargetIcon() {
+    Box(Modifier.size(26.dp).clip(RoundedCornerShape(8.dp)).background(Color(0xFFE0F2FE)), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.size(15.dp)) {
+            val center = Offset(size.width / 2f, size.height / 2f)
+            val stroke = Stroke(width = 1.35.dp.toPx())
+            drawCircle(Color(0xFF0060C0), radius = size.minDimension * .43f, center = center, style = stroke)
+            drawCircle(Color(0xFF0060C0), radius = size.minDimension * .23f, center = center, style = stroke)
+            drawCircle(Color(0xFF0060C0), radius = 1.dp.toPx(), center = center)
+        }
+    }
+}
+
+@Composable
+private fun BudgetAssetsSummary(actualBalance: Double, compact: Boolean) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(top = 10.dp)) {
+        HorizontalDivider(color = Color(0x2994A3B8))
+        if (compact) {
+            Row(Modifier.fillMaxWidth().padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
+                Text("¥ ${moneyFormat.format(actualBalance)}", modifier = Modifier.padding(start = 6.dp), color = Color(0xFF0F766E), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                "余额单独展示，不重复计入本月扣减",
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                color = Color(0xFF7B8CA3),
+                fontSize = 10.sp,
+                lineHeight = 13.5.sp,
+            )
+        } else {
+            Row(Modifier.fillMaxWidth().padding(top = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
+                Text("¥ ${moneyFormat.format(actualBalance)}", modifier = Modifier.padding(start = 6.dp), color = Color(0xFF0F766E), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "余额单独展示，不重复计入本月扣减",
+                    modifier = Modifier.weight(1f),
+                    color = Color(0xFF7B8CA3),
+                    fontSize = 10.sp,
+                    lineHeight = 13.5.sp,
+                    textAlign = TextAlign.End,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
@@ -2984,32 +3061,33 @@ private fun SavingsPlanMetrics(
             }
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(Color(0xFFF5F8FC))
-                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                Text("预计存", color = Color(0xFF64748B), fontSize = 10.sp)
-                Column(
-                    Modifier.weight(1f).padding(start = 8.dp),
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(3.dp),
-                ) {
-                    Text(
-                        "¥ ${moneyFormat.format(plannedDeposit)}",
-                        color = Color(0xFF1E293B),
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        lineHeight = 14.sp,
-                        maxLines = 1,
-                    )
-                    Text(
-                        "已存 ¥ ${moneyFormat.format(recordedDeposit)} · 待存 ¥ ${moneyFormat.format(pendingDeposit)}",
-                        color = Color(0xFF64748B),
-                        fontSize = 9.sp,
-                        lineHeight = 12.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                Text("预计存", modifier = Modifier.weight(0.7f), color = Color(0xFF64748B), fontSize = 10.sp, maxLines = 1)
+                Text(
+                    "¥ ${moneyFormat.format(plannedDeposit)}",
+                    modifier = Modifier.weight(1.4f),
+                    color = Color(0xFF1E293B),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    lineHeight = 14.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center,
+                    softWrap = false,
+                )
+                Text(
+                    "已存 ¥${moneyFormat.format(recordedDeposit)} · 待存 ¥${moneyFormat.format(pendingDeposit)}",
+                    modifier = Modifier.weight(3f),
+                    color = Color(0xFF64748B),
+                    fontSize = 8.sp,
+                    lineHeight = 10.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Clip,
+                    textAlign = TextAlign.End,
+                    softWrap = false,
+                )
             }
         }
     } else {
@@ -3030,20 +3108,25 @@ private fun SavingsPlanMetrics(
 }
 
 @Composable
-private fun SavingsPlanSource(label: String, value: Double, modifier: Modifier) {
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+private fun SavingsPlanSource(label: String, value: Double?) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
-        Text(" ¥ ${moneyFormat.format(value)}", color = Color(0xFF334155), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            if (value == null) " 未核实" else " ¥ ${moneyFormat.format(value)}",
+            color = if (value == null) Color(0xFF64748B) else Color(0xFF334155),
+            fontSize = if (value == null) 10.sp else 11.sp,
+            fontWeight = if (value == null) FontWeight.Normal else FontWeight.SemiBold,
+        )
     }
 }
 
 @Composable
 private fun SavingsPlanExpenseMatchRow(match: NativeSavingsExpenseMatch) {
     val statusColor = when (match.status) {
-        NativeSavingsExpenseMatchStatus.MATCHED -> Green
-        NativeSavingsExpenseMatchStatus.PARTIAL -> Amber
-        NativeSavingsExpenseMatchStatus.OVER -> Red
-        NativeSavingsExpenseMatchStatus.UNMATCHED -> if (match.item.kind == NativeSavingsExpenseKind.TEMPORARY) Amber else Color(0xFF94A3B8)
+        NativeSavingsExpenseMatchStatus.MATCHED -> Color(0xFF15803D)
+        NativeSavingsExpenseMatchStatus.PARTIAL -> Color(0xFFA16207)
+        NativeSavingsExpenseMatchStatus.OVER -> Color(0xFFB91C1C)
+        NativeSavingsExpenseMatchStatus.UNMATCHED -> Color(0xFF94A3B8)
     }
     val statusLabel = when (match.status) {
         NativeSavingsExpenseMatchStatus.MATCHED -> "已达计划"
@@ -3075,7 +3158,7 @@ private fun SavingsPlanExpenseMatchRow(match: NativeSavingsExpenseMatch) {
                     Text(marker, color = statusColor, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 10.sp)
                 }
             }
-            Text(match.item.name, color = Color(0xFF475569), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(match.item.name, modifier = Modifier.weight(1f, fill = false), color = Color(0xFF475569), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(statusLabel, color = statusColor, fontSize = 9.sp, fontWeight = if (match.status == NativeSavingsExpenseMatchStatus.UNMATCHED) FontWeight.Normal else FontWeight.SemiBold, maxLines = 1)
         }
         Column(horizontalAlignment = Alignment.End) {
@@ -3093,13 +3176,19 @@ private fun SavingsPlanExpenseMatchRow(match: NativeSavingsExpenseMatch) {
 }
 
 @Composable
-private fun BudgetAmount(label: String, value: Double, caption: String, modifier: Modifier) {
-    Column(modifier) {
+private fun BudgetAmount(label: String, value: Double, caption: String, modifier: Modifier, negative: Boolean = false) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
-        Spacer(Modifier.height(3.dp))
-        Text("¥ ${moneyFormat.format(value)}", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(2.dp))
-        Text(caption, color = Color(0xFF8D9CAF), fontSize = 10.sp, maxLines = 1)
+        Text(
+            "${if (negative) "-¥ " else "¥ "}${moneyFormat.format(kotlin.math.abs(value))}",
+            color = if (negative) Color(0xFFB45309) else Color(0xFF0F172A),
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+            lineHeight = 19.5.sp,
+            maxLines = 1,
+            softWrap = false,
+        )
+        Text(caption, color = Color(0xFF7B8CA3), fontSize = 10.sp, lineHeight = 13.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -3112,7 +3201,18 @@ private fun BudgetSegment(label: String, value: Double, color: Color, modifier: 
             Text(label, color = Color(0xFF64748B), fontSize = 10.sp)
         }
         Spacer(Modifier.height(3.dp))
-        Text("¥ ${moneyFormat.format(value)}", color = if (blueValue) Blue else Ink, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            "¥ ${moneyFormat.format(kotlin.math.abs(value))}",
+            color = when {
+                blueValue -> Color(0xFF0060C0)
+                value < 0.0 -> Color(0xFFB45309)
+                else -> Color(0xFF1E293B)
+            },
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            lineHeight = 14.4.sp,
+            maxLines = 1,
+        )
     }
 }
 
