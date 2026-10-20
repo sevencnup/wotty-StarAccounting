@@ -184,7 +184,7 @@ internal fun NativeSettingsScreen(
             )
             SettingsMenuRow(
                 title = "导入账单",
-                detail = if (importErrors.count { !it.resolved } == 0) "微信、支付宝或本应用 CSV · 确认后写入当前账本" else "${importErrors.count { !it.resolved }} 条导入问题待处理",
+                detail = if (importErrors.count { !it.resolved } == 0) translateNativeText("支持 CSV、XLS、XLSX · 确认后写入当前账本", uiPreferences.value.language) else "${importErrors.count { !it.resolved }} 条导入问题待处理",
                 color = SettingsBlue,
                 icon = Icons.Default.CloudDownload,
                 onClick = { csvImportOpen = true },
@@ -688,7 +688,7 @@ private fun NativeCsvImportSheet(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("导入账单", color = SettingsInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    Text("微信、支付宝或本应用导出的 CSV", color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                    Text(translateNativeText("支持 CSV、XLS、XLSX 文件", language), color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 TextButton(onClick = onDismiss) { Text("完成") }
             }
@@ -702,7 +702,7 @@ private fun NativeCsvImportSheet(
                     shape = RoundedCornerShape(12.dp),
                 ) {
                     Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(17.dp))
-                    Text(if (preview == null) "选择 CSV 文件" else "重新选择文件", modifier = Modifier.padding(start = 7.dp), fontWeight = FontWeight.SemiBold)
+                    Text(translateNativeText(if (preview == null) "选择账单文件" else "重新选择文件", language), modifier = Modifier.padding(start = 7.dp), fontWeight = FontWeight.SemiBold)
                 }
             }
             if (preview != null) {
