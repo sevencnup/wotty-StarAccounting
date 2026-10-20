@@ -2204,6 +2204,8 @@ private fun StarkNativeApp() {
             salaryPaydayDefault = salaryDay,
             salaryUserId = apiPreferences.userId.ifBlank { "local-user" },
             salaryAccountId = apiPreferences.accountId.ifBlank { "local" },
+            draftScope = currentDataScope,
+            draftAccountId = currentAccountId,
             onClose = { entrySheetOpen = false; editingEntry = null },
             onSave = { entry ->
                 val oldEntry = entries.firstOrNull { it.id == entry.id }
@@ -4549,27 +4551,73 @@ private fun QuickEntrySheet(
     salaryPaydayDefault: Int,
     salaryUserId: String,
     salaryAccountId: String,
+    draftScope: String,
+    draftAccountId: String,
     onClose: () -> Unit,
     onSave: suspend (LedgerEntry) -> Unit,
     onSaveSalaryBatch: suspend (List<LedgerEntry>) -> NativeBillImportResult,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var type by remember(existing?.id) { mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: EntryType.EXPENSE) }
-    var ordinaryType by remember(existing?.id) { mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: EntryType.EXPENSE) }
-    var ordinaryCategory by remember(existing?.id) { mutableStateOf(existing?.category?.substringBefore(" ·") ?: "餐饮") }
-    var entryMode by remember(existing?.id) { mutableStateOf("NORMAL") }
-    var salaryEntryMode by remember(existing?.id) { mutableStateOf("SINGLE") }
-    var merchant by remember(existing?.id) { mutableStateOf(existing?.merchant.orEmpty()) }
-    var description by remember(existing?.id) { mutableStateOf(existing?.description.orEmpty()) }
-    var amountText by remember(existing?.id) { mutableStateOf(existing?.amount?.toString().orEmpty()) }
-    var category by remember(existing?.id) { mutableStateOf(existing?.category?.substringBefore(" ·") ?: "餐饮") }
-    var platform by remember(existing?.id) { mutableStateOf(existing?.platform ?: "支付宝") }
-    var selectedDate by remember(existing?.id) { mutableStateOf(existing?.transactionDate ?: LocalDate.now().toString()) }
-    var selectedTime by remember(existing?.id) { mutableStateOf(existing?.date?.substringAfter(" ")?.take(5)?.takeIf(String::isNotBlank) ?: "12:00") }
-    var salaryYearText by remember(existing?.id) { mutableStateOf(LocalDate.now().year.toString()) }
-    var salaryMonths by remember(existing?.id) { mutableStateOf(setOf(LocalDate.now().monthValue)) }
-    var salaryPaydayText by remember(existing?.id, salaryPaydayDefault) { mutableStateOf(salaryPaydayDefault.coerceIn(1, 28).toString()) }
+    val draftStore = remember(context.applicationContext) { NativeJournalDraftStore(context.applicationContext) }
+    val savedDraft = remember(existing?.id, draftScope, draftAccountId) {
+        if (existing == null) draftStore.load(draftScope, draftAccountId) else null
+    }
+    val formKeys = arrayOf(existing?.id, draftScope, draftAccountId)
+    var type by remember(*formKeys) {
+        mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: savedDraft?.type ?: EntryType.EXPENSE)
+    }
+    var ordinaryType by remember(*formKeys) {
+        mutableStateOf(existing?.type?.takeUnless { it == EntryType.REPAYMENT } ?: savedDraft?.ordinaryType ?: EntryType.EXPENSE)
+    }
+    var ordinaryCategory by remember(*formKeys) {
+        mutableStateOf(existing?.category?.substringBefore(" ·") ?: savedDraft?.ordinaryCategory ?: "餐饮")
+    }
+    var entryMode by remember(*formKeys) { mutableStateOf(savedDraft?.entryMode ?: "NORMAL") }
+    var salaryEntryMode by remember(*formKeys) { mutableStateOf(savedDraft?.salaryEntryMode ?: "SINGLE") }
+    var merchant by remember(*formKeys) { mutableStateOf(existing?.merchant ?: savedDraft?.merchant.orEmpty()) }
+    var description by remember(*formKeys) { mutableStateOf(existing?.description ?: savedDraft?.description.orEmpty()) }
+    var amountText by remember(*formKeys) { mutableStateOf(existing?.amount?.toString() ?: savedDraft?.amount.orEmpty()) }
+    var category by remember(*formKeys) {
+        mutableStateOf(existing?.category?.substringBefore(" ·") ?: savedDraft?.category ?: "餐饮")
+    }
+    var platform by remember(*formKeys) { mutableStateOf(existing?.platform ?: savedDraft?.platform ?: "支付宝") }
+    var selectedDate by remember(*formKeys) { mutableStateOf(existing?.transactionDate ?: savedDraft?.date?.ifBlank { LocalDate.now().toString() } ?: LocalDate.now().toString()) }
+    var selectedTime by remember(*formKeys) {
+        mutableStateOf(existing?.date?.substringAfter(" ")?.take(5)?.takeIf(String::isNotBlank) ?: savedDraft?.time ?: "12:00")
+    }
+    var salaryYearText by remember(*formKeys) { mutableStateOf(savedDraft?.salaryYear?.ifBlank { LocalDate.now().year.toString() } ?: LocalDate.now().year.toString()) }
+    var salaryMonths by remember(*formKeys) {
+        mutableStateOf(savedDraft?.salaryMonths?.takeIf { it.isNotEmpty() } ?: setOf(LocalDate.now().monthValue))
+    }
+    var salaryPaydayText by remember(*formKeys, salaryPaydayDefault) {
+        mutableStateOf(savedDraft?.salaryPayday?.ifBlank { salaryPaydayDefault.coerceIn(1, 28).toString() } ?: salaryPaydayDefault.coerceIn(1, 28).toString())
+    }
+    SideEffect {
+        if (existing == null) {
+            draftStore.save(
+                draftScope,
+                draftAccountId,
+                NativeJournalDraft(
+                    entryMode = entryMode,
+                    salaryEntryMode = salaryEntryMode,
+                    type = type,
+                    ordinaryType = ordinaryType,
+                    ordinaryCategory = ordinaryCategory,
+                    merchant = merchant,
+                    description = description,
+                    amount = amountText,
+                    category = category,
+                    platform = platform,
+                    date = selectedDate,
+                    time = selectedTime,
+                    salaryYear = salaryYearText,
+                    salaryMonths = salaryMonths,
+                    salaryPayday = salaryPaydayText,
+                ),
+            )
+        }
+    }
     var saving by remember { mutableStateOf(false) }
     var saveError by remember { mutableStateOf("") }
     var batchStatus by remember { mutableStateOf("") }
@@ -4919,6 +4967,7 @@ private fun QuickEntrySheet(
                             saveError = ""
                             try {
                                 onSave(entry)
+                                draftStore.clear(draftScope, draftAccountId)
                                 onClose()
                             } catch (error: Throwable) {
                                 saveError = error.message ?: "保存失败，请检查网络后重试"
