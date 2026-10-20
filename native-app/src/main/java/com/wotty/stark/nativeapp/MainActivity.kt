@@ -2710,7 +2710,7 @@ private fun NativeRoseChart(data: List<RoseChartSegment>, modifier: Modifier = M
             drawIntoCanvas { canvas -> canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     color = segment.color.toAndroidColorInt()
-                    textSize = 10.sp.toPx()
+                    textSize = nativeReadableFontSize(10.sp).toPx()
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     textAlign = if (lineEnd.x >= center.x) android.graphics.Paint.Align.LEFT else android.graphics.Paint.Align.RIGHT
                 }
@@ -2745,7 +2745,7 @@ private fun NativeCashflowChart(incomes: List<Double>, expenses: List<Double>, l
             drawIntoCanvas { canvas -> canvas.nativeCanvas.apply {
                 val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
                     color = Color(0xFF94A3B8).toAndroidColorInt()
-                    textSize = 10.sp.toPx()
+                    textSize = nativeReadableFontSize(10.sp).toPx()
                     typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
                     textAlign = android.graphics.Paint.Align.CENTER
                 }
@@ -2916,12 +2916,21 @@ private fun WebReplicaBudgetCard(
             BudgetSegment("剩余", available, Blue, Modifier.weight(1f), blueValue = true)
         }
         HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
-            Spacer(Modifier.width(6.dp))
-            Text("¥ " + moneyFormat.format(actualBalance), color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.weight(1f))
-            Text(if (periodTitle == "全年资金分配") "余额单独展示，不重复计入全年扣减" else "余额单独展示，不重复计入本期扣减", color = Color(0xFF8492A7), fontSize = 9.sp)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("资产存量", color = Color(0xFF64748B), fontSize = 10.sp)
+                Text("¥ " + moneyFormat.format(actualBalance), color = Green, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Text(
+                if (periodTitle == "全年资金分配") "余额单独展示，不重复计入全年扣减" else "余额单独展示，不重复计入本期扣减",
+                modifier = Modifier.weight(1.6f),
+                color = Color(0xFF8492A7),
+                fontSize = 9.sp,
+                lineHeight = 13.sp,
+                textAlign = TextAlign.End,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (savingsPlanAllocation.planCount > 0) {
             HorizontalDivider(Modifier.padding(vertical = 11.dp), color = Line)
@@ -3310,6 +3319,34 @@ private fun ConsumptionScreen(
         .sortedByDescending { it.second }
     val expenseTotal = expenseEntries.sumOf { it.amount }
     val incomeTotal = incomeEntries.sumOf { it.amount }
+    val summaryType = if (selectedType == "收入") EntryType.INCOME else EntryType.EXPENSE
+    val topCategory = monthEntries.filter { it.analysisType() == summaryType }
+        .groupBy { it.analysisCategory() }
+        .mapValues { (_, rows) -> rows.sumOf { it.amount } }
+        .maxByOrNull { it.value }
+    val primaryTotal = if (selectedType == "收入") incomeTotal else expenseTotal
+    val periodDays = if (selectedYear != null) YearMonth.of(selectedYear, 1).lengthOfYear() else monthValue.lengthOfMonth()
+    val dailyAverage = primaryTotal / periodDays.coerceAtLeast(1)
+    val periodBalance = incomeTotal - expenseTotal
+    val platformSummaryType = if (selectedType == "收入") EntryType.INCOME else EntryType.EXPENSE
+    fun platformSummary(platform: String): Pair<Double, Int> {
+        val matching = monthEntries.filter {
+            it.analysisType() == platformSummaryType && normalizeConsumptionPlatform(it.platform) == platform
+        }
+        return matching.sumOf { it.amount } to matching.size
+    }
+    val wechatSummary = platformSummary("微信")
+    val alipaySummary = platformSummary("支付宝")
+    val remarkedEntries = monthEntries.filter { it.type != EntryType.INCOME && !it.remarkCategory.isNullOrBlank() }
+    val remarkedCategories = remarkedEntries.groupBy { it.analysisCategory() }
+        .map { (category, rows) -> category to rows.sumOf { it.amount } }
+        .sortedByDescending { it.second }
+    val filterCategories = monthEntries
+        .filter { it.analysisType() == EntryType.EXPENSE || it.analysisType() == EntryType.INCOME }
+        .map { it.analysisCategory() }
+        .filter(String::isNotBlank)
+        .distinct()
+        .sorted()
     val trendMonths = if (selectedYear != null) {
         (1..12).map { LocalDate.of(selectedYear, it, 1) }
     } else {
@@ -3365,36 +3402,96 @@ private fun ConsumptionScreen(
             }
         }
         item {
-            androidx.compose.material3.OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                placeholder = { Text("搜索商户、分类或备注") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
-                shape = RoundedCornerShape(15.dp),
-            )
-        }
-        item {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                FilterChip(periodLabel, selected = true, onClick = onMonthClick)
-                Text("${monthEntries.size} 笔账单", color = Muted, fontSize = 12.sp)
+            WebReplicaCard(padding = 17.dp, radius = 22.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Top) {
+                    Column(Modifier.weight(1f)) {
+                        Text("$periodLabel · 现金流概览", color = Color(0xFF53718D), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text(if (selectedType == "收入") "当前筛选收入" else "当前筛选支出", color = Color(0xFF0F2742), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    }
+                    FilterChip(periodLabel, selected = true, onClick = onMonthClick)
+                }
+                Text("¥ ${moneyFormat.format(primaryTotal)}", color = Ink, fontSize = 29.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(top = 15.dp, bottom = 14.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                HorizontalDivider(color = Color(0xFFE8EEF3))
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(if (selectedType == "收入") "日均收入" else "日均支出", color = Color(0xFF53718D), fontSize = 12.sp)
+                        Text("¥ ${moneyFormat.format(dailyAverage)}", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("筛选期收入", color = Color(0xFF53718D), fontSize = 12.sp)
+                        Text("¥ ${moneyFormat.format(incomeTotal)}", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text("当前结余", color = Color(0xFF53718D), fontSize = 12.sp)
+                        Text("${if (periodBalance < 0) "-" else ""}¥ ${moneyFormat.format(kotlin.math.abs(periodBalance))}", color = if (periodBalance >= 0) Green else Red, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
             }
         }
         item {
-            WebReplicaCard(padding = 16.dp, radius = 20.dp) {
-                Text("${periodLabel}支出", color = Muted, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                Spacer(Modifier.height(4.dp))
-                Text("¥ ${moneyFormat.format(expenseTotal)}", color = Ink, fontSize = 28.sp, fontWeight = FontWeight.Black)
-                Spacer(Modifier.height(13.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SummaryAmountCard("收入", incomeTotal, Green, Modifier.weight(1f))
-                    SummaryAmountCard("支出笔数", expenseEntries.size.toDouble(), Blue, Modifier.weight(1f), integer = true)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                listOf("微信" to wechatSummary, "支付宝" to alipaySummary).forEach { (platform, summary) ->
+                    WebReplicaCard(modifier = Modifier.weight(1f), padding = 12.dp, radius = 15.dp) {
+                        Text("$platform ${if (selectedType == "收入") "收入" else "支出"}", color = Muted, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Text("¥ ${moneyFormat.format(summary.first)}", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+                        Text("${summary.second} 笔", color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                    }
                 }
+            }
+        }
+        if (selectedType != "收入" && remarkedEntries.isNotEmpty()) {
+            item {
+                WebReplicaCard(padding = 14.dp, radius = 18.dp) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("账单归类消费", color = Color(0xFF0F2742), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("¥ ${moneyFormat.format(remarkedEntries.sumOf { it.amount })}", color = Color(0xFF0F2742), fontSize = 17.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 9.dp), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        remarkedCategories.forEach { (category, amount) ->
+                            Row(Modifier.clip(CircleShape).background(Color(0xFFF6F8FA)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text(category, color = Color(0xFF475569), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                                Text("¥ ${moneyFormat.format(amount)}", color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        item {
+            WebReplicaCard(padding = 12.dp, radius = 16.dp) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    listOf("全部", "支出", "收入").forEach { option ->
+                        FilterChip(option, selectedType == option) { selectedType = option }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Text("${monthEntries.size} 笔账单", color = Muted, fontSize = 12.sp, maxLines = 1)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("分类", color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(38.dp))
+                    Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        FilterChip("全部分类", selectedCategory == null) { selectedCategory = null }
+                        filterCategories.forEach { category ->
+                            FilterChip(category, selectedCategory == category) { selectedCategory = if (selectedCategory == category) null else category }
+                        }
+                    }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("账户", color = Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.width(38.dp))
+                    Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        accountOptions.forEach { account ->
+                            FilterChip(account, selectedAccount == account) { selectedAccount = account }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    singleLine = true,
+                    placeholder = { Text("搜索商户、分类或备注", fontSize = 14.sp) },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Muted) },
+                    shape = RoundedCornerShape(14.dp),
+                )
             }
         }
         item { ConsumptionTrendCard(trendIncome, trendExpense, trendLabels, periodLabel) }
@@ -3427,6 +3524,24 @@ private fun ConsumptionScreen(
             }
         }
         item { ConsumptionRhythmCard(analysisEntries, month, selectedType == "收入") }
+        if (merchantTotals.isNotEmpty()) {
+            item {
+                WebReplicaCard(padding = 15.dp, radius = 18.dp) {
+                    Text(if (selectedType == "收入") "收入来源排行" else "商家消费排行", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("金额最高的前 ${merchantTotals.size} 项", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
+                    val merchantTotal = merchantTotals.sumOf { it.second }
+                    merchantTotals.forEachIndexed { index, (merchant, amount) ->
+                        CategoryAmountRow(
+                            name = "${index + 1}. $merchant",
+                            amount = amount,
+                            total = merchantTotal,
+                            selected = false,
+                            onClick = { query = merchant.takeUnless { it == "其他商家" }.orEmpty() },
+                        )
+                    }
+                }
+            }
+        }
         if (platformTotals.isNotEmpty()) {
             item {
                 WebReplicaCard(padding = 15.dp, radius = 18.dp) {
@@ -3454,45 +3569,13 @@ private fun ConsumptionScreen(
                 onCategoryClick = { category -> selectedCategory = if (selectedCategory == category) null else category },
             )
         }
-        if (merchantTotals.isNotEmpty()) {
-            item {
-                WebReplicaCard(padding = 15.dp, radius = 18.dp) {
-                    Text(if (selectedType == "收入") "收入来源排行" else "商家消费排行", color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("金额最高的前 ${merchantTotals.size} 项", color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
-                    val merchantTotal = merchantTotals.sumOf { it.second }
-                    merchantTotals.forEachIndexed { index, (merchant, amount) ->
-                        CategoryAmountRow(
-                            name = "${index + 1}. $merchant",
-                            amount = amount,
-                            total = merchantTotal,
-                            selected = false,
-                            onClick = { query = merchant.takeUnless { it == "其他商家" }.orEmpty() },
-                        )
-                    }
-                }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("全部", "支出", "收入").forEach { option ->
-                    FilterChip(option, selectedType == option) { selectedType = option }
-                }
-                if (selectedCategory != null) FilterChip(selectedCategory!!, true) { selectedCategory = null }
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                accountOptions.forEach { account ->
-                    FilterChip(account, selectedAccount == account) { selectedAccount = account }
-                }
-            }
-        }
         item {
             WebReplicaCard(padding = 14.dp) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column {
                         Text("流水明细", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         Text("${visibleEntries.size} 笔筛选结果 · 显示最近 ${detailEntries.size} 笔", color = Muted, fontSize = 10.sp)
+                        Text("最高分类：${topCategory?.key ?: if (selectedType == "收入") "暂无收入" else "暂无支出"} · ¥ ${moneyFormat.format(topCategory?.value ?: 0.0)}", color = Muted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     if (detailQuery.isNotBlank()) TextButton(onClick = { detailQuery = "" }) { Text("清除搜索") }
                 }
@@ -3580,7 +3663,7 @@ private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, in
                     row.forEach { (monthNumber, amount) ->
                         val level = if (amount <= 0.0) 0 else ((amount / maximum) * 4).toInt().coerceIn(1, 4)
                         Column(
-                            Modifier.weight(1f).height(54.dp).clip(RoundedCornerShape(10.dp)).background(cellColors[level]).padding(horizontal = 7.dp, vertical = 6.dp),
+                            Modifier.weight(1f).height(58.dp).clip(RoundedCornerShape(10.dp)).background(cellColors[level]).padding(horizontal = 7.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.SpaceBetween,
                         ) {
                             Text("${monthNumber}月", color = Ink, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
@@ -3613,11 +3696,11 @@ private fun ConsumptionRhythmCard(entries: List<LedgerEntry>, period: String, in
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     week.forEach { (day, amount) ->
                         if (day == null) {
-                            Spacer(Modifier.weight(1f).height(35.dp))
+                            Spacer(Modifier.weight(1f).height(40.dp))
                         } else {
                             val level = if (amount <= 0.0) 0 else ((amount / maximum) * 4).toInt().coerceIn(1, 4)
                             Column(
-                                Modifier.weight(1f).height(35.dp).clip(RoundedCornerShape(7.dp)).background(cellColors[level]).padding(horizontal = 3.dp, vertical = 3.dp),
+                                Modifier.weight(1f).height(40.dp).clip(RoundedCornerShape(7.dp)).background(cellColors[level]).padding(horizontal = 3.dp, vertical = 4.dp),
                                 verticalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(day.toString(), color = if (level >= 3) Color.White else Ink, fontSize = 9.sp, lineHeight = 10.sp)
@@ -3636,14 +3719,6 @@ private fun compactMoney(amount: Double): String = when {
     amount >= 10000 -> "${(amount / 10000).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}万"
     amount >= 1000 -> "${(amount / 1000).let { String.format("%.1f", it).trimEnd('0').trimEnd('.') }}k"
     else -> amount.toLong().toString()
-}
-
-@Composable
-private fun SummaryAmountCard(label: String, value: Double, color: Color, modifier: Modifier, integer: Boolean = false) {
-    Column(modifier.clip(RoundedCornerShape(13.dp)).background(color.copy(alpha = .07f)).padding(horizontal = 11.dp, vertical = 10.dp)) {
-        Text(label, color = Muted, fontSize = 11.sp)
-        Text(if (integer) "${value.toInt()} 笔" else "¥ ${moneyFormat.format(value)}", color = color, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-    }
 }
 
 @Composable

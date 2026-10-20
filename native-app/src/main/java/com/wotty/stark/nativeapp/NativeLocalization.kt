@@ -53,15 +53,22 @@ internal val LocalNativeUiPreferences = staticCompositionLocalOf<NativeUiPrefere
 
 internal fun nativeFontDensity(base: Density, font: NativeFontChoice): Density = Density(base.density, base.fontScale * font.scale)
 
-private fun nativeReadableFontSize(fontSize: TextUnit): TextUnit {
+internal fun nativeReadableFontSize(fontSize: TextUnit): TextUnit {
     if (fontSize == TextUnit.Unspecified) return fontSize
     val scale = when {
-        fontSize.value <= 9f -> 1.22f
-        fontSize.value <= 12f -> 1.12f
-        fontSize.value <= 16f -> 1.06f
+        fontSize.value <= 9f -> 1.28f
+        fontSize.value <= 12f -> 1.20f
+        fontSize.value <= 16f -> 1.10f
         else -> 1f
     }
     return fontSize * scale
+}
+
+private fun nativeReadableFontWeight(fontWeight: FontWeight?): FontWeight? = when (fontWeight) {
+    FontWeight.Thin, FontWeight.ExtraLight, FontWeight.Light, FontWeight.Normal -> FontWeight.Medium
+    FontWeight.Medium -> FontWeight.SemiBold
+    FontWeight.SemiBold -> FontWeight.Bold
+    else -> fontWeight
 }
 
 internal fun nativeLocalizedContext(context: Context, language: NativeLanguageChoice): Context {
@@ -1684,7 +1691,7 @@ internal fun Text(
         color = color,
         fontSize = nativeReadableFontSize(fontSize),
         fontStyle = fontStyle,
-        fontWeight = fontWeight,
+        fontWeight = nativeReadableFontWeight(fontWeight),
         fontFamily = fontFamily,
         letterSpacing = letterSpacing,
         textDecoration = textDecoration,
