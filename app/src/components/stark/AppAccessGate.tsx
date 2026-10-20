@@ -28,6 +28,13 @@ function getDestination() {
   return isProtectedDestination(requested) ? requested : "/app";
 }
 
+function isNavigationResumeRequest() {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  const requested = params.get("next") ?? "";
+  return params.get("resume-navigation") === "1" && isProtectedDestination(requested);
+}
+
 /** 检测后端和数据库；根入口与受保护路由共用。 */
 export async function verifyCloudConnection(urlValue: string, signal?: AbortSignal) {
   const url = normalizeUrl(urlValue);
@@ -144,6 +151,7 @@ export function AppAccessGate() {
     destinationRef.current = getDestination();
     const nativeRuntime = isNativeAppRuntime();
     const initialMode: DataMode = nativeRuntime ? getCurrentDataMode() : "CLOUD";
+    const resumeNavigation = isNavigationResumeRequest();
     const initialUrl = getCloudApiUrl();
     const rememberedCredentials = getRememberedCloudCredentials();
     if (rememberedCredentials) {
@@ -155,7 +163,11 @@ export function AppAccessGate() {
     setMode(initialMode);
     setApiUrl(initialUrl);
 
-    if (nativeRuntime && initialMode === "LOCAL") {
+    if (nativeRuntime && initialMode === "LOCAL" && resumeNavigation) {
+      void manager.switchMode("LOCAL").then(() => {
+        if (mountedRef.current) completeAccess();
+      });
+    } else if (nativeRuntime && initialMode === "LOCAL") {
       setPhase("LOCAL");
     } else if (nativeRuntime && getCloudAuthToken() && getCloudAuthUser()) {
       manager.setCloudApiUrl(initialUrl);
