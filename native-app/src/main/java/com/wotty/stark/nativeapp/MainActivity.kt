@@ -30,6 +30,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -143,6 +144,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import org.json.JSONArray
@@ -2133,7 +2135,10 @@ private fun StarkNativeApp() {
             onOpenTransactions = { homeOverlay = null; selectedTab = RootTab.CONSUMPTION },
         )
         HomeOverlay.CATEGORIES -> ExpenseCategoriesDialog(
-            entries = entries.filter { it.type == EntryType.EXPENSE && it.transactionDate.startsWith(selectedMonth) },
+            entries = entries.filter {
+                it.type == EntryType.EXPENSE && (it.transactionDate.ifBlank { it.date }).startsWith(selectedMonth)
+            },
+            period = selectedMonth,
             onDismiss = { homeOverlay = null },
         )
         HomeOverlay.API -> ApiLoginDialog(
@@ -2476,7 +2481,7 @@ private fun HomeScreen(
     }
     val salaryCycleRange = if (selectedYear == null) nativeSalaryCycleRange(selectedMonth, salaryDay) else null
     val reportingEntries = allEntries.filter { entry ->
-        val date = runCatching { LocalDate.parse(entry.transactionDate) }.getOrNull()
+        val date = runCatching { LocalDate.parse(entry.transactionDate.ifBlank { entry.date }.take(10)) }.getOrNull()
         date != null && if (selectedYear != null) {
             date.year == selectedYear
         } else {
@@ -2551,33 +2556,59 @@ private fun HomeScreen(
         }
         item { WebReplicaDiagnosticBanner(dashboardSummary) { onOpenOverlay(HomeOverlay.DIAGNOSTIC) } }
         item { WebReplicaCompass(dashboardSummary, actualBalance, remoteAssets, remoteLoans, remoteSavings, onOpenOverlay, onSelectTab) }
-        item { WebReplicaExpenseStructure(reportingEntries, monthLabel) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
+        item { WebReplicaExpenseStructure(reportingEntries, selectedYear != null) { onOpenOverlay(HomeOverlay.CATEGORIES) } }
         item { WebReplicaAdvisoryCard(income, expense, monthlyBudget, month) }
         item { WebReplicaCashflowTrend(entries, month, selectedYear) }
     }
 }
 
+private val NativeHomeCategoryPalette = listOf(
+    Color(0xFF2A78D6),
+    Color(0xFFEB6834),
+    Color(0xFF0D8A5F),
+    Color(0xFFEDA100),
+    Color(0xFFE87BA4),
+)
+
+private fun nativeHomeCategoryColor(index: Int): Color = NativeHomeCategoryPalette[index.coerceAtMost(NativeHomeCategoryPalette.lastIndex)]
+
+private data class NativeExpenseChartSelection(val index: Int, val tapX: Float, val tapY: Float)
+
 @Composable
-private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>, monthLabel: String, onCategoryDetails: () -> Unit) {
+private fun WebReplicaExpenseStructure(entries: List<LedgerEntry>, annual: Boolean, onCategoryDetails: () -> Unit) {
     val expenses = entries.filter { it.type == EntryType.EXPENSE }
     val categories = expenses
-        .groupBy { it.category.substringBefore(" ·") }
+        .groupBy { normalizeNativeHomeCategory(it.category.substringBefore(" ·")) }
         .map { (category, rows) -> category to rows.sumOf { it.amount } }
         .sortedByDescending { it.second }
-    val total = expenses.sumOf { it.amount }
+    val chartCategories = buildList {
+        addAll(categories.take(4))
+        val remaining = categories.drop(4).sumOf { it.second }
+        if (remaining > 0.0) add("其余分类" to remaining)
+    }
+    var selectedSegmentIndex by remember(chartCategories) { mutableStateOf<Int?>(null) }
+    var tooltipSelection by remember(chartCategories) { mutableStateOf<NativeExpenseChartSelection?>(null) }
     WebReplicaCard(padding = 14.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
-                Text("${monthLabel}支出结构", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(if (annual) "全年支出结构" else "本月支出结构", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text("共 ${categories.size} 个分类", color = Color(0xFF94A3B8), fontSize = 10.sp)
             }
             Text("分类明细  ›", modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { onCategoryDetails() }.padding(6.dp), color = Blue, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
         Spacer(Modifier.height(10.dp))
         if (categories.isEmpty()) {
-            Text("本月暂无支出记录", modifier = Modifier.fillMaxWidth().padding(vertical = 25.dp), color = Color(0xFF94A3B8), fontSize = 12.sp, textAlign = TextAlign.Center)
+            Text(if (annual) "全年暂无支出记录" else "本月暂无支出记录", modifier = Modifier.fillMaxWidth().padding(vertical = 25.dp), color = Color(0xFF94A3B8), fontSize = 12.sp, textAlign = TextAlign.Center)
         } else {
-            EChartsExpenseDonut(categories, total)
+            EChartsExpenseRose(chartCategories, selectedSegmentIndex, tooltipSelection) { event ->
+                if (event.componentType != "series" || event.dataIndex !in chartCategories.indices) {
+                    selectedSegmentIndex = null
+                    tooltipSelection = null
+                } else {
+                    selectedSegmentIndex = if (selectedSegmentIndex == event.dataIndex) null else event.dataIndex
+                    tooltipSelection = NativeExpenseChartSelection(event.dataIndex, event.tapX, event.tapY)
+                }
+            }
         }
     }
 }
@@ -2658,19 +2689,41 @@ private fun TrendLegend(label: String, color: Color) {
 }
 
 @Composable
-private fun EChartsExpenseDonut(categories: List<Pair<String, Double>>, total: Double) {
-    Box(Modifier.fillMaxWidth().height(190.dp)) {
+private fun EChartsExpenseRose(
+    categories: List<Pair<String, Double>>,
+    selectedIndex: Int?,
+    tooltipSelection: NativeExpenseChartSelection?,
+    onDataClick: (NativeEChartClick) -> Unit,
+) {
+    BoxWithConstraints(Modifier.fillMaxWidth().height(248.dp)) {
         NativeEChart(
-            option = NativeEChartOptions.categoryDonut(categories),
+            option = NativeEChartOptions.categoryRose(categories, selectedIndex),
             modifier = Modifier.fillMaxSize(),
+            onDataClick = onDataClick,
         )
-        Text(
-            "¥ ${moneyFormat.format(total)}",
-            modifier = Modifier.align(Alignment.Center),
-            color = Ink,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-        )
+
+        tooltipSelection?.takeIf { it.index in categories.indices }?.let { selection ->
+            val (category, amount) = categories[selection.index]
+            val total = categories.sumOf { it.second }
+            val percent = if (total > 0.0) (amount / total * 100.0).roundToInt() else 0
+            val tooltipWidth = 154.dp
+            val tooltipHeight = 48.dp
+            val x = (selection.tapX.dp - tooltipWidth / 2)
+                .coerceIn(6.dp, (maxWidth - tooltipWidth - 6.dp).coerceAtLeast(6.dp))
+            val y = (selection.tapY.dp - tooltipHeight - 12.dp)
+                .coerceIn(6.dp, (maxHeight - tooltipHeight - 6.dp).coerceAtLeast(6.dp))
+            Surface(
+                modifier = Modifier.offset(x = x, y = y).widthIn(max = tooltipWidth).zIndex(1f),
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xF2131B30),
+                shadowElevation = 5.dp,
+            ) {
+                Column(Modifier.padding(horizontal = 10.dp, vertical = 7.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(category, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("¥ ${moneyFormat.format(amount)} ($percent%)", color = Color.White, fontSize = 11.sp, maxLines = 1)
+                }
+            }
+        }
     }
 }
 
@@ -4884,33 +4937,80 @@ private fun diagnosticBudgetColor(tone: String): Color = when (tone) {
     else -> Color(0xFF0D8A5F)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SummaryMetric(label: String, value: Double, color: Color) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = Muted, fontSize = 12.sp)
-        Text("¥ ${moneyFormat.format(value)}", color = color, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
+private fun ExpenseCategoriesDialog(entries: List<LedgerEntry>, period: String, onDismiss: () -> Unit) {
+    val annual = period.length == 4
+    val periodLabel = if (annual) "全年支出" else "本月支出"
+    val categories = entries.asSequence()
+        .filter { it.type == EntryType.EXPENSE }
+        .groupBy { normalizeNativeHomeCategory(it.category.substringBefore(" ·")) }
+        .map { (category, rows) -> category to rows.sumOf { it.amount } }
+        .sortedByDescending { it.second }
+    val total = categories.sumOf { it.second }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-@Composable
-private fun ExpenseCategoriesDialog(entries: List<LedgerEntry>, onDismiss: () -> Unit) {
-    val categories = entries.groupBy { it.category.substringBefore(" ·") }.mapValues { (_, rows) -> rows.sumOf { it.amount } }.toList().sortedByDescending { it.second }
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(26.dp),
-        containerColor = Color(0xFFFBFCFE),
-        title = { Text("分类明细", fontWeight = FontWeight.Bold) },
-        text = {
-            if (categories.isEmpty()) {
-                Text("本月暂无支出记录", color = Muted)
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    categories.forEach { (category, amount) -> SummaryMetric(category, amount, Ink) }
+        sheetState = sheetState,
+        containerColor = Color(0xFFF7F9FC),
+        tonalElevation = 0.dp,
+        dragHandle = {
+            Box(
+                Modifier.padding(top = 10.dp, bottom = 6.dp).size(width = 48.dp, height = 4.dp)
+                    .clip(CircleShape).background(Color(0xFFD6DDE7)),
+            )
+        },
+    ) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 380.dp, max = 640.dp).navigationBarsPadding()
+                .verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.size(34.dp))
+                Text("分类明细", modifier = Modifier.weight(1f), color = Color(0xFF151E31), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "关闭分类明细", tint = Color(0xFF768096), modifier = Modifier.size(20.dp))
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
-    )
+
+            Surface(shape = RoundedCornerShape(12.dp), color = Color(0xFFF8FAFC), border = BorderStroke(1.dp, Color(0xFFE8EDF3))) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                    Text(periodLabel, color = Color(0xFF94A3B8), fontSize = 10.sp)
+                    Text("¥ ${moneyFormat.format(total)}", color = Color(0xFF0F172A), fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("共 ${categories.size} 个分类", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                }
+            }
+
+            if (categories.isEmpty()) {
+                Text(
+                    if (annual) "全年暂无支出记录" else "本月暂无支出记录",
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                    color = Color(0xFF94A3B8),
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.Center,
+                )
+            } else {
+                categories.forEachIndexed { index, (category, amount) ->
+                    val percent = if (total > 0.0) (amount / total * 100.0).roundToInt().coerceIn(0, 100) else 0
+                    Surface(shape = RoundedCornerShape(12.dp), color = Color.White, border = BorderStroke(1.dp, Color(0xFFE8EDF3))) {
+                        Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(7.dp).clip(CircleShape).background(nativeHomeCategoryColor(index)))
+                                Text(category, modifier = Modifier.weight(1f), color = Color(0xFF334155), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text("¥ ${moneyFormat.format(amount)}", color = Color(0xFF0F172A), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                            }
+                            Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color(0xFFEDF2F7))) {
+                                Box(Modifier.fillMaxWidth((percent / 100f).coerceIn(0f, 1f)).height(4.dp).clip(CircleShape).background(nativeHomeCategoryColor(index)))
+                            }
+                            Text("占本期支出 $percent%", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

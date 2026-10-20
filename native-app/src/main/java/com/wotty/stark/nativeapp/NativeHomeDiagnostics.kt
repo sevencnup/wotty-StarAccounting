@@ -194,7 +194,7 @@ private fun nativeHomeRecordedDeposit(plan: NativeSavingsPlan): Double {
     return (plan.actualAmount ?: plan.amount).takeIf(Double::isFinite)?.coerceAtLeast(0.0) ?: 0.0
 }
 
-private fun normalizeNativeHomeCategory(category: String): String = when {
+internal fun normalizeNativeHomeCategory(category: String): String = when {
     category.contains("生活") -> "生活消费"
     category.contains("交") || category.contains("车") -> "交通出行"
     category.contains("餐") || category.contains("饮") -> "餐饮美食"

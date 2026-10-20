@@ -44,10 +44,10 @@
         const pointX = Number(x || 0);
         const pointY = Number(y || 0);
         const option = chart.getOption();
-        const emit = ({ name = "", seriesName = "", dataIndex = -1, dataType = "" }) => {
+        const emit = ({ componentType = "series", name = "", seriesName = "", dataIndex = -1, dataType = "" }) => {
           if (!window.NativeChart) return null;
-          window.NativeChart.onDataClick(JSON.stringify({ componentType: "series", dataType, name, seriesName, dataIndex }));
-          return { name, seriesName, dataIndex, dataType };
+          window.NativeChart.onDataClick(JSON.stringify({ componentType, dataType, name, seriesName, dataIndex, tapX: pointX, tapY: pointY }));
+          return { componentType, name, seriesName, dataIndex, dataType };
         };
         const inside = (layout) => layout && pointX >= layout.x && pointX <= layout.x + (layout.width ?? layout.dx ?? 0)
           && pointY >= layout.y && pointY <= layout.y + (layout.height ?? layout.dy ?? 0);
@@ -55,30 +55,70 @@
         for (let seriesIndex = 0; seriesIndex < (option.series || []).length; seriesIndex++) {
           const series = option.series[seriesIndex];
           if (series.type === "pie") {
-            const width = root.clientWidth;
-            const height = root.clientHeight;
-            const baseRadius = Math.min(width, height) / 2;
-            const radiusPixels = (value) => String(value).endsWith("%") ? parseFloat(value) / 100 * baseRadius : Number(value);
-            const centerPixels = (value, extent) => String(value).endsWith("%") ? parseFloat(value) / 100 * extent : Number(value);
-            const center = series.center || ["50%", "50%"];
-            const radius = series.radius || [0, "75%"];
-            const centerX = centerPixels(center[0], width);
-            const centerY = centerPixels(center[1], height);
-            const deltaX = pointX - centerX;
-            const deltaY = pointY - centerY;
-            const distance = Math.hypot(deltaX, deltaY);
-            if (distance < radiusPixels(radius[0]) || distance > radiusPixels(radius[1])) continue;
+            const seriesModel = chart.getModel().getSeriesByIndex(seriesIndex);
+            const data = seriesModel?.getData();
+            if (!data?.getItemLayout) continue;
+            let nearestSlice = null;
+            for (let dataIndex = 0; dataIndex < data.count(); dataIndex++) {
+              const layout = data.getItemLayout(dataIndex);
+              if (!layout || !Number.isFinite(layout.cx) || !Number.isFinite(layout.cy)
+                || !Number.isFinite(layout.r0) || !Number.isFinite(layout.r)
+                || !Number.isFinite(layout.startAngle) || !Number.isFinite(layout.endAngle)) continue;
 
-            const startAngle = (360 - Number(series.startAngle ?? 90) + 360) % 360;
-            const pointAngle = (Math.atan2(deltaY, deltaX) * 180 / Math.PI + 360) % 360;
-            const sweptAngle = (pointAngle - startAngle + 360) % 360;
-            const data = series.data || [];
-            const total = data.reduce((sum, item) => sum + Math.max(0, Number(item.value) || 0), 0);
-            let accumulated = 0;
-            for (let dataIndex = 0; dataIndex < data.length; dataIndex++) {
-              accumulated += total > 0 ? Math.max(0, Number(data[dataIndex].value) || 0) / total * 360 : 0;
-              if (sweptAngle <= accumulated) return emit({ name: data[dataIndex].name || "", seriesName: series.name || "", dataIndex });
+              const deltaX = pointX - layout.cx;
+              const deltaY = pointY - layout.cy;
+              const distance = Math.hypot(deltaX, deltaY);
+              const radialGap = distance < layout.r0 ? layout.r0 - distance : distance > layout.r ? distance - layout.r : 0;
+
+              const fullTurn = Math.PI * 2;
+              let pointAngle = Math.atan2(deltaY, deltaX);
+              let insideAngle;
+              if (layout.clockwise !== false) {
+                if (pointAngle < layout.startAngle) {
+                  pointAngle += Math.ceil((layout.startAngle - pointAngle) / fullTurn) * fullTurn;
+                }
+                insideAngle = pointAngle <= layout.endAngle + 0.001;
+              } else {
+                if (pointAngle > layout.startAngle) {
+                  pointAngle -= Math.ceil((pointAngle - layout.startAngle) / fullTurn) * fullTurn;
+                }
+                insideAngle = pointAngle >= layout.endAngle - 0.001;
+              }
+              if (insideAngle) {
+                if (radialGap <= 0.001) {
+                  chart.dispatchAction({ type: "showTip", seriesIndex, dataIndex });
+                  return emit({ name: data.getName(dataIndex) || "", seriesName: series.name || "", dataIndex });
+                }
+              }
+
+              let angularGap = 0;
+              if (!insideAngle) {
+                const distanceToAngle = (left, right) => {
+                  const difference = Math.abs(left - right) % fullTurn;
+                  return Math.min(difference, fullTurn - difference);
+                };
+                angularGap = Math.min(
+                  distanceToAngle(pointAngle, layout.startAngle),
+                  distanceToAngle(pointAngle, layout.endAngle),
+                );
+              }
+              const maxTapAngleGap = 8 * Math.PI / 180;
+              const maxTapRadiusGap = 12;
+              if (angularGap <= maxTapAngleGap && radialGap <= maxTapRadiusGap) {
+                const candidate = { dataIndex, insideAngle, radialGap, angularGap };
+                const isBetter = !nearestSlice
+                  || (candidate.insideAngle && !nearestSlice.insideAngle)
+                  || (candidate.insideAngle === nearestSlice.insideAngle && candidate.radialGap < nearestSlice.radialGap)
+                  || (candidate.insideAngle === nearestSlice.insideAngle && candidate.radialGap === nearestSlice.radialGap && candidate.angularGap < nearestSlice.angularGap);
+                if (isBetter) nearestSlice = candidate;
+              }
             }
+            if (nearestSlice) {
+              const dataIndex = nearestSlice.dataIndex;
+              chart.dispatchAction({ type: "showTip", seriesIndex, dataIndex });
+              return emit({ name: data.getName(dataIndex) || "", seriesName: series.name || "", dataIndex });
+            }
+            continue;
           }
 
           const seriesModel = chart.getModel().getSeriesByIndex(seriesIndex);
@@ -100,6 +140,10 @@
             const dataType = series.type === "sankey" ? "node" : "";
             return emit({ name, seriesName: series.name || "", dataIndex, dataType });
           }
+        }
+        if ((option.series || []).some((series) => series.type === "pie")) {
+          chart.dispatchAction({ type: "hideTip" });
+          return emit({ componentType: "background" });
         }
         return null;
       };

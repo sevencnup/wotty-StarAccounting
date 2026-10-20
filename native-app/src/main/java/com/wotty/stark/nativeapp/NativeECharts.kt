@@ -42,6 +42,8 @@ internal data class NativeEChartClick(
     val name: String,
     val seriesName: String,
     val dataIndex: Int,
+    val tapX: Float = 0f,
+    val tapY: Float = 0f,
 )
 
 internal data class NativeEChartSeries(
@@ -263,6 +265,8 @@ internal class NativeEChartBridge(
                 name = json.optString("name"),
                 seriesName = json.optString("seriesName"),
                 dataIndex = json.optInt("dataIndex", -1),
+                tapX = json.optDouble("tapX", 0.0).toFloat(),
+                tapY = json.optDouble("tapY", 0.0).toFloat(),
             ),
         )
     }
@@ -315,6 +319,72 @@ internal object NativeEChartOptions {
             NativeEChartSlice(name, amount, categoryColors[name] ?: palette[index % palette.size])
         }
         return donut(slices)
+    }
+
+    fun categoryRose(categories: List<Pair<String, Double>>, selectedIndex: Int?): JSONObject {
+        val roseColors = listOf("#2a78d6", "#eb6834", "#0d8a5f", "#eda100", "#e87ba4")
+        val data = JSONArray()
+        categories.forEachIndexed { index, (name, amount) ->
+            val color = if (name == "其余分类") "#94a3b8" else roseColors[index.coerceAtMost(roseColors.lastIndex)]
+            data.put(
+                JSONObject()
+                    .put("name", name)
+                    .put("value", amount)
+                    .put("selected", selectedIndex == index)
+                    .put("itemStyle", JSONObject().put("color", color))
+                    .put("label", JSONObject().put("color", color))
+                    .put("labelLine", JSONObject().put("lineStyle", JSONObject().put("color", color))),
+            )
+        }
+        val labelLayout = JSONObject()
+            .put("moveOverlap", "shiftY")
+            .put("hideOverlap", false)
+        val label = JSONObject()
+            .put("show", true)
+            .put("position", "outside")
+            .put("alignTo", "edge")
+            .put("edgeDistance", 4)
+            .put("bleedMargin", 0)
+            .put("overflow", "none")
+            .put("formatter", "{b}")
+            .put("fontSize", 11)
+            .put("fontWeight", 500)
+        val labelLine = JSONObject()
+            .put("show", true)
+            .put("length", 8)
+            .put("length2", 8)
+            .put("lineStyle", JSONObject().put("width", 1))
+        val series = JSONObject()
+            .put("name", "支出结构")
+            .put("type", "pie")
+            .put("selectedMode", "single")
+            .put("selectedOffset", 8)
+            .put("roseType", "radius")
+            .put("radius", JSONArray().put("16%").put("58%"))
+            .put("center", JSONArray().put("50%").put("51%"))
+            .put("startAngle", 90)
+            .put("minAngle", 12)
+            .put("avoidLabelOverlap", true)
+            .put("labelLayout", labelLayout)
+            .put("label", label)
+            .put("labelLine", labelLine)
+            .put("emphasis", JSONObject().put("scale", false).put("focus", "self"))
+            .put("itemStyle", JSONObject().put("borderColor", "#ffffff").put("borderWidth", 3).put("borderRadius", 5))
+            .put("data", data)
+        return JSONObject()
+            .put("animationDuration", 420)
+            .put("animationEasing", "cubicOut")
+            .put("__nativePieTooltip", true)
+            .put("tooltip", JSONObject()
+                .put("trigger", "item")
+                .put("triggerOn", "click")
+                .put("confine", true)
+                .put("backgroundColor", "rgba(19, 27, 48, 0.92)")
+                .put("borderWidth", 0)
+                .put("padding", JSONArray().put(8).put(10))
+                .put("textStyle", JSONObject().put("color", "#ffffff").put("fontSize", 12))
+                .put("formatter", "{b}<br/>¥ {c} ({d}%)"))
+            .put("series", JSONArray().put(series))
     }
 
     fun donut(slices: List<NativeEChartSlice>): JSONObject {
