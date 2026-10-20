@@ -1299,61 +1299,45 @@ private fun StarkNativeApp() {
     var monthlyBudget by remember { mutableDoubleStateOf(homePreferences.monthlyBudget) }
     var homeMetric by remember { mutableStateOf(homePreferences.homeMetric) }
     var balancePeriod by remember { mutableStateOf(homePreferences.balancePeriod) }
-    val snapshot = remember { ledgerStore.load("LOCAL", "local") }
-    var actualBalance by remember { mutableDoubleStateOf(snapshot.actualBalance) }
-    var ledgerAccount by remember {
-        mutableStateOf(
-            ledgerStore.loadLedgerAccount(
-                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
-                apiPreferences.accountId.ifBlank { "local" },
-                apiPreferences.userId.ifBlank { "local-user" },
-            ),
-        )
+    val currentDataScope = if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD"
+    val currentAccountId = apiPreferences.accountId.ifBlank { "local" }
+    val currentUserId = apiPreferences.userId.ifBlank { "local-user" }
+    val snapshot = remember(currentDataScope, currentAccountId) {
+        ledgerStore.load(currentDataScope, currentAccountId)
     }
-    val entries = remember { mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) } }
+    var actualBalance by remember(currentDataScope, currentAccountId) {
+        mutableDoubleStateOf(snapshot.actualBalance)
+    }
+    var ledgerAccount by remember(currentDataScope, currentAccountId, currentUserId) {
+        mutableStateOf(ledgerStore.loadLedgerAccount(currentDataScope, currentAccountId, currentUserId))
+    }
+    val entries = remember(currentDataScope, currentAccountId) {
+        mutableStateListOf<LedgerEntry>().also { it.addAll(snapshot.entries) }
+    }
     var refreshVersion by remember { mutableStateOf(0) }
-    var remoteAssets by remember {
-        mutableStateOf(
-            ledgerStore.loadAssets(
-                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
-                apiPreferences.accountId.ifBlank { "local" },
-            ),
-        )
+    var remoteAssets by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadAssets(currentDataScope, currentAccountId))
     }
-    var remoteBudgets by remember {
-        mutableStateOf(
-            ledgerStore.loadBudgets(
-                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
-                apiPreferences.accountId.ifBlank { "local" },
-            ),
-        )
+    var remoteBudgets by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadBudgets(currentDataScope, currentAccountId))
     }
-    var remoteLoans by remember { mutableStateOf<List<NativeLoan>>(emptyList()) }
-    var remoteSavings by remember { mutableStateOf<List<NativeSavingsGoal>>(emptyList()) }
-    var remoteSavingsPlans by remember { mutableStateOf<List<NativeSavingsPlan>>(emptyList()) }
-    var remoteSubscriptions by remember {
-        mutableStateOf(
-            ledgerStore.loadSubscriptions(
-                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
-                apiPreferences.accountId.ifBlank { "local" },
-            ),
-        )
+    var remoteLoans by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadLoans(currentDataScope, currentAccountId))
     }
-    var remoteCategoryRules by remember {
-        mutableStateOf(
-            ledgerStore.loadCategoryRules(
-                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
-                apiPreferences.accountId.ifBlank { "local" },
-            ),
-        )
+    var remoteSavings by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadSavingsGoals(currentDataScope, currentAccountId))
     }
-    var remoteImportErrors by remember {
-        mutableStateOf(
-            ledgerStore.loadImportErrors(
-                if (apiPreferences.token.isBlank()) "LOCAL" else "CLOUD",
-                apiPreferences.accountId.ifBlank { "local" },
-            ),
-        )
+    var remoteSavingsPlans by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadSavingsPlans(currentDataScope, currentAccountId))
+    }
+    var remoteSubscriptions by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadSubscriptions(currentDataScope, currentAccountId))
+    }
+    var remoteCategoryRules by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadCategoryRules(currentDataScope, currentAccountId))
+    }
+    var remoteImportErrors by remember(currentDataScope, currentAccountId) {
+        mutableStateOf(ledgerStore.loadImportErrors(currentDataScope, currentAccountId))
     }
     val currentEntries = entries.toList()
     val currentLedgerBalance = calculateNativeLedgerBalance(ledgerAccount, currentEntries, remoteSavingsPlans) ?: actualBalance
