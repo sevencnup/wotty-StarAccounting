@@ -49,6 +49,12 @@ internal data class NativeSavingsPlanAllocation(
     val expenseItems: List<NativeSavingsExpenseItem>,
 )
 
+internal data class NativeSavingsPlanSource(
+    val salaryIncome: Double,
+    val salaryRecordedAt: LocalDate?,
+    val salaryCarryover: Double?,
+)
+
 private const val NATIVE_PREVIOUS_BALANCE_COLUMN = "上月结余"
 
 /** Resolve the plan row month using the same payday rollover as the web summary. */
@@ -165,6 +171,51 @@ internal fun summarizeNativeSavingsPlanAllocation(
         projectedRemaining = projectedRemaining,
         expenseItems = expenseItems.values.sortedWith(compareByDescending<NativeSavingsExpenseItem> { it.amount }.thenBy { it.name }),
     )
+}
+
+/** Mirrors the web dashboard's salary and pre-payday balance shown in the plan breakdown. */
+internal fun summarizeNativeSavingsPlanSource(
+    entries: List<LedgerEntry>,
+    savingsPlans: List<NativeSavingsPlan>,
+    reportingPeriod: String,
+    salaryDay: Int,
+    account: NativeLedgerAccount,
+    referenceDate: LocalDate = LocalDate.now(),
+): NativeSavingsPlanSource {
+    if (reportingPeriod.matches(Regex("\\d{4}"))) return NativeSavingsPlanSource(0.0, null, null)
+
+    val salaryTransactions = entries.mapNotNull { entry ->
+        val date = runCatching { LocalDate.parse(entry.transactionDate.ifBlank { entry.date }.take(10)) }.getOrNull()
+            ?: return@mapNotNull null
+        if (entry.type != EntryType.INCOME || date.toString().take(7) != reportingPeriod || date > referenceDate) return@mapNotNull null
+        if (!Regex("工资|薪资|薪水").containsMatchIn(entry.category)) return@mapNotNull null
+        entry to date
+    }.sortedBy { it.second }
+
+    val payday = salaryDay.coerceIn(1, 28)
+    val salaryRecordedAt = salaryTransactions.firstOrNull { it.second.dayOfMonth >= payday }?.second
+        ?: salaryTransactions.firstOrNull()?.second
+        ?: return NativeSavingsPlanSource(0.0, null, null)
+    val salaryIncome = salaryTransactions.asSequence()
+        .filter { !it.second.isBefore(salaryRecordedAt) }
+        .sumOf { it.first.amount }
+
+    val baselineAmount = account.openingBalance?.takeIf(Double::isFinite)
+    val baselineDate = account.openingBalanceDate?.let { raw ->
+        runCatching { LocalDate.parse(raw.take(10)) }.getOrNull()
+    }
+    val salaryCarryover = if (baselineAmount != null && baselineDate != null && !baselineDate.isAfter(salaryRecordedAt)) {
+        val cashflowBeforeSalary = if (baselineDate == salaryRecordedAt) {
+            0.0
+        } else {
+            calculateNativeLedgerCashflow(entries, savingsPlans, baselineDate.toString(), salaryRecordedAt.minusDays(1)).net
+        }
+        baselineAmount + cashflowBeforeSalary
+    } else {
+        null
+    }
+
+    return NativeSavingsPlanSource(salaryIncome, salaryRecordedAt, salaryCarryover)
 }
 
 internal fun matchNativeSavingsPlanExpensesWithBills(
