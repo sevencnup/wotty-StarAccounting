@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
@@ -3268,54 +3269,92 @@ private fun WebReplicaCompass(
     val budget = summary.budgetAlerts.firstOrNull()
     val budgetPercent = budget?.percent?.roundToInt() ?: 0
     val budgetLeft = budget?.let { (100 - budgetPercent).coerceAtLeast(0) } ?: 100
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CompassTile("净资产", "¥ " + moneyFormat.format(netWorth), "资产减去关联负债", Green, Icons.Default.CheckCircle, Modifier.weight(1f)) { onSelectTab(RootTab.ASSETS) }
+    val netWorthValue = if (kotlin.math.abs(netWorth) >= 10_000.0) {
+        "¥ " + String.format(Locale.ROOT, "%.1f", netWorth / 10_000.0) + "w"
+    } else {
+        "¥ " + moneyFormat.format(netWorth)
+    }
+    val savingsBadge = if (remoteSavings.isEmpty() && summary.savingProgressPercent == 0.0) "暂无计划" else "计划进行中"
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CompassTile(
-                "预算余量",
-                "$budgetLeft%",
-                if (budget?.tone == "danger") "已超支" else "已用 ${budgetPercent}%",
-                Blue,
-                Icons.Default.PieChart,
-                Modifier.weight(1f),
+                label = "净资产",
+                value = netWorthValue,
+                badge = if (netWorth >= 0.0) "结构健康" else "负债关注",
+                color = Green,
+                badgeColor = if (netWorth >= 0.0) Green else Red,
+                iconBackground = Color(0xFFECFDF5),
+                icon = Icons.Default.CheckCircle,
+                modifier = Modifier.weight(1f),
+            ) { onSelectTab(RootTab.ASSETS) }
+            CompassTile(
+                label = "预算余量",
+                value = "$budgetLeft%",
+                badge = if (budget?.tone == "danger") "已超支" else "已用 ${budgetPercent}%",
+                color = Blue,
+                badgeColor = if (budget?.tone == "danger") Red else Blue,
+                iconBackground = Color(0xFFF0F9FF),
+                icon = Icons.Default.GpsFixed,
+                modifier = Modifier.weight(1f),
             ) { onOpenOverlay(HomeOverlay.BUDGET) }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val dueDays = summary.nextLoanDueDays
             val loanValue = when {
                 dueDays == null -> "无待还"
                 dueDays <= 0 -> "今天"
                 else -> "${dueDays}天后"
             }
-            CompassTile("待还贷款", loanValue, if (dueDays == null) "状态良好" else "近期还款", Red, Icons.Default.AccountBalanceWallet, Modifier.weight(1f)) { onSelectTab(RootTab.LOANS) }
             CompassTile(
-                "储蓄达成",
-                "${percentLabel(summary.savingProgressPercent)}%",
-                if (remoteSavings.isEmpty() && summary.savingProgressPercent == 0.0) "暂无计划" else "计划进行中",
-                Amber,
-                Icons.Default.Savings,
-                Modifier.weight(1f),
+                label = "待还贷款",
+                value = loanValue,
+                badge = if (dueDays == null) "状态良好" else "近期还款",
+                color = Red,
+                badgeColor = Blue,
+                iconBackground = Color(0xFFFFF1F2),
+                icon = Icons.Default.CreditCard,
+                modifier = Modifier.weight(1f),
+            ) { onSelectTab(RootTab.LOANS) }
+            CompassTile(
+                label = "储蓄达成",
+                value = "${summary.savingProgressPercent.roundToInt().coerceIn(0, 100)}%",
+                badge = savingsBadge,
+                color = Amber,
+                badgeColor = Blue,
+                iconBackground = Color(0xFFFFFBEB),
+                icon = Icons.Default.Savings,
+                modifier = Modifier.weight(1f),
             ) { onSelectTab(RootTab.SAVINGS) }
         }
     }
 }
 
 @Composable
-private fun CompassTile(label: String, value: String, badge: String, color: Color, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    WebReplicaCard(modifier = modifier.clickable(onClick = onClick), padding = 12.dp, radius = 16.dp) {
+private fun CompassTile(
+    label: String,
+    value: String,
+    badge: String,
+    color: Color,
+    badgeColor: Color = color,
+    iconBackground: Color = color.copy(alpha = .11f),
+    icon: ImageVector,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    WebReplicaCard(modifier = modifier.heightIn(min = 82.dp).clickable(onClick = onClick), padding = 12.dp, radius = 16.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(color.copy(alpha = .11f)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(22.dp).clip(RoundedCornerShape(6.dp)).background(iconBackground), contentAlignment = Alignment.Center) {
                 Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
             }
             Spacer(Modifier.width(6.dp))
             Text(label, color = Color(0xFF64748B), fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
-        Spacer(Modifier.height(7.dp))
-        Text(value, color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
         Spacer(Modifier.height(4.dp))
+        Text(value, color = Ink, fontSize = 17.sp, lineHeight = 20.4.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Spacer(Modifier.height(3.dp))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(badge, color = color, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            Text("›", color = Color(0xFF9AA7B8), fontSize = 16.sp)
+            Text(badge, color = badgeColor, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("›", color = Color(0xFF94A3B8), fontSize = 14.sp, lineHeight = 14.sp)
         }
     }
 }
