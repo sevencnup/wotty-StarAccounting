@@ -223,7 +223,7 @@ private val Green = Color(0xFF0A966B)
 private val Red = Color(0xFFD94D5D)
 private val Amber = Color(0xFFF0A329)
 private val Line = Color(0xFFE8EDF3)
-private val StarkFontFamily = FontFamily(Typeface.create("sans-serif", Typeface.NORMAL))
+private val StarkFontFamily = FontFamily.SansSerif
 
 private enum class RootTab(val label: String, val iconResource: Int) {
     HOME("首页", R.drawable.nav_home),
@@ -1265,7 +1265,7 @@ private fun StarkNativeTheme(content: @Composable () -> Unit) {
             CompositionLocalProvider(
                 androidx.compose.material3.LocalTextStyle provides androidx.compose.material3.LocalTextStyle.current.copy(
                     fontFamily = StarkFontFamily,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Medium,
                     lineHeight = TextUnit.Unspecified,
                 ),
             ) {
@@ -2497,7 +2497,7 @@ private fun HomeScreen(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 0.dp, bottom = 70.dp),
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { WebReplicaHeader(onSearch = { onOpenOverlay(HomeOverlay.SEARCH) }, onApi = { onOpenOverlay(HomeOverlay.API) }, apiStatus = apiStatus) }
         item {
@@ -2507,7 +2507,7 @@ private fun HomeScreen(
                 onMonthClick = { onOpenOverlay(HomeOverlay.MONTH) },
                 onMetricChange = onHomeMetricChange,
             )
-            Spacer(Modifier.height(11.dp))
+            Spacer(Modifier.height(8.dp))
             WebReplicaHero(
                 metric = metric,
                 period = balancePeriod,
@@ -2782,7 +2782,7 @@ private fun WebReplicaHeader(onSearch: () -> Unit, onApi: () -> Unit, apiStatus:
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Spacer(Modifier.size(26.dp))
-        Text("首页", color = Color(0xFF101827), fontSize = 17.sp, fontWeight = FontWeight.Normal)
+        Text("首页", color = Color(0xFF101827), fontSize = 17.sp, fontWeight = FontWeight.Medium)
         IconButton(onClick = onSearch) { Icon(Icons.Default.Search, contentDescription = "搜索", tint = Color(0xFF101827), modifier = Modifier.size(22.dp)) }
     }
 }
@@ -2820,8 +2820,13 @@ private fun WebReplicaMetricControl(metric: HomeMetric, monthLabel: String, onMo
 @Composable
 private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: String, value: Double, count: Int, monthLabel: String, salaryDay: Int, onPeriodChange: (BalancePeriod) -> Unit, onSalaryDayClick: () -> Unit, onDetails: () -> Unit) {
     WebReplicaCard(padding = 0.dp, radius = 20.dp) {
-        Box(Modifier.fillMaxWidth().height(136.dp).padding(horizontal = 18.dp, vertical = 14.dp)) {
-            Text(monthLabel.substringBefore("年").substringAfterLast("年"), modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
+        Box(Modifier.fillMaxWidth().heightIn(min = 146.dp).padding(horizontal = 18.dp, vertical = 16.dp)) {
+            val watermark = when {
+                monthLabel.endsWith("年") -> monthLabel
+                "年" in monthLabel -> monthLabel.substringAfter("年")
+                else -> monthLabel.substringBeforeLast(' ')
+            }
+            Text(watermark, modifier = Modifier.align(Alignment.TopEnd).offset(y = (-8).dp).alpha(.06f), color = Blue, fontSize = 72.sp, fontWeight = FontWeight.Black)
             Column(Modifier.align(Alignment.TopStart)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Text(label, color = Color(0xFF64748B), fontSize = 13.sp, fontWeight = FontWeight.Medium)
@@ -2834,7 +2839,7 @@ private fun WebReplicaHero(metric: HomeMetric, period: BalancePeriod, label: Str
                     }
                 }
                 Spacer(Modifier.height(5.dp))
-                Text("¥ " + moneyFormat.format(value), color = Color(0xFF0F172A), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                Text("¥ " + moneyFormat.format(value), color = Color(0xFF0F172A), fontSize = 32.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(7.dp))
                 Text("共 " + count + " 笔记账", color = Color(0xFF94A3B8), fontSize = 11.sp)
                 Spacer(Modifier.height(3.dp))
@@ -3175,13 +3180,13 @@ private fun CompassTile(label: String, value: String, badge: String, color: Colo
 }
 
 @Composable
-private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 13.dp, radius: Dp = 18.dp, content: @Composable ColumnScope.() -> Unit) {
+private fun WebReplicaCard(modifier: Modifier = Modifier, padding: Dp = 15.dp, radius: Dp = 18.dp, content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(radius),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         border = BorderStroke(1.dp, Color(0xFFE7EDF3)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
     ) {
         Column(Modifier.padding(padding), content = content)
     }
@@ -4066,7 +4071,8 @@ private fun NativeProofImageViewer(source: String, onDismiss: () -> Unit) {
 
 @Composable
 private fun NativePageHeader(title: String, subtitle: String) {
-    Column(Modifier.fillMaxWidth().statusBarsPadding().padding(bottom = 3.dp)) {
+    // Scaffold already applies the status-bar inset through its inner padding.
+    Column(Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
         Text(title, color = Ink, fontSize = 23.sp, fontWeight = FontWeight.Black)
         Text(subtitle, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
     }
