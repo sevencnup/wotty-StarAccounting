@@ -10,6 +10,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.util.UUID
 import java.util.zip.ZipInputStream
+import java.text.SimpleDateFormat
+import jxl.DateCell
+import jxl.Workbook
 import org.xmlpull.v1.XmlPullParser
 
 private val nativeBillCsvHeaders = listOf(
@@ -338,8 +341,41 @@ internal fun parseNativeBillXlsx(
     return parseNativeBillRecords(records, emptyList(), fileName, accountId, userId)
 }
 
+internal fun parseNativeBillXls(
+    bytes: ByteArray,
+    fileName: String,
+    accountId: String,
+    userId: String,
+): NativeBillImportPreview {
+    require(bytes.size <= MAX_LEGACY_XLS_FILE_BYTES) { "XLS 文件过大，请先拆分账单文件" }
+    val workbook = Workbook.getWorkbook(ByteArrayInputStream(bytes))
+    try {
+        val sheet = workbook.getSheet(0) ?: error("工作簿没有可读取的第一个工作表")
+        require(sheet.rows <= MAX_LEGACY_XLS_ROWS) { "XLS 工作表行数过多，请先拆分账单文件" }
+        require(sheet.columns <= MAX_LEGACY_XLS_COLUMNS) { "XLS 工作表列数过多，无法安全读取" }
+        val dateFormatter = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.ROOT)
+        val records = (0 until sheet.rows).mapNotNull { rowIndex ->
+            val cells = (0 until sheet.columns).map { columnIndex ->
+                val cell = sheet.getCell(columnIndex, rowIndex)
+                if (cell is DateCell) dateFormatter.format(cell.date) else cell.contents.orEmpty()
+            }
+            val lastValue = cells.indexOfLast(String::isNotBlank)
+            if (lastValue < 0) return@mapNotNull null
+            val values = cells.take(lastValue + 1)
+            NativeCsvRecord(values, rowIndex + 1, values.joinToString(",", transform = ::escapeCsvCell))
+        }
+        require(records.isNotEmpty()) { "XLS 工作簿中没有可读取的行" }
+        return parseNativeBillRecords(records, emptyList(), fileName, accountId, userId)
+    } finally {
+        workbook.close()
+    }
+}
+
 private const val MAX_XLSX_FILE_BYTES = 25 * 1024 * 1024
 private const val MAX_XLSX_UNPACKED_BYTES = 100 * 1024 * 1024
+private const val MAX_LEGACY_XLS_FILE_BYTES = 25 * 1024 * 1024
+private const val MAX_LEGACY_XLS_ROWS = 100_000
+private const val MAX_LEGACY_XLS_COLUMNS = 256
 private const val OOXML_RELATIONSHIP_NAMESPACE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
 private fun readXlsxParts(bytes: ByteArray): Map<String, ByteArray> {
@@ -483,7 +519,7 @@ private fun parseNativeBillRecords(
             )
     }
     if (headerIndex < 0) {
-        val issue = NativeBillImportIssue(1, records.firstOrNull()?.rawData.orEmpty(), "无法识别账单表头，请选择微信、支付宝或本应用导出的 CSV 或 XLSX 文件")
+        val issue = NativeBillImportIssue(1, records.firstOrNull()?.rawData.orEmpty(), "无法识别账单表头，请选择微信、支付宝或本应用导出的 CSV、XLS 或 XLSX 文件")
         return NativeBillImportPreview(fileName, nativeSourceFor(emptyList(), fileName), emptyList(), parseIssues + issue)
     }
 

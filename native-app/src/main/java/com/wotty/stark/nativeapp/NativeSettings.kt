@@ -535,7 +535,7 @@ private fun NativeHelpSheet(onDismiss: () -> Unit) {
             }
             SettingsPanel {
                 Text("账单导入支持什么格式？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text(translateNativeText("支持微信、支付宝官方 CSV、XLSX 文件，以及本应用导出的 CSV 备份。旧式 XLS 请先另存为 XLSX 或 CSV。工作簿读取第一个工作表。", language), color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
+                Text(translateNativeText("支持微信、支付宝官方 CSV、XLS、XLSX 文件，以及本应用导出的 CSV 备份。Excel 工作簿读取第一个工作表。", language), color = SettingsMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 5.dp))
             }
             SettingsPanel {
                 Text("本地和云端数据会合并吗？", color = SettingsInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -769,7 +769,7 @@ private fun NativeCsvImportSheet(
                     )
                 }
             }
-            Text(translateNativeText("支持 CSV、XLSX；工作簿按第一个工作表读取。确认前不会写入账本。旧式 XLS 请另存为 XLSX 或 CSV。", language), color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(bottom = 14.dp))
+            Text(translateNativeText("支持 CSV、XLS、XLSX；工作簿按第一个工作表读取。确认前不会写入账本。", language), color = SettingsMuted, fontSize = 9.sp, modifier = Modifier.padding(bottom = 14.dp))
         }
     }
 }

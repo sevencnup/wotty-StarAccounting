@@ -1380,7 +1380,7 @@ private fun StarkNativeApp() {
     }
     var csvExportStatus by remember { mutableStateOf("导出当前账本全部流水为 UTF-8 CSV") }
     var exportingCsv by remember { mutableStateOf(false) }
-    var csvImportStatus by remember { mutableStateOf("选择 CSV 后先预览，再确认导入") }
+    var csvImportStatus by remember { mutableStateOf("选择 CSV、XLS 或 XLSX 后先预览，再确认导入") }
     var pendingCsvImport by remember { mutableStateOf<NativeBillImportPreview?>(null) }
     var importingCsv by remember { mutableStateOf(false) }
     val csvExportLauncher = rememberLauncherForActivityResult(
@@ -1432,13 +1432,14 @@ private fun StarkNativeApp() {
                             ?: throw IllegalStateException("无法读取所选文件")
                     }
                     val extension = fileName.substringAfterLast('.', "").lowercase(Locale.ROOT)
-                    require(extension != "xls") { "旧式 XLS 文件暂不支持，请用 Excel 或 WPS 另存为 XLSX 或 CSV" }
-                    require(extension in setOf("csv", "xlsx")) { "目前支持 CSV 和 XLSX 文件" }
+                    require(extension in setOf("csv", "xls", "xlsx")) { "目前支持 CSV、XLS 和 XLSX 文件" }
                     val accountId = apiPreferences.accountId.ifBlank { "local" }
                     val userId = apiPreferences.userId.ifBlank { "local-user" }
                     val parsed = withContext(Dispatchers.Default) {
                         if (extension == "csv") {
                             parseNativeBillCsv(decodeNativeBillCsv(bytes), fileName, accountId, userId)
+                        } else if (extension == "xls") {
+                            parseNativeBillXls(bytes, fileName, accountId, userId)
                         } else {
                             parseNativeBillXlsx(bytes, fileName, accountId, userId)
                         }
