@@ -2,6 +2,7 @@ package com.wotty.stark.nativeapp
 
 import android.app.DatePickerDialog
 import androidx.compose.foundation.Canvas as ComposeCanvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -54,6 +55,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -185,29 +187,32 @@ internal fun NativeLoanOverviewScreen(
             }
         }
         item {
-            LoanCard(padding = 13.dp) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("规划提醒", color = LoanBlue, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(8.dp))
-                    Text("仅用于个人资金规划，不会实际执行还款。", color = LoanMuted, fontSize = 11.sp)
+            Card(
+                shape = RoundedCornerShape(15.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8DC)),
+                border = BorderStroke(1.dp, Color(0xFFF4D78A)),
+            ) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 13.dp, vertical = 10.dp)) {
+                    Text("规划提醒", color = Color(0xFF9A6700), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("仅用于个人资金规划，不会实际执行还款。", color = Color(0xFF785811), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
         }
         if (!connected) item { LoanConnectNotice(onConnect) }
         item {
-            LoanCard(padding = 16.dp, color = Color(0xFFF8FBFF)) {
+            LoanCard(padding = 16.dp) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("还款控制中心", color = LoanBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("还款控制中心", color = LoanGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.width(8.dp))
                             LoanPill("${activeLoans.size} 笔进行中", LoanBlue)
                         }
                         Text("待还本金总额", color = LoanMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 13.dp))
-                        Text("¥ ${loanMoney(remaining)}", color = LoanInk, fontSize = 27.sp, fontWeight = FontWeight.Black)
-                        Text("已还清 ¥ ${loanMoney(repaid)} · 整体进度 ${progress.toInt()}%", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text("¥ ${loanMoney(remaining)}", color = LoanInk, fontSize = 28.sp, fontWeight = FontWeight.Black)
+                        Text("已还清 ¥ ${loanMoney(repaid)} · 整体进度 ${progress.toInt()}%", color = LoanMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                     }
-                    LoanProgressRing(progress, Modifier.size(76.dp))
+                    LoanProgressRing(progress, Modifier.size(82.dp))
                 }
             }
         }
@@ -216,8 +221,8 @@ internal fun NativeLoanOverviewScreen(
                 LoanMetric("本月月供", monthly, "${activeLoans.size} 笔待还款", LoanBlue, Modifier.weight(1f))
                 LoanMetric(
                     "还款压力",
-                    pressure?.let { "占收入 ${it.toInt()}%" } ?: "暂无收入",
                     pressureLabel,
+                    pressure?.let { "占收入 ${it.toInt()}%" } ?: "暂无收入",
                     when { pressure == null -> LoanMuted; pressure <= 25.0 -> LoanGreen; pressure <= 40.0 -> LoanAmber; else -> LoanRed },
                     Modifier.weight(1f),
                 )
@@ -226,7 +231,7 @@ internal fun NativeLoanOverviewScreen(
                     "下期到期",
                     nearest?.let { "${loanDueInfo(it).days} 天后" } ?: "--",
                     nearest?.let { "${it.platform} · ${loanDueInfo(it).date.format(DateTimeFormatter.ofPattern("MM-dd"))}" } ?: "已全部结清",
-                    LoanAmber,
+                    LoanBlue,
                     Modifier.weight(1f),
                 )
             }
@@ -235,8 +240,8 @@ internal fun NativeLoanOverviewScreen(
             LoanCard(padding = 15.dp) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("未来 6 个月月供趋势", color = LoanInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("按剩余贷款期数推演", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text("未来6个月月供趋势", color = LoanInk, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("按现有贷款期数推演", color = LoanMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                     estimatedCompletionYear?.let { LoanPill("预计 $it 年结清", LoanGreen) }
                 }
@@ -244,10 +249,10 @@ internal fun NativeLoanOverviewScreen(
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     (0 until 6).forEach { index ->
                         val month = YearMonth.now().plusMonths(index.toLong())
-                        Text("${month.monthValue}月", color = LoanMuted, fontSize = 9.sp)
+                        Text("${month.monthValue}月", color = LoanMuted, fontSize = 10.sp)
                     }
                 }
-                Text("统计收入范围：$reportingMonth", color = LoanMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 8.dp))
+                Text("统计收入范围：$reportingMonth", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 8.dp))
             }
         }
         if (debts.isNotEmpty()) {
@@ -255,20 +260,20 @@ internal fun NativeLoanOverviewScreen(
                 LoanCard(padding = 15.dp) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("负债构成分析", color = LoanInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Text("各贷款待还本金占比", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                            Text("负债构成分析", color = LoanInk, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            Text("各贷款待还本金占比", color = LoanMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                         }
                         LoanPill("共 ${debts.size} 笔", LoanBlue)
                     }
                     Row(Modifier.fillMaxWidth().padding(top = 11.dp), verticalAlignment = Alignment.CenterVertically) {
-                        LoanDonut(debts, Modifier.size(112.dp))
+                        LoanDonut(debts, Modifier.size(104.dp))
                         Column(Modifier.weight(1f).padding(start = 13.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             debts.forEach { share ->
                                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                     Box(Modifier.size(8.dp).clip(CircleShape).background(share.color))
-                                    Text(share.loan.platform, color = LoanInk, fontSize = 10.sp, modifier = Modifier.weight(1f).padding(start = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text("${loanPercent(share.percent)}%", color = LoanMuted, fontSize = 9.sp)
-                                    Text("¥ ${loanMoney(share.loan.remainingAmount)}", color = LoanInk, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
+                                    Text(share.loan.platform, color = LoanInk, fontSize = 10.5.sp, modifier = Modifier.weight(1f).padding(start = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("${loanPercent(share.percent)}%", color = LoanMuted, fontSize = 10.sp)
+                                    Text("¥ ${loanMoney(share.loan.remainingAmount)}", color = LoanInk, fontSize = 10.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(start = 6.dp))
                                 }
                             }
                         }
@@ -280,8 +285,8 @@ internal fun NativeLoanOverviewScreen(
             LoanCard(padding = 15.dp) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("还款日程", color = LoanInk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                        Text("按最近到期时间排序", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
+                        Text("还款日程", color = LoanInk, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("按到期时间排序", color = LoanMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                     }
                     LoanPill("${schedule.size} 笔待还", LoanAmber)
                 }
@@ -300,7 +305,7 @@ internal fun NativeLoanOverviewScreen(
         item {
             Row(Modifier.fillMaxWidth().padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("贷款组合", color = LoanInk, fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("全部 ${loans.size} 笔记录", color = LoanMuted, fontSize = 10.sp)
+                Text("${loans.size} 笔记录", color = LoanMuted, fontSize = 11.sp)
             }
         }
         if (loans.isEmpty()) {
@@ -390,7 +395,7 @@ private fun LoanPill(text: String, color: Color) {
         text,
         modifier = Modifier.clip(CircleShape).background(color.copy(alpha = .09f)).padding(horizontal = 9.dp, vertical = 5.dp),
         color = color,
-        fontSize = 9.sp,
+        fontSize = 10.sp,
         fontWeight = FontWeight.SemiBold,
         maxLines = 1,
     )
@@ -398,10 +403,10 @@ private fun LoanPill(text: String, color: Color) {
 
 @Composable
 private fun LoanConnectNotice(onConnect: () -> Unit) {
-    LoanCard(padding = 11.dp, color = Color(0xFFF8FBFF)) {
+    LoanCard(padding = 8.dp) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("云端数据未连接。当前操作会写入本地账本，连接后可同步云端贷款。", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.weight(1f))
-            TextButton(onClick = onConnect) { Text("连接", color = LoanBlue) }
+            Text("云端未连接 · 当前数据保存在本地账本", color = LoanMuted, fontSize = 10.5.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("连接", color = LoanBlue, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onConnect).padding(horizontal = 8.dp, vertical = 6.dp))
         }
     }
 }
@@ -419,9 +424,9 @@ private fun LoanMetric(label: String, primary: String, detail: String, color: Co
 @Composable
 private fun LoanMetricBase(label: String, primary: String, detail: String, color: Color, modifier: Modifier) {
     LoanCard(modifier, padding = 10.dp) {
-        Text(label, color = LoanMuted, fontSize = 9.sp, maxLines = 1)
-        Text(primary, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 5.dp))
-        Text(detail, color = LoanMuted, fontSize = 8.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+        Text(label, color = LoanMuted, fontSize = 10.5.sp, maxLines = 1)
+        Text(primary, color = color, fontSize = 12.5.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+        Text(detail, color = LoanMuted, fontSize = 9.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
     }
 }
 
@@ -434,8 +439,8 @@ private fun LoanProgressRing(progress: Double, modifier: Modifier = Modifier) {
             drawArc(LoanGreen, -90f, (progress.coerceIn(0.0, 100.0) * 3.6).toFloat(), false, style = Stroke(stroke, cap = StrokeCap.Round))
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("${progress.toInt()}%", color = LoanInk, fontSize = 15.sp, fontWeight = FontWeight.Black)
-            Text("已还", color = LoanMuted, fontSize = 9.sp)
+            Text("${progress.toInt()}%", color = LoanInk, fontSize = 16.sp, fontWeight = FontWeight.Black)
+            Text("已还", color = LoanMuted, fontSize = 10.sp)
         }
     }
 }
@@ -456,6 +461,21 @@ private fun LoanForecastChart(values: List<Double>, modifier: Modifier = Modifie
             drawLine(Color(0xFFEFF3F7), Offset(0f, y), Offset(size.width, y), strokeWidth = 1.dp.toPx())
         }
         if (points.isNotEmpty()) {
+            val fillPath = Path().apply {
+                moveTo(points.first().x, bottom)
+                lineTo(points.first().x, points.first().y)
+                points.drop(1).forEach { lineTo(it.x, it.y) }
+                lineTo(points.last().x, bottom)
+                close()
+            }
+            drawPath(
+                fillPath,
+                brush = Brush.verticalGradient(
+                    colors = listOf(Color(0x480A966B), Color.Transparent),
+                    startY = top,
+                    endY = bottom,
+                ),
+            )
             val path = Path().apply {
                 moveTo(points.first().x, points.first().y)
                 points.drop(1).forEach { lineTo(it.x, it.y) }
@@ -493,15 +513,15 @@ private fun LoanScheduleRow(loan: NativeLoan, index: Int) {
     val color = if (loan.status == "OVERDUE") LoanRed else if (urgent) LoanAmber else LoanBlue
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(25.dp).clip(CircleShape).background(color.copy(alpha = .1f)), contentAlignment = Alignment.Center) {
-            Text("${index + 1}", color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                        Text("${index + 1}", color = color, fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
         }
         Column(Modifier.weight(1f).padding(start = 9.dp)) {
-            Text(loan.platform, color = LoanInk, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${due.date.format(DateTimeFormatter.ofPattern("MM-dd"))} · 剩余 ${(loan.periods - loan.paidPeriods).coerceAtLeast(0)} 期", color = LoanMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp))
+            Text(loan.platform, color = LoanInk, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${due.date.format(DateTimeFormatter.ofPattern("MM-dd"))} · 剩余 ${(loan.periods - loan.paidPeriods).coerceAtLeast(0)} 期", color = LoanMuted, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text("¥ ${loanMoney(loan.monthlyPayment)}", color = LoanInk, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            Text(if (loan.status == "OVERDUE") "已逾期" else if (due.days == 0) "今天到期" else "${due.days} 天后", color = color, fontSize = 9.sp, modifier = Modifier.padding(top = 2.dp))
+            Text("¥ ${loanMoney(loan.monthlyPayment)}", color = LoanInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text(if (loan.status == "OVERDUE") "已逾期" else if (due.days == 0) "今天到期" else "${due.days} 天后", color = color, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp))
         }
     }
 }
@@ -529,24 +549,24 @@ private fun LoanPortfolioCard(
                 Text(loan.platform.take(1), color = LoanBlue, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             }
             Column(Modifier.weight(1f).padding(start = 9.dp)) {
-                Text(loan.platform, color = LoanInk, fontSize = 13.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(status, color = statusColor, fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp))
+                Text(loan.platform, color = LoanInk, fontSize = 14.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(status, color = statusColor, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp))
             }
             Column(horizontalAlignment = Alignment.End) {
-                Text("待还本金", color = LoanMuted, fontSize = 8.sp)
-                Text("¥ ${loanMoney(loan.remainingAmount)}", color = LoanRed, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text("待还本金", color = LoanMuted, fontSize = 10.sp)
+                Text("¥ ${loanMoney(loan.remainingAmount)}", color = LoanRed, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
         Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("已还 ${loan.paidPeriods.coerceAtMost(loan.periods)} / ${loan.periods} 期", color = LoanMuted, fontSize = 9.sp)
-            Text("下期 ${due.date.format(DateTimeFormatter.ofPattern("MM-dd"))}", color = LoanMuted, fontSize = 9.sp)
+            Text("已还 ${loan.paidPeriods.coerceAtMost(loan.periods)} / ${loan.periods} 期", color = LoanMuted, fontSize = 10.sp)
+            Text("下期 ${due.date.format(DateTimeFormatter.ofPattern("MM-dd"))}", color = LoanMuted, fontSize = 10.sp)
         }
         Box(Modifier.fillMaxWidth().padding(top = 7.dp).height(6.dp).clip(CircleShape).background(Color(0xFFE9EEF5))) {
             Box(Modifier.fillMaxWidth(progress.toFloat() / 100f).height(6.dp).clip(CircleShape).background(LoanGreen))
         }
         Row(Modifier.fillMaxWidth().padding(top = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("已还 ¥ ${loanMoney(paid)} · ${progress.toInt()}%", color = LoanMuted, fontSize = 9.sp)
-            Text("月供 ¥ ${loanMoney(loan.monthlyPayment)}", color = LoanBlue, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+            Text("已还 ¥ ${loanMoney(paid)} · ${progress.toInt()}%", color = LoanMuted, fontSize = 10.sp)
+            Text("月供 ¥ ${loanMoney(loan.monthlyPayment)}", color = LoanBlue, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
         }
         HorizontalDivider(Modifier.padding(top = 9.dp), color = LoanLine)
         Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
