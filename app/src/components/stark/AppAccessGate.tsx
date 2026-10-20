@@ -321,14 +321,12 @@ export function AppAccessGate() {
     void checkCloud(apiUrl, true);
   }
 
+  if (phase === "BOOTING") return null;
+
   return (
     <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`}>
-      <main className="app-access-card" aria-busy={phase === "BOOTING" || connectionState === "TESTING"}>
-        {phase === "BOOTING" ? (
-          <section className="app-access-local-panel" aria-live="polite">
-            <strong>正在准备账本...</strong>
-          </section>
-        ) : mode === "LOCAL" && native ? (
+      <main className="app-access-card" aria-busy={connectionState === "TESTING"}>
+        {mode === "LOCAL" && native ? (
           <section className="app-access-local-panel">
             <strong>本地模式</strong>
             <p>数据只保存在这台设备，不需要服务器或登录。</p>
