@@ -24,6 +24,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
@@ -79,6 +80,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.AutoGraph
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.TrendingDown
@@ -3235,12 +3237,13 @@ private fun WebReplicaDiagnosticBanner(summary: NativeHomeDashboardSummary, onOp
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White)
+            .border(if (hasRisk) 1.dp else 0.dp, if (hasRisk) Color(0x33F43F5E) else Color.Transparent, RoundedCornerShape(14.dp))
             .clickable(onClick = onOpen)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(accent.copy(alpha = .09f)), contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.AutoGraph, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
         }
         Spacer(Modifier.width(9.dp))
         Column(Modifier.weight(1f)) {
@@ -4684,6 +4687,7 @@ private fun TransactionSearchDialog(entries: List<LedgerEntry>, onDismiss: () ->
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeSummaryDialog(
     summary: NativeHomeDashboardSummary,
@@ -4701,88 +4705,111 @@ private fun HomeSummaryDialog(
         "本月现金流平稳，无超支或临近违约风险"
     }
     val accent = if (hasRisk) Color(0xFFE11D48) else Blue
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val canvas = Color(0xFFF7F9FC)
+    val line = Color(0xFFE7EDF3)
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(26.dp),
-        containerColor = Color(0xFFFBFCFE),
-        title = { Text(title, fontWeight = FontWeight.Bold) },
-        text = {
-            Column(
-                modifier = Modifier.heightIn(max = 460.dp).verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        sheetState = sheetState,
+        containerColor = canvas,
+        tonalElevation = 0.dp,
+        dragHandle = {
+            Box(
+                Modifier.padding(top = 10.dp, bottom = 6.dp).size(width = 48.dp, height = 4.dp)
+                    .clip(CircleShape).background(Color(0xFFD6DDE7)),
+            )
+        },
+    ) {
+        Column(
+            Modifier.fillMaxWidth().fillMaxHeight(.82f).navigationBarsPadding()
+                .verticalScroll(rememberScrollState()).padding(horizontal = 14.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+                Spacer(Modifier.size(34.dp))
+                Text(title, modifier = Modifier.weight(1f), color = Color(0xFF151E31), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center)
+                IconButton(onClick = onDismiss, modifier = Modifier.size(34.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "关闭$title", tint = Color(0xFF768096), modifier = Modifier.size(20.dp))
+                }
+            }
+
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if (hasRisk) Color(0xFFFFF8F8) else Color.White,
+                border = BorderStroke(1.dp, if (hasRisk) Color(0x33F43F5E) else line),
             ) {
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
-                        .background(if (hasRisk) Color(0xFFFFF1F2) else Color(0xFFEFF6FF))
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Icon(Icons.Default.AutoGraph, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(9.dp))
-                    Column {
-                        Text(title, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Text(headline, color = Color(0xFF526174), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp))
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
+                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(if (hasRisk) Color(0xFFFFF1F2) else Color(0xFFF0F9FF)), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = accent, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(title, color = Color(0xFF172033), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(headline, color = Color(0xFF637086), fontSize = 11.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 5.dp))
                     }
                 }
+            }
 
-                DiagnosticSectionTitle("现金流概览")
-                SummaryMetric("本期收入", summary.income, Green)
-                SummaryMetric("本期支出", summary.expense, Red)
-                SummaryMetric("本期结余", summary.balance, if (summary.balance >= 0) Blue else Red)
-
-                DiagnosticSectionTitle("诊断明细")
-                if (summary.insights.isEmpty()) {
-                    Text("本期现金流平稳，无超支或临近违约风险", color = Muted, fontSize = 12.sp)
-                } else {
-                    summary.insights.forEach { insight ->
-                        Row(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                                .background(Color.White).padding(11.dp),
-                            verticalAlignment = Alignment.Top,
-                        ) {
-                            Box(
-                                Modifier.padding(top = 5.dp).size(7.dp).clip(CircleShape)
-                                    .background(diagnosticToneColor(insight.tone)),
-                            )
-                            Spacer(Modifier.width(9.dp))
-                            Column {
-                                Text(insight.title, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                Text(insight.detail, color = Muted, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
-                            }
-                        }
+            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, border = BorderStroke(1.dp, line)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    DiagnosticSectionTitle("现金流概览")
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DiagnosticMetric("本期收入", summary.income, Green, Modifier.weight(1f))
+                        DiagnosticMetric("本期支出", summary.expense, Red, Modifier.weight(1f))
+                        DiagnosticMetric("本期结余", summary.balance, if (summary.balance >= 0) Green else Red, Modifier.weight(1f))
                     }
                 }
+            }
 
-                if (summary.budgetAlerts.isNotEmpty()) {
-                    DiagnosticSectionTitle("预算管理")
-                    summary.budgetAlerts.forEach { alert ->
-                        Column(
-                            Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
-                                .background(Color.White).padding(11.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                Text(alert.title, color = Ink, fontSize = 12.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                Text("¥ ${moneyFormat.format(alert.spent)} / ¥ ${moneyFormat.format(alert.budget)}", color = Color(0xFF526174), fontSize = 10.sp)
+            Surface(shape = RoundedCornerShape(16.dp), color = Color.White, border = BorderStroke(1.dp, line)) {
+                Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    DiagnosticSectionTitle("诊断明细")
+                    if (summary.insights.isEmpty()) {
+                        Text("本期现金流平稳，无超支或临近违约风险", color = Color(0xFF758196), fontSize = 11.sp, lineHeight = 16.sp)
+                    } else {
+                        summary.insights.forEach { insight ->
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                                Box(Modifier.padding(top = 5.dp).size(7.dp).clip(CircleShape).background(diagnosticToneColor(insight.tone)))
+                                Spacer(Modifier.width(8.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(insight.title, color = Color(0xFF273449), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(insight.detail, color = Color(0xFF758196), fontSize = 10.sp, lineHeight = 15.sp, modifier = Modifier.padding(top = 2.dp))
+                                }
                             }
-                            Box(Modifier.fillMaxWidth().height(6.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFFE8EDF3))) {
-                                Box(
-                                    Modifier.fillMaxWidth((alert.percent / 100.0).toFloat().coerceIn(0f, 1f))
-                                        .height(6.dp).clip(RoundedCornerShape(4.dp))
-                                        .background(diagnosticToneColor(alert.tone)),
-                                )
-                            }
-                            Text("已使用 ${alert.percent.roundToInt()}%", color = Muted, fontSize = 10.sp)
                         }
                     }
                 }
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onOpenTransactions) { Text("查看账单") }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("完成") } },
-    )
+
+            if (summary.budgetAlerts.isNotEmpty()) {
+                Surface(shape = RoundedCornerShape(16.dp), color = Color.White, border = BorderStroke(1.dp, line)) {
+                    Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DiagnosticSectionTitle("预算管理")
+                        summary.budgetAlerts.forEach { alert ->
+                            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    Text(alert.title, color = Color(0xFF526179), fontSize = 10.sp, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text("¥ ${moneyFormat.format(alert.spent)} / ¥ ${moneyFormat.format(alert.budget)}", color = Color(0xFF273449), fontSize = 10.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.End, maxLines = 1)
+                                }
+                                Box(Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(Color(0xFFE9EEF5))) {
+                                    Box(
+                                        Modifier.fillMaxWidth((alert.percent / 100.0).toFloat().coerceIn(0f, 1f))
+                                            .height(6.dp).clip(CircleShape).background(diagnosticBudgetColor(alert.tone)),
+                                    )
+                                }
+                                Text("已使用 ${alert.percent.roundToInt()}%", color = Color(0xFF7B8798), fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+            }
+
+            TextButton(onClick = onOpenTransactions, modifier = Modifier.align(Alignment.End)) {
+                Text("查看账单  ›", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+            }
+        }
+    }
 }
 
 @Composable
@@ -4790,10 +4817,32 @@ private fun DiagnosticSectionTitle(title: String) {
     Text(title, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Bold)
 }
 
+@Composable
+private fun DiagnosticMetric(label: String, value: Double, color: Color, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, color = Color(0xFF7B8798), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            "${if (value < 0.0) "-¥ " else "¥ "}${moneyFormat.format(kotlin.math.abs(value))}",
+            color = color,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 private fun diagnosticToneColor(tone: String): Color = when (tone) {
     "danger" -> Color(0xFFE11D48)
     "warn" -> Color(0xFFF59E0B)
     else -> Blue
+}
+
+private fun diagnosticBudgetColor(tone: String): Color = when (tone) {
+    "danger" -> Color(0xFFE11D48)
+    "warn" -> Color(0xFFF59E0B)
+    else -> Color(0xFF0D8A5F)
 }
 
 @Composable
