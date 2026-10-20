@@ -2701,24 +2701,88 @@ private fun AdvisoryRow(index: String, text: AnnotatedString, onClick: (() -> Un
 
 @Composable
 private fun WebReplicaCashflowTrend(entries: List<LedgerEntry>, selectedMonth: YearMonth, selectedYear: Int? = null) {
-    val monthly = if (selectedYear != null) (1..12).map { YearMonth.of(selectedYear, it) } else (-4..0).map { selectedMonth.plusMonths(it.toLong()) }
+    val language = LocalNativeUiPreferences.current.value.language
+    val annual = selectedYear != null
+    val english = translateNativeText("收入", language) == "Income"
+    val monthly = if (selectedYear != null) {
+        (1..12).map { YearMonth.of(selectedYear, it) }
+    } else {
+        (-4..0).map { selectedMonth.plusMonths(it.toLong()) }
+    }
     val monthlyValues = monthly.map { month ->
-        val rows = entries.filter { runCatching { LocalDate.parse(it.transactionDate) }.getOrNull()?.let { date -> date.year == month.year && date.monthValue == month.monthValue } == true }
+        val rows = entries.filter { entry ->
+            val date = runCatching { LocalDate.parse(entry.transactionDate.ifBlank { entry.date }.take(10)) }.getOrNull()
+            date != null && date.year == month.year && date.monthValue == month.monthValue
+        }
         rows.filter { it.type == EntryType.INCOME }.sumOf { it.amount } to rows.filter { it.type == EntryType.EXPENSE }.sumOf { it.amount }
     }
+    val incomeValues = monthlyValues.map { it.first }
+    val expenseValues = monthlyValues.map { it.second }
+    val monthLabels = monthly.map { month ->
+        if (english) month.format(DateTimeFormatter.ofPattern("MMM", Locale.US)) else "${month.monthValue}月"
+    }
+    val emphasizedIndices = if (annual) monthly.indices.toSet() else setOf(monthly.lastIndex)
+    var selectedMonthIndex by remember(selectedMonth, selectedYear) { mutableStateOf<Int?>(null) }
     WebReplicaCard(padding = 14.dp, radius = 22.dp) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column {
                 Text("收支动态走势", color = Color(0xFF0F172A), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-        Text("${monthly.first().monthValue}月-${monthly.last().monthValue}月真实流水", color = Color(0xFF94A3B8), fontSize = 10.sp)
+                Text(if (annual) "全年按月对比" else "近 5 个月对比", color = Color(0xFF94A3B8), fontSize = 10.sp)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 TrendLegend("收入", Color(0xFF38BDF8))
                 TrendLegend("支出", Color(0xFFFB7185))
             }
         }
-        Spacer(Modifier.height(8.dp))
-        EChartsCashflowTrend(monthlyValues.map { it.first }, monthlyValues.map { it.second }, monthly.map { "${it.monthValue}月" })
+        Spacer(Modifier.height(10.dp))
+        selectedMonthIndex?.takeIf { it in monthly.indices }?.let { index ->
+            val monthLabel = monthLabels[index]
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Color.White.copy(alpha = .58f))
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    if (english) "$monthLabel cash flow" else "${monthly[index].monthValue}月收支",
+                    color = Color(0xFF0F172A),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF38BDF8)))
+                        Text("收入", color = Color(0xFF64748B), fontSize = 10.sp)
+                        Text("¥${moneyFormat.format(incomeValues[index])}", color = Color(0xFF0F172A), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFFFB7185)))
+                        Text("支出", color = Color(0xFF64748B), fontSize = 10.sp)
+                        Text("¥${moneyFormat.format(expenseValues[index])}", color = Color(0xFF0F172A), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+        NativeEChart(
+            option = NativeEChartOptions.homeCashflowBars(
+                incomes = incomeValues,
+                expenses = expenseValues,
+                labels = monthLabels,
+                emphasizedIndices = emphasizedIndices,
+                incomeName = translateNativeText("收入", language),
+                expenseName = translateNativeText("支出", language),
+            ),
+            modifier = Modifier.fillMaxWidth().height(124.dp),
+            onDataClick = { event ->
+                if (event.dataIndex in monthly.indices) {
+                    selectedMonthIndex = if (selectedMonthIndex == event.dataIndex) null else event.dataIndex
+                }
+            },
+        )
     }
 }
 

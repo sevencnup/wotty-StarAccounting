@@ -49,8 +49,16 @@
           window.NativeChart.onDataClick(JSON.stringify({ componentType, dataType, name, seriesName, dataIndex, tapX: pointX, tapY: pointY }));
           return { componentType, name, seriesName, dataIndex, dataType };
         };
-        const inside = (layout) => layout && pointX >= layout.x && pointX <= layout.x + (layout.width ?? layout.dx ?? 0)
-          && pointY >= layout.y && pointY <= layout.y + (layout.height ?? layout.dy ?? 0);
+        const inside = (layout) => {
+          if (!layout) return false;
+          const x = Number(layout.x);
+          const y = Number(layout.y);
+          const width = Number(layout.width ?? layout.dx ?? 0);
+          const height = Number(layout.height ?? layout.dy ?? 0);
+          if (![x, y, width, height].every(Number.isFinite)) return false;
+          return pointX >= Math.min(x, x + width) && pointX <= Math.max(x, x + width)
+            && pointY >= Math.min(y, y + height) && pointY <= Math.max(y, y + height);
+        };
 
         for (let seriesIndex = 0; seriesIndex < (option.series || []).length; seriesIndex++) {
           const series = option.series[seriesIndex];
