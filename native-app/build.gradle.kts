@@ -16,8 +16,8 @@ android {
         applicationId = "com.wotty.stark.nativeapp"
         minSdk = 26
         targetSdk = 35
-        versionCode = 10032
-        versionName = "0.20.0-dev.1"
+        versionCode = 10033
+        versionName = "0.21.0-dev.1"
         manifestPlaceholders["appLabel"] = "星会计 原生版"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.compose.material.icons.extended)
     implementation(libs.compose.foundation)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("net.sourceforge.jexcelapi:jxl:2.6.12")
 
     debugImplementation(libs.compose.ui.tooling)
     testImplementation("junit:junit:4.13.2")
