@@ -1,5 +1,7 @@
 # 更新日志
 
+## [v0.2.1] - 修复宣传演示后台恢复时跳转到宿主网站首页
+
 本文件记录可安装 Android App 和对应前端源码的发布版本。产品版本以
 `app/package.json`、`app/android/app/build.gradle` 和
 `app/src/lib/stark/app-version.ts` 中的版本号为准。
