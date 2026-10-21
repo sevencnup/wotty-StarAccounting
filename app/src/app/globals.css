@@ -15638,7 +15638,7 @@ html.showcase-demo .stark-card-watermark {
 }
 
 html.showcase-demo .stark-big-amount {
-  font-size: calc(30px * var(--user-font-scale));
+  font-size: calc(28px * var(--user-font-scale));
 }
 
 html.showcase-demo .stark-cycle-breakdown {
