@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { EChartsCoreOption, EChartsType } from "echarts/core";
+import { SHOWCASE_DEMO_MODE } from "@/lib/stark/runtime";
 
 let chartRuntimePromise: Promise<typeof import("echarts/core")> | null = null;
 
@@ -31,8 +32,12 @@ function loadChartRuntime() {
         charts.SankeyChart,
         charts.HeatmapChart,
         renderers.CanvasRenderer,
+        renderers.SVGRenderer,
       ]);
       return echarts;
+    }).catch((error) => {
+      chartRuntimePromise = null;
+      throw error;
     });
   }
   return chartRuntimePromise;
@@ -53,7 +58,6 @@ export function EChartView({
   const instanceRef = useRef<EChartsType | null>(null);
   const optionRef = useRef(option);
   const onDataClickRef = useRef(onDataClick);
-  const shouldInitializeRef = useRef(false);
 
   useEffect(() => {
     optionRef.current = option;
@@ -70,13 +74,14 @@ export function EChartView({
 
     let observer: IntersectionObserver | null = null;
     let disposed = false;
+    let initializationStarted = false;
     let resizeObserver: ResizeObserver | null = null;
 
     async function initializeChart() {
       const echarts = await loadChartRuntime();
       if (disposed) return;
 
-      const chart = echarts.init(root!, undefined, { renderer: "canvas" });
+      const chart = echarts.init(root!, undefined, { renderer: SHOWCASE_DEMO_MODE ? "svg" : "canvas" });
       instanceRef.current = chart;
       chart.setOption(optionRef.current, true);
       chart.on("click", (event) => {
@@ -93,14 +98,14 @@ export function EChartView({
     }
 
     function requestInitialization() {
-      if (shouldInitializeRef.current || disposed) return;
-      shouldInitializeRef.current = true;
+      if (initializationStarted || disposed) return;
+      initializationStarted = true;
       void initializeChart();
     }
 
     // The analytics page can render several charts. Defer charts outside the
     // viewport so the tab becomes interactive before ECharts parses and paints.
-    if (typeof IntersectionObserver === "undefined") {
+    if (SHOWCASE_DEMO_MODE || typeof IntersectionObserver === "undefined") {
       requestInitialization();
     } else {
       observer = new IntersectionObserver((entries) => {
