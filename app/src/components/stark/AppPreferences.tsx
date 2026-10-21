@@ -6,6 +6,7 @@ import { resolveLocale, translateDocument } from "@/lib/stark/i18n";
 import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
 import { getCurrentAccountId } from "@/lib/stark/storage/local-config";
 import { syncDueSubscriptionTransactions } from "@/lib/stark/subscriptions/recurring";
+import { SHOWCASE_DEMO_MODE } from "@/lib/stark/runtime";
 
 const dataManager = new DataModeManager();
 
@@ -66,6 +67,7 @@ export function AppPreferences() {
 
     applyUiSettings(readUiSettings());
     translateDocument(document.body, locale);
+    document.documentElement.classList.toggle("showcase-demo", SHOWCASE_DEMO_MODE);
     // Keep the server-rendered Chinese markup from flashing before the saved
     // language has been applied and translated on the client.
     document.body.classList.add("app-ready");
