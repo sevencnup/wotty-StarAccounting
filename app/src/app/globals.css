@@ -12055,6 +12055,18 @@ img[src$="/qita.webp"] {
   border-bottom: 0;
 }
 
+.assets-page .asset-item-row > .finance-item-actions {
+  grid-column: 2 / -1;
+  justify-self: start;
+  gap: 10px;
+  margin-left: 0;
+}
+
+.assets-page .asset-item-row > .finance-item-actions button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 .assets-page .asset-item-row i {
   display: grid;
   place-items: center;
