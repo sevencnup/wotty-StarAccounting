@@ -1,6 +1,7 @@
 import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { SHOWCASE_DEMO_MODE } from "@/lib/stark/runtime";
 import { getRecord, putRecord } from "@/lib/stark/storage/indexeddb";
+import { newEntryDraftKey } from "@/lib/stark/storage/new-entry-drafts";
 import { getSeededFlag, setSalaryDay, setSelectedReportMonth, setSeededFlag } from "@/lib/stark/storage/local-config";
 
 const ACCOUNT_ID = "default";
@@ -149,7 +150,48 @@ const savingsPlans: SavingsPlan[] = [
 ];
 
 const PLANNER_EXAMPLE_VERSION_KEY = "wotty:showcase:planner-example-v1";
+const PLANNER_SALARY_VERSION_KEY = "wotty:showcase:planner-salary-v2";
 const NEW_EXAMPLE_COLUMNS = ["网费", "通勤", "会员订阅"];
+
+async function seedSavingsPlannerSalaries() {
+  try {
+    if (window.localStorage.getItem(PLANNER_SALARY_VERSION_KEY) === "1") return;
+  } catch {
+    // IndexedDB can still be updated when localStorage is unavailable.
+  }
+
+  for (const sample of savingsPlans) {
+    const existing = await getRecord<SavingsPlan>("savingsPlans", sample.id);
+    if (existing && !Number(existing.salary) && existing.amount === sample.amount) {
+      await putRecord("savingsPlans", { ...existing, salary: sample.salary });
+    }
+  }
+
+  for (const goalId of new Set(savingsPlans.map((plan) => plan.goalId))) {
+    const key = newEntryDraftKey("savings", goalId);
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      const draft = JSON.parse(raw) as {
+        rows?: Record<string, { salary?: string }>;
+        rowsByFrequency?: Partial<Record<"MONTHLY" | "ALTERNATE", Record<string, { salary?: string }>>>;
+      };
+      let changed = false;
+      for (const sample of savingsPlans.filter((plan) => plan.goalId === goalId)) {
+        for (const rows of [draft.rows, draft.rowsByFrequency?.MONTHLY]) {
+          const row = rows?.[sample.month];
+          if (!row || Number(row.salary) > 0) continue;
+          row.salary = String(sample.salary);
+          changed = true;
+        }
+      }
+      if (changed) window.localStorage.setItem(key, JSON.stringify(draft));
+    } catch {
+      // A malformed draft must not block the demo ledger.
+    }
+  }
+  try { window.localStorage.setItem(PLANNER_SALARY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
+}
 
 async function seedSavingsPlannerExamples() {
   try {
@@ -181,6 +223,7 @@ export async function seedShowcaseDemoData() {
 
   if (getSeededFlag()) {
     await seedSavingsPlannerExamples();
+    await seedSavingsPlannerSalaries();
     return;
   }
 
@@ -197,4 +240,5 @@ export async function seedShowcaseDemoData() {
   setSalaryDay(15);
   setSeededFlag();
   try { window.localStorage.setItem(PLANNER_EXAMPLE_VERSION_KEY, "1"); } catch { /* IndexedDB remains the source of truth. */ }
+  try { window.localStorage.setItem(PLANNER_SALARY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
 }
