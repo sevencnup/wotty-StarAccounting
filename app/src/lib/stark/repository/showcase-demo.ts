@@ -154,6 +154,7 @@ const PLANNER_EXAMPLE_VERSION_KEY = "wotty:showcase:planner-example-v1";
 const PLANNER_SALARY_VERSION_KEY = "wotty:showcase:planner-salary-v2";
 const PLANNER_SAVING_VERSION_KEY = "wotty:showcase:planner-saving-v3";
 const REALISTIC_EXAMPLE_VERSION_KEY = "wotty:showcase:realistic-income-v4";
+const NOVEMBER_SALARY_VERSION_KEY = "wotty:showcase:november-salary-v5";
 const NEW_EXAMPLE_COLUMNS = ["网费", "通勤", "会员订阅"];
 
 async function seedImprovedSavingExample() {
@@ -235,6 +236,29 @@ async function seedRealisticIncomeExample() {
   try { window.localStorage.setItem(REALISTIC_EXAMPLE_VERSION_KEY, "1"); } catch { /* Best effort. */ }
 }
 
+async function seedNovemberSalaryExample() {
+  try {
+    if (window.localStorage.getItem(NOVEMBER_SALARY_VERSION_KEY) === "1") return;
+  } catch { /* Continue with IndexedDB. */ }
+
+  const plan = await getRecord<SavingsPlan>("savingsPlans", "showcase-plan-nov-travel");
+  if (plan?.salary === 30_000) await putRecord("savingsPlans", { ...plan, salary: 19_680 });
+
+  try {
+    const key = newEntryDraftKey("savings", "showcase-goal-travel");
+    const raw = window.localStorage.getItem(key);
+    if (raw) {
+      const draft = JSON.parse(raw) as { rows?: Record<string, { salary?: string }>; rowsByFrequency?: { MONTHLY?: Record<string, { salary?: string }> } };
+      let changed = false;
+      for (const row of [draft.rows?.["2026-11"], draft.rowsByFrequency?.MONTHLY?.["2026-11"]]) {
+        if (row?.salary === "30000") { row.salary = "19680"; changed = true; }
+      }
+      if (changed) window.localStorage.setItem(key, JSON.stringify(draft));
+    }
+    window.localStorage.setItem(NOVEMBER_SALARY_VERSION_KEY, "1");
+  } catch { /* Keep visitor drafts untouched if unavailable. */ }
+}
+
 async function seedSavingsPlannerSalaries() {
   try {
     if (window.localStorage.getItem(PLANNER_SALARY_VERSION_KEY) === "1") return;
@@ -308,6 +332,7 @@ export async function seedShowcaseDemoData() {
     await seedSavingsPlannerSalaries();
     await seedImprovedSavingExample();
     await seedRealisticIncomeExample();
+    await seedNovemberSalaryExample();
     return;
   }
 
@@ -327,4 +352,5 @@ export async function seedShowcaseDemoData() {
   try { window.localStorage.setItem(PLANNER_SALARY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
   try { window.localStorage.setItem(PLANNER_SAVING_VERSION_KEY, "1"); } catch { /* Best effort. */ }
   try { window.localStorage.setItem(REALISTIC_EXAMPLE_VERSION_KEY, "1"); } catch { /* Best effort. */ }
+  try { window.localStorage.setItem(NOVEMBER_SALARY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
 }
