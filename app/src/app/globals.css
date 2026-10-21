@@ -15697,22 +15697,26 @@ html.showcase-demo .stark-budget-allocation-plan-details ul {
 
 html.showcase-demo .global-journal-trigger {
   left: auto;
-  right: 12px;
+  right: 10px;
   bottom: calc(64px + env(safe-area-inset-bottom));
-  width: 36px;
+  width: auto;
   height: 36px;
-  gap: 0;
-  padding: 0;
-  border-radius: 50%;
-  font-size: 0;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: calc(11px * var(--user-font-scale));
   transform: none;
 }
 
 html.showcase-demo .global-journal-trigger::before {
-  width: 21px;
-  height: 21px;
-  border-radius: 50%;
-  font-size: 18px;
+  width: 17px;
+  height: 17px;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+html.showcase-demo .global-journal-trigger:active {
+  transform: scale(.96);
 }
 
 html.showcase-demo .mobile-bottom-nav-inner {
