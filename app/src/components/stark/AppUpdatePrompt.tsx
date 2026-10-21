@@ -40,12 +40,10 @@ export function AppUpdatePrompt() {
   }, [consumePromptHistory, dismissPrompt]);
 
   useEffect(() => {
-    // The KT hybrid test package has its own applicationId. It must not offer
-    // the Web shell APK from the shared version endpoint.
-    if (navigator.userAgent.includes("WottyStarkKtHybrid")) return;
-
     let cancelled = false;
     const native = Capacitor.isNativePlatform();
+    const isKtHybrid = navigator.userAgent.includes("WottyStarkKtHybrid");
+    const edition = isKtHybrid ? "ktweb" : "web";
 
     async function checkForUpdate(manual: boolean) {
       if (!native) {
@@ -61,12 +59,17 @@ export function AppUpdatePrompt() {
         setChecking(true);
       }
       try {
-        const response = await fetch(appVersionEndpoint(APP_UPDATE_BASE_URL), { signal: controller.signal, cache: "no-store" });
+        const response = await fetch(appVersionEndpoint(APP_UPDATE_BASE_URL, edition), { signal: controller.signal, cache: "no-store" });
         if (!response.ok) {
           if (manual && !cancelled) setNotice({ title: "版本检查失败", message: "暂时无法连接版本服务，请稍后重试。" });
           return;
         }
-        const info = await response.json() as AppVersionInfo;
+        const responseInfo = await response.json() as AppVersionInfo;
+        // Older servers and servers without a KT hybrid package must never
+        // hand the Web shell APK to the KT hybrid applicationId.
+        const info = isKtHybrid && responseInfo.edition !== "ktweb"
+          ? { ...responseInfo, apkUrl: null }
+          : responseInfo;
         if (cancelled) return;
         if (hasNewerAppVersion(CURRENT_APP_VERSION_CODE, info)) {
           setUpdate({ info, unavailable: !info.apkUrl });
@@ -89,7 +92,7 @@ export function AppUpdatePrompt() {
     }
 
     window.addEventListener("stark:check-app-update", handleManualCheck);
-    void checkForUpdate(false);
+    if (!isKtHybrid) void checkForUpdate(false);
     return () => {
       cancelled = true;
       checkAbortRef.current?.abort();

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import packageInfo from "../../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
@@ -24,6 +25,7 @@ import type { BillImportSource } from "@/lib/stark/import/bill-csv";
 
 const manager = new DataModeManager();
 type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "SUBSCRIPTIONS" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "MODE";
+type SettingIconKey = PanelKey | "UPDATE";
 const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
 const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
 
@@ -33,8 +35,8 @@ type PendingBillImport = {
   transactions: Transaction[];
 };
 
-function SettingIcon({ type }: { type: PanelKey }) {
-  const paths: Record<PanelKey, React.ReactNode> = {
+function SettingIcon({ type }: { type: SettingIconKey }) {
+  const paths: Record<SettingIconKey, React.ReactNode> = {
     ACCOUNT: <><circle cx="12" cy="8" r="3.5" /><path d="M5 21c.5-4 3.1-6 7-6s6.5 2 7 6" /><path d="M18 5v4M16 7h4" /></>,
     IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
     EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
@@ -45,6 +47,7 @@ function SettingIcon({ type }: { type: PanelKey }) {
     HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
     ABOUT: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
     MODE: <><path d="M7 7h10" /><path d="m13 3 4 4-4 4" /><path d="M17 17H7" /><path d="m11 13-4 4 4 4" /></>,
+    UPDATE: <><path d="M20 7v5h-5" /><path d="M20 12a8 8 0 1 1-2.35-5.65L20 9" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[type]}</svg>;
 }
@@ -53,7 +56,7 @@ function ChevronIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>;
 }
 
-function SettingsRow({ type, title, value, onClick, disabled = false }: { type: PanelKey; title: string; value?: string; onClick: () => void; disabled?: boolean }) {
+function SettingsRow({ type, title, value, onClick, disabled = false }: { type: SettingIconKey; title: string; value?: string; onClick: () => void; disabled?: boolean }) {
   return (
     <button type="button" className={`settings-center-row${disabled ? " disabled" : ""}`} onClick={onClick} disabled={disabled} aria-disabled={disabled}>
       <span className={`settings-center-icon ${type.toLowerCase()}`}><SettingIcon type={type} /></span>
@@ -67,6 +70,7 @@ function SettingsRow({ type, title, value, onClick, disabled = false }: { type: 
 export default function AccountsPage() {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
+  const [showAppUpdateCheck, setShowAppUpdateCheck] = useState(false);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -99,6 +103,7 @@ export default function AccountsPage() {
   }, [consumeLogoutHistory, dismissLogoutConfirm]);
 
   useEffect(() => {
+    setShowAppUpdateCheck(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android");
     const saved = readUiSettings();
     setUiSettings(saved);
     applyUiSettings(saved);
@@ -365,6 +370,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="HELP" title="帮助与反馈" onClick={() => setActivePanel("HELP")} />
+        {showAppUpdateCheck ? <SettingsRow type="UPDATE" title="检查更新" value={`v${packageInfo.version}`} onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} /> : null}
         <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
 

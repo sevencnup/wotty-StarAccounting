@@ -34,6 +34,7 @@ private suspend fun ApplicationCall.ensureAccountAccess(userId: String, accountI
 
 @Serializable
 data class AppVersionResponse(
+    val edition: String,
     val versionCode: Int,
     val versionName: String,
     val apkUrl: String? = null,
@@ -75,13 +76,24 @@ fun Routing.appRoutes() {
     }
 
     get("/api/app/version") {
+        val ktWeb = call.request.queryParameters["edition"] == "ktweb"
+        val versionPrefix = if (ktWeb) "APP_KTWEB_" else "APP_"
+        fun environmentValue(suffix: String): String? = System.getenv(versionPrefix + suffix)?.takeIf { it.isNotBlank() }
+
+        val versionCode = environmentValue("VERSION_CODE")?.toIntOrNull()
+            ?: System.getenv("APP_VERSION_CODE")?.toIntOrNull()
+            ?: 107
+        val versionName = environmentValue("VERSION_NAME")
+            ?: System.getenv("APP_VERSION_NAME")?.takeIf { it.isNotBlank() }
+            ?: "0.0.107"
         call.respond(
             AppVersionResponse(
-                versionCode = System.getenv("APP_VERSION_CODE")?.toIntOrNull() ?: 107,
-                versionName = System.getenv("APP_VERSION_NAME") ?: "0.0.107",
-                apkUrl = System.getenv("APP_APK_URL"),
-                changelog = System.getenv("APP_CHANGELOG"),
-                forceUpdate = System.getenv("APP_FORCE_UPDATE")?.equals("true", ignoreCase = true) == true
+                edition = if (ktWeb) "ktweb" else "web",
+                versionCode = versionCode,
+                versionName = versionName,
+                apkUrl = environmentValue("APK_URL"),
+                changelog = environmentValue("CHANGELOG"),
+                forceUpdate = environmentValue("FORCE_UPDATE")?.equals("true", ignoreCase = true) == true
             )
         )
     }
