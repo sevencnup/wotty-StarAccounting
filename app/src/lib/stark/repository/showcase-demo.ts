@@ -137,13 +137,13 @@ const loans: Loan[] = [
 ];
 
 const savingsGoals: SavingsGoal[] = [
-  { id: "showcase-goal-home", userId: USER_ID, accountId: ACCOUNT_ID, name: "新家首付", targetAmount: 50_000, currentAmount: 18_600, deadline: "2027-06-30", type: "LONG_TERM", status: "ACTIVE", depositType: "PRIVATE", planConfig: JSON.stringify({ frequency: "MONTHLY", columns: ["房租", "水电", "网费", "通勤", "会员订阅", "其他"], fixedColumns: ["房租", "水电", "网费", "通勤", "会员订阅", "其他"] }), createdAt: CREATED_AT, updatedAt: CREATED_AT },
+  { id: "showcase-goal-home", userId: USER_ID, accountId: ACCOUNT_ID, name: "新家首付", targetAmount: 50_000, currentAmount: 22_100, deadline: "2027-06-30", type: "LONG_TERM", status: "ACTIVE", depositType: "PRIVATE", planConfig: JSON.stringify({ frequency: "MONTHLY", columns: ["房租", "水电", "网费", "通勤", "会员订阅", "其他"], fixedColumns: ["房租", "水电", "网费", "通勤", "会员订阅", "其他"] }), createdAt: CREATED_AT, updatedAt: CREATED_AT },
   { id: "showcase-goal-travel", userId: USER_ID, accountId: ACCOUNT_ID, name: "年度旅行", targetAmount: 8_000, currentAmount: 3_200, deadline: "2026-12-31", type: "YEARLY", status: "ACTIVE", depositType: "CASH", createdAt: CREATED_AT, updatedAt: CREATED_AT },
   { id: "showcase-goal-reserve", userId: USER_ID, accountId: ACCOUNT_ID, name: "紧急备用金", targetAmount: 20_000, currentAmount: 15_400, type: "LONG_TERM", status: "ACTIVE", depositType: "FIXED_TERM", createdAt: CREATED_AT, updatedAt: CREATED_AT },
 ];
 
 const savingsPlans: SavingsPlan[] = [
-  { id: "showcase-plan-oct-home", goalId: "showcase-goal-home", month: "2026-10", amount: 2_500, actualAmount: 2_500, status: "COMPLETED", actualDate: "2026-10-15", salary: 30_000, expenses: JSON.stringify({ 房租: 4_200, 水电: 460, 网费: 120, 通勤: 600, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-10-15 13:00:00" },
+  { id: "showcase-plan-oct-home", goalId: "showcase-goal-home", month: "2026-10", amount: 6_000, actualAmount: 6_000, status: "COMPLETED", actualDate: "2026-10-15", salary: 30_000, expenses: JSON.stringify({ 房租: 4_200, 水电: 460, 网费: 120, 通勤: 600, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-10-15 13:00:00" },
   { id: "showcase-plan-sep-reserve", goalId: "showcase-goal-reserve", month: "2026-09", amount: 1_200, actualAmount: 1_200, status: "COMPLETED", actualDate: "2026-09-15", salary: 11_800, expenses: JSON.stringify({ 房租: 4_200, 水电: 430, 网费: 120, 通勤: 560, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-09-15 13:00:00" },
   { id: "showcase-plan-aug-home", goalId: "showcase-goal-home", month: "2026-08", amount: 2_000, actualAmount: 2_000, status: "COMPLETED", actualDate: "2026-08-15", salary: 13_400, expenses: JSON.stringify({ 房租: 4_200, 水电: 510, 网费: 120, 通勤: 580, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-08-15 13:00:00" },
   { id: "showcase-plan-nov-travel", goalId: "showcase-goal-travel", month: "2026-11", amount: 800, actualAmount: 0, status: "PENDING", salary: 30_000, expenses: JSON.stringify({ 房租: 4_200, 水电: 480, 网费: 120, 通勤: 600, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: CREATED_AT },
@@ -151,7 +151,37 @@ const savingsPlans: SavingsPlan[] = [
 
 const PLANNER_EXAMPLE_VERSION_KEY = "wotty:showcase:planner-example-v1";
 const PLANNER_SALARY_VERSION_KEY = "wotty:showcase:planner-salary-v2";
+const PLANNER_SAVING_VERSION_KEY = "wotty:showcase:planner-saving-v3";
 const NEW_EXAMPLE_COLUMNS = ["网费", "通勤", "会员订阅"];
+
+async function seedImprovedSavingExample() {
+  try {
+    if (window.localStorage.getItem(PLANNER_SAVING_VERSION_KEY) === "1") return;
+  } catch {
+    // IndexedDB can still be updated when localStorage is unavailable.
+  }
+  const planId = "showcase-plan-oct-home";
+  const existing = await getRecord<SavingsPlan>("savingsPlans", planId);
+  const goal = await getRecord<SavingsGoal>("savingsGoals", "showcase-goal-home");
+  // Migrate only the unchanged example row; never overwrite a visitor's plan.
+  if (existing?.amount === 2_500 && existing.actualAmount === 2_500 && existing.status === "COMPLETED") {
+    await putRecord("savingsPlans", { ...existing, amount: 6_000, actualAmount: 6_000 });
+    if (goal?.currentAmount === 18_600) await putRecord("savingsGoals", { ...goal, currentAmount: 22_100 });
+    try {
+      const key = newEntryDraftKey("savings", "showcase-goal-home");
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        const draft = JSON.parse(raw) as { rows?: Record<string, { expected?: string }>; rowsByFrequency?: { MONTHLY?: Record<string, { expected?: string }> } };
+        let changed = false;
+        for (const row of [draft.rows?.["2026-10"], draft.rowsByFrequency?.MONTHLY?.["2026-10"]]) {
+          if (row?.expected === "2500") { row.expected = "6000"; changed = true; }
+        }
+        if (changed) window.localStorage.setItem(key, JSON.stringify(draft));
+      }
+    } catch { /* Ignore malformed or unavailable drafts. */ }
+  }
+  try { window.localStorage.setItem(PLANNER_SAVING_VERSION_KEY, "1"); } catch { /* Best effort. */ }
+}
 
 async function seedSavingsPlannerSalaries() {
   try {
@@ -224,6 +254,7 @@ export async function seedShowcaseDemoData() {
   if (getSeededFlag()) {
     await seedSavingsPlannerExamples();
     await seedSavingsPlannerSalaries();
+    await seedImprovedSavingExample();
     return;
   }
 
@@ -241,4 +272,5 @@ export async function seedShowcaseDemoData() {
   setSeededFlag();
   try { window.localStorage.setItem(PLANNER_EXAMPLE_VERSION_KEY, "1"); } catch { /* IndexedDB remains the source of truth. */ }
   try { window.localStorage.setItem(PLANNER_SALARY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
+  try { window.localStorage.setItem(PLANNER_SAVING_VERSION_KEY, "1"); } catch { /* Best effort. */ }
 }
