@@ -67,7 +67,8 @@ export function AppPreferences() {
 
     applyUiSettings(readUiSettings());
     translateDocument(document.body, locale);
-    document.documentElement.classList.toggle("showcase-demo", SHOWCASE_DEMO_MODE);
+    const compactShowcase = SHOWCASE_DEMO_MODE && process.env.NEXT_PUBLIC_SHOWCASE_COMPACT !== "0";
+    document.documentElement.classList.toggle("showcase-demo", compactShowcase);
     // Keep the server-rendered Chinese markup from flashing before the saved
     // language has been applied and translated on the client.
     document.body.classList.add("app-ready");
