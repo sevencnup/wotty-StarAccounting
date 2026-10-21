@@ -1,6 +1,6 @@
 import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from "@/lib/stark/models";
 import { SHOWCASE_DEMO_MODE } from "@/lib/stark/runtime";
-import { putRecord } from "@/lib/stark/storage/indexeddb";
+import { getRecord, putRecord } from "@/lib/stark/storage/indexeddb";
 import { getSeededFlag, setSalaryDay, setSelectedReportMonth, setSeededFlag } from "@/lib/stark/storage/local-config";
 
 const ACCOUNT_ID = "default";
@@ -136,23 +136,53 @@ const loans: Loan[] = [
 ];
 
 const savingsGoals: SavingsGoal[] = [
-  { id: "showcase-goal-home", userId: USER_ID, accountId: ACCOUNT_ID, name: "新家首付", targetAmount: 50_000, currentAmount: 18_600, deadline: "2027-06-30", type: "LONG_TERM", status: "ACTIVE", depositType: "PRIVATE", createdAt: CREATED_AT, updatedAt: CREATED_AT },
+  { id: "showcase-goal-home", userId: USER_ID, accountId: ACCOUNT_ID, name: "新家首付", targetAmount: 50_000, currentAmount: 18_600, deadline: "2027-06-30", type: "LONG_TERM", status: "ACTIVE", depositType: "PRIVATE", planConfig: JSON.stringify({ frequency: "MONTHLY", columns: ["房租", "水电", "网费", "通勤", "会员订阅", "其他"], fixedColumns: ["房租", "水电", "网费", "通勤", "会员订阅", "其他"] }), createdAt: CREATED_AT, updatedAt: CREATED_AT },
   { id: "showcase-goal-travel", userId: USER_ID, accountId: ACCOUNT_ID, name: "年度旅行", targetAmount: 8_000, currentAmount: 3_200, deadline: "2026-12-31", type: "YEARLY", status: "ACTIVE", depositType: "CASH", createdAt: CREATED_AT, updatedAt: CREATED_AT },
   { id: "showcase-goal-reserve", userId: USER_ID, accountId: ACCOUNT_ID, name: "紧急备用金", targetAmount: 20_000, currentAmount: 15_400, type: "LONG_TERM", status: "ACTIVE", depositType: "FIXED_TERM", createdAt: CREATED_AT, updatedAt: CREATED_AT },
 ];
 
 const savingsPlans: SavingsPlan[] = [
-  { id: "showcase-plan-oct-home", goalId: "showcase-goal-home", month: "2026-10", amount: 2_500, actualAmount: 2_500, status: "COMPLETED", actualDate: "2026-10-15", createdAt: CREATED_AT, updatedAt: "2026-10-15 13:00:00" },
-  { id: "showcase-plan-sep-reserve", goalId: "showcase-goal-reserve", month: "2026-09", amount: 1_200, actualAmount: 1_200, status: "COMPLETED", actualDate: "2026-09-15", createdAt: CREATED_AT, updatedAt: "2026-09-15 13:00:00" },
-  { id: "showcase-plan-aug-home", goalId: "showcase-goal-home", month: "2026-08", amount: 2_000, actualAmount: 2_000, status: "COMPLETED", actualDate: "2026-08-15", createdAt: CREATED_AT, updatedAt: "2026-08-15 13:00:00" },
-  { id: "showcase-plan-nov-travel", goalId: "showcase-goal-travel", month: "2026-11", amount: 800, actualAmount: 0, status: "PENDING", createdAt: CREATED_AT, updatedAt: CREATED_AT },
+  { id: "showcase-plan-oct-home", goalId: "showcase-goal-home", month: "2026-10", amount: 2_500, actualAmount: 2_500, status: "COMPLETED", actualDate: "2026-10-15", salary: 30_000, expenses: JSON.stringify({ 房租: 4_200, 水电: 460, 网费: 120, 通勤: 600, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-10-15 13:00:00" },
+  { id: "showcase-plan-sep-reserve", goalId: "showcase-goal-reserve", month: "2026-09", amount: 1_200, actualAmount: 1_200, status: "COMPLETED", actualDate: "2026-09-15", salary: 11_800, expenses: JSON.stringify({ 房租: 4_200, 水电: 430, 网费: 120, 通勤: 560, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-09-15 13:00:00" },
+  { id: "showcase-plan-aug-home", goalId: "showcase-goal-home", month: "2026-08", amount: 2_000, actualAmount: 2_000, status: "COMPLETED", actualDate: "2026-08-15", salary: 13_400, expenses: JSON.stringify({ 房租: 4_200, 水电: 510, 网费: 120, 通勤: 580, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: "2026-08-15 13:00:00" },
+  { id: "showcase-plan-nov-travel", goalId: "showcase-goal-travel", month: "2026-11", amount: 800, actualAmount: 0, status: "PENDING", salary: 30_000, expenses: JSON.stringify({ 房租: 4_200, 水电: 480, 网费: 120, 通勤: 600, 会员订阅: 88 }), remark: "单月存模式", createdAt: CREATED_AT, updatedAt: CREATED_AT },
 ];
+
+const PLANNER_EXAMPLE_VERSION_KEY = "wotty:showcase:planner-example-v1";
+const NEW_EXAMPLE_COLUMNS = ["网费", "通勤", "会员订阅"];
+
+async function seedSavingsPlannerExamples() {
+  try {
+    if (window.localStorage.getItem(PLANNER_EXAMPLE_VERSION_KEY) === "1") return;
+  } catch {
+    // The demo can still update IndexedDB when localStorage is unavailable.
+  }
+  for (const sample of savingsPlans) {
+    const existing = await getRecord<SavingsPlan>("savingsPlans", sample.id);
+    // Fill the original empty showcase rows, preserving any plan a visitor edited.
+    const originalEmptyPlan = existing
+      && (!existing.expenses || Object.values(JSON.parse(existing.expenses) as Record<string, unknown>).every((value) => !Number(value)))
+      && !existing.salary && existing.amount === sample.amount && !existing.remark;
+    if (!existing || originalEmptyPlan) {
+      const goal = await getRecord<SavingsGoal>("savingsGoals", sample.goalId);
+      if (goal && !goal.planConfig) {
+        const columns = ["房租", "水电", "其他", ...NEW_EXAMPLE_COLUMNS];
+        await putRecord("savingsGoals", { ...goal, planConfig: JSON.stringify({ columns, fixedColumns: columns, frequency: "MONTHLY" }) });
+      }
+      await putRecord("savingsPlans", { ...sample, actualAmount: existing?.actualAmount ?? sample.actualAmount, status: existing?.status ?? sample.status });
+    }
+  }
+  try { window.localStorage.setItem(PLANNER_EXAMPLE_VERSION_KEY, "1"); } catch { /* IndexedDB remains the source of truth. */ }
+}
 
 /** Seed one disposable, persistent ledger for the static marketing-site build. */
 export async function seedShowcaseDemoData() {
   if (!SHOWCASE_DEMO_MODE) return;
 
-  if (getSeededFlag()) return;
+  if (getSeededFlag()) {
+    await seedSavingsPlannerExamples();
+    return;
+  }
 
   const transactions = buildTransactions();
   await Promise.all([
@@ -166,4 +196,5 @@ export async function seedShowcaseDemoData() {
   setSelectedReportMonth("2026-10");
   setSalaryDay(15);
   setSeededFlag();
+  try { window.localStorage.setItem(PLANNER_EXAMPLE_VERSION_KEY, "1"); } catch { /* IndexedDB remains the source of truth. */ }
 }
