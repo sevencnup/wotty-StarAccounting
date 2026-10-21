@@ -22,6 +22,7 @@ type Options struct {
 	Auth          *auth.Service
 	Ledger        *ledger.Service
 	Version       config.AppVersion
+	KTWebVersion  config.AppVersion
 	SchemaVersion string
 	Logger        *log.Logger
 }
@@ -32,6 +33,7 @@ type healthResponse struct {
 }
 
 type versionResponse struct {
+	Edition     string  `json:"edition"`
 	VersionCode int     `json:"versionCode"`
 	VersionName string  `json:"versionName"`
 	APKURL      *string `json:"apkUrl,omitempty"`
@@ -44,7 +46,7 @@ type schemaVersionResponse struct {
 }
 
 // Bump when public API payloads change without a corresponding SQL schema change.
-const apiContractVersion = "1"
+const apiContractVersion = "2"
 
 func NewHandler(options Options) http.Handler {
 	router := chi.NewRouter()
@@ -55,12 +57,23 @@ func NewHandler(options Options) http.Handler {
 		writeJSON(writer, http.StatusOK, healthResponse{Status: "ok", DB: ready})
 	})
 	router.Get("/api/app/version", func(writer http.ResponseWriter, request *http.Request) {
+		edition := "web"
+		version := options.Version
+		if request.URL.Query().Get("edition") == "ktweb" {
+			edition = "ktweb"
+			version = options.KTWebVersion
+			if version.Code == 0 {
+				version = options.Version
+				version.APKURL = nil
+			}
+		}
 		writeJSON(writer, http.StatusOK, versionResponse{
-			VersionCode: options.Version.Code,
-			VersionName: options.Version.Name,
-			APKURL:      options.Version.APKURL,
-			Changelog:   options.Version.Changelog,
-			ForceUpdate: options.Version.ForceUpdate,
+			Edition:     edition,
+			VersionCode: version.Code,
+			VersionName: version.Name,
+			APKURL:      version.APKURL,
+			Changelog:   version.Changelog,
+			ForceUpdate: version.ForceUpdate,
 		})
 	})
 	router.Get("/api/schema", func(writer http.ResponseWriter, request *http.Request) {

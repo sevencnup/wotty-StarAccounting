@@ -42,7 +42,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:              net.JoinHostPort(appConfig.Host, appConfig.PortString()),
-		Handler:           httpapi.NewHandler(httpapi.Options{Database: store, Auth: authService, Ledger: ledgerService, Version: appConfig.Version, SchemaVersion: database.SchemaVersion(), Logger: logger}),
+		Handler:           httpapi.NewHandler(httpapi.Options{Database: store, Auth: authService, Ledger: ledgerService, Version: appConfig.Version, KTWebVersion: appConfig.KTWebVersion, SchemaVersion: database.SchemaVersion(), Logger: logger}),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}

@@ -17,11 +17,12 @@ const (
 type LookupEnv func(string) (string, bool)
 
 type Config struct {
-	Host     string
-	Port     int
-	Database DatabaseConfig
-	Auth     AuthConfig
-	Version  AppVersion
+	Host        string
+	Port        int
+	Database    DatabaseConfig
+	Auth        AuthConfig
+	Version     AppVersion
+	KTWebVersion AppVersion
 }
 
 type DatabaseConfig struct {
@@ -107,6 +108,14 @@ func Load(lookup LookupEnv) (Config, error) {
 	if versionName == "" {
 		versionName = "0.0.107"
 	}
+	ktWebVersionCode, err := integer(value("APP_KTWEB_VERSION_CODE"), versionCode, 1, 1<<31-1)
+	if err != nil {
+		return Config{}, fmt.Errorf("APP_KTWEB_VERSION_CODE: %w", err)
+	}
+	ktWebVersionName := value("APP_KTWEB_VERSION_NAME")
+	if ktWebVersionName == "" {
+		ktWebVersionName = versionName
+	}
 
 	jwtSecret := value("JWT_SECRET")
 	if len(jwtSecret) < 32 {
@@ -127,6 +136,13 @@ func Load(lookup LookupEnv) (Config, error) {
 			APKURL:      optional(value("APP_APK_URL")),
 			Changelog:   optional(value("APP_CHANGELOG")),
 			ForceUpdate: strings.EqualFold(value("APP_FORCE_UPDATE"), "true"),
+		},
+		KTWebVersion: AppVersion{
+			Code:        ktWebVersionCode,
+			Name:        ktWebVersionName,
+			APKURL:      optional(value("APP_KTWEB_APK_URL")),
+			Changelog:   optional(value("APP_KTWEB_CHANGELOG")),
+			ForceUpdate: strings.EqualFold(value("APP_KTWEB_FORCE_UPDATE"), "true"),
 		},
 	}, nil
 }

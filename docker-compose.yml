@@ -44,6 +44,17 @@ services:
       DB_AUTO_MIGRATE: "true"
       # 留空时普通登录可用，但忘记密码和注册开关不可用。
       ACCOUNT_ADMIN_KEY: ${ACCOUNT_ADMIN_KEY:-}
+      # 两种 Android 安装版分别公布更新信息；KT 混合版地址不能复用 Web 壳 APK。
+      APP_VERSION_CODE: ${APP_VERSION_CODE:-107}
+      APP_VERSION_NAME: ${APP_VERSION_NAME:-0.0.107}
+      APP_APK_URL: ${APP_APK_URL:-}
+      APP_CHANGELOG: ${APP_CHANGELOG:-}
+      APP_FORCE_UPDATE: ${APP_FORCE_UPDATE:-false}
+      APP_KTWEB_VERSION_CODE: ${APP_KTWEB_VERSION_CODE:-}
+      APP_KTWEB_VERSION_NAME: ${APP_KTWEB_VERSION_NAME:-}
+      APP_KTWEB_APK_URL: ${APP_KTWEB_APK_URL:-}
+      APP_KTWEB_CHANGELOG: ${APP_KTWEB_CHANGELOG:-}
+      APP_KTWEB_FORCE_UPDATE: ${APP_KTWEB_FORCE_UPDATE:-false}
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O - \"http://$${API_HOST:-127.0.0.1}:$${API_PORT:-12367}/api/health\" | grep -q '\"db\":true'"]
       interval: 10s

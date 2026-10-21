@@ -1,5 +1,5 @@
-export const CURRENT_APP_VERSION_CODE = 153;
-export const CURRENT_APP_VERSION_NAME = "0.6.0-dev.1";
+export const CURRENT_APP_VERSION_CODE = 154;
+export const CURRENT_APP_VERSION_NAME = "0.7.0-dev.1";
 export const APP_UPDATE_BASE_URL = "https://StarAccounting.wotty.app";
 
 export type AppVersionInfo = {
@@ -8,12 +8,14 @@ export type AppVersionInfo = {
   apkUrl?: string | null;
   changelog?: string | null;
   forceUpdate?: boolean;
+  edition?: "web" | "ktweb";
 };
 
 export function hasNewerAppVersion(currentVersionCode: number, latest: AppVersionInfo) {
   return Number.isFinite(latest.versionCode) && latest.versionCode > currentVersionCode;
 }
 
-export function appVersionEndpoint(baseUrl: string) {
-  return baseUrl.replace(/\/$/, "") + "/api/app/version";
+export function appVersionEndpoint(baseUrl: string, edition?: AppVersionInfo["edition"]) {
+  const endpoint = baseUrl.replace(/\/$/, "") + "/api/app/version";
+  return edition ? `${endpoint}?edition=${encodeURIComponent(edition)}` : endpoint;
 }
