@@ -15555,3 +15555,191 @@ body .reporting-year-menu-grid button.selected {
   background: #dfeeff;
   color: #2267ac;
 }
+
+/* Fit the App itself inside the promotional device frame without scaling it. */
+html.showcase-demo .tabs-shell {
+  padding-top: 24px;
+  padding-bottom: calc(82px + env(safe-area-inset-bottom));
+}
+
+html.showcase-demo .home-topbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  justify-items: start;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+html.showcase-demo .home-topbar > span:first-child {
+  display: none;
+}
+
+html.showcase-demo .home-topbar h1 {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: calc(16px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+html.showcase-demo .home-actions {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+html.showcase-demo .stark-hero-island {
+  gap: 6px;
+}
+
+html.showcase-demo .stark-hero-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 5px;
+  padding: 0 5px;
+}
+
+html.showcase-demo .stark-period-badge {
+  min-width: 0;
+  flex: 0 0 auto;
+  gap: 2px;
+  white-space: nowrap;
+  font-size: calc(12px * var(--user-font-scale));
+}
+
+html.showcase-demo .stark-period-badge svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+html.showcase-demo .stark-metric-switcher {
+  min-width: 0;
+  justify-self: end;
+  gap: 1px;
+  padding: 2px;
+}
+
+html.showcase-demo .stark-metric-switcher button {
+  height: 27px;
+  min-width: 32px;
+  padding: 0 5px;
+  font-size: calc(9px * var(--user-font-scale));
+  white-space: nowrap;
+}
+
+html.showcase-demo .stark-hero-card {
+  min-height: 128px;
+  gap: 7px;
+  padding: 12px 14px;
+}
+
+html.showcase-demo .stark-card-watermark {
+  top: 12px;
+  right: 13px;
+  font-size: 56px;
+}
+
+html.showcase-demo .stark-big-amount {
+  font-size: calc(30px * var(--user-font-scale));
+}
+
+html.showcase-demo .stark-cycle-breakdown {
+  gap: 4px 8px;
+  font-size: calc(9px * var(--user-font-scale));
+}
+
+html.showcase-demo .stark-budget-allocation-card {
+  padding: 10px 12px 9px;
+  border-radius: 14px;
+}
+
+html.showcase-demo .stark-budget-allocation-link {
+  gap: 7px;
+}
+
+html.showcase-demo .stark-budget-allocation-main {
+  gap: 8px;
+}
+
+html.showcase-demo .stark-budget-allocation-main > div + div {
+  padding-left: 8px;
+}
+
+html.showcase-demo .stark-budget-allocation-main strong {
+  font-size: calc(14px * var(--user-font-scale));
+  letter-spacing: -.025em;
+}
+
+html.showcase-demo .stark-budget-allocation-grid {
+  gap: 5px 10px;
+}
+
+html.showcase-demo .stark-budget-allocation-plan {
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 8px;
+}
+
+html.showcase-demo .stark-budget-allocation-plan-toggle,
+html.showcase-demo .stark-budget-allocation-plan-link {
+  min-height: 36px;
+}
+
+html.showcase-demo .stark-budget-allocation-plan-totals > div {
+  padding: 7px 6px;
+}
+
+html.showcase-demo .stark-budget-allocation-plan-details ul {
+  max-height: 108px;
+}
+
+html.showcase-demo .global-journal-trigger {
+  left: auto;
+  right: 12px;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  width: 36px;
+  height: 36px;
+  gap: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0;
+  transform: none;
+}
+
+html.showcase-demo .global-journal-trigger::before {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  font-size: 18px;
+}
+
+html.showcase-demo .mobile-bottom-nav-inner {
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+html.showcase-demo .mobile-bottom-nav-item {
+  min-height: 46px;
+}
+
+html.showcase-demo .mobile-bottom-nav-icon {
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 370px) {
+  html.showcase-demo .stark-hero-toolbar {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: 3px;
+    padding-right: 3px;
+    padding-left: 3px;
+  }
+
+  html.showcase-demo .stark-period-badge {
+    font-size: calc(11px * var(--user-font-scale));
+  }
+
+  html.showcase-demo .stark-metric-switcher button {
+    min-width: 28px;
+    padding-right: 4px;
+    padding-left: 4px;
+  }
+}
