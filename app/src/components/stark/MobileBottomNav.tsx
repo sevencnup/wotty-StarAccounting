@@ -6,9 +6,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { appRoute, planBackgroundResume } from "@/lib/stark/navigation/routes";
 import { createTabNavigation } from "@/lib/stark/navigation/tab-navigation";
 import { isNativeAppRuntime } from "@/lib/stark/storage/local-config";
-import { withAppBasePath } from "@/lib/stark/runtime";
+import { SHOWCASE_DEMO_MODE, withAppBasePath } from "@/lib/stark/runtime";
 
-const BACKGROUNDED_AT_STORAGE_KEY = "wotty:navigation-backgrounded-at";
+const BACKGROUNDED_AT_STORAGE_KEY = SHOWCASE_DEMO_MODE
+  ? "wotty:showcase:navigation-backgrounded-at"
+  : "wotty:navigation-backgrounded-at";
 
 function readPersistedBackgroundedAt() {
   try {
@@ -68,6 +70,8 @@ export function MobileBottomNav() {
   }, []);
 
   useEffect(() => {
+    // An embedded showcase must not restart at the host site's root page.
+    if (SHOWCASE_DEMO_MODE) return;
     const markBackgrounded = () => {
       const backgroundedAt = Date.now();
       backgroundedAtRef.current = backgroundedAt;

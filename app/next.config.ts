@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: true,
   devIndicators: false,
-  ...(showcaseDemoBuild ? { basePath: "/phone-demo" } : {}),
+  ...(showcaseDemoBuild ? { basePath: process.env.NEXT_PUBLIC_APP_BASE_PATH || "/phone-demo" } : {}),
   output: "export",
   trailingSlash: true,
   images: { unoptimized: true },
