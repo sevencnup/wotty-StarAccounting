@@ -12,6 +12,6 @@ test("builds the version endpoint without a duplicate slash", () => {
   assert.equal(appVersionEndpoint("http://localhost:12367/"), "http://localhost:12367/api/app/version");
 });
 
-test("uses the fixed StarAccounting update service", () => {
-  assert.equal(appVersionEndpoint(APP_UPDATE_BASE_URL), "https://StarAccounting.wotty.app/api/app/version");
+test("uses the deployed StarAccounting update service", () => {
+  assert.equal(appVersionEndpoint(APP_UPDATE_BASE_URL), "https://star7.sevencn.com/api/app/version");
 });
