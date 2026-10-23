@@ -380,6 +380,7 @@ export type SavingsPlanAllocation = {
   previousBalance: number;
   projectedRemaining: number | null;
   expenseItems: SavingsPlanAllocationItem[];
+  planSources: Array<{ goalId: string; goalName: string; period: string }>;
 };
 
 function positivePlanAmount(value: unknown) {
@@ -395,6 +396,7 @@ export function summarizeSavingsPlanAllocation(
 ): SavingsPlanAllocation {
   const isYear = /^\d{4}$/.test(reportingPeriod);
   const goalConfigs = new Map(goals.map((goal) => [goal.id, parseSavingsJsonObject(goal.planConfig)]));
+  const goalNames = new Map(goals.map((goal) => [goal.id, goal.name]));
   const selectedPlans = new Map<string, SavingsPlan>();
 
   for (const plan of [...plans].sort((left, right) => String(left.updatedAt ?? "").localeCompare(String(right.updatedAt ?? "")))) {
@@ -413,6 +415,7 @@ export function summarizeSavingsPlanAllocation(
   }
 
   const expenseItems = new Map<string, SavingsPlanAllocationItem>();
+  const planSources = new Map<string, { goalId: string; goalName: string; period: string }>();
   let fixedExpense = 0;
   let temporaryExpense = 0;
   let plannedDeposit = 0;
@@ -462,6 +465,11 @@ export function summarizeSavingsPlanAllocation(
       skippedPlanCount += 1;
     }
     nonemptyRows.push({ salary, previousBalance: balance, deposit, expenses });
+    planSources.set(plan.goalId, {
+      goalId: plan.goalId,
+      goalName: goalNames.get(plan.goalId) || "储蓄目标",
+      period: reportingPeriod,
+    });
   }
 
   const onlyRow = !isYear && nonemptyRows.length === 1 ? nonemptyRows[0] : null;
@@ -484,6 +492,7 @@ export function summarizeSavingsPlanAllocation(
       expected: onlyRow.deposit,
     }).remaining : null,
     expenseItems: [...expenseItems.values()].sort((left, right) => right.amount - left.amount || left.name.localeCompare(right.name)),
+    planSources: [...planSources.values()],
   };
 }
 
