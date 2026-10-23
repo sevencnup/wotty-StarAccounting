@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   description: "wotty stark web app",
   icons: {
     icon: {
-      url: `${process.env.NEXT_PUBLIC_APP_BASE_PATH ?? ""}/logo.webp`,
-      type: "image/webp",
+      url: `${process.env.NEXT_PUBLIC_APP_BASE_PATH ?? ""}/logo.svg`,
+      type: "image/svg+xml",
     },
   },
 };
