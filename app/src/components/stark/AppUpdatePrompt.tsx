@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
-import { appVersionEndpoint, APP_UPDATE_BASE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
+import { APP_UPDATE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 type UpdateState = { info: AppVersionInfo; unavailable: boolean } | null;
@@ -59,15 +59,18 @@ export function AppUpdatePrompt() {
         setChecking(true);
       }
       try {
-        const response = await fetch(appVersionEndpoint(APP_UPDATE_BASE_URL, edition), { signal: controller.signal, cache: "no-store" });
+        const response = await fetch(APP_UPDATE_URL, { signal: controller.signal, cache: "no-store" });
         if (!response.ok) {
           if (manual && !cancelled) setNotice({ title: "版本检查失败", message: "暂时无法连接版本服务，请稍后重试。" });
           return;
         }
         const responseInfo = await response.json() as AppVersionInfo;
-        // Older servers and servers without a KT hybrid package must never
-        // hand the Web shell APK to the KT hybrid applicationId.
-        const info = isKtHybrid && responseInfo.edition !== "ktweb"
+        // A shared manifest must never offer another edition's APK.
+        // Untagged legacy manifests are only eligible for the Web shell.
+        const mismatchedEdition = responseInfo.edition
+          ? responseInfo.edition !== edition
+          : isKtHybrid;
+        const info = mismatchedEdition
           ? { ...responseInfo, apkUrl: null }
           : responseInfo;
         if (cancelled) return;
