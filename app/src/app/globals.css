@@ -1994,6 +1994,30 @@ html.kt-hybrid-shell .tabs-shell {
   display: none;
 }
 
+.stark-budget-allocation-plan-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: calc(12px * var(--user-font-scale));
+  line-height: 1.6;
+}
+
+.stark-budget-allocation-plan-sources > span {
+  color: #64748b;
+}
+
+.stark-budget-allocation-plan-sources > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+  color: #047857;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
 .stark-budget-allocation-plan-link {
   display: inline-flex;
   align-items: center;
@@ -9993,6 +10017,7 @@ img[src$="/qita.webp"] {
 
 .settings-center-chevron {
   display: grid;
+  grid-column: 4;
   place-items: center;
   color: #969ca6;
 }

@@ -647,7 +647,7 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onMa
               </span>
             </button>
             <Link href="/app/savings" className="stark-budget-allocation-plan-link">
-              {translateValue("储蓄计划", locale)} <ChevronRightIcon size={12} />
+              {translateValue("全部目标", locale)} <ChevronRightIcon size={12} />
             </Link>
           </div>
           <div id={planContentId} className="stark-budget-allocation-plan-content" hidden={!planExpanded}>
@@ -678,6 +678,19 @@ function StarkBudgetAllocationCard({ summary, reportingMonth, transactions, onMa
                   : `已存 ¥ ${formatMoney(planAllocation.recordedDeposit)} · 待存 ¥ ${formatMoney(planAllocation.pendingDeposit)}`}</small>
               </div>
             </div>
+            {planAllocation.planSources.length > 0 ? (
+              <nav className="stark-budget-allocation-plan-sources" aria-label={translateValue("查看对应月度计划", locale)}>
+                <span>{translateValue("计划来源", locale)}</span>
+                {planAllocation.planSources.map((source) => (
+                  <Link
+                    key={source.goalId}
+                    href={{ pathname: "/app/journal/savings", query: { goalId: source.goalId } }}
+                  >
+                    {source.goalName} · {source.period} {translateValue("月度计划", locale)} <ChevronRightIcon size={12} />
+                  </Link>
+                ))}
+              </nav>
+            ) : null}
             {planAllocation.expenseItems.length > 0 ? (
               <div className="stark-budget-allocation-plan-details">
                 <strong>{translateValue("计划支出明细", locale)}</strong>

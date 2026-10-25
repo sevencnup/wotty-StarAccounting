@@ -1,6 +1,6 @@
 # 星会计（Wotty Star Accounting）
 
-<p align="center"><img src="app/public/logo.svg" alt="星会计 Logo" width="96"></p>
+<p align="center"><img src="app/public/logo.png" alt="星会计 Logo" width="96"></p>
 
 星会计是面向个人的记账与财务规划应用。记录收支后，可以按自然月或发薪周期查看资金变化，安排预算和储蓄计划，并管理资产、贷款及固定扣费。项目提供网页和 Android 版本。
 

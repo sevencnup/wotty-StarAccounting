@@ -58,6 +58,7 @@ export default function SavingsPage() {
   const [recordingPlan, setRecordingPlan] = useState<SavingsPlan | null>(null);
   const [previewProofImage, setPreviewProofImage] = useState<string | null>(null);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [showAllPlans, setShowAllPlans] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -135,7 +136,8 @@ export default function SavingsPage() {
     return { activeCount, completed, completionRate, monthPlanned, monthStatus, pending, pendingAmount, plannedTotal, progress, remainingTarget, savedAmount, skipped, target };
   }, [currentMonth, goals, locale, plans]);
 
-  const recentPlanGroups = useMemo(() => groupRecentSavingsPlans(plans), [plans]);
+  const recentPlanGroups = useMemo(() => groupRecentSavingsPlans(plans, showAllPlans ? plans.length : 8), [plans, showAllPlans]);
+  const visiblePlanCount = recentPlanGroups.reduce((sum, group) => sum + group.plans.length, 0);
   const activeGoals = useMemo(() => goals.filter((goal) => goal.status === "ACTIVE"), [goals]);
   const goalCards = useMemo(() => (
     activeGoals.length ? activeGoals : goals
@@ -219,10 +221,10 @@ export default function SavingsPage() {
                   <button
                     type="button"
                     className="savings-goal-edit-button"
-                    aria-label={`${translateValue("编辑目标", locale)} ${goal.name}`}
+                    aria-label={`${goal.name} · ${translateValue("月度计划与目标设置", locale)}`}
                     onClick={() => setEditingGoalId(goal.id)}
                   >
-                    {translateValue("编辑目标", locale)}
+                    {translateValue("目标与计划", locale)}
                   </button>
                 </div>
                 <div className="savings-goal-track" aria-label={`${goal.name} 进度 ${percentLabel}%`}><i style={{ width: `${percent}%` }} /></div>
@@ -239,9 +241,9 @@ export default function SavingsPage() {
         <div className="recent-head savings-section-head">
           <div>
             <h2>{translateValue("最近计划", locale)}</h2>
-            <span>{translateValue("按计划月份从近到远", locale)}</span>
+            <span>{translateValue("按计划月份由早到晚", locale)}</span>
           </div>
-          <span className="mini-section-note">{translateValue("按计划月份", locale)}</span>
+          <span className="mini-section-note">{locale === "en-US" ? `${visiblePlanCount} / ${plans.length} records` : `${visiblePlanCount} / ${plans.length} 条记录`}</span>
         </div>
         <div className="recent-list">
           {recentPlanGroups.length ? recentPlanGroups.map((group) => (
@@ -293,6 +295,18 @@ export default function SavingsPage() {
             <div className="loan-empty">{translateValue("暂无储蓄记录", locale)}</div>
           )}
         </div>
+        {plans.length > 8 ? (
+          <button
+            type="button"
+            className="savings-goal-edit-button"
+            aria-expanded={showAllPlans}
+            onClick={() => setShowAllPlans((expanded) => !expanded)}
+          >
+            {showAllPlans
+              ? locale === "en-US" ? "Collapse records" : "收起记录"
+              : locale === "en-US" ? `View all ${plans.length} records` : `查看全部 ${plans.length} 条记录`}
+          </button>
+        ) : null}
       </section>
 
       {recordingPlan && recordingGoal ? (

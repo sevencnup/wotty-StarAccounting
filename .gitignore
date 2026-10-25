@@ -15,7 +15,11 @@ build/
 *.tsbuildinfo
 node_modules/
 out/
-app/android/app/src/main/res/
+app/android/app/src/main/res/*
+!app/android/app/src/main/res/mipmap-nodpi/
+app/android/app/src/main/res/mipmap-nodpi/*
+!app/android/app/src/main/res/mipmap-nodpi/ic_launcher.png
+!app/android/app/src/main/res/mipmap-nodpi/ic_launcher_background.png
 .edge-profile/
 .next-stale-json-conflict/
 server-go/stark-api
