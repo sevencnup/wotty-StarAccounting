@@ -1,0 +1,113 @@
+name: Android Beta Release
+
+on:
+  push:
+    tags:
+      - "v*-beta.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out release source
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.23.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-34 build-tools;35.0.0"
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web assets
+        env:
+          STARK_SHOWCASE_DEMO: "0"
+          NEXT_PUBLIC_SHOWCASE_DEMO: "0"
+          NEXT_PUBLIC_APP_BASE_PATH: ""
+        run: pnpm --filter wotty-stark-web run build
+
+      - name: Sync Android project
+        run: pnpm --filter wotty-stark-web run sync:android
+
+      - name: Build Android release APK
+        working-directory: app/android
+        run: bash ./gradlew --no-daemon --max-workers=2 assembleKtwebRelease
+
+      - name: Sign and verify beta APK
+        id: package
+        env:
+          STARK_ANDROID_KEYSTORE_B64: ${{ secrets.STARK_ANDROID_KEYSTORE_B64 }}
+          STARK_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.STARK_ANDROID_KEYSTORE_PASSWORD }}
+          STARK_ANDROID_KEY_ALIAS: ${{ secrets.STARK_ANDROID_KEY_ALIAS }}
+          STARK_ANDROID_KEY_PASSWORD: ${{ secrets.STARK_ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$STARK_ANDROID_KEYSTORE_B64"
+          test -n "$STARK_ANDROID_KEYSTORE_PASSWORD"
+          test -n "$STARK_ANDROID_KEY_ALIAS"
+          test -n "$STARK_ANDROID_KEY_PASSWORD"
+
+          VERSION="${GITHUB_REF_NAME#v}"
+          APK_NAME="星会计-v${VERSION}.apk"
+          APP_VERSION="$(node -p 'require("./app/package.json").version')"
+          APP_VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode \([0-9][0-9]*\)$/\1/p' app/android/app/build.gradle | head -n 1)"
+          UNSIGNED_APK="app/android/app/build/outputs/apk/ktweb/release/app-ktweb-release-unsigned.apk"
+          KEYSTORE="$RUNNER_TEMP/stark-android-beta.keystore"
+          ALIGNED_APK="$RUNNER_TEMP/stark-android-beta-aligned.apk"
+          OUTPUT_DIR="$RUNNER_TEMP/stark-android-beta"
+          APK_PATH="$OUTPUT_DIR/$APK_NAME"
+
+          test "$VERSION" = "$APP_VERSION"
+          test -n "$APP_VERSION_CODE"
+          mkdir -p "$OUTPUT_DIR"
+          umask 077
+          printf '%s' "$STARK_ANDROID_KEYSTORE_B64" | base64 --decode > "$KEYSTORE"
+          trap 'rm -f "$KEYSTORE" "$ALIGNED_APK"' EXIT
+
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -f -p 4 "$UNSIGNED_APK" "$ALIGNED_APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign \
+            --ks "$KEYSTORE" \
+            --ks-key-alias "$STARK_ANDROID_KEY_ALIAS" \
+            --ks-pass env:STARK_ANDROID_KEYSTORE_PASSWORD \
+            --key-pass env:STARK_ANDROID_KEY_PASSWORD \
+            --out "$APK_PATH" \
+            "$ALIGNED_APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify "$APK_PATH"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" \
+            | grep -F "package: name='com.wotty.stark.ktweb' versionCode='${APP_VERSION_CODE}' versionName='${VERSION}'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" \
+            | grep -F "application-label:'星会计'"
+          echo "apk_path=$APK_PATH" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APK_PATH: ${{ steps.package.outputs.apk_path }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" "$APK_PATH" \
+            --title "星会计 ${VERSION}" \
+            --notes "星会计首个 Android 公测版本。" \
+            --prerelease
