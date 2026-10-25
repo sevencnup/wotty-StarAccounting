@@ -1,20 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import { APP_UPDATE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
 import { setAppUpdateAvailable } from "@/lib/stark/app-update-status";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 type UpdateState = { info: AppVersionInfo; unavailable: boolean } | null;
 type NoticeState = { title: string; message: string } | null;
+type DownloadState = {
+  status: "idle" | "downloading" | "permission" | "ready" | "error";
+  percent: number | null;
+  downloadedBytes: number;
+  message: string | null;
+};
+type NativeDownloadProgress = {
+  stage: "downloading" | "permission";
+  percent?: number;
+  downloadedBytes: number;
+};
+type NativeAppUpdate = {
+  downloadAndInstall(options: { url: string; versionCode: number }): Promise<{ installationStarted: boolean }>;
+  addListener(eventName: "downloadProgress", listener: (progress: NativeDownloadProgress) => void): Promise<PluginListenerHandle>;
+};
+
+const nativeAppUpdate = registerPlugin<NativeAppUpdate>("AppUpdate");
+const initialDownload: DownloadState = { status: "idle", percent: null, downloadedBytes: 0, message: null };
 
 export function AppUpdatePrompt() {
   const [update, setUpdate] = useState<UpdateState>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
   const [checking, setChecking] = useState(false);
+  const [download, setDownload] = useState<DownloadState>(initialDownload);
+  const downloadRunningRef = useRef(false);
   const checkAbortRef = useRef<AbortController | null>(null);
-  const dismissibleUpdate = Boolean(update && (!update.info.forceUpdate || update.unavailable));
+  const downloadBusy = download.status === "downloading" || download.status === "permission";
+  const dismissibleUpdate = Boolean(update && (!update.info.forceUpdate || update.unavailable) && !downloadBusy);
   const dismissPrompt = useCallback(() => {
     if (checking) {
       checkAbortRef.current?.abort();
@@ -80,7 +101,10 @@ export function AppUpdatePrompt() {
         if (hasUpdate) {
           // The KT hybrid edition checks silently at startup; show its update
           // prompt only after the user opens the check-updates row.
-          if (manual || !isKtHybrid) setUpdate({ info, unavailable: !info.apkUrl });
+          if (manual || !isKtHybrid) {
+            setDownload(initialDownload);
+            setUpdate({ info, unavailable: !info.apkUrl });
+          }
         } else if (manual) {
           setNotice({ title: "已是最新版本", message: "当前 App 版本为 " + CURRENT_APP_VERSION_NAME + "。" });
         }
@@ -139,10 +163,50 @@ export function AppUpdatePrompt() {
   if (!update) return null;
 
   const { info } = update;
-  function openDownload() {
-    if (!info.apkUrl) return;
-    window.open(info.apkUrl, "_blank", "noopener,noreferrer");
+  async function openDownload() {
+    if (!info.apkUrl || downloadRunningRef.current) return;
+    downloadRunningRef.current = true;
+    setDownload({ status: "downloading", percent: null, downloadedBytes: 0, message: null });
+    let listener: PluginListenerHandle | null = null;
+    try {
+      listener = await nativeAppUpdate.addListener("downloadProgress", (progress) => {
+        setDownload({
+          status: progress.stage === "permission" ? "permission" : "downloading",
+          percent: typeof progress.percent === "number" ? progress.percent : null,
+          downloadedBytes: progress.downloadedBytes,
+          message: null,
+        });
+      });
+      await nativeAppUpdate.downloadAndInstall({ url: info.apkUrl, versionCode: info.versionCode });
+      setDownload({ status: "ready", percent: 100, downloadedBytes: 0, message: null });
+    } catch (error) {
+      setDownload({
+        status: "error",
+        percent: null,
+        downloadedBytes: 0,
+        message: error instanceof Error ? error.message : "下载或安装准备失败，请重试。",
+      });
+    } finally {
+      if (listener) {
+        try {
+          await listener.remove();
+        } catch {
+          // A listener cleanup failure must not block the next attempt.
+        }
+      }
+      downloadRunningRef.current = false;
+    }
   }
+
+  const progressLabel = download.status === "permission"
+    ? "请允许星会计安装应用，返回后会继续打开安装界面。"
+    : download.percent === null
+      ? `已下载 ${(download.downloadedBytes / 1024 / 1024).toFixed(1)} MB`
+      : `已下载 ${download.percent}%`;
+  const actionLabel = download.status === "downloading" ? "正在下载…"
+    : download.status === "permission" ? "等待安装授权…"
+      : download.status === "ready" ? "重新打开安装"
+        : download.status === "error" ? "重试下载或安装" : "下载并安装";
 
   return (
     <div className="app-update-overlay" role="dialog" aria-modal="true" aria-labelledby="app-update-title">
@@ -153,9 +217,21 @@ export function AppUpdatePrompt() {
         <p className="app-update-copy">当前版本 {CURRENT_APP_VERSION_NAME}，有新的 App 版本可用。</p>
         {info.changelog ? <p className="app-update-changelog">{info.changelog}</p> : null}
         {update.unavailable ? <p className="app-update-unavailable">服务器尚未配置 APK 下载地址，请稍后再试。</p> : null}
+        {downloadBusy ? (
+          <div className="app-update-download" aria-live="polite">
+            {download.status === "downloading" ? (
+              <div className="app-update-progress" role="progressbar" aria-label="安装包下载进度" aria-valuenow={download.percent ?? undefined} aria-valuemin={0} aria-valuemax={100}>
+                <span style={{ width: `${download.percent ?? 0}%` }} />
+              </div>
+            ) : null}
+            <p>{progressLabel}</p>
+          </div>
+        ) : null}
+        {download.status === "ready" ? <p className="app-update-copy">系统安装界面已打开，请按提示完成安装。</p> : null}
+        {download.status === "error" ? <p className="app-update-unavailable" role="alert">{download.message}</p> : null}
         <div className="app-update-actions">
-          <button type="button" className="app-update-later" onClick={closePrompt} disabled={info.forceUpdate && !update.unavailable}>稍后</button>
-          <button type="button" className="app-update-primary" onClick={openDownload} disabled={update.unavailable}>下载更新</button>
+          <button type="button" className="app-update-later" onClick={closePrompt} disabled={!dismissibleUpdate}>稍后</button>
+          <button type="button" className="app-update-primary" onClick={() => void openDownload()} disabled={update.unavailable || downloadBusy}>{actionLabel}</button>
         </div>
       </section>
     </div>
