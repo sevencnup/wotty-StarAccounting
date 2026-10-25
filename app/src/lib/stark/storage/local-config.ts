@@ -127,7 +127,21 @@ export function getSelectedReportMonth() {
 export function setSelectedReportMonth(month: string) {
   if (REPORTING_MONTH_PATTERN.test(month) || REPORTING_YEAR_PATTERN.test(month)) {
     writeValue("reporting-month", month);
+    if (SHOWCASE_DEMO_MODE) {
+      writeValue("reporting-month-manual", month === readValue("reporting-month-auto") ? "0" : "1");
+    }
   }
+}
+
+/** Follow the real calendar only while the visitor has not chosen a different report month. */
+export function setShowcaseAutoReportMonth(month: string) {
+  if (!SHOWCASE_DEMO_MODE || !REPORTING_MONTH_PATTERN.test(month)) return;
+  const selected = readValue("reporting-month");
+  const previousAutoMonth = readValue("reporting-month-auto");
+  if (readValue("reporting-month-manual") === "1") return;
+  if (selected && selected !== previousAutoMonth && selected !== DEFAULT_REPORTING_MONTH) return;
+  writeValue("reporting-month", month);
+  writeValue("reporting-month-auto", month);
 }
 
 export function getSeededFlag() {

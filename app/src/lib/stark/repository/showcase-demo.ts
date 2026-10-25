@@ -2,7 +2,8 @@ import type { Asset, Budget, Loan, SavingsGoal, SavingsPlan, Transaction } from 
 import { SHOWCASE_DEMO_MODE } from "@/lib/stark/runtime";
 import { getAllRecords, getRecord, putRecord } from "@/lib/stark/storage/indexeddb";
 import { newEntryDraftKey } from "@/lib/stark/storage/new-entry-drafts";
-import { getSeededFlag, setSalaryDay, setSelectedReportMonth, setSeededFlag } from "@/lib/stark/storage/local-config";
+import { getSeededFlag, setSalaryDay, setSeededFlag } from "@/lib/stark/storage/local-config";
+import { advanceShowcaseMonthlyDemo } from "./showcase-monthly-seed";
 import { missingShowcaseSavingsHistory, showcaseHistoricalSavingsPlans, showcaseSavingsGoals as savingsGoals, showcaseSavingsPlans as savingsPlans } from "./showcase-savings";
 
 const ACCOUNT_ID = "default";
@@ -338,6 +339,7 @@ export async function seedShowcaseDemoData() {
     await seedRealisticIncomeExample();
     await seedNovemberSalaryExample();
     await seedSavingsHistoryExample();
+    await advanceShowcaseMonthlyDemo();
     return;
   }
 
@@ -350,7 +352,6 @@ export async function seedShowcaseDemoData() {
     ...savingsGoals.map((record) => putRecord("savingsGoals", record)),
     ...savingsPlans.map((record) => putRecord("savingsPlans", record)),
   ]);
-  setSelectedReportMonth("2026-10");
   setSalaryDay(15);
   setSeededFlag();
   try { window.localStorage.setItem(PLANNER_EXAMPLE_VERSION_KEY, "1"); } catch { /* IndexedDB remains the source of truth. */ }
@@ -359,4 +360,5 @@ export async function seedShowcaseDemoData() {
   try { window.localStorage.setItem(REALISTIC_EXAMPLE_VERSION_KEY, "1"); } catch { /* Best effort. */ }
   try { window.localStorage.setItem(NOVEMBER_SALARY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
   try { window.localStorage.setItem(SAVINGS_HISTORY_VERSION_KEY, "1"); } catch { /* Best effort. */ }
+  await advanceShowcaseMonthlyDemo();
 }

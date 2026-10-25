@@ -30,12 +30,12 @@ test("recent savings plans follow planned month rather than update time and sepa
   assert.deepEqual(groups[1].plans.map((item) => item.month), ["2027-01", "2027-02"]);
 });
 
-test("recent savings plan limit is applied after chronological sorting", () => {
+test("recent savings plan limit shows the latest months in chronological order", () => {
   const groups = groupRecentSavingsPlans([
     plan("future", "2027-01"),
     plan("first", "2026-10"),
     plan("second", "2026-11"),
   ], 2);
 
-  assert.deepEqual(groups.flatMap((group) => group.plans.map((item) => item.month)), ["2026-10", "2026-11"]);
+  assert.deepEqual(groups.flatMap((group) => group.plans.map((item) => item.month)), ["2026-11", "2027-01"]);
 });

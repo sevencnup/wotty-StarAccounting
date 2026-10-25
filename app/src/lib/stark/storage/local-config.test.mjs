@@ -70,3 +70,26 @@ test("keeps showcase mode local and stores its settings in a separate namespace"
     else process.env.NEXT_PUBLIC_SHOWCASE_DEMO = previousShowcaseMode;
   }
 });
+
+test("showcase month follows the calendar until the visitor chooses a different month", async () => {
+  const previousShowcaseMode = process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+  process.env.NEXT_PUBLIC_SHOWCASE_DEMO = "1";
+  const storage = installBrowser("https://star-accounting.example");
+  try {
+    const { getSelectedReportMonth, setSelectedReportMonth, setShowcaseAutoReportMonth } = await import(`./local-config.ts?showcase-auto=${Date.now()}`);
+    setShowcaseAutoReportMonth("2026-11");
+    assert.equal(getSelectedReportMonth(), "2026-11");
+    setShowcaseAutoReportMonth("2026-12");
+    assert.equal(getSelectedReportMonth(), "2026-12");
+    setSelectedReportMonth("2026-10");
+    setShowcaseAutoReportMonth("2027-01");
+    assert.equal(getSelectedReportMonth(), "2026-10");
+    setSelectedReportMonth("2026-12");
+    assert.equal(storage.get("wotty-stark:showcase:reporting-month-manual"), "0");
+    setShowcaseAutoReportMonth("2027-01");
+    assert.equal(getSelectedReportMonth(), "2027-01");
+  } finally {
+    if (previousShowcaseMode === undefined) delete process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+    else process.env.NEXT_PUBLIC_SHOWCASE_DEMO = previousShowcaseMode;
+  }
+});

@@ -23,7 +23,7 @@ export function groupRecentSavingsPlans(plans: readonly SavingsPlan[], limit = 8
       || left.month.localeCompare(right.month)
       || left.id.localeCompare(right.id)
     ))
-    .slice(0, limit);
+    .slice(-limit);
   const groups = new Map<string, SavingsPlan[]>();
 
   for (const plan of chronological) {
