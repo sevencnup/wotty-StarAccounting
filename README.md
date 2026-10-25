@@ -4,6 +4,8 @@
 
 星会计是面向个人的记账与财务规划应用。记录收支后，可以按自然月或发薪周期查看资金变化，安排预算和储蓄计划，并管理资产、贷款及固定扣费。项目提供网页和 Android 版本。
 
+**Android 公测版下载：**[星会计 0.8.0-beta.1 APK](https://github.com/sevencnup/wotty-StarAccounting/releases/download/v0.8.0-beta.1/star-accounting-v0.8.0-beta.1.apk)（KT 混合版）。[查看全部发布版本](https://github.com/sevencnup/wotty-StarAccounting/releases)。
+
 ## 主要功能
 
 - **收支与账单**：记录收入、支出和账户流水，导入微信、支付宝账单，查看消费结构与趋势。
