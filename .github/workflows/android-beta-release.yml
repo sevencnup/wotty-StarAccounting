@@ -108,6 +108,6 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           gh release create "$GITHUB_REF_NAME" "$APK_PATH#星会计-v${VERSION}.apk" \
-            --title "星会计 ${VERSION}" \
+            --title "星会计 ${VERSION} 公测版" \
             --notes "星会计 Android 公测版本。" \
-            --prerelease
+            --latest
