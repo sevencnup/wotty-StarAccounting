@@ -1,5 +1,7 @@
 # 星会计 0.7.6-beta.2 公测发布
 
+> 状态：GitHub Actions 前端 TypeScript 检查失败，未生成 APK 或 Release。后续修复与发布见 [0.7.6-beta.3](android-beta-0.7.6-beta.3.md)。
+
 ## 目标
 
 将已完成的检查更新提醒和 MIT 许可发布到 GitHub，并由 GitHub Actions 构建、签名和发布新的星会计 Android 公测安装包。保留上一版安装包，使用现有签名在手机上原位升级。

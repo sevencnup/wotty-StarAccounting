@@ -117,7 +117,7 @@ export default function AccountsPage() {
 
   useEffect(() => {
     setUpdateAvailable(getAppUpdateAvailable());
-    return subscribeAppUpdateAvailable(setUpdateAvailable);
+    return subscribeAppUpdateAvailable(() => setUpdateAvailable(getAppUpdateAvailable()));
   }, []);
 
   function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
