@@ -9999,11 +9999,29 @@ img[src$="/qita.webp"] {
 }
 
 .settings-center-row > strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
   font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
+  min-width: 0;
+}
+
+.settings-center-label {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.settings-update-dot {
+  flex: 0 0 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.14);
 }
 
 .settings-center-value {
