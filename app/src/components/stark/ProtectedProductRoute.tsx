@@ -7,8 +7,25 @@ import { getCloudAuthToken, getCloudAuthUser } from "@/lib/stark/storage/cloud-a
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime } from "@/lib/stark/storage/local-config";
 import { SHOWCASE_DEMO_MODE, withAppBasePath } from "@/lib/stark/runtime";
 import { seedShowcaseDemoData } from "@/lib/stark/repository/showcase-demo";
+import { resetShowcaseDemoForPageLoad } from "@/lib/stark/repository/showcase-reset";
 
 const manager = new DataModeManager();
+let showcaseInitialization: Promise<void> | null = null;
+
+function initializeShowcaseForPageLoad() {
+  if (!showcaseInitialization) {
+    showcaseInitialization = (async () => {
+      await resetShowcaseDemoForPageLoad();
+      await manager.switchMode("LOCAL");
+      await manager.getLocalRepository().getCurrentUser();
+      await seedShowcaseDemoData();
+    })().catch((error) => {
+      showcaseInitialization = null;
+      throw error;
+    });
+  }
+  return showcaseInitialization;
+}
 
 function getEntryUrl() {
   const requested = `${window.location.pathname}${window.location.search}`;
@@ -28,9 +45,7 @@ export function ProtectedProductRoute({ children }: { children: React.ReactNode 
     async function authorize() {
       try {
         if (SHOWCASE_DEMO_MODE) {
-          await manager.switchMode("LOCAL");
-          await manager.getLocalRepository().getCurrentUser();
-          await seedShowcaseDemoData();
+          await initializeShowcaseForPageLoad();
           if (mountedRef.current) setAuthorized(true);
           return;
         }
