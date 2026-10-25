@@ -69,7 +69,7 @@ jobs:
           test -n "$STARK_ANDROID_KEY_PASSWORD"
 
           VERSION="${GITHUB_REF_NAME#v}"
-          APK_NAME="星会计-v${VERSION}.apk"
+          APK_NAME="star-accounting-v${VERSION}.apk"
           APP_VERSION="$(node -p 'require("./app/package.json").version')"
           APP_VERSION_CODE="$(sed -n 's/^[[:space:]]*versionCode \([0-9][0-9]*\)$/\1/p' app/android/app/build.gradle | head -n 1)"
           UNSIGNED_APK="app/android/app/build/outputs/apk/ktweb/release/app-ktweb-release-unsigned.apk"
@@ -107,7 +107,7 @@ jobs:
           APK_PATH: ${{ steps.package.outputs.apk_path }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
-          gh release create "$GITHUB_REF_NAME" "$APK_PATH" \
+          gh release create "$GITHUB_REF_NAME" "$APK_PATH#星会计-v${VERSION}.apk" \
             --title "星会计 ${VERSION}" \
             --notes "星会计首个 Android 公测版本。" \
             --prerelease
