@@ -32,7 +32,6 @@ Android 本地模式将数据保存在当前应用的 IndexedDB 中，不需要�
 | `app/` | 当前 Next.js 前端及 Capacitor Android 工程 |
 | `server-go/` | Docker Compose 默认使用的 Go API |
 | `api-server/` | 本地 `pnpm dev` 使用的 Ktor API |
-| `web/` | 早期 Web 工程及历史文档 |
 | `docs/` | 开发、部署和版本说明 |
 | `releases/` | 本地打包时保存带版本号和时间戳的 APK |
 
