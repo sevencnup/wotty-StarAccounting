@@ -29,3 +29,6 @@ server-go/stark-api.exe
 local.properties
 *.log
 .env
+
+# Legacy Web project kept only on local machines
+/web/
