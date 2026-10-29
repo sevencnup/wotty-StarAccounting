@@ -96,7 +96,15 @@ Android 安装包内的 `localhost` 指手机本身。使用云端模式时，�
 docker compose up -d --build
 ```
 
-首次启动会自动生成数据库密码、登录密钥和管理员恢复密钥，并保存在 Docker 命名卷中；MySQL 自动建库，Go API 自动建表。已有 `.env` 的部署会在首次创建密钥卷时采用其中的密钥。需要自定义端口或密钥时，可在首次启动前复制 `.env.example` 并填写；更新 `.env` 不会自动轮换已经保存的密钥。需要查看密码时执行：
+默认不需要 `.env`。首次启动会自动生成数据库密码、登录密钥和管理员恢复密钥，保存在 Docker 命名卷中；MySQL 自动建库，Go API 自动建表。
+
+只有需要自定义配置时，才在**首次启动前**于仓库根目录创建 `.env`：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`：`MYSQL_ROOT_PASSWORD`、`DB_PASSWORD`、`JWT_SECRET`、`ACCOUNT_ADMIN_KEY` 留空会自动生成；`DATABASE_URL` 留空会使用附带的 MySQL；端口可通过 `MYSQL_HOST_PORT`、`WEB_HOST_PORT`、`API_PORT` 调整。已有 `.env` 的部署会在首次创建密钥卷时采用其中的密钥；之后修改 `.env` 不会自动轮换已保存的密钥。需要查看生成的密码时执行：
 
 ```bash
 docker compose exec api-runtime cat /run/secrets/db/password
