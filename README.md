@@ -111,7 +111,7 @@ docker compose exec api-runtime cat /run/secrets/db/password
 docker compose exec api-runtime cat /run/secrets/api/account_admin_key
 ```
 
-Web 默认绑定宿主机 `127.0.0.1:12366`，API 默认监听 `12367`，MySQL 默认只通过 `127.0.0.1:3307` 暴露。对外访问 Web 时，需要按部署环境配置反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据及密钥卷。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
+Web 默认绑定宿主机 `127.0.0.1:12366`。需要通过局域网或 VPN 访问时，在部署目录的 `.env` 中设置 `WEB_BIND_HOST=0.0.0.0`，再运行 `docker compose up -d --build`；随后打开 `http://<服务器局域网 IP>:12366`。也可以把 `WEB_BIND_HOST` 设为某个具体网卡 IP，仅开放该地址。网页会连接同一主机的 `12367` API 端口；MySQL 仍只通过 `127.0.0.1:3307` 暴露。通过公网提供服务时应配置 HTTPS 反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据及密钥卷。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
 
 ## Android 打包
 

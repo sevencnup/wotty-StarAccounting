@@ -144,12 +144,13 @@ docker compose exec api-runtime cat /run/secrets/db/password
 
 `mysql-data`、`mysql-root-secret`、`db-secret`、`api-secret` 四个命名卷应一起备份和迁移。只丢失密钥卷而保留数据库卷时，不能凭空恢复原密码。
 
-MySQL 宿主机端口默认是 `127.0.0.1:3307`，只供本机 API 连接，避免与宿主机常见的 `3306` 冲突，也不会直接暴露到公网。需要更换端口时设置 `MYSQL_HOST_PORT`。API 保持 host 网络模式，故该 Compose 部署面向 Linux Docker 主机。
+MySQL 宿主机端口默认是 `127.0.0.1:3307`，只供本机 API 连接，避免与宿主机常见的 `3306` 冲突，也不会直接暴露到公网。需要更换端口时设置 `MYSQL_HOST_PORT`。API 保持 host 网络模式，故该 Compose 部署面向 Linux Docker 主机。Web 默认只绑定 `127.0.0.1:12366`；需要局域网访问时，在 `.env` 中设置 `WEB_BIND_HOST=0.0.0.0`，或设置为指定网卡 IP，然后运行 `docker compose up -d --build`。局域网客户端使用同一主机的 `12367` 端口访问 API。
 
 访问地址：
 
 - Web：`http://127.0.0.1:12366`
 - API 健康检查：`http://127.0.0.1:12367/api/health`
+- 开启局域网访问后：`http://<服务器局域网 IP>:12366`
 
 首次打开根入口会自动检测云端 API，再进行注册或登录；Android App 还可在登录页选择本地模式。不同账户只能看到自己拥有的账本。已登录后可在“设置 → 账户设置”修改密码，并用管理员恢复密钥控制是否允许新用户注册。
 
