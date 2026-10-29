@@ -1,0 +1,57 @@
+name: Docker Image Package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Build Docker image archive
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build application images
+        run: docker compose -p wotty-staraccounting build
+
+      - name: Export image archive
+        id: archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 mysql:8.0
+          docker pull --platform linux/amd64 alpine:3.21
+
+          version="$(node -p 'require("./package.json").version')"
+          short_sha="${GITHUB_SHA:0:7}"
+          image_tag="${version}-g${short_sha}"
+          archive_name="star-accounting-docker-${image_tag}-linux-amd64-run${GITHUB_RUN_NUMBER}.tar.gz"
+          output_dir="$RUNNER_TEMP/star-accounting-docker"
+          mkdir -p "$output_dir"
+
+          docker tag wotty-staraccounting-api:go "wotty-staraccounting-api:$image_tag"
+          docker tag wotty-staraccounting-web:latest "wotty-staraccounting-web:$image_tag"
+          docker save \
+            wotty-staraccounting-api:go \
+            "wotty-staraccounting-api:$image_tag" \
+            wotty-staraccounting-web:latest \
+            "wotty-staraccounting-web:$image_tag" \
+            mysql:8.0 \
+            alpine:3.21 | gzip -1 > "$output_dir/$archive_name"
+
+          (cd "$output_dir" && sha256sum "$archive_name" > "$archive_name.sha256")
+          printf 'artifact_name=%s\n' "${archive_name%.tar.gz}" >> "$GITHUB_OUTPUT"
+          printf 'output_dir=%s\n' "$output_dir" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Docker image package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.archive.outputs.artifact_name }}
+          path: ${{ steps.archive.outputs.output_dir }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 90
