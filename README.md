@@ -2,6 +2,21 @@
 
 <p align="center"><img src="app/public/logo.png" alt="星会计 Logo" width="96"></p>
 
+<p align="center">
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/blob/master/LICENSE"><img src="https://img.shields.io/github/license/sevencnup/wotty-StarAccounting?style=flat-square" alt="许可证"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/releases"><img src="https://img.shields.io/github/v/release/sevencnup/wotty-StarAccounting?style=flat-square" alt="最新发布版本"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/releases"><img src="https://img.shields.io/github/downloads/sevencnup/wotty-StarAccounting/total?style=flat-square" alt="安装包下载量"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/stargazers"><img src="https://img.shields.io/github/stars/sevencnup/wotty-StarAccounting?style=flat-square" alt="GitHub 星标数"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/issues"><img src="https://img.shields.io/github/issues/sevencnup/wotty-StarAccounting?style=flat-square" alt="未关闭的问题数"></a>
+</p>
+<p align="center">
+  <a href="docs/android-app-editions.md"><img src="https://img.shields.io/badge/Android-5.1%2B%20%28API%2022%29-3DDC84?logo=android&amp;logoColor=white&amp;style=flat-square" alt="Android 5.1 及以上"></a>
+  <a href="app/package.json"><img src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&amp;logoColor=white&amp;style=flat-square" alt="Next.js 16"></a>
+  <a href="app/package.json"><img src="https://img.shields.io/badge/Capacitor-6-119EFF?logo=capacitor&amp;logoColor=white&amp;style=flat-square" alt="Capacitor 6"></a>
+  <a href="server-go/"><img src="https://img.shields.io/badge/Go-API-00ADD8?logo=go&amp;logoColor=white&amp;style=flat-square" alt="Go API"></a>
+  <a href="app/android/build.gradle"><img src="https://img.shields.io/badge/Kotlin-2.1-7F52FF?logo=kotlin&amp;logoColor=white&amp;style=flat-square" alt="Kotlin 2.1"></a>
+</p>
+
 星会计是面向个人的记账与财务规划应用。记录收支后，可以按自然月或发薪周期查看资金变化，安排预算和储蓄计划，并管理资产、贷款及固定扣费。项目提供网页和 Android 版本。
 
 ## 主要功能
