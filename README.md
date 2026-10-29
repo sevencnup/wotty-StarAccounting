@@ -12,6 +12,25 @@
 - **订阅/扣费管理**：为订阅、保险、还款等固定支出设置日期和金额，到期自动记账。
 - **本地与云端账本**：Android 可选择设备本地账本或登录云端账本；浏览器使用云端账本。
 
+## 页面预览
+
+以下为 Android `0.8.0-beta.1` 的空账本页面。点击图片可查看原尺寸。
+
+<table>
+  <tr><th>首页</th><th>消费分析</th><th>储蓄</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/home.jpg"><img src="docs/screenshots/home.jpg" alt="星会计首页截图" width="220"></a></td>
+    <td><a href="docs/screenshots/consumption.jpg"><img src="docs/screenshots/consumption.jpg" alt="消费分析页面截图" width="220"></a></td>
+    <td><a href="docs/screenshots/savings.jpg"><img src="docs/screenshots/savings.jpg" alt="储蓄页面截图" width="220"></a></td>
+  </tr>
+  <tr><th>贷款</th><th>资产</th><th>设置</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/loans.jpg"><img src="docs/screenshots/loans.jpg" alt="贷款页面截图" width="220"></a></td>
+    <td><a href="docs/screenshots/assets.jpg"><img src="docs/screenshots/assets.jpg" alt="资产页面截图" width="220"></a></td>
+    <td><a href="docs/screenshots/settings.jpg"><img src="docs/screenshots/settings.jpg" alt="设置页面截图" width="220"></a></td>
+  </tr>
+</table>
+
 ## 版本与数据模式
 
 | 版本 | 页面与导航 | 本仓库能否构建 |
