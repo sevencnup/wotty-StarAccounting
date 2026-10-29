@@ -1,5 +1,7 @@
 FROM golang:1.26.10-alpine AS build
 
+ARG GOPROXY=https://goproxy.cn|https://proxy.golang.org|direct
+
 WORKDIR /workspace/server-go
 
 COPY server-go/go.mod server-go/go.sum ./
@@ -16,7 +18,8 @@ RUN apk add --no-cache ca-certificates \
 
 WORKDIR /app
 COPY --from=build /out/wotty-stark-api /app/wotty-stark-api
+COPY docker/api-entrypoint.sh /app/api-entrypoint.sh
 
 USER stark
 EXPOSE 12367
-ENTRYPOINT ["/app/wotty-stark-api"]
+ENTRYPOINT ["/bin/sh", "/app/api-entrypoint.sh"]
