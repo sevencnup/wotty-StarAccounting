@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Build application images
         run: docker compose -p wotty-staraccounting build
@@ -48,7 +48,7 @@ jobs:
           printf 'output_dir=%s\n' "$output_dir" >> "$GITHUB_OUTPUT"
 
       - name: Upload Docker image package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.archive.outputs.artifact_name }}
           path: ${{ steps.archive.outputs.output_dir }}/
