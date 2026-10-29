@@ -1,0 +1,12 @@
+.git
+.gradle
+**/.gradle
+node_modules
+**/node_modules
+**/build
+**/.next
+**/.kotlin
+releases
+docs
+*.log
+.env

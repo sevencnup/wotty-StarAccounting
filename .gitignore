@@ -1,0 +1,34 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!/**/build/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Local development
+.claude/
+.next/
+*.tsbuildinfo
+node_modules/
+out/
+app/android/app/src/main/res/*
+!app/android/app/src/main/res/mipmap-nodpi/
+app/android/app/src/main/res/mipmap-nodpi/*
+!app/android/app/src/main/res/mipmap-nodpi/ic_launcher.png
+!app/android/app/src/main/res/mipmap-nodpi/ic_launcher_background.png
+.edge-profile/
+.next-stale-json-conflict/
+server-go/stark-api
+server-go/stark-api.exe
+
+# Misc
+local.properties
+*.log
+.env
+
+# Legacy Web project kept only on local machines
+/web/

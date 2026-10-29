@@ -1,0 +1,458 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
+import packageInfo from "../../../../../package.json";
+import { PageTopBar } from "@/components/stark/PageTopBar";
+import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
+import { DataModeManager } from "@/lib/stark/repository/DataModeManager";
+import { getCloudApiUrl, getCurrentAccountId, getCurrentDataMode } from "@/lib/stark/storage/local-config";
+import { cloudLogout, cloudRegistrationStatus, cloudResetPassword, cloudSetRegistrationEnabled } from "@/lib/stark/repository/cloud-auth";
+import { getCloudAuthUser } from "@/lib/stark/storage/cloud-auth";
+import { nowText } from "@/lib/stark/utils/format";
+import { createId } from "@/lib/stark/utils/id";
+import { applyCategoryRules } from "@/lib/stark/dashboard/remark";
+import { serializeTransactionsToCsv } from "@/lib/stark/export/transaction-csv";
+import { buildImportErrorLogs, selectFailedImportTransactions } from "@/lib/stark/import/import-errors";
+import { matchImportedLoanRepayments } from "@/lib/stark/import/loan-repayment";
+import { BillRemarkSheet } from "@/components/stark/BillRemarkSheet";
+import { SubscriptionManagementSheet } from "@/components/stark/SubscriptionManagementSheet";
+import { BottomSheet } from "@/components/stark/BottomSheet";
+import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
+import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
+import type { BillImportSource } from "@/lib/stark/import/bill-csv";
+
+const manager = new DataModeManager();
+type PanelKey = "ACCOUNT" | "IMPORT" | "EXPORT" | "REMARK" | "SUBSCRIPTIONS" | "LANGUAGE" | "FONT" | "HELP" | "ABOUT" | "MODE";
+type SettingIconKey = PanelKey | "UPDATE";
+const languageLabels: Record<LanguageChoice, string> = { SYSTEM: "跟随系统", ZH_CN: "简体中文", EN_US: "English" };
+const fontLabels: Record<FontChoice, string> = { SMALL: "较小", STANDARD: "标准", LARGE: "较大" };
+
+type PendingBillImport = {
+  fileName: string;
+  platform: BillImportSource;
+  transactions: Transaction[];
+};
+
+function SettingIcon({ type }: { type: SettingIconKey }) {
+  const paths: Record<SettingIconKey, React.ReactNode> = {
+    ACCOUNT: <><circle cx="12" cy="8" r="3.5" /><path d="M5 21c.5-4 3.1-6 7-6s6.5 2 7 6" /><path d="M18 5v4M16 7h4" /></>,
+    IMPORT: <><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M5 18v2h14v-2" /></>,
+    EXPORT: <><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M5 20h14" /></>,
+    REMARK: <><path d="M6 2h12a1 1 0 0 1 1 1v19l-7-4-7 4V3a1 1 0 0 1 1-1Z" /><path d="M9 8h6" /><path d="M9 12h4" /></>,
+    SUBSCRIPTIONS: <><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" /><path d="M8 7h8M8 11h5M8 15h3" /><path d="M16 16h.01" /></>,
+    LANGUAGE: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.2 2.4 3.3 5.4 3.3 9S14.2 18.6 12 21c-2.2-2.4-3.3-5.4-3.3-9S9.8 5.4 12 3Z" /></>,
+    FONT: <><path d="M4 6V4h10v2M9 4v16M6 20h6" /><path d="M15 10h5M17.5 10v10M15.5 20h4" /></>,
+    HELP: <><circle cx="12" cy="12" r="9" /><path d="M9.7 9a2.5 2.5 0 1 1 3.5 2.3c-.8.4-1.2.9-1.2 1.7" /><path d="M12 17h.01" /></>,
+    ABOUT: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
+    MODE: <><path d="M7 7h10" /><path d="m13 3 4 4-4 4" /><path d="M17 17H7" /><path d="m11 13-4 4 4 4" /></>,
+    UPDATE: <><path d="M20 7v5h-5" /><path d="M20 12a8 8 0 1 1-2.35-5.65L20 9" /></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[type]}</svg>;
+}
+
+function ChevronIcon() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>;
+}
+
+function SettingsRow({ type, title, value, onClick, disabled = false }: { type: SettingIconKey; title: string; value?: string; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button type="button" className={`settings-center-row${disabled ? " disabled" : ""}`} onClick={onClick} disabled={disabled} aria-disabled={disabled}>
+      <span className={`settings-center-icon ${type.toLowerCase()}`}><SettingIcon type={type} /></span>
+      <strong>{title}</strong>
+      {value ? <span className="settings-center-value">{value}</span> : null}
+      <span className="settings-center-chevron"><ChevronIcon /></span>
+    </button>
+  );
+}
+
+export default function AccountsPage() {
+  const router = useRouter();
+  const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
+  const [showAppUpdateCheck, setShowAppUpdateCheck] = useState(false);
+  const [mode, setMode] = useState<DataMode>("CLOUD");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [registrationEnabled, setRegistrationEnabled] = useState(false);
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationSubmitting, setRegistrationSubmitting] = useState(false);
+  const [adminKey, setAdminKey] = useState("");
+  const [registrationError, setRegistrationError] = useState("");
+  const [registrationMessage, setRegistrationMessage] = useState("");
+  const [cloudUser, setCloudUser] = useState(() => getCloudAuthUser());
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [uiSettings, setUiSettings] = useState<UiSettings>(defaultUiSettings);
+  const [importPlatform, setImportPlatform] = useState<BillImportSource>("微信");
+  const [importMessage, setImportMessage] = useState("支持微信、支付宝官方导出的 CSV / Excel 账单，以及本应用导出的 CSV 账单");
+  const [importing, setImporting] = useState(false);
+  const [readingBill, setReadingBill] = useState(false);
+  const [pendingBillImport, setPendingBillImport] = useState<PendingBillImport | null>(null);
+  const [importErrors, setImportErrors] = useState<ImportErrorLog[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportMessage, setExportMessage] = useState("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dismissLogoutConfirm = useCallback(() => setLogoutConfirmOpen(false), []);
+  const consumeLogoutHistory = useLayeredHistoryMarker(logoutConfirmOpen, "starkLogoutConfirm", dismissLogoutConfirm);
+  const closeLogoutConfirm = useCallback(() => {
+    consumeLogoutHistory();
+    dismissLogoutConfirm();
+  }, [consumeLogoutHistory, dismissLogoutConfirm]);
+
+  useEffect(() => {
+    setShowAppUpdateCheck(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android");
+    const saved = readUiSettings();
+    setUiSettings(saved);
+    applyUiSettings(saved);
+    const savedMode = getCurrentDataMode() as DataMode;
+    setMode(savedMode);
+    void manager.getRepository().getImportErrorLogs(getCurrentAccountId()).then(setImportErrors).catch(() => setImportErrors([]));
+    if (savedMode === "CLOUD" && getCloudAuthUser()) void loadRegistrationStatus();
+  }, []);
+
+  function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
+    setUiSettings((current) => {
+      const next = { ...current, [key]: value };
+      saveUiSettings(next);
+      applyUiSettings(next);
+      return next;
+    });
+  }
+
+  function openAccountSettings() {
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordError("");
+    setPasswordMessage("");
+    setAdminKey("");
+    setRegistrationError("");
+    setRegistrationMessage("");
+    setActivePanel("ACCOUNT");
+    void loadRegistrationStatus();
+  }
+
+  async function loadRegistrationStatus() {
+    const url = getCloudApiUrl().replace(/\/$/, "");
+    if (!url) {
+      setRegistrationError("未配置云端 API 地址");
+      return;
+    }
+    setRegistrationLoading(true);
+    try {
+      const result = await cloudRegistrationStatus(url);
+      setRegistrationEnabled(result.registrationEnabled);
+      setRegistrationError("");
+    } catch (error) {
+      setRegistrationError(error instanceof Error ? error.message : "无法读取注册状态");
+    } finally {
+      setRegistrationLoading(false);
+    }
+  }
+
+  async function submitRegistrationChange() {
+    if (!adminKey.trim()) {
+      setRegistrationError("请输入管理员恢复密钥");
+      setRegistrationMessage("");
+      return;
+    }
+    setRegistrationSubmitting(true);
+    setRegistrationError("");
+    setRegistrationMessage("");
+    try {
+      const url = getCloudApiUrl().replace(/\/$/, "");
+      const result = await cloudSetRegistrationEnabled(url, !registrationEnabled, adminKey);
+      setRegistrationEnabled(result.registrationEnabled);
+      setAdminKey("");
+      setRegistrationMessage(result.registrationEnabled ? "已开启新用户注册" : "已关闭新用户注册");
+    } catch (error) {
+      setRegistrationError(error instanceof Error ? error.message : "注册设置更新失败");
+    } finally {
+      setRegistrationSubmitting(false);
+    }
+  }
+
+  function selectImportPlatform(platform: BillImportSource) {
+    setImportPlatform(platform);
+    setPendingBillImport(null);
+    setImportMessage(platform === "本应用导出" ? "请选择本应用导出的 CSV 账单" : `请选择${platform}官方导出的 CSV / Excel 账单`);
+  }
+
+  async function submitPasswordReset() {
+    if (!newPassword || !confirmPassword) {
+      setPasswordError("请完整填写密码信息");
+      setPasswordMessage("");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError("新密码至少需要 8 位");
+      setPasswordMessage("");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError("两次输入的新密码不一致");
+      setPasswordMessage("");
+      return;
+    }
+    setPasswordSubmitting(true);
+    setPasswordError("");
+    setPasswordMessage("");
+    try {
+      const url = getCloudApiUrl().replace(/\/$/, "");
+      await cloudResetPassword(url, newPassword, confirmPassword);
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordMessage("密码已重置成功，请妥善保管新密码");
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : "密码重置失败，请稍后重试");
+    } finally {
+      setPasswordSubmitting(false);
+    }
+  }
+
+  function logout() {
+    cloudLogout();
+    setCloudUser(null);
+    // The confirmation dialog owns a temporary history entry. Calling
+    // history.back() and navigating away in the same event races in Android
+    // WebView, which can leave the protected route mounted with no session.
+    // A hard replacement drops that transient entry and always boots the
+    // access gate from a clean URL.
+    window.location.replace("/");
+  }
+
+  function requestLogout() {
+    setLogoutConfirmOpen(true);
+  }
+
+  function openModeSwitch() {
+    router.replace("/");
+  }
+
+  async function prepareBillImport(file: File) {
+    setReadingBill(true);
+    setPendingBillImport(null);
+    setImportMessage("正在读取账单...");
+    try {
+      const { parseBillFile } = await import("@/lib/stark/import/bill-csv");
+      const rows = await parseBillFile(file, importPlatform);
+      if (!rows.length) {
+        setImportMessage(importPlatform === "本应用导出" ? "没有识别到本应用导出的有效流水，请确认选择的是导出的 CSV 账单" : `没有识别到有效${importPlatform}流水，请确认这是官方导出的 CSV / Excel 账单`);
+        return;
+      }
+
+      const now = nowText();
+      const transactions: Transaction[] = rows.map((row) => ({
+        id: createId("transaction"), userId: "local-user", accountId: getCurrentAccountId(),
+        amount: row.amount, type: row.type, category: row.category, platform: row.platform,
+        merchant: row.merchant, date: row.date, description: row.description,
+        orderId: row.orderId, paymentMethod: row.paymentMethod, status: row.status, loanId: null, remarkCategory: row.remarkCategory ?? null,
+        createdAt: now, updatedAt: now,
+      }));
+      setPendingBillImport({ fileName: file.name, platform: importPlatform, transactions });
+      setImportMessage(`已识别 ${file.name}：${importPlatform}账单，共 ${transactions.length} 笔。确认后才会导入。`);
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `：${error.message}` : "";
+      setImportMessage(`读取账单失败${detail}。请确认文件未损坏且为 CSV / XLS / XLSX 格式。`);
+    } finally {
+      setReadingBill(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function confirmBillImport() {
+    if (!pendingBillImport || importing) return;
+    setImporting(true);
+    setImportMessage(`正在导入 ${pendingBillImport.transactions.length} 笔${pendingBillImport.platform}账单...`);
+    try {
+      const repository = manager.getRepository();
+      const accountId = getCurrentAccountId();
+      const [rules, loans] = await Promise.all([
+        repository.getCategoryRules(accountId),
+        repository.getLoans(accountId),
+      ]);
+      const categorizedTransactions = applyCategoryRules(pendingBillImport.transactions, rules);
+      const matched = matchImportedLoanRepayments(categorizedTransactions, loans);
+      const result = await repository.importTransactions(matched.transactions);
+      const repaymentSummary = result.loanRepayments
+        ? `，自动关联 ${result.loanRepayments} 笔贷款还款${result.loanRepaymentAmount ? `（¥${result.loanRepaymentAmount.toFixed(2)}）` : ""}`
+        : "";
+      setImportMessage(`已导入 ${result.imported} 笔，跳过 ${result.skipped} 笔，失败 ${result.errors} 笔${repaymentSummary}${result.errors ? "，失败行可再次确认导入" : ""}`);
+      if (result.imported) window.dispatchEvent(new Event("stark:transaction-saved"));
+      if (result.loanRepayments) window.dispatchEvent(new Event("stark:loan-saved"));
+      if (result.errors > 0) {
+        const now = nowText();
+        const failedRows: ImportFailedRow[] = result.failedRows?.length
+          ? result.failedRows
+          : [{ lineNumber: 0, rawData: `${pendingBillImport.transactions.length} rows`, errorMessage: `${result.errors} rows failed to import`, errorType: "IMPORT" }];
+        const failedLogs: ImportErrorLog[] = buildImportErrorLogs(failedRows, { fileName: pendingBillImport.fileName, accountId: getCurrentAccountId(), createdAt: now });
+        await Promise.all(failedLogs.map((log) => repository.saveImportErrorLog(log)));
+        setImportErrors((current) => [...failedLogs, ...current]);
+        if (result.failedRows?.length) {
+          const failedTransactions = selectFailedImportTransactions(pendingBillImport.transactions, result.failedRows);
+          if (failedTransactions.length) setPendingBillImport({ ...pendingBillImport, transactions: failedTransactions });
+        }
+      }
+      if (!result.errors) {
+        const resolvedLogs = importErrors
+          .filter((item) => item.fileName === pendingBillImport.fileName && !item.resolved)
+          .map((item) => ({ ...item, resolved: true }));
+        if (resolvedLogs.length) {
+          await Promise.all(resolvedLogs.map((log) => repository.saveImportErrorLog(log)));
+          const resolvedIds = new Map(resolvedLogs.map((log) => [log.id, log]));
+          setImportErrors((current) => current.map((item) => resolvedIds.get(item.id) ?? item));
+        }
+        setPendingBillImport(null);
+      }
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `：${error.message}` : "";
+      setImportMessage(`账单导入失败${detail}`);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  async function exportBills() {
+    if (exporting) return;
+    setExporting(true);
+    setExportMessage("正在整理当前账本的账单...");
+    try {
+      const repository = manager.getRepository();
+      const accountId = getCurrentAccountId();
+      const pageSize = 500;
+      const transactions: Transaction[] = [];
+      for (let page = 1; page <= 1000; page += 1) {
+        const batch = await repository.getTransactions(accountId, page, pageSize);
+        transactions.push(...batch);
+        if (batch.length < pageSize) break;
+      }
+      const csv = `\uFEFF${serializeTransactionsToCsv(transactions)}`;
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      const date = new Date().toISOString().slice(0, 10);
+      anchor.href = url;
+      anchor.download = `star-accounting-bills-${date}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 0);
+      setExportMessage(`已导出 ${transactions.length} 笔账单，文件已开始下载`);
+    } catch (error) {
+      const detail = error instanceof Error && error.message ? `：${error.message}` : "";
+      setExportMessage(`导出账单失败${detail}`);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div className="page-stack settings-center-page">
+      <PageTopBar title="设置" />
+
+      <section className="settings-center-group">
+        <SettingsRow type="IMPORT" title="导入账单" value="微信 / 支付宝" onClick={() => setActivePanel("IMPORT")} />
+        <SettingsRow type="EXPORT" title="导出账单" value="CSV 文件" onClick={() => { setExportMessage("账单会导出为 CSV 文件，可用 Excel 或 WPS 打开"); setActivePanel("EXPORT"); }} />
+      </section>
+
+      <section className="settings-center-group">
+        <SettingsRow type="REMARK" title="账单归类" value="转账可归入支出分类" onClick={() => setActivePanel("REMARK")} />
+        <SettingsRow type="SUBSCRIPTIONS" title="订阅/扣费管理" value="按月自动记账" onClick={() => setActivePanel("SUBSCRIPTIONS")} />
+      </section>
+
+      <section className="settings-center-group">
+        <SettingsRow type="LANGUAGE" title="语言" value={languageLabels[uiSettings.language]} onClick={() => setActivePanel("LANGUAGE")} />
+        <SettingsRow type="FONT" title="字体大小" value={fontLabels[uiSettings.font]} onClick={() => setActivePanel("FONT")} />
+        {mode === "CLOUD" && cloudUser ? <SettingsRow type="ACCOUNT" title="账户设置" value="密码与注册" onClick={openAccountSettings} /> : null}
+      </section>
+
+      <section className="settings-center-group">
+        <SettingsRow type="HELP" title="帮助与反馈" onClick={() => setActivePanel("HELP")} />
+        {showAppUpdateCheck ? <SettingsRow type="UPDATE" title="检查更新" value={`v${packageInfo.version}`} onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} /> : null}
+        <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
+      </section>
+
+      {mode === "LOCAL" ? (
+        <section className="settings-center-group">
+          <SettingsRow type="MODE" title="切换数据模式" value="当前：本地模式" onClick={openModeSwitch} />
+        </section>
+      ) : null}
+
+      {mode === "CLOUD" && cloudUser ? <button type="button" className="settings-logout-button" onClick={requestLogout}>退出登录</button> : null}
+
+      {logoutConfirmOpen ? (
+        <div className="account-confirm-mask" role="presentation" onClick={closeLogoutConfirm}>
+          <section className="account-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="account-logout-title" onClick={(event) => event.stopPropagation()}>
+            <strong id="account-logout-title">确定要退出当前云端账户吗？</strong>
+            <div className="account-confirm-actions">
+              <button type="button" className="account-confirm-cancel" onClick={closeLogoutConfirm}>取消</button>
+              <button type="button" className="account-confirm-primary" onClick={logout}>确定</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {activePanel ? (
+        <BottomSheet
+          title={activePanel === "ACCOUNT" ? "账户设置" : activePanel === "IMPORT" ? "导入账单" : activePanel === "EXPORT" ? "导出账单" : activePanel === "REMARK" ? "账单归类" : activePanel === "SUBSCRIPTIONS" ? "订阅/扣费管理" : activePanel === "LANGUAGE" ? "语言" : activePanel === "FONT" ? "字体大小" : activePanel === "HELP" ? "帮助与反馈" : "关于"}
+          className="settings-sheet"
+          overlayClassName="settings-sheet-overlay"
+          onClose={() => setActivePanel(null)}
+        >
+
+            {activePanel === "ACCOUNT" ? <div className="settings-sheet-body account-settings-sheet">
+              <section className="account-settings-section">
+                <div><strong>修改密码</strong><p>当前已登录云端账户，新密码至少需要 8 位。</p></div>
+                <label className="settings-url-field"><span>新密码</span><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} placeholder="请输入新密码" autoComplete="new-password" /></label>
+                <label className="settings-url-field"><span>确认新密码</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="请再次输入新密码" autoComplete="new-password" /></label>
+                {passwordError ? <div className="cloud-test-status error">{passwordError}</div> : null}
+                {passwordMessage ? <div className="cloud-test-status success">{passwordMessage}</div> : null}
+                <button type="button" className="settings-confirm-button account-settings-primary" disabled={passwordSubmitting} onClick={() => void submitPasswordReset()}>{passwordSubmitting ? "提交中..." : "确认修改密码"}</button>
+              </section>
+              <section className="account-settings-section account-settings-registration">
+                <div><strong>新用户注册</strong><p>{registrationLoading ? "正在读取注册状态..." : registrationEnabled ? "当前允许新用户注册。" : "当前已关闭新用户注册。"}</p></div>
+                <label className="settings-url-field"><span>管理员恢复密钥</span><input type="text" value={adminKey} onChange={(event) => setAdminKey(event.target.value)} placeholder="仅用于本次操作，不会保存" autoComplete="off" /></label>
+                {registrationError ? <div className="cloud-test-status error">{registrationError}</div> : null}
+                {registrationMessage ? <div className="cloud-test-status success">{registrationMessage}</div> : null}
+                <button type="button" className={`account-registration-button${registrationEnabled ? " close" : ""}`} disabled={registrationLoading || registrationSubmitting} onClick={() => void submitRegistrationChange()}>{registrationSubmitting ? "提交中..." : registrationEnabled ? "关闭新用户注册" : "开启新用户注册"}</button>
+              </section>
+            </div> : null}
+
+            {activePanel === "IMPORT" ? <div className="settings-sheet-body">
+              <div className="bill-platform-picker">
+                <button type="button" className={importPlatform === "微信" ? "active wechat" : "wechat"} onClick={() => selectImportPlatform("微信")}><span>微</span><div><strong>微信账单</strong><small>微信支付 CSV / Excel 格式</small></div></button>
+                <button type="button" className={importPlatform === "支付宝" ? "active alipay" : "alipay"} onClick={() => selectImportPlatform("支付宝")}><span>支</span><div><strong>支付宝账单</strong><small>支付宝交易记录 CSV / Excel</small></div></button>
+                <button type="button" className={importPlatform === "本应用导出" ? "active backup" : "backup"} onClick={() => selectImportPlatform("本应用导出")}><span>备</span><div><strong>本应用导出账单</strong><small>导出的 CSV 备份文件</small></div></button>
+              </div>
+              <div className={`bill-import-message ${importMessage.startsWith("已导入") ? "success" : ""}`}>{importMessage}</div>
+              <input ref={fileInputRef} type="file" hidden accept={importPlatform === "本应用导出" ? ".csv,text/csv" : ".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"} onChange={(event) => { const file = event.target.files?.[0]; if (file) void prepareBillImport(file); }} />
+              <button type="button" className="settings-sheet-primary" disabled={readingBill || importing} onClick={() => fileInputRef.current?.click()}>{readingBill ? "正在读取..." : pendingBillImport ? "重新选择账单文件" : "选择账单文件"}</button>
+              {pendingBillImport ? <button type="button" className="settings-confirm-button bill-import-confirm" disabled={importing} onClick={() => void confirmBillImport()}>{importing ? "导入中..." : `确认导入 ${pendingBillImport.transactions.length} 笔`}</button> : null}
+              <p className="settings-sheet-tip">支持微信、支付宝官方导出的 CSV / XLS / XLSX 文件，以及本应用导出的 CSV 备份；请选择对应来源，确认导入前不会写入数据。</p>
+              {importErrors.length ? <div className="import-error-list"><strong>最近导入问题</strong>{importErrors.slice(0, 5).map((item) => <div key={item.id}><span>{item.fileName}{item.lineNumber > 0 ? ` · 第 ${item.lineNumber} 行` : ""}</span><small>{item.resolved ? "已解决" : item.errorMessage}</small></div>)}</div> : null}
+            </div> : null}
+
+            {activePanel === "EXPORT" ? <div className="settings-sheet-body">
+              <p className="settings-sheet-note">导出当前账本的全部流水，不会修改本地或云端数据。CSV 文件包含日期、类型、分类、备注归类、商户、平台、金额、支付方式、状态和订单号等字段。</p>
+              <div className="bill-import-message">{exportMessage}</div>
+              <button type="button" className="settings-sheet-primary" disabled={exporting} onClick={() => void exportBills()}>{exporting ? "正在导出..." : "导出全部账单"}</button>
+              <p className="settings-sheet-tip">文件使用 UTF-8 编码并兼容 Excel / WPS；导出范围仅限当前账本。</p>
+            </div> : null}
+
+            {activePanel === "REMARK" ? <div className="settings-sheet-body remark-sheet-body">
+              <BillRemarkSheet />
+            </div> : null}
+
+            {activePanel === "SUBSCRIPTIONS" ? <SubscriptionManagementSheet /> : null}
+
+            {activePanel === "LANGUAGE" ? <div className="settings-option-list">{(["SYSTEM", "ZH_CN", "EN_US"] as LanguageChoice[]).map((item) => <button type="button" key={item} className={uiSettings.language === item ? "active" : ""} onClick={() => updateUiSetting("language", item)}><span><strong>{languageLabels[item]}</strong><small>{item === "SYSTEM" ? "使用设备的语言偏好" : item === "ZH_CN" ? "固定使用简体中文" : "固定使用英文"}</small></span><em>{uiSettings.language === item ? "✓" : ""}</em></button>)}</div> : null}
+            {activePanel === "FONT" ? <div className="settings-font-options">{(["SMALL", "STANDARD", "LARGE"] as FontChoice[]).map((item) => <button type="button" key={item} className={uiSettings.font === item ? "active" : ""} onClick={() => updateUiSetting("font", item)}><span style={{ fontSize: item === "SMALL" ? 13 : item === "LARGE" ? 19 : 16 }}>Aa</span><strong>{fontLabels[item]}</strong></button>)}</div> : null}
+            {activePanel === "HELP" ? <div className="settings-sheet-body help-sheet-body"><div><strong>数据没有加载出来怎么办？</strong><p>请返回根登录入口确认云端服务与数据库状态，再重新登录。</p></div><div><strong>账单导入支持什么格式？</strong><p>支持微信和支付宝官方导出的 CSV、XLS、XLSX 文件，也支持本应用导出的 CSV 账单。</p></div><div><strong>Web 端和 App 有何不同？</strong><p>目前暂时只开发安卓客户端，Web 端适用于 PC、iOS、鸿蒙等设备。</p></div><a href="https://github.com/sevencnup/wotty-StarAccounting/issues" target="_blank" rel="noreferrer">国际站点端反馈 <ChevronIcon /></a><a href="https://sevencn.com/software/staraccounting" target="_blank" rel="noreferrer">国内站点端反馈 <ChevronIcon /></a></div> : null}
+            {activePanel === "ABOUT" ? <div className="settings-about"><span><SettingIcon type="ABOUT" /></span><strong>星会计</strong><p>版本 {packageInfo.version}</p><small>本地优先、可连接云端的个人财务管理工具</small><div>Next.js · Capacitor · Kotlin</div><nav className="settings-about-links" aria-label="相关网站"><a href="https://sevencn.com" target="_blank" rel="noreferrer"><span>博客</span><strong>sevencn.com</strong><ChevronIcon /></a><a href="https://s.wotty.app" target="_blank" rel="noreferrer"><span>项目网站</span><strong>s.wotty.app</strong><ChevronIcon /></a><a href="https://github.com/sevencnup/wotty-StarAccounting" target="_blank" rel="noreferrer"><span>开源地址</span><strong>github.com/sevencnup/wotty-StarAccounting</strong><ChevronIcon /></a></nav></div> : null}
+        </BottomSheet>
+      ) : null}
+    </div>
+  );
+}

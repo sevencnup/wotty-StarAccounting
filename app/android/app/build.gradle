@@ -1,0 +1,108 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+android {
+    namespace "com.wotty.stark.web"
+    compileSdk rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.wotty.stark.web"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 164
+        versionName "0.8.1-beta.1"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    flavorDimensions "edition"
+    productFlavors {
+        web {
+            dimension "edition"
+            applicationId "com.wotty.stark.web"
+            versionCode 164
+            versionName "0.8.1-beta.1"
+            manifestPlaceholders = [
+                appLabel: "星会计 Web 壳",
+                appActivityName: "com.wotty.stark.web.MainActivity"
+            ]
+        }
+        ktweb {
+            dimension "edition"
+            applicationId "com.wotty.stark.ktweb"
+            versionCode 164
+            versionName "0.8.1-beta.1"
+            manifestPlaceholders = [
+                appLabel: "星会计",
+                appActivityName: "com.wotty.stark.web.KtHybridActivity"
+            ]
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+afterEvaluate {
+    android.applicationVariants.all { variant ->
+        if (variant.buildType.name == "debug") {
+            def edition = variant.flavorName
+            def outputApk = variant.outputs.first().outputFile
+            def timestamp = new Date().format('yyyyMMdd-HHmmss')
+            def archivedApkName = "wotty-stark-${edition}-debug-v${variant.versionName}-c${variant.versionCode}-${timestamp}.apk"
+            def archiveTaskName = "archive${variant.name.capitalize()}Apk"
+
+            tasks.register(archiveTaskName, Copy) {
+                from(outputApk)
+                rename { archivedApkName }
+                into(new File(rootProject.projectDir.parentFile.parentFile, "releases"))
+            }
+
+            tasks.named("assemble${variant.name.capitalize()}") {
+                finalizedBy(archiveTaskName)
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.core:core:$androidxCoreVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

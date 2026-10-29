@@ -1,0 +1,95 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+function installBrowser(url, savedApiUrl) {
+  const storage = new Map();
+  if (savedApiUrl) storage.set("wotty-stark:cloud-api-url", savedApiUrl);
+  globalThis.window = {
+    location: new URL(url),
+    localStorage: {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value),
+    },
+  };
+  return storage;
+}
+
+test("keeps the local API port when the Web dev server uses port 12366", async () => {
+  const storage = installBrowser("http://localhost:12366", "http://localhost:12367");
+  const { getCloudApiUrl } = await import(`./local-config.ts?dev-port=${Date.now()}`);
+
+  assert.equal(getCloudApiUrl(), "http://localhost:12367");
+  assert.equal(storage.get("wotty-stark:cloud-api-url"), "http://localhost:12367");
+});
+
+test("repairs a development Web port mistakenly stored as the API address", async () => {
+  const storage = installBrowser("http://localhost:12366", "http://localhost:12366");
+  const { getCloudApiUrl } = await import(`./local-config.ts?repair-port=${Date.now()}`);
+
+  assert.equal(getCloudApiUrl(), "http://localhost:12367");
+  assert.equal(storage.get("wotty-stark:cloud-api-url"), "http://localhost:12367");
+});
+
+test("keeps a standard-port deployment on its same-origin API", async () => {
+  const storage = installBrowser("https://star-accounting.example", "https://star-accounting.example:12367");
+  const { getCloudApiUrl } = await import(`./local-config.ts?standard-origin=${Date.now()}`);
+
+  assert.equal(getCloudApiUrl(), "https://star-accounting.example");
+  assert.equal(storage.get("wotty-stark:cloud-api-url"), "https://star-accounting.example");
+});
+
+test("repairs a stale adjacent localhost API port after the Web port changes", async () => {
+  const previousApiPort = process.env.NEXT_PUBLIC_API_PORT;
+  process.env.NEXT_PUBLIC_API_PORT = "12462";
+  const storage = installBrowser("http://localhost:12461", "http://localhost:12367");
+  try {
+    const { getCloudApiUrl } = await import(`./local-config.ts?stale-dev-port=${Date.now()}`);
+
+    assert.equal(getCloudApiUrl(), "http://localhost:12462");
+    assert.equal(storage.get("wotty-stark:cloud-api-url"), "http://localhost:12462");
+  } finally {
+    if (previousApiPort === undefined) delete process.env.NEXT_PUBLIC_API_PORT;
+    else process.env.NEXT_PUBLIC_API_PORT = previousApiPort;
+  }
+});
+
+test("keeps showcase mode local and stores its settings in a separate namespace", async () => {
+  const previousShowcaseMode = process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+  process.env.NEXT_PUBLIC_SHOWCASE_DEMO = "1";
+  const storage = installBrowser("https://star-accounting.example");
+  try {
+    const { getCurrentDataMode, getSelectedReportMonth, setSelectedReportMonth } = await import(`./local-config.ts?showcase=${Date.now()}`);
+
+    assert.equal(getCurrentDataMode(), "LOCAL");
+    assert.equal(getSelectedReportMonth(), "2026-10");
+    setSelectedReportMonth("2026-08");
+    assert.equal(storage.get("wotty-stark:showcase:reporting-month"), "2026-08");
+    assert.equal(storage.has("wotty-stark:reporting-month"), false);
+  } finally {
+    if (previousShowcaseMode === undefined) delete process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+    else process.env.NEXT_PUBLIC_SHOWCASE_DEMO = previousShowcaseMode;
+  }
+});
+
+test("showcase month follows the calendar until the visitor chooses a different month", async () => {
+  const previousShowcaseMode = process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+  process.env.NEXT_PUBLIC_SHOWCASE_DEMO = "1";
+  const storage = installBrowser("https://star-accounting.example");
+  try {
+    const { getSelectedReportMonth, setSelectedReportMonth, setShowcaseAutoReportMonth } = await import(`./local-config.ts?showcase-auto=${Date.now()}`);
+    setShowcaseAutoReportMonth("2026-11");
+    assert.equal(getSelectedReportMonth(), "2026-11");
+    setShowcaseAutoReportMonth("2026-12");
+    assert.equal(getSelectedReportMonth(), "2026-12");
+    setSelectedReportMonth("2026-10");
+    setShowcaseAutoReportMonth("2027-01");
+    assert.equal(getSelectedReportMonth(), "2026-10");
+    setSelectedReportMonth("2026-12");
+    assert.equal(storage.get("wotty-stark:showcase:reporting-month-manual"), "0");
+    setShowcaseAutoReportMonth("2027-01");
+    assert.equal(getSelectedReportMonth(), "2027-01");
+  } finally {
+    if (previousShowcaseMode === undefined) delete process.env.NEXT_PUBLIC_SHOWCASE_DEMO;
+    else process.env.NEXT_PUBLIC_SHOWCASE_DEMO = previousShowcaseMode;
+  }
+});
