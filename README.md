@@ -1,6 +1,6 @@
 # 星会计（Wotty Star Accounting）
 
-<p align="center"><img src="app/public/logo.png" alt="星会计 Logo" width="96"></p>
+<p align="center"><img src="app/public/logo.svg" alt="星会计 Logo" width="96"></p>
 
 <p align="center">
   <a href="https://github.com/sevencnup/wotty-StarAccounting/blob/master/LICENSE"><img src="https://img.shields.io/github/license/sevencnup/wotty-StarAccounting?style=flat-square" alt="许可证"></a>
