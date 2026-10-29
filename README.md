@@ -2,7 +2,24 @@
 
 <p align="center"><img src="app/public/logo.png" alt="星会计 Logo" width="96"></p>
 
+<p align="center">
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/blob/master/LICENSE"><img src="https://img.shields.io/github/license/sevencnup/wotty-StarAccounting?style=flat-square" alt="许可证"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/releases"><img src="https://img.shields.io/github/v/release/sevencnup/wotty-StarAccounting?style=flat-square" alt="最新发布版本"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/releases"><img src="https://img.shields.io/github/downloads/sevencnup/wotty-StarAccounting/total?style=flat-square" alt="安装包下载量"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/stargazers"><img src="https://img.shields.io/github/stars/sevencnup/wotty-StarAccounting?style=flat-square" alt="GitHub 星标数"></a>
+  <a href="https://github.com/sevencnup/wotty-StarAccounting/issues"><img src="https://img.shields.io/github/issues/sevencnup/wotty-StarAccounting?style=flat-square" alt="未关闭的问题数"></a>
+</p>
+<p align="center">
+  <a href="docs/android-app-editions.md"><img src="https://img.shields.io/badge/Android-5.1%2B%20%28API%2022%29-3DDC84?logo=android&amp;logoColor=white&amp;style=flat-square" alt="Android 5.1 及以上"></a>
+  <a href="app/package.json"><img src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&amp;logoColor=white&amp;style=flat-square" alt="Next.js 16"></a>
+  <a href="app/package.json"><img src="https://img.shields.io/badge/Capacitor-6-119EFF?logo=capacitor&amp;logoColor=white&amp;style=flat-square" alt="Capacitor 6"></a>
+  <a href="server-go/"><img src="https://img.shields.io/badge/Go-API-00ADD8?logo=go&amp;logoColor=white&amp;style=flat-square" alt="Go API"></a>
+  <a href="app/android/build.gradle"><img src="https://img.shields.io/badge/Kotlin-2.1-7F52FF?logo=kotlin&amp;logoColor=white&amp;style=flat-square" alt="Kotlin 2.1"></a>
+</p>
+
 星会计是面向个人的记账与财务规划应用。记录收支后，可以按自然月或发薪周期查看资金变化，安排预算和储蓄计划，并管理资产、贷款及固定扣费。项目提供网页和 Android 版本。
+
+在线体验：[打开 Web 演示](https://s.wotty.app/web-demo/app/)。
 
 **Android 公测版下载：**[星会计 0.8.0-beta.1 APK](https://github.com/sevencnup/wotty-StarAccounting/releases/download/v0.8.0-beta.1/star-accounting-v0.8.0-beta.1.apk)（KT 混合版）。[查看全部发布版本](https://github.com/sevencnup/wotty-StarAccounting/releases)。
 
@@ -13,6 +30,25 @@
 - **储蓄、资产与贷款**：管理储蓄目标、资产余额和还款计划，并用相关账单核对计划执行情况。
 - **订阅/扣费管理**：为订阅、保险、还款等固定支出设置日期和金额，到期自动记账。
 - **本地与云端账本**：Android 可选择设备本地账本或登录云端账本；浏览器使用云端账本。
+
+## 页面预览
+
+以下为 Android `0.8.0-beta.1` 的空账本页面。点击图片可查看原尺寸。
+
+<table>
+  <tr><th>首页</th><th>消费分析</th><th>储蓄</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/home.jpg"><img src="docs/screenshots/home.jpg" alt="星会计首页截图" width="220"></a></td>
+    <td><a href="docs/screenshots/consumption.jpg"><img src="docs/screenshots/consumption.jpg" alt="消费分析页面截图" width="220"></a></td>
+    <td><a href="docs/screenshots/savings.jpg"><img src="docs/screenshots/savings.jpg" alt="储蓄页面截图" width="220"></a></td>
+  </tr>
+  <tr><th>贷款</th><th>资产</th><th>设置</th></tr>
+  <tr>
+    <td><a href="docs/screenshots/loans.jpg"><img src="docs/screenshots/loans.jpg" alt="贷款页面截图" width="220"></a></td>
+    <td><a href="docs/screenshots/assets.jpg"><img src="docs/screenshots/assets.jpg" alt="资产页面截图" width="220"></a></td>
+    <td><a href="docs/screenshots/settings.jpg"><img src="docs/screenshots/settings.jpg" alt="设置页面截图" width="220"></a></td>
+  </tr>
+</table>
 
 ## 版本与数据模式
 
@@ -58,14 +94,28 @@ Android 安装包内的 `localhost` 指手机本身。使用云端模式时，�
 
 ## Docker Compose 部署
 
-根目录的 Compose 文件会启动 MySQL、Go API 和 Web。复制 `.env.example` 后，至少修改数据库密码、`JWT_SECRET` 和 `ACCOUNT_ADMIN_KEY`；首次使用内置 MySQL 时将 `DATABASE_URL` 留空：
+首次拉取仓库后，在根目录直接启动 MySQL、Go API 和 Web，无需先创建 `.env`：
 
 ```bash
-cp .env.example .env
 docker compose up -d --build
 ```
 
-Web 默认绑定宿主机 `127.0.0.1:12366`，API 默认监听 `12367`，MySQL 默认只通过 `127.0.0.1:3307` 暴露。对外访问 Web 时，需要按部署环境配置反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
+默认不需要 `.env`。首次启动会自动生成数据库密码、登录密钥和管理员恢复密钥，保存在 Docker 命名卷中；MySQL 自动建库，Go API 自动建表。
+
+只有需要自定义配置时，才在**首次启动前**于仓库根目录创建 `.env`：
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env`：`MYSQL_ROOT_PASSWORD`、`DB_PASSWORD`、`JWT_SECRET`、`ACCOUNT_ADMIN_KEY` 留空会自动生成；`DATABASE_URL` 留空会使用附带的 MySQL；端口可通过 `MYSQL_HOST_PORT`、`WEB_HOST_PORT`、`API_PORT` 调整。已有 `.env` 的部署会在首次创建密钥卷时采用其中的密钥；之后修改 `.env` 不会自动轮换已保存的密钥。需要查看生成的密码时执行：
+
+```bash
+docker compose exec api-runtime cat /run/secrets/db/password
+docker compose exec api-runtime cat /run/secrets/api/account_admin_key
+```
+
+Web 默认绑定宿主机 `127.0.0.1:12366`。需要通过局域网或 VPN 访问时，在部署目录的 `.env` 中设置 `WEB_BIND_HOST=0.0.0.0`，再运行 `docker compose up -d --build`；随后打开 `http://<服务器局域网 IP>:12366`。也可以把 `WEB_BIND_HOST` 设为某个具体网卡 IP，仅开放该地址。网页会连接同一主机的 `12367` API 端口；MySQL 仍只通过 `127.0.0.1:3307` 暴露。通过公网提供服务时应配置 HTTPS 反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据及密钥卷。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
 
 ## Android 打包
 
