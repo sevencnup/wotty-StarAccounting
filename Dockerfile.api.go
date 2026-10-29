@@ -1,5 +1,7 @@
 FROM golang:1.26.10-alpine AS build
 
+ARG GOPROXY=https://goproxy.cn|https://proxy.golang.org|direct
+
 WORKDIR /workspace/server-go
 
 COPY server-go/go.mod server-go/go.sum ./
