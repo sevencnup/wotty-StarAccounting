@@ -16,7 +16,8 @@ RUN apk add --no-cache ca-certificates \
 
 WORKDIR /app
 COPY --from=build /out/wotty-stark-api /app/wotty-stark-api
+COPY docker/api-entrypoint.sh /app/api-entrypoint.sh
 
 USER stark
 EXPOSE 12367
-ENTRYPOINT ["/app/wotty-stark-api"]
+ENTRYPOINT ["/bin/sh", "/app/api-entrypoint.sh"]

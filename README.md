@@ -90,14 +90,20 @@ Android 安装包内的 `localhost` 指手机本身。使用云端模式时，�
 
 ## Docker Compose 部署
 
-根目录的 Compose 文件会启动 MySQL、Go API 和 Web。复制 `.env.example` 后，至少修改数据库密码、`JWT_SECRET` 和 `ACCOUNT_ADMIN_KEY`；首次使用内置 MySQL 时将 `DATABASE_URL` 留空：
+首次拉取仓库后，在根目录直接启动 MySQL、Go API 和 Web，无需先创建 `.env`：
 
 ```bash
-cp .env.example .env
 docker compose up -d --build
 ```
 
-Web 默认绑定宿主机 `127.0.0.1:12366`，API 默认监听 `12367`，MySQL 默认只通过 `127.0.0.1:3307` 暴露。对外访问 Web 时，需要按部署环境配置反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
+首次启动会自动生成数据库密码、登录密钥和管理员恢复密钥，并保存在 Docker 命名卷中；MySQL 自动建库，Go API 自动建表。已有 `.env` 的部署会在首次创建密钥卷时采用其中的密钥。需要自定义端口或密钥时，可在首次启动前复制 `.env.example` 并填写；更新 `.env` 不会自动轮换已经保存的密钥。需要查看密码时执行：
+
+```bash
+docker compose exec api-runtime cat /run/secrets/db/password
+docker compose exec api-runtime cat /run/secrets/api/account_admin_key
+```
+
+Web 默认绑定宿主机 `127.0.0.1:12366`，API 默认监听 `12367`，MySQL 默认只通过 `127.0.0.1:3307` 暴露。对外访问 Web 时，需要按部署环境配置反向代理。数据库使用 `mysql-data` 命名卷；更新容器前请备份账本数据及密钥卷。[数据库配置与部署说明](docs/database-config.md)提供了更多细节。
 
 ## Android 打包
 
