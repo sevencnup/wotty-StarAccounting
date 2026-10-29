@@ -23,13 +23,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker pull --platform linux/amd64 mysql:8.0
-          docker pull --platform linux/amd64 alpine:3.21
 
           version="$(node -p 'require("./package.json").version')"
           short_sha="${GITHUB_SHA:0:7}"
           image_tag="${version}-g${short_sha}"
-          archive_name="star-accounting-docker-${image_tag}-linux-amd64-run${GITHUB_RUN_NUMBER}.tar.gz"
+          archive_name="star-accounting-docker-online-${image_tag}-linux-amd64-run${GITHUB_RUN_NUMBER}.tar.gz"
           output_dir="$RUNNER_TEMP/star-accounting-docker"
           mkdir -p "$output_dir"
 
@@ -39,9 +37,7 @@ jobs:
             wotty-staraccounting-api:go \
             "wotty-staraccounting-api:$image_tag" \
             wotty-staraccounting-web:latest \
-            "wotty-staraccounting-web:$image_tag" \
-            mysql:8.0 \
-            alpine:3.21 | gzip -1 > "$output_dir/$archive_name"
+            "wotty-staraccounting-web:$image_tag" | gzip -6 > "$output_dir/$archive_name"
 
           (cd "$output_dir" && sha256sum "$archive_name" > "$archive_name.sha256")
           printf 'artifact_name=%s\n' "${archive_name%.tar.gz}" >> "$GITHUB_OUTPUT"
