@@ -7,12 +7,6 @@ import { ConfirmDialogProvider } from "@/components/stark/ConfirmDialogProvider"
 export const metadata: Metadata = {
   title: "wotty stark web",
   description: "wotty stark web app",
-  icons: {
-    icon: {
-      url: `${process.env.NEXT_PUBLIC_APP_BASE_PATH ?? ""}/logo.svg`,
-      type: "image/svg+xml",
-    },
-  },
 };
 
 export const viewport: Viewport = {

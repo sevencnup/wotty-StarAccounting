@@ -1,4 +1,4 @@
-"""Generate Android launcher VectorDrawables from app/public/logo.svg.
+"""Generate Android launcher VectorDrawables from app/src/app/icon.svg.
 
 Android cannot load an SVG as a launcher resource. API 24+ supports gradient
 colors in VectorDrawable; API 22/23 receive a solid-color vector fallback.
@@ -10,7 +10,7 @@ import xml.etree.ElementTree as ET
 
 
 APP_DIR = Path(__file__).resolve().parents[1]
-SOURCE = APP_DIR / "public/logo.svg"
+SOURCE = APP_DIR / "src/app/icon.svg"
 RESOURCES = APP_DIR / "android/app/src/main/res"
 SVG = "{http://www.w3.org/2000/svg}"
 ANDROID = "{http://schemas.android.com/apk/res/android}"
