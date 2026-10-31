@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { APP_UPDATE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
+import { setAppUpdateAvailable } from "@/lib/stark/app-update-status";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 
 type UpdateState = { info: AppVersionInfo; unavailable: boolean } | null;
@@ -74,8 +75,10 @@ export function AppUpdatePrompt() {
           ? { ...responseInfo, apkUrl: null }
           : responseInfo;
         if (cancelled) return;
-        if (hasNewerAppVersion(CURRENT_APP_VERSION_CODE, info)) {
-          setUpdate({ info, unavailable: !info.apkUrl });
+        const hasUpdate = hasNewerAppVersion(CURRENT_APP_VERSION_CODE, info);
+        setAppUpdateAvailable(hasUpdate);
+        if (hasUpdate) {
+          if (manual || !isKtHybrid) setUpdate({ info, unavailable: !info.apkUrl });
         } else if (manual) {
           setNotice({ title: "已是最新版本", message: "当前 App 版本为 " + CURRENT_APP_VERSION_NAME + "。" });
         }
@@ -95,7 +98,7 @@ export function AppUpdatePrompt() {
     }
 
     window.addEventListener("stark:check-app-update", handleManualCheck);
-    if (!isKtHybrid) void checkForUpdate(false);
+    void checkForUpdate(false);
     return () => {
       cancelled = true;
       checkAbortRef.current?.abort();

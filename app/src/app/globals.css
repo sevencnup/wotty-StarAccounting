@@ -9729,6 +9729,7 @@ img[src$="/qita.webp"] {
 
 .settings-center-icon {
   display: grid;
+  grid-column: 1;
   place-items: center;
   width: 38px;
   height: 38px;
@@ -10049,6 +10050,11 @@ img[src$="/qita.webp"] {
 }
 
 .settings-center-row > strong {
+  display: flex;
+  grid-column: 2;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
   overflow: hidden;
   font-size: calc(13px * var(--user-font-scale));
   font-weight: 600;
@@ -10056,7 +10062,24 @@ img[src$="/qita.webp"] {
   white-space: nowrap;
 }
 
+.settings-center-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-update-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.14);
+}
+
 .settings-center-value {
+  grid-column: 3;
   max-width: 112px;
   overflow: hidden;
   color: #8a909c;
@@ -10067,6 +10090,8 @@ img[src$="/qita.webp"] {
 
 .settings-center-chevron {
   display: grid;
+  grid-column: 4;
+  justify-self: end;
   place-items: center;
   color: #969ca6;
 }
@@ -10093,7 +10118,7 @@ img[src$="/qita.webp"] {
 
 .settings-sheet .bottom-sheet-handle { width: 64px; background: #d9dee7; }
 .settings-sheet .bottom-sheet-header { min-height: 44px; }
-.settings-sheet .bottom-sheet-header strong { color: #151e31; font-size: calc(15px * var(--user-font-scale)); font-weight: 600; }
+.settings-sheet .bottom-sheet-header strong { color: #151e31; font-size: calc(16px * var(--user-font-scale)); font-weight: 650; }
 .settings-sheet .bottom-sheet-header button { color: #768096; font-size: calc(23px * var(--user-font-scale)); }
 .settings-sheet-body { display: grid; gap: 12px; }
 
@@ -10631,6 +10656,100 @@ img[src$="/qita.webp"] {
   width: 15px;
   height: 15px;
   color: #94a3b8;
+}
+
+/* Settings sheets use the same readable type scale as the settings page. */
+.settings-sheet .bottom-sheet-body {
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 500;
+}
+
+.settings-sheet .bottom-sheet-body strong {
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.settings-sheet .bottom-sheet-body :is(p, small) {
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 500;
+  line-height: 1.55;
+}
+
+.settings-sheet .bottom-sheet-body button {
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.settings-sheet .bottom-sheet-body :is(input, select, textarea) {
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 500;
+}
+
+.settings-sheet .bottom-sheet-body :is(
+  .settings-sheet-primary,
+  .settings-confirm-button,
+  .settings-test-button,
+  .account-registration-button,
+  .category-rule-preview button
+) {
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.settings-sheet .bottom-sheet-body :is(
+  .settings-url-field > span,
+  .category-rule-field > span,
+  .reconciliation-fields label > span
+) {
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.settings-sheet .bottom-sheet-body :is(
+  .cloud-test-status,
+  .bill-import-message,
+  .subscription-empty
+) {
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.settings-sheet .bottom-sheet-body :is(
+  .category-rule-keyword,
+  .category-rule-target,
+  .category-rule-preview span
+) {
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.settings-sheet .bottom-sheet-body :is(
+  .category-rule-badge,
+  .subscription-row-title span
+) {
+  font-size: calc(10px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.settings-sheet .help-sheet-body a {
+  font-size: calc(13px * var(--user-font-scale));
+  font-weight: 600;
+}
+
+.settings-sheet .bottom-sheet-body .settings-about > strong {
+  font-size: calc(19px * var(--user-font-scale));
+  font-weight: 650;
+}
+
+.settings-sheet .bottom-sheet-body .settings-about > p {
+  font-size: calc(13px * var(--user-font-scale));
+}
+
+.settings-sheet .bottom-sheet-body .settings-about > div,
+.settings-sheet .settings-about-links a > span {
+  font-size: calc(12px * var(--user-font-scale));
+  font-weight: 500;
 }
 
 /* Distinct page identities: consumption, loans and assets */

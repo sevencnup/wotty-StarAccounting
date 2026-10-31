@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Capacitor } from "@capacitor/core";
 import packageInfo from "../../../../../package.json";
 import { PageTopBar } from "@/components/stark/PageTopBar";
 import type { DataMode, ImportErrorLog, ImportFailedRow, Transaction } from "@/lib/stark/models";
@@ -21,6 +20,7 @@ import { SubscriptionManagementSheet } from "@/components/stark/SubscriptionMana
 import { BottomSheet } from "@/components/stark/BottomSheet";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
 import { applyUiSettings, defaultUiSettings, readUiSettings, saveUiSettings, type FontChoice, type LanguageChoice, type UiSettings } from "@/lib/stark/storage/ui-settings";
+import { getAppUpdateAvailable, subscribeAppUpdateAvailable } from "@/lib/stark/app-update-status";
 import type { BillImportSource } from "@/lib/stark/import/bill-csv";
 
 const manager = new DataModeManager();
@@ -56,11 +56,11 @@ function ChevronIcon() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7" /></svg>;
 }
 
-function SettingsRow({ type, title, value, onClick, disabled = false }: { type: SettingIconKey; title: string; value?: string; onClick: () => void; disabled?: boolean }) {
+function SettingsRow({ type, title, value, onClick, disabled = false, updateAvailable = false }: { type: SettingIconKey; title: string; value?: string; onClick: () => void; disabled?: boolean; updateAvailable?: boolean }) {
   return (
     <button type="button" className={`settings-center-row${disabled ? " disabled" : ""}`} onClick={onClick} disabled={disabled} aria-disabled={disabled}>
       <span className={`settings-center-icon ${type.toLowerCase()}`}><SettingIcon type={type} /></span>
-      <strong>{title}</strong>
+      <strong><span className="settings-center-label">{title}</span>{updateAvailable ? <span className="settings-update-dot" role="img" aria-label="有新版本可用" /> : null}</strong>
       {value ? <span className="settings-center-value">{value}</span> : null}
       <span className="settings-center-chevron"><ChevronIcon /></span>
     </button>
@@ -70,7 +70,7 @@ function SettingsRow({ type, title, value, onClick, disabled = false }: { type: 
 export default function AccountsPage() {
   const router = useRouter();
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
-  const [showAppUpdateCheck, setShowAppUpdateCheck] = useState(false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [mode, setMode] = useState<DataMode>("CLOUD");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -103,7 +103,6 @@ export default function AccountsPage() {
   }, [consumeLogoutHistory, dismissLogoutConfirm]);
 
   useEffect(() => {
-    setShowAppUpdateCheck(Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android");
     const saved = readUiSettings();
     setUiSettings(saved);
     applyUiSettings(saved);
@@ -111,6 +110,11 @@ export default function AccountsPage() {
     setMode(savedMode);
     void manager.getRepository().getImportErrorLogs(getCurrentAccountId()).then(setImportErrors).catch(() => setImportErrors([]));
     if (savedMode === "CLOUD" && getCloudAuthUser()) void loadRegistrationStatus();
+  }, []);
+
+  useEffect(() => {
+    setUpdateAvailable(getAppUpdateAvailable());
+    return subscribeAppUpdateAvailable(() => setUpdateAvailable(getAppUpdateAvailable()));
   }, []);
 
   function updateUiSetting<K extends keyof UiSettings>(key: K, value: UiSettings[K]) {
@@ -370,7 +374,7 @@ export default function AccountsPage() {
 
       <section className="settings-center-group">
         <SettingsRow type="HELP" title="帮助与反馈" onClick={() => setActivePanel("HELP")} />
-        {showAppUpdateCheck ? <SettingsRow type="UPDATE" title="检查更新" value={`v${packageInfo.version}`} onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} /> : null}
+        <SettingsRow type="UPDATE" title="检查更新" value={`v${packageInfo.version}`} updateAvailable={updateAvailable} onClick={() => window.dispatchEvent(new Event("stark:check-app-update"))} />
         <SettingsRow type="ABOUT" title="关于" value={`v${packageInfo.version}`} onClick={() => setActivePanel("ABOUT")} />
       </section>
 
