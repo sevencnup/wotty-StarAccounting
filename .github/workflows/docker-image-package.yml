@@ -1,6 +1,9 @@
 name: Docker Image Package
 
 on:
+  push:
+    tags:
+      - "v*-beta.*"
   workflow_dispatch:
 
 permissions:
@@ -23,7 +26,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          version="$(node -p 'require("./package.json").version')"
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "$GITHUB_REF_NAME" == v*-beta.* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(node -p 'require("./package.json").version')"
+          fi
           short_sha="${GITHUB_SHA:0:7}"
           image_tag="${version}-g${short_sha}"
           archive_name="star-accounting-docker-online-${image_tag}-linux-amd64-run${GITHUB_RUN_NUMBER}.tar.gz"

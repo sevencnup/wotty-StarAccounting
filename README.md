@@ -23,7 +23,7 @@
 
 **Android 公测版下载：**[星会计 0.8.0-beta.1 APK](https://github.com/sevencnup/wotty-StarAccounting/releases/download/v0.8.0-beta.1/star-accounting-v0.8.0-beta.1.apk)（KT 混合版）。[查看全部发布版本](https://github.com/sevencnup/wotty-StarAccounting/releases)。
 
-**Docker 镜像包：**[在 GitHub Actions 构建并下载](https://github.com/sevencnup/wotty-StarAccounting/actions/workflows/docker-image-package.yml)（Linux amd64，仅包含 Web 和 Go API；部署机器需联网拉取 MySQL 和 Alpine）。
+**Docker 镜像包：**发布 Android 公测版时会同步构建，也可[在 GitHub Actions 单独构建并下载](https://github.com/sevencnup/wotty-StarAccounting/actions/workflows/docker-image-package.yml)（Linux amd64，仅包含 Web 和 Go API；部署机器需联网拉取 MySQL 和 Alpine）。
 
 ## 主要功能
 
