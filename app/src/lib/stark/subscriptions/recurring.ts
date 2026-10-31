@@ -50,7 +50,9 @@ export function buildSubscriptionTransaction(
     category: subscription.category || "其他",
     platform: subscription.platform || "其他",
     merchant: subscription.name,
-    date: dateText(dueDate),
+    // A recurring charge is due for the whole billing day. Its ledger date
+    // must not fall in the future until noon while the expense is already shown.
+    date: `${dateText(dueDate).slice(0, 10)} 00:00:00`,
     description: `周期支出自动记账 · ${subscription.name}`,
     orderId: `subscription:${subscription.id}:${month}`,
     paymentMethod: subscription.paymentMethod || null,

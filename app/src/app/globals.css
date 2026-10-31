@@ -15434,6 +15434,10 @@ body .choice-picker-sheet {
   box-shadow: 0 -14px 42px rgba(15, 23, 42, 0.16);
 }
 
+body .choice-picker-overlay {
+  z-index: 130;
+}
+
 body .choice-picker-sheet .bottom-sheet-header {
   min-height: 40px;
 }
@@ -15786,4 +15790,49 @@ html.showcase-demo .mobile-bottom-nav-icon {
     padding-right: 4px;
     padding-left: 4px;
   }
+}
+
+/* Keep save actions in view while the journal sheet scrolls. */
+.journal-panel .modern-journal-flow,
+.journal-panel .modern-form-wrapper,
+.journal-panel .savings-record-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.journal-panel.savings .savings-planner-shell.embedded {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.journal-panel.savings .savings-plan-card.embedded {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  overflow: visible;
+}
+
+.journal-panel .modern-form-card {
+  flex-shrink: 0;
+}
+
+.journal-panel .journal-action-dock {
+  position: sticky;
+  flex-shrink: 0;
+  z-index: 4;
+  bottom: 0;
+  box-sizing: border-box;
+  margin-top: auto;
+  margin-right: -14px;
+  margin-left: -14px;
+  padding: 8px 14px 4px;
+  background: var(--background);
+  box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.journal-panel .journal-action-dock > .modern-primary-submit,
+.journal-panel .journal-action-dock > .salary-batch-submit {
+  width: 100%;
 }

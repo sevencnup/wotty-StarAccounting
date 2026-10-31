@@ -170,7 +170,15 @@ function calculateCashflowForRange(
   savingsPlans: SavingsPlan[],
   range: SalaryCycleRange,
 ) {
-  const cycleTransactions = transactions.filter((transaction) => isWithinSalaryCycle(transaction.date, range));
+  const cycleTransactions = transactions.filter((transaction) => {
+    // Older auto-created charges were stamped at noon on their billing day.
+    // Treat them as day-level entries so a charge already visible in spending
+    // is included in the current balance before noon as well.
+    const date = transaction.orderId?.startsWith("subscription:")
+      ? `${transaction.date.slice(0, 10)} 00:00:00`
+      : transaction.date;
+    return isWithinSalaryCycle(date, range);
+  });
   const income = cycleTransactions
     .filter((transaction) => transaction.type === "INCOME")
     .reduce((sum, transaction) => sum + transaction.amount, 0);

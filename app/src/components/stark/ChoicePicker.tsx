@@ -78,6 +78,7 @@ export function ChoicePicker({
           onClose={closePicker}
           closeRequest={closeRequest}
           className={`choice-picker-sheet choice-picker-sheet-${variant}`}
+          overlayClassName="choice-picker-overlay"
           bodyClassName="choice-picker-sheet-body"
         >
           <p className="choice-picker-current" aria-live="polite">

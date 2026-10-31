@@ -942,7 +942,7 @@ export function SavingsPlanner({
           <button type="button" disabled={saving || deleting} onClick={() => void deleteGoal()}>{deleting ? "删除中..." : "删除目标"}</button>
         </section> : null}
 
-        <div className="savings-plan-footer">
+        <div className={`savings-plan-footer${embedded ? " journal-action-dock" : ""}`}>
           <span style={notice === "请先输入支出名称" || notice === "列已存在，请换一个名称" ? { fontSize: 9 } : undefined}>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
           <button type="button" className="primary-button" disabled={saving || deleting || goalMissing} onClick={() => void savePlans()}>{saving ? "保存中" : savingsGoalId ? "保存修改" : "保存计划"}</button>
         </div>

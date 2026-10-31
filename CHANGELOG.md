@@ -25,6 +25,7 @@ APK 属于临时测试包，可能没有对应的独立源码版本条目。
 
 ## [Unreleased]
 
+- 修复订阅选择弹层遮挡和自动扣费当天结余漏算，录入页保存按钮保持可见。
 - 新增可在 GitHub Actions 下载的 Docker 镜像包。
 - 新增 Docker Compose Web 局域网访问配置。
 - 修复 Docker 首次部署时 Go 依赖下载超时导致构建中断的问题。

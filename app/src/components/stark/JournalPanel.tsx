@@ -278,7 +278,7 @@ export function JournalPanel({
   }, []);
 
   useEffect(() => {
-    if (!isPage || !isSavings || !window.visualViewport) return;
+    if (!isPage || !window.visualViewport) return;
     const viewport = window.visualViewport;
     const updateKeyboardViewport = () => {
       const keyboardOpen = viewport.height < window.innerHeight - 120;
@@ -293,7 +293,7 @@ export function JournalPanel({
       viewport.removeEventListener("resize", updateKeyboardViewport);
       viewport.removeEventListener("scroll", updateKeyboardViewport);
     };
-  }, [isPage, isSavings]);
+  }, [isPage]);
 
   useEffect(() => {
     if (!isPage) return;
@@ -709,9 +709,11 @@ export function JournalPanel({
             </div>
             {previewProofImage ? <ProofImageViewer src={previewProofImage} onClose={() => setPreviewProofImage(null)} /> : null}
             {recordNotice ? <p className="savings-record-notice">{recordNotice}</p> : null}
-            <button type="button" className="modern-primary-submit" disabled={recordSaving} onClick={() => void saveSavingsRecord()}>
-              {recordSaving ? "保存中…" : "保存记录"}
-            </button>
+            <div className="journal-action-dock">
+              <button type="button" className="modern-primary-submit" disabled={recordSaving} onClick={() => void saveSavingsRecord()}>
+                {recordSaving ? "保存中…" : "保存记录"}
+              </button>
+            </div>
           </div>
         ) : isAsset ? (
           <div className="modern-form-wrapper">
@@ -756,9 +758,11 @@ export function JournalPanel({
                 </div>
               </div>
             </div>
-            <button type="button" className="modern-primary-submit" onClick={() => void saveAsset()}>
-              保存资产
-            </button>
+            <div className="journal-action-dock">
+              <button type="button" className="modern-primary-submit" onClick={() => void saveAsset()}>
+                保存资产
+              </button>
+            </div>
           </div>
         ) : isLoan ? (
           <div className="modern-form-wrapper">
@@ -837,9 +841,11 @@ export function JournalPanel({
                 </div>
               </div>
             </div>
-            <button type="button" className="modern-primary-submit" onClick={() => void saveLoan()}>
-              保存贷款
-            </button>
+            <div className="journal-action-dock">
+              <button type="button" className="modern-primary-submit" onClick={() => void saveLoan()}>
+                保存贷款
+              </button>
+            </div>
           </div>
         ) : isRepayment ? (
           <div className="modern-form-wrapper">
@@ -848,7 +854,9 @@ export function JournalPanel({
               <div className="modern-form-group"><label>实际还款日期</label><DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际还款日期" value={date} onChange={setDate} /></div>
               <div className="modern-form-group"><label>备注</label><input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="可选" className="modern-form-input" /></div>
             </div>
-            <button type="button" className="modern-primary-submit" disabled={!amount || Number(amount) <= 0} onClick={() => void saveRepayment()}>保存还款</button>
+            <div className="journal-action-dock">
+              <button type="button" className="modern-primary-submit" disabled={!amount || Number(amount) <= 0} onClick={() => void saveRepayment()}>保存还款</button>
+            </div>
           </div>
         ) : (
           <div className="modern-journal-flow">
@@ -1001,7 +1009,7 @@ export function JournalPanel({
             </div>
 
             {/* 底部行动操作 */}
-            <div className="modern-action-bar">
+            <div className="modern-action-bar journal-action-dock">
               <button
                 type="button"
                 className="action-sub-btn"
@@ -1085,9 +1093,11 @@ export function JournalPanel({
                 <p className={`salary-batch-notice ${batchNotice.startsWith("已补录") ? "success" : ""}`} role="status">
                   {batchNotice || (batchMonths.length ? `已选择 ${batchMonths.length} 个月，确认后将先检查是否已有工资记录。` : "请选择要补录的月份。")}
                 </p>
-                <button type="button" className="salary-batch-submit" disabled={batchSaving || !batchMonths.length || !batchAmount || Number(batchAmount) <= 0} onClick={() => void saveSalaryBatch()}>
-                  {batchSaving ? "补录中..." : `确认补录 ${batchMonths.length} 个月工资`}
-                </button>
+                <div className="journal-action-dock">
+                  <button type="button" className="salary-batch-submit" disabled={batchSaving || !batchMonths.length || !batchAmount || Number(batchAmount) <= 0} onClick={() => void saveSalaryBatch()}>
+                    {batchSaving ? "补录中..." : `确认补录 ${batchMonths.length} 个月工资`}
+                  </button>
+                </div>
               </div>
             )}
           </div>
