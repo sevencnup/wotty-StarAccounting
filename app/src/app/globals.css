@@ -6203,13 +6203,12 @@ button.stark-compass-card {
   box-sizing: border-box;
   min-height: min(82dvh, 720px, calc(100dvh - 12px));
   max-height: min(90%, calc(100dvh - 12px));
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   background: #ffffff;
   border-radius: 16px 16px 0 0;
-  padding: 10px 14px calc(20px + env(safe-area-inset-bottom));
-  display: grid;
-  gap: 10px;
+  padding: 12px 0 0;
+  display: flex;
+  flex-direction: column;
   transform: translateY(100%);
   visibility: hidden;
   transition: transform 220ms ease;
@@ -6224,7 +6223,7 @@ button.stark-compass-card {
   border-radius: 18px 18px 0 0;
   border: 1px solid rgba(116, 137, 167, 0.42);
   border-bottom: 0;
-  padding: 12px 14px calc(20px + env(safe-area-inset-bottom));
+  padding: 12px 0 0;
   background: #ffffff;
   transform: translateY(100%);
   box-shadow: none;
@@ -6233,19 +6232,17 @@ button.stark-compass-card {
   overflow-x: hidden;
 }
 
-.journal-overlay.page.keyboard-open .journal-panel.page {
+.journal-overlay.keyboard-open .journal-panel {
   min-height: 0;
   height: calc(100% - 12px);
   max-height: calc(100% - 12px);
 }
 
 .journal-panel.savings {
-  gap: 8px;
   background: #ffffff;
 }
 
 .journal-panel.asset {
-  gap: 12px;
   background: #ffffff;
 }
 
@@ -6295,6 +6292,48 @@ button.stark-compass-card {
 
 .journal-panel.ready {
   visibility: visible;
+}
+
+.journal-panel > .journal-sheet-handle {
+  flex-shrink: 0;
+  margin: 0 auto 6px;
+}
+
+.journal-panel > .journal-header {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 14px 10px;
+}
+
+.journal-panel-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 14px 12px;
+}
+
+.journal-panel-footer {
+  flex-shrink: 0;
+  min-width: 0;
+  background: var(--background);
+}
+
+.journal-panel .journal-action-dock {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
+  background: var(--background);
+}
+
+.journal-panel .journal-action-dock > .modern-primary-submit,
+.journal-panel .journal-action-dock > .salary-batch-submit {
+  width: 100%;
 }
 
 /* Embedded savings planner: use the same compact glass language as the journal sheet. */
@@ -6424,7 +6463,7 @@ button.stark-compass-card {
   background: #ffffff;
   border-radius: 24px 24px 0 0;
   box-shadow: 0 -10px 40px rgba(15, 23, 42, 0.12);
-  padding: 16px 18px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 0 0;
   box-sizing: border-box;
   max-width: 100vw;
   overflow-x: hidden;
@@ -7129,7 +7168,9 @@ img[src$="/qita.webp"] {
 }
 
 @media (max-width: 360px) {
-  .modern-journal-shell {
+  .journal-panel > .journal-header,
+  .journal-panel-body,
+  .journal-panel .journal-action-dock {
     padding-left: 12px;
     padding-right: 12px;
   }
@@ -15790,54 +15831,4 @@ html.showcase-demo .mobile-bottom-nav-icon {
     padding-right: 4px;
     padding-left: 4px;
   }
-}
-
-/* Keep save actions in view while the journal sheet scrolls. */
-.journal-panel .modern-journal-flow,
-.journal-panel .modern-form-wrapper,
-.journal-panel .savings-record-form {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-
-.journal-panel.savings .savings-planner-shell.embedded {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-
-.journal-panel.savings .savings-plan-card.embedded {
-  display: flex;
-  flex: 1 0 auto;
-  flex-direction: column;
-  overflow: visible;
-}
-
-.journal-panel .modern-form-card {
-  flex-shrink: 0;
-}
-
-.journal-panel .journal-action-dock {
-  position: sticky;
-  flex-shrink: 0;
-  z-index: 4;
-  bottom: 0;
-  box-sizing: border-box;
-  margin-top: auto;
-  margin-right: -14px;
-  margin-bottom: calc(-24px - env(safe-area-inset-bottom));
-  margin-left: -14px;
-  padding: 8px 14px calc(8px + env(safe-area-inset-bottom));
-  background: var(--background);
-  box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.06);
-}
-
-.journal-panel.page .journal-action-dock {
-  margin-bottom: calc(-20px - env(safe-area-inset-bottom));
-}
-
-.journal-panel .journal-action-dock > .modern-primary-submit,
-.journal-panel .journal-action-dock > .salary-batch-submit {
-  width: 100%;
 }

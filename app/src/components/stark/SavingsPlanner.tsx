@@ -13,6 +13,7 @@ import { ChoicePicker } from "@/components/stark/ChoicePicker";
 import { useConfirmDialog } from "@/components/stark/ConfirmDialogProvider";
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
+import { JournalActionDock } from "@/components/stark/JournalActionDock";
 
 const repo = new DataModeManager().getRepository();
 const DEFAULT_COLUMNS = ["房租", "水电", "其他", "购物"];
@@ -509,7 +510,7 @@ export function SavingsPlanner({
     const scrollIntoView = () => {
       const input = columnInputRef.current;
       const adder = input?.closest(".savings-column-adder");
-      const panel = input?.closest(".journal-panel");
+      const panel = input?.closest(".journal-panel-body");
       if (!(adder instanceof HTMLElement) || !(panel instanceof HTMLElement)) return;
       const adderBounds = adder.getBoundingClientRect();
       const panelBounds = panel.getBoundingClientRect();
@@ -942,10 +943,10 @@ export function SavingsPlanner({
           <button type="button" disabled={saving || deleting} onClick={() => void deleteGoal()}>{deleting ? "删除中..." : "删除目标"}</button>
         </section> : null}
 
-        <div className={`savings-plan-footer${embedded ? " journal-action-dock" : ""}`}>
+        <JournalActionDock className="savings-plan-footer">
           <span style={notice === "请先输入支出名称" || notice === "列已存在，请换一个名称" ? { fontSize: 9 } : undefined}>{notice || (hydrating ? "正在同步已有计划..." : "")}</span>
           <button type="button" className="primary-button" disabled={saving || deleting || goalMissing} onClick={() => void savePlans()}>{saving ? "保存中" : savingsGoalId ? "保存修改" : "保存计划"}</button>
-        </div>
+        </JournalActionDock>
       </section>
     </div>
   );

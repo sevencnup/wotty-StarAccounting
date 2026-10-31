@@ -16,6 +16,7 @@ import { categoryIconSrcForCategory, expenseCategoryOptions } from "@/lib/stark/
 import { DateTimePicker } from "@/components/stark/DateTimePicker";
 import { ProofImageViewer } from "@/components/stark/ProofImageViewer";
 import { useLayeredHistoryMarker } from "@/components/stark/useLayeredHistoryMarker";
+import { JournalActionDock, JournalActionTargetContext } from "@/components/stark/JournalActionDock";
 
 const SavingsPlanner = dynamic(
   () => import("@/components/stark/SavingsPlanner").then((module) => module.SavingsPlanner),
@@ -151,6 +152,7 @@ export function JournalPanel({
   const [draftReady, setDraftReady] = useState(false);
   const draftSubmittedRef = useRef(false);
   const [keyboardViewport, setKeyboardViewport] = useState<KeyboardViewport | null>(null);
+  const [actionTarget, setActionTarget] = useState<HTMLDivElement | null>(null);
 
   const categories = useMemo((): string[] => {
     if (type === "INCOME") return incomeCategories;
@@ -278,7 +280,7 @@ export function JournalPanel({
   }, []);
 
   useEffect(() => {
-    if (!isPage || !window.visualViewport) return;
+    if (!window.visualViewport) return;
     const viewport = window.visualViewport;
     const updateKeyboardViewport = () => {
       const keyboardOpen = viewport.height < window.innerHeight - 120;
@@ -293,7 +295,7 @@ export function JournalPanel({
       viewport.removeEventListener("resize", updateKeyboardViewport);
       viewport.removeEventListener("scroll", updateKeyboardViewport);
     };
-  }, [isPage]);
+  }, []);
 
   useEffect(() => {
     if (!isPage) return;
@@ -645,463 +647,468 @@ export function JournalPanel({
           </button>
         </div>
 
-        {isSavings ? (
-          <SavingsPlanner
-            key={savingsGoalId ?? "new-savings-goal"}
-            embedded
-            onSaved={() => {
-              onSaved?.();
-              handleClose();
-            }}
-            savingsGoalId={savingsGoalId}
-          />
-        ) : isSavingsRecord ? (
-          <div className="savings-record-form">
-            <div className="savings-record-context">
-              <span>{savingsGoal?.name || "储蓄目标"}</span>
-              <strong>{savingsPlan?.month || ""}</strong>
-              <small>计划存入 ¥ {savingsPlan?.amount ?? 0}</small>
-            </div>
-            <label className="modern-form-group">
-              <span>实际存入</span>
-              <div className="modern-amount-box">
-                <span className="cur-sym">¥</span>
-                <input
-                  className="modern-amount-field"
-                  inputMode="decimal"
-                  value={recordedAmount}
-                  onChange={(event) => setRecordedAmount(event.target.value.replace(/[^0-9.]/g, ""))}
-                  placeholder="0.00"
-                />
-              </div>
-            </label>
-            <label className="modern-form-group">
-              <span>实际存入日期</span>
-              <DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际存入日期" value={recordedDate} onChange={setRecordedDate} />
-            </label>
-            <div className="modern-form-group">
-              <span>图片凭证</span>
-              <input
-                ref={proofImageInputRef}
-                type="file"
-                accept="image/*"
-                hidden
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (!file) return;
-                  void compressProofImage(file).then(setProofImage).catch((error: unknown) => setRecordNotice(error instanceof Error ? error.message : "图片处理失败"));
-                  event.target.value = "";
+        <JournalActionTargetContext.Provider value={actionTarget}>
+          <div className="journal-panel-body">
+            {isSavings ? (
+              <SavingsPlanner
+                key={savingsGoalId ?? "new-savings-goal"}
+                embedded
+                onSaved={() => {
+                  onSaved?.();
+                  handleClose();
                 }}
+                savingsGoalId={savingsGoalId}
               />
-              {proofImage ? (
-                <div className="savings-proof-preview">
-                  <button type="button" className="savings-proof-open" onClick={() => setPreviewProofImage(proofImage)} aria-label="查看图片凭证大图">
-                    <img src={proofImage} alt="图片凭证预览" />
-                  </button>
-                  <button type="button" onClick={() => setProofImage(null)}>清除图片</button>
+            ) : isSavingsRecord ? (
+              <div className="savings-record-form">
+                <div className="savings-record-context">
+                  <span>{savingsGoal?.name || "储蓄目标"}</span>
+                  <strong>{savingsPlan?.month || ""}</strong>
+                  <small>计划存入 ¥ {savingsPlan?.amount ?? 0}</small>
                 </div>
-              ) : (
-                <button type="button" className="savings-proof-picker" onClick={() => proofImageInputRef.current?.click()}>
-                  <span>＋</span>
-                  添加图片
-                </button>
-              )}
-            </div>
-            {previewProofImage ? <ProofImageViewer src={previewProofImage} onClose={() => setPreviewProofImage(null)} /> : null}
-            {recordNotice ? <p className="savings-record-notice">{recordNotice}</p> : null}
-            <div className="journal-action-dock">
-              <button type="button" className="modern-primary-submit" disabled={recordSaving} onClick={() => void saveSavingsRecord()}>
-                {recordSaving ? "保存中…" : "保存记录"}
-              </button>
-            </div>
-          </div>
-        ) : isAsset ? (
-          <div className="modern-form-wrapper">
-            <div className="modern-form-card">
-              <div className="modern-form-group">
-                <label>资产名称</label>
-                <input
-                  value={assetName}
-                  onChange={(event) => setAssetName(event.target.value)}
-                  placeholder="如：招行工资卡 / 微信零钱"
-                  className="modern-form-input"
-                />
+                <label className="modern-form-group">
+                  <span>实际存入</span>
+                  <div className="modern-amount-box">
+                    <span className="cur-sym">¥</span>
+                    <input
+                      className="modern-amount-field"
+                      inputMode="decimal"
+                      value={recordedAmount}
+                      onChange={(event) => setRecordedAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </label>
+                <label className="modern-form-group">
+                  <span>实际存入日期</span>
+                  <DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际存入日期" value={recordedDate} onChange={setRecordedDate} />
+                </label>
+                <div className="modern-form-group">
+                  <span>图片凭证</span>
+                  <input
+                    ref={proofImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (!file) return;
+                      void compressProofImage(file).then(setProofImage).catch((error: unknown) => setRecordNotice(error instanceof Error ? error.message : "图片处理失败"));
+                      event.target.value = "";
+                    }}
+                  />
+                  {proofImage ? (
+                    <div className="savings-proof-preview">
+                      <button type="button" className="savings-proof-open" onClick={() => setPreviewProofImage(proofImage)} aria-label="查看图片凭证大图">
+                        <img src={proofImage} alt="图片凭证预览" />
+                      </button>
+                      <button type="button" onClick={() => setProofImage(null)}>清除图片</button>
+                    </div>
+                  ) : (
+                    <button type="button" className="savings-proof-picker" onClick={() => proofImageInputRef.current?.click()}>
+                      <span>＋</span>
+                      添加图片
+                    </button>
+                  )}
+                </div>
+                {previewProofImage ? <ProofImageViewer src={previewProofImage} onClose={() => setPreviewProofImage(null)} /> : null}
+                {recordNotice ? <p className="savings-record-notice">{recordNotice}</p> : null}
+                <JournalActionDock>
+                  <button type="button" className="modern-primary-submit" disabled={recordSaving} onClick={() => void saveSavingsRecord()}>
+                    {recordSaving ? "保存中…" : "保存记录"}
+                  </button>
+                </JournalActionDock>
               </div>
+            ) : isAsset ? (
+              <div className="modern-form-wrapper">
+                <div className="modern-form-card">
+                  <div className="modern-form-group">
+                    <label>资产名称</label>
+                    <input
+                      value={assetName}
+                      onChange={(event) => setAssetName(event.target.value)}
+                      placeholder="如：招行工资卡 / 微信零钱"
+                      className="modern-form-input"
+                    />
+                  </div>
 
-              <div className="modern-form-group">
-                <label>资产类型</label>
-                <div className="modern-select-pill-grid">
-                  {assetTypes.map((item) => (
+                  <div className="modern-form-group">
+                    <label>资产类型</label>
+                    <div className="modern-select-pill-grid">
+                      {assetTypes.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className={`select-pill ${assetType === item ? "active" : ""}`}
+                          onClick={() => setAssetType(item)}
+                        >
+                          {assetTypeLabels[item]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="modern-form-group">
+                    <label>当前余额 (元)</label>
+                    <div className="modern-amount-box">
+                      <span className="cur-sym">¥</span>
+                      <input
+                        inputMode="decimal"
+                        value={assetBalance}
+                        onChange={(event) => setAssetBalance(event.target.value.replace(/[^\d.-]/g, ""))}
+                        placeholder="0.00"
+                        className="modern-amount-field"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <JournalActionDock>
+                  <button type="button" className="modern-primary-submit" onClick={() => void saveAsset()}>
+                    保存资产
+                  </button>
+                </JournalActionDock>
+              </div>
+            ) : isLoan ? (
+              <div className="modern-form-wrapper">
+                <div className="modern-form-card">
+                  <div className="modern-form-group">
+                    <label>贷款名称</label>
+                    <input
+                      value={loanPlatform}
+                      onChange={(event) => setLoanPlatform(event.target.value)}
+                      placeholder="如：建设银行房贷 / 招行车贷"
+                      className="modern-form-input"
+                    />
+                  </div>
+                  <div className="modern-form-group">
+                    <label>账单匹配关键词（选填）</label>
+                    <input
+                      value={loanMatchKeywords}
+                      onChange={(event) => setLoanMatchKeywords(event.target.value)}
+                      placeholder="如：招行信用卡 1234；多个关键词用逗号分隔"
+                      className="modern-form-input"
+                    />
+                    <small className="modern-form-tip">导入账单时，需同时命中还款字样和贷款名称/关键词才会自动冲销。</small>
+                  </div>
+
+                  <div className="modern-form-grid-2">
+                    <div className="modern-form-group">
+                      <label>贷款总额 (元)</label>
+                      <input
+                        inputMode="decimal"
+                        value={loanTotalAmount}
+                        onChange={(event) => setLoanTotalAmount(event.target.value.replace(/[^\d.]/g, ""))}
+                        placeholder="0.00"
+                        className="modern-form-input"
+                      />
+                    </div>
+                    <div className="modern-form-group">
+                      <label>剩余本金 (元)</label>
+                      <input
+                        inputMode="decimal"
+                        value={loanRemainingAmount}
+                        onChange={(event) => setLoanRemainingAmount(event.target.value.replace(/[^\d.]/g, ""))}
+                        placeholder="默认等于总额"
+                        className="modern-form-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="modern-form-grid-3">
+                    <div className="modern-form-group">
+                      <label>每月月供 (元)</label>
+                      <input
+                        inputMode="decimal"
+                        value={loanMonthlyPayment}
+                        onChange={(event) => setLoanMonthlyPayment(event.target.value.replace(/[^\d.]/g, ""))}
+                        placeholder="0.00"
+                        className="modern-form-input"
+                      />
+                    </div>
+                    <div className="modern-form-group">
+                      <label>总期数</label>
+                      <input
+                        inputMode="numeric"
+                        value={loanPeriods}
+                        onChange={(event) => setLoanPeriods(event.target.value.replace(/\D/g, ""))}
+                        className="modern-form-input"
+                      />
+                    </div>
+                    <div className="modern-form-group">
+                      <label>每月还款日</label>
+                      <input
+                        inputMode="numeric"
+                        value={loanDueDay}
+                        onChange={(event) => setLoanDueDay(event.target.value.replace(/\D/g, ""))}
+                        className="modern-form-input"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <JournalActionDock>
+                  <button type="button" className="modern-primary-submit" onClick={() => void saveLoan()}>
+                    保存贷款
+                  </button>
+                </JournalActionDock>
+              </div>
+            ) : isRepayment ? (
+              <div className="modern-form-wrapper">
+                <div className="modern-form-card">
+                  <div className="modern-form-group"><label>还款金额 (元)</label><div className="modern-amount-box"><span className="cur-sym">¥</span><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" className="modern-amount-field" /></div></div>
+                  <div className="modern-form-group"><label>实际还款日期</label><DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际还款日期" value={date} onChange={setDate} /></div>
+                  <div className="modern-form-group"><label>备注</label><input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="可选" className="modern-form-input" /></div>
+                </div>
+                <JournalActionDock>
+                  <button type="button" className="modern-primary-submit" disabled={!amount || Number(amount) <= 0} onClick={() => void saveRepayment()}>保存还款</button>
+                </JournalActionDock>
+              </div>
+            ) : (
+              <div className="modern-journal-flow">
+                {!isSalaryPreset || salaryEntryOpen ? (
+                  <div className="journal-entry-kind-switch" aria-label="记账类型">
                     <button
-                      key={item}
                       type="button"
-                      className={`select-pill ${assetType === item ? "active" : ""}`}
-                      onClick={() => setAssetType(item)}
+                      className={!salaryEntryOpen ? "active" : ""}
+                      onClick={() => {
+                        setSalaryEntryOpen(false);
+                        setType("EXPENSE");
+                        setCategory("餐饮");
+                      }}
                     >
-                      {assetTypeLabels[item]}
+                      普通记账
+                    </button>
+                    <button
+                      type="button"
+                      className={salaryEntryOpen ? "active" : ""}
+                      onClick={() => {
+                        setSalaryEntryOpen(true);
+                        setType("INCOME");
+                        setCategory("工资");
+                      }}
+                    >
+                      添加薪资收入
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="journal-salary-entry-trigger"
+                    onClick={() => {
+                      setSalaryEntryOpen(true);
+                      setType("INCOME");
+                      setCategory("工资");
+                    }}
+                  >
+                    ＋ 添加薪资收入
+                  </button>
+                )}
+
+                {salaryEntryOpen ? (
+                  <div className="salary-entry-mode-switch" aria-label="薪资录入方式">
+                    <button type="button" className={salaryEntryMode === "single" ? "active" : ""} onClick={() => setSalaryEntryMode("single")}>单月录入</button>
+                    <button type="button" className={salaryEntryMode === "batch" ? "active" : ""} onClick={() => setSalaryEntryMode("batch")}>批量补录</button>
+                  </div>
+                ) : null}
+
+                {!salaryEntryOpen || salaryEntryMode === "single" ? <>
+                {/* 顶栏类型切换 */}
+                <div className="modern-type-switch">
+                  {[
+                    ["EXPENSE", "支出"],
+                    ["INCOME", "收入"],
+                    ["TRANSFER", "转账"],
+                  ].map(([val, label]) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setType(val as TransactionType)}
+                      className={`type-tab ${type === val ? "active" : ""}`}
+                    >
+                      {label}
                     </button>
                   ))}
                 </div>
-              </div>
 
-              <div className="modern-form-group">
-                <label>当前余额 (元)</label>
-                <div className="modern-amount-box">
-                  <span className="cur-sym">¥</span>
+                {/* 大字号计算器式金额大屏 */}
+                <div className="modern-amount-hero">
+                  <span className="currency-label">¥</span>
                   <input
+                    type="text"
                     inputMode="decimal"
-                    value={assetBalance}
-                    onChange={(event) => setAssetBalance(event.target.value.replace(/[^\d.-]/g, ""))}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
                     placeholder="0.00"
-                    className="modern-amount-field"
+                    className="amount-huge-input"
                   />
-                </div>
-              </div>
-            </div>
-            <div className="journal-action-dock">
-              <button type="button" className="modern-primary-submit" onClick={() => void saveAsset()}>
-                保存资产
-              </button>
-            </div>
-          </div>
-        ) : isLoan ? (
-          <div className="modern-form-wrapper">
-            <div className="modern-form-card">
-              <div className="modern-form-group">
-                <label>贷款名称</label>
-                <input
-                  value={loanPlatform}
-                  onChange={(event) => setLoanPlatform(event.target.value)}
-                  placeholder="如：建设银行房贷 / 招行车贷"
-                  className="modern-form-input"
-                />
-              </div>
-              <div className="modern-form-group">
-                <label>账单匹配关键词（选填）</label>
-                <input
-                  value={loanMatchKeywords}
-                  onChange={(event) => setLoanMatchKeywords(event.target.value)}
-                  placeholder="如：招行信用卡 1234；多个关键词用逗号分隔"
-                  className="modern-form-input"
-                />
-                <small className="modern-form-tip">导入账单时，需同时命中还款字样和贷款名称/关键词才会自动冲销。</small>
-              </div>
-
-              <div className="modern-form-grid-2">
-                <div className="modern-form-group">
-                  <label>贷款总额 (元)</label>
-                  <input
-                    inputMode="decimal"
-                    value={loanTotalAmount}
-                    onChange={(event) => setLoanTotalAmount(event.target.value.replace(/[^\d.]/g, ""))}
-                    placeholder="0.00"
-                    className="modern-form-input"
-                  />
-                </div>
-                <div className="modern-form-group">
-                  <label>剩余本金 (元)</label>
-                  <input
-                    inputMode="decimal"
-                    value={loanRemainingAmount}
-                    onChange={(event) => setLoanRemainingAmount(event.target.value.replace(/[^\d.]/g, ""))}
-                    placeholder="默认等于总额"
-                    className="modern-form-input"
-                  />
-                </div>
-              </div>
-
-              <div className="modern-form-grid-3">
-                <div className="modern-form-group">
-                  <label>每月月供 (元)</label>
-                  <input
-                    inputMode="decimal"
-                    value={loanMonthlyPayment}
-                    onChange={(event) => setLoanMonthlyPayment(event.target.value.replace(/[^\d.]/g, ""))}
-                    placeholder="0.00"
-                    className="modern-form-input"
-                  />
-                </div>
-                <div className="modern-form-group">
-                  <label>总期数</label>
-                  <input
-                    inputMode="numeric"
-                    value={loanPeriods}
-                    onChange={(event) => setLoanPeriods(event.target.value.replace(/\D/g, ""))}
-                    className="modern-form-input"
-                  />
-                </div>
-                <div className="modern-form-group">
-                  <label>每月还款日</label>
-                  <input
-                    inputMode="numeric"
-                    value={loanDueDay}
-                    onChange={(event) => setLoanDueDay(event.target.value.replace(/\D/g, ""))}
-                    className="modern-form-input"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="journal-action-dock">
-              <button type="button" className="modern-primary-submit" onClick={() => void saveLoan()}>
-                保存贷款
-              </button>
-            </div>
-          </div>
-        ) : isRepayment ? (
-          <div className="modern-form-wrapper">
-            <div className="modern-form-card">
-              <div className="modern-form-group"><label>还款金额 (元)</label><div className="modern-amount-box"><span className="cur-sym">¥</span><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" className="modern-amount-field" /></div></div>
-              <div className="modern-form-group"><label>实际还款日期</label><DateTimePicker mode="datetime" className="modern-form-input" ariaLabel="选择实际还款日期" value={date} onChange={setDate} /></div>
-              <div className="modern-form-group"><label>备注</label><input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="可选" className="modern-form-input" /></div>
-            </div>
-            <div className="journal-action-dock">
-              <button type="button" className="modern-primary-submit" disabled={!amount || Number(amount) <= 0} onClick={() => void saveRepayment()}>保存还款</button>
-            </div>
-          </div>
-        ) : (
-          <div className="modern-journal-flow">
-            {!isSalaryPreset || salaryEntryOpen ? (
-              <div className="journal-entry-kind-switch" aria-label="记账类型">
-                <button
-                  type="button"
-                  className={!salaryEntryOpen ? "active" : ""}
-                  onClick={() => {
-                    setSalaryEntryOpen(false);
-                    setType("EXPENSE");
-                    setCategory("餐饮");
-                  }}
-                >
-                  普通记账
-                </button>
-                <button
-                  type="button"
-                  className={salaryEntryOpen ? "active" : ""}
-                  onClick={() => {
-                    setSalaryEntryOpen(true);
-                    setType("INCOME");
-                    setCategory("工资");
-                  }}
-                >
-                  添加薪资收入
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="journal-salary-entry-trigger"
-                onClick={() => {
-                  setSalaryEntryOpen(true);
-                  setType("INCOME");
-                  setCategory("工资");
-                }}
-              >
-                ＋ 添加薪资收入
-              </button>
-            )}
-
-            {salaryEntryOpen ? (
-              <div className="salary-entry-mode-switch" aria-label="薪资录入方式">
-                <button type="button" className={salaryEntryMode === "single" ? "active" : ""} onClick={() => setSalaryEntryMode("single")}>单月录入</button>
-                <button type="button" className={salaryEntryMode === "batch" ? "active" : ""} onClick={() => setSalaryEntryMode("batch")}>批量补录</button>
-              </div>
-            ) : null}
-
-            {!salaryEntryOpen || salaryEntryMode === "single" ? <>
-            {/* 顶栏类型切换 */}
-            <div className="modern-type-switch">
-              {[
-                ["EXPENSE", "支出"],
-                ["INCOME", "收入"],
-                ["TRANSFER", "转账"],
-              ].map(([val, label]) => (
-                <button
-                  key={val}
-                  type="button"
-                  onClick={() => setType(val as TransactionType)}
-                  className={`type-tab ${type === val ? "active" : ""}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* 大字号计算器式金额大屏 */}
-            <div className="modern-amount-hero">
-              <span className="currency-label">¥</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
-                placeholder="0.00"
-                className="amount-huge-input"
-              />
-              {amount ? (
-                <button type="button" className="amount-clear-btn" onClick={() => setAmount("")}>
-                  ×
-                </button>
-              ) : null}
-            </div>
-
-            {/* 精致分类网格 */}
-            <div className="modern-section-block">
-              <span className="section-mini-title">消费分类</span>
-              <div className="modern-category-matrix">
-                {categories.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setCategory(item)}
-                    className={`category-tile ${category === item ? "active" : ""}`}
-                  >
-                    <div className="tile-icon-box">
-                      <img src={categoryIconSrcForCategory(item, type)} alt="" className="tile-icon" />
-                    </div>
-                    <span className="tile-label">{item}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 支付账户选择 */}
-            <div className="modern-section-block">
-              <span className="section-mini-title">支付账户</span>
-              <div className="modern-pill-row">
-                {platforms.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setPlatform(item)}
-                    className={`account-pill ${platform === item ? "active" : ""}`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 补充信息：日期、商户、备注 */}
-            <div className="modern-section-block">
-              <span className="section-mini-title">明细备注</span>
-              <div className="modern-meta-grid">
-                <DateTimePicker
-                  mode="datetime"
-                  className="meta-input"
-                  value={date}
-                  onChange={setDate}
-                  ariaLabel="选择账单日期和时间"
-                />
-                <input
-                  type="text"
-                  className="meta-input"
-                  value={merchant}
-                  onChange={(e) => setMerchant(e.target.value)}
-                  placeholder="商户名称（选填）"
-                />
-                <input
-                  type="text"
-                  className="meta-input span-2"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="添加消费备注..."
-                />
-              </div>
-            </div>
-
-            {/* 底部行动操作 */}
-            <div className="modern-action-bar journal-action-dock">
-              <button
-                type="button"
-                className="action-sub-btn"
-                onClick={() => {
-                  setAmount("");
-                  setMerchant("");
-                  setDescription("");
-                }}
-              >
-                清空重填
-              </button>
-              <button
-                type="button"
-                className="action-main-btn"
-                onClick={() => void saveTransaction()}
-                disabled={!amount || Number(amount) <= 0}
-              >
-                保存记账
-              </button>
-            </div>
-            </> : (
-              <div className="salary-batch-workbench">
-                <div className="salary-batch-intro">
-                  <span>历史工资补录</span>
-                  <p>选择年份和月份后，将按同一金额生成工资收入；已存在工资的月份会自动跳过。</p>
+                  {amount ? (
+                    <button type="button" className="amount-clear-btn" onClick={() => setAmount("")}>
+                      ×
+                    </button>
+                  ) : null}
                 </div>
 
-                <label className="salary-batch-year-field">
-                  <span>补录年份</span>
-                  <input type="number" min={2000} max={9999} inputMode="numeric" value={batchYear} onChange={(event) => setBatchYear(event.target.value.replace(/\D/g, "").slice(0, 4))} />
-                </label>
-
-                <div className="salary-batch-months-section">
-                  <div className="salary-batch-section-head">
-                    <span>选择月份</span>
-                    <div>
-                      <button type="button" onClick={() => setBatchMonths(SALARY_BATCH_MONTHS)}>全选</button>
-                      <button type="button" onClick={() => setBatchMonths([])}>清空</button>
-                    </div>
-                  </div>
-                  <div className="salary-batch-month-grid">
-                    {SALARY_BATCH_MONTHS.map((month) => (
-                      <button key={month} type="button" className={batchMonths.includes(month) ? "active" : ""} onClick={() => toggleBatchMonth(month)} aria-pressed={batchMonths.includes(month)}>
-                        {month}月
+                {/* 精致分类网格 */}
+                <div className="modern-section-block">
+                  <span className="section-mini-title">消费分类</span>
+                  <div className="modern-category-matrix">
+                    {categories.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setCategory(item)}
+                        className={`category-tile ${category === item ? "active" : ""}`}
+                      >
+                        <div className="tile-icon-box">
+                          <img src={categoryIconSrcForCategory(item, type)} alt="" className="tile-icon" />
+                        </div>
+                        <span className="tile-label">{item}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="salary-batch-fields">
-                  <label>
-                    <span>每月工资（元）</span>
-                    <div className="modern-amount-box">
-                      <span className="cur-sym">¥</span>
-                      <input inputMode="decimal" value={batchAmount} onChange={(event) => setBatchAmount(event.target.value.replace(/[^0-9.]/g, ""))} placeholder="0.00" />
-                    </div>
-                  </label>
-                  <label>
-                    <span>发薪日</span>
-                    <div className="salary-batch-payday">
-                      <input type="number" min={1} max={28} inputMode="numeric" value={batchPayday} onChange={(event) => setBatchPayday(event.target.value.replace(/\D/g, "").slice(0, 2))} />
-                      <em>日</em>
-                    </div>
-                  </label>
-                </div>
-
+                {/* 支付账户选择 */}
                 <div className="modern-section-block">
-                  <span className="section-mini-title">入账账户</span>
+                  <span className="section-mini-title">支付账户</span>
                   <div className="modern-pill-row">
                     {platforms.map((item) => (
-                      <button key={item} type="button" onClick={() => setPlatform(item)} className={`account-pill ${platform === item ? "active" : ""}`}>{item}</button>
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setPlatform(item)}
+                        className={`account-pill ${platform === item ? "active" : ""}`}
+                      >
+                        {item}
+                      </button>
                     ))}
                   </div>
                 </div>
 
-                <label className="salary-batch-merchant-field">
-                  <span>发薪单位（选填）</span>
-                  <input value={batchMerchant} onChange={(event) => setBatchMerchant(event.target.value)} placeholder="未填写则标记为工资补录" />
-                </label>
-
-                <p className={`salary-batch-notice ${batchNotice.startsWith("已补录") ? "success" : ""}`} role="status">
-                  {batchNotice || (batchMonths.length ? `已选择 ${batchMonths.length} 个月，确认后将先检查是否已有工资记录。` : "请选择要补录的月份。")}
-                </p>
-                <div className="journal-action-dock">
-                  <button type="button" className="salary-batch-submit" disabled={batchSaving || !batchMonths.length || !batchAmount || Number(batchAmount) <= 0} onClick={() => void saveSalaryBatch()}>
-                    {batchSaving ? "补录中..." : `确认补录 ${batchMonths.length} 个月工资`}
-                  </button>
+                {/* 补充信息：日期、商户、备注 */}
+                <div className="modern-section-block">
+                  <span className="section-mini-title">明细备注</span>
+                  <div className="modern-meta-grid">
+                    <DateTimePicker
+                      mode="datetime"
+                      className="meta-input"
+                      value={date}
+                      onChange={setDate}
+                      ariaLabel="选择账单日期和时间"
+                    />
+                    <input
+                      type="text"
+                      className="meta-input"
+                      value={merchant}
+                      onChange={(e) => setMerchant(e.target.value)}
+                      placeholder="商户名称（选填）"
+                    />
+                    <input
+                      type="text"
+                      className="meta-input span-2"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="添加消费备注..."
+                    />
+                  </div>
                 </div>
+
+                {/* 底部行动操作 */}
+                <JournalActionDock className="modern-action-bar">
+                  <button
+                    type="button"
+                    className="action-sub-btn"
+                    onClick={() => {
+                      setAmount("");
+                      setMerchant("");
+                      setDescription("");
+                    }}
+                  >
+                    清空重填
+                  </button>
+                  <button
+                    type="button"
+                    className="action-main-btn"
+                    onClick={() => void saveTransaction()}
+                    disabled={!amount || Number(amount) <= 0}
+                  >
+                    保存记账
+                  </button>
+                </JournalActionDock>
+                </> : (
+                  <div className="salary-batch-workbench">
+                    <div className="salary-batch-intro">
+                      <span>历史工资补录</span>
+                      <p>选择年份和月份后，将按同一金额生成工资收入；已存在工资的月份会自动跳过。</p>
+                    </div>
+
+                    <label className="salary-batch-year-field">
+                      <span>补录年份</span>
+                      <input type="number" min={2000} max={9999} inputMode="numeric" value={batchYear} onChange={(event) => setBatchYear(event.target.value.replace(/\D/g, "").slice(0, 4))} />
+                    </label>
+
+                    <div className="salary-batch-months-section">
+                      <div className="salary-batch-section-head">
+                        <span>选择月份</span>
+                        <div>
+                          <button type="button" onClick={() => setBatchMonths(SALARY_BATCH_MONTHS)}>全选</button>
+                          <button type="button" onClick={() => setBatchMonths([])}>清空</button>
+                        </div>
+                      </div>
+                      <div className="salary-batch-month-grid">
+                        {SALARY_BATCH_MONTHS.map((month) => (
+                          <button key={month} type="button" className={batchMonths.includes(month) ? "active" : ""} onClick={() => toggleBatchMonth(month)} aria-pressed={batchMonths.includes(month)}>
+                            {month}月
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="salary-batch-fields">
+                      <label>
+                        <span>每月工资（元）</span>
+                        <div className="modern-amount-box">
+                          <span className="cur-sym">¥</span>
+                          <input inputMode="decimal" value={batchAmount} onChange={(event) => setBatchAmount(event.target.value.replace(/[^0-9.]/g, ""))} placeholder="0.00" />
+                        </div>
+                      </label>
+                      <label>
+                        <span>发薪日</span>
+                        <div className="salary-batch-payday">
+                          <input type="number" min={1} max={28} inputMode="numeric" value={batchPayday} onChange={(event) => setBatchPayday(event.target.value.replace(/\D/g, "").slice(0, 2))} />
+                          <em>日</em>
+                        </div>
+                      </label>
+                    </div>
+
+                    <div className="modern-section-block">
+                      <span className="section-mini-title">入账账户</span>
+                      <div className="modern-pill-row">
+                        {platforms.map((item) => (
+                          <button key={item} type="button" onClick={() => setPlatform(item)} className={`account-pill ${platform === item ? "active" : ""}`}>{item}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <label className="salary-batch-merchant-field">
+                      <span>发薪单位（选填）</span>
+                      <input value={batchMerchant} onChange={(event) => setBatchMerchant(event.target.value)} placeholder="未填写则标记为工资补录" />
+                    </label>
+
+                    <p className={`salary-batch-notice ${batchNotice.startsWith("已补录") ? "success" : ""}`} role="status">
+                      {batchNotice || (batchMonths.length ? `已选择 ${batchMonths.length} 个月，确认后将先检查是否已有工资记录。` : "请选择要补录的月份。")}
+                    </p>
+                    <JournalActionDock>
+                      <button type="button" className="salary-batch-submit" disabled={batchSaving || !batchMonths.length || !batchAmount || Number(batchAmount) <= 0} onClick={() => void saveSalaryBatch()}>
+                        {batchSaving ? "补录中..." : `确认补录 ${batchMonths.length} 个月工资`}
+                      </button>
+                    </JournalActionDock>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+        </JournalActionTargetContext.Provider>
+        <div className="journal-panel-footer" ref={setActionTarget} />
       </div>
     </div>
   );
