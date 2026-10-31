@@ -26,6 +26,15 @@ type NativeAppUpdate = {
 
 const nativeAppUpdate = registerPlugin<NativeAppUpdate>("AppUpdate");
 const initialDownload: DownloadState = { status: "idle", percent: null, downloadedBytes: 0, message: null };
+const CHECK_TIMEOUT_MS = 20_000;
+
+function isAppVersionInfo(value: unknown): value is AppVersionInfo {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<AppVersionInfo>;
+  return Number.isFinite(candidate.versionCode)
+    && typeof candidate.versionName === "string"
+    && candidate.versionName.trim().length > 0;
+}
 
 function parseChangelogItems(changelog: string | null | undefined) {
   return (changelog ?? "")
@@ -41,11 +50,17 @@ export function AppUpdatePrompt() {
   const [download, setDownload] = useState<DownloadState>(initialDownload);
   const downloadRunningRef = useRef(false);
   const checkAbortRef = useRef<AbortController | null>(null);
+  const checkRequestIdRef = useRef(0);
+  const silentCheckAbortRef = useRef(new WeakSet<AbortController>());
   const downloadBusy = download.status === "downloading" || download.status === "permission";
   const dismissibleUpdate = Boolean(update && (!update.info.forceUpdate || update.unavailable) && !downloadBusy);
   const dismissPrompt = useCallback(() => {
     if (checking) {
-      checkAbortRef.current?.abort();
+      const controller = checkAbortRef.current;
+      if (controller) {
+        silentCheckAbortRef.current.add(controller);
+        controller.abort();
+      }
       setChecking(false);
       return;
     }
@@ -80,20 +95,31 @@ export function AppUpdatePrompt() {
         return;
       }
 
+      const previousController = checkAbortRef.current;
+      if (previousController) {
+        silentCheckAbortRef.current.add(previousController);
+        previousController.abort();
+      }
+      const requestId = checkRequestIdRef.current + 1;
+      checkRequestIdRef.current = requestId;
       const controller = new AbortController();
       checkAbortRef.current = controller;
-      const timer = window.setTimeout(() => controller.abort(), 5000);
+      const timer = window.setTimeout(() => controller.abort(), CHECK_TIMEOUT_MS);
       if (manual) {
         setNotice(null);
+        setUpdate(null);
+        setDownload(initialDownload);
         setChecking(true);
       }
       try {
         const response = await fetch(APP_UPDATE_URL, { signal: controller.signal, cache: "no-store" });
+        if (cancelled || requestId !== checkRequestIdRef.current) return;
         if (!response.ok) {
           if (manual && !cancelled) setNotice({ title: "版本检查失败", message: "暂时无法连接版本服务，请稍后重试。" });
           return;
         }
-        const responseInfo = await response.json() as AppVersionInfo;
+        const responseInfo: unknown = await response.json();
+        if (!isAppVersionInfo(responseInfo)) throw new Error("Invalid app version manifest");
         // A shared manifest must never offer another edition's APK.
         // Untagged legacy manifests are only eligible for the Web shell.
         const mismatchedEdition = responseInfo.edition
@@ -102,7 +128,7 @@ export function AppUpdatePrompt() {
         const info = mismatchedEdition
           ? { ...responseInfo, apkUrl: null }
           : responseInfo;
-        if (cancelled) return;
+        if (cancelled || requestId !== checkRequestIdRef.current) return;
         const hasUpdate = hasNewerAppVersion(CURRENT_APP_VERSION_CODE, info);
         setAppUpdateAvailable(hasUpdate);
         if (hasUpdate) {
@@ -114,13 +140,13 @@ export function AppUpdatePrompt() {
           setNotice({ title: "已是最新版本", message: "当前 App 版本为 " + CURRENT_APP_VERSION_NAME + "。" });
         }
       } catch {
-        if (controller.signal.aborted) return;
+        if (cancelled || requestId !== checkRequestIdRef.current || silentCheckAbortRef.current.has(controller)) return;
         if (manual && !cancelled) setNotice({ title: "版本检查失败", message: "暂时无法连接版本服务，请稍后重试。" });
         // Version checks are optional and must never block the app.
       } finally {
         window.clearTimeout(timer);
         if (checkAbortRef.current === controller) checkAbortRef.current = null;
-        if (manual && !cancelled) setChecking(false);
+        if (manual && !cancelled && requestId === checkRequestIdRef.current) setChecking(false);
       }
     }
 
@@ -132,7 +158,12 @@ export function AppUpdatePrompt() {
     void checkForUpdate(false);
     return () => {
       cancelled = true;
-      checkAbortRef.current?.abort();
+      checkRequestIdRef.current += 1;
+      const controller = checkAbortRef.current;
+      if (controller) {
+        silentCheckAbortRef.current.add(controller);
+        controller.abort();
+      }
       checkAbortRef.current = null;
       window.removeEventListener("stark:check-app-update", handleManualCheck);
     };
