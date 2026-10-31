@@ -9,7 +9,7 @@ import { getCloudAuthToken, getCloudAuthUser, getRememberedCloudCredentials, isC
 import { getCloudApiUrl, getCurrentDataMode, isNativeAppRuntime, setCloudApiUrl } from "@/lib/stark/storage/local-config";
 
 type ConnectionState = "IDLE" | "TESTING" | "SUCCESS" | "ERROR";
-type AccessPhase = "BOOTING" | "LOCAL" | "AUTH";
+type AccessPhase = "BOOTING" | "LOCAL" | "AUTH" | "ENTERING";
 type AuthMode = "LOGIN" | "REGISTER" | "RECOVER";
 
 const manager = new DataModeManager();
@@ -90,6 +90,7 @@ export function AppAccessGate() {
   }
 
   function completeAccess() {
+    setPhase("ENTERING");
     const destination = new URL(destinationRef.current, window.location.origin);
     if (!destination.pathname.endsWith("/")) destination.pathname = `${destination.pathname}/`;
     router.replace(`${destination.pathname}${destination.search}${destination.hash}`);
@@ -126,6 +127,7 @@ export function AppAccessGate() {
       setApiVerified(true);
       const user = await cloudMe(url);
       if (!canUpdateCloud()) return;
+      if (user && resumeIfAuthenticated) setPhase("ENTERING");
       setCloudUser(user);
       if (user && resumeIfAuthenticated) {
         await manager.switchMode("CLOUD");
@@ -176,6 +178,7 @@ export function AppAccessGate() {
         if (mountedRef.current) void checkCloud(initialUrl, true);
       });
     } else {
+      if (!getCloudAuthToken()) setPhase("AUTH");
       void checkCloud(initialUrl, true);
     }
 
@@ -219,11 +222,18 @@ export function AppAccessGate() {
       await checkCloud(apiUrl, true);
       return;
     }
-    const url = normalizeUrl(apiUrl);
-    setCloudApiUrl(url);
-    manager.setCloudApiUrl(url);
-    await manager.switchMode("CLOUD");
-    completeAccess();
+    setPhase("ENTERING");
+    try {
+      const url = normalizeUrl(apiUrl);
+      setCloudApiUrl(url);
+      manager.setCloudApiUrl(url);
+      await manager.switchMode("CLOUD");
+      completeAccess();
+    } catch (error) {
+      setCloudUser(null);
+      setAuthError(error instanceof Error ? error.message : "进入云端账本失败");
+      setPhase("AUTH");
+    }
   }
 
   async function submitAuth() {
@@ -258,12 +268,15 @@ export function AppAccessGate() {
       const user = authMode === "LOGIN"
         ? await cloudLogin(url, email.trim(), password, rememberLogin)
         : await cloudRegister(url, email.trim(), password);
+      setPhase("ENTERING");
       setCloudUser(user);
       setCloudApiUrl(url);
       await manager.switchMode("CLOUD");
       completeAccess();
     } catch (error) {
+      setCloudUser(null);
       setAuthError(error instanceof Error ? error.message : "登录失败，请检查云端服务");
+      setPhase("AUTH");
     } finally {
       if (mountedRef.current) setSubmitting(false);
     }
@@ -332,7 +345,7 @@ export function AppAccessGate() {
     void checkCloud(apiUrl, true);
   }
 
-  if (phase === "BOOTING") return null;
+  if (phase === "BOOTING" || phase === "ENTERING") return null;
 
   return (
     <div className={`app-access-shell${keyboardOpen ? " keyboard-open" : ""}`}>
@@ -346,13 +359,11 @@ export function AppAccessGate() {
         ) : (
           <section className="app-access-cloud-panel">
             <div className="app-access-auth">
-              {!apiVerified ? (
-                <>
-                  <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
-                  <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
-                  <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
-                </>
-              ) : cloudUser ? (
+              <label className="app-access-field"><span>云端 API 地址</span><input value={apiUrl} onChange={(event) => changeApiUrl(event.target.value)} onFocus={handleAuthFieldFocus} onBlur={handleAuthFieldBlur} placeholder="http://127.0.0.1:12367" autoComplete="url" /></label>
+              <div className={`app-access-status ${connectionState.toLowerCase()}`} role="status">{connectionMessage}</div>
+              <button type="button" className="app-access-secondary" disabled={connectionState === "TESTING" || !apiUrl.trim()} onClick={() => void checkCloud(apiUrl, false)}>{connectionState === "TESTING" ? "检测中..." : "检测 API 地址"}</button>
+
+              {cloudUser ? (
                 <div className="app-access-current-user">
                   <strong>已登录：{cloudUser.name || cloudUser.email}</strong>
                   <div><button type="button" className="app-access-primary" onClick={() => void continueCloud()}>{apiVerified ? "继续使用云端" : "检测并继续使用"}</button><button type="button" className="app-access-link" onClick={logoutCloud}>退出并更换账户</button></div>
