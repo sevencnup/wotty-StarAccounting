@@ -106,8 +106,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           APK_PATH: ${{ steps.package.outputs.apk_path }}
         run: |
+          set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          NOTES_FILE="$RUNNER_TEMP/android-release-notes.md"
+          awk -v version="$VERSION" '
+            $0 == "## [" version "]" { capture = 1; next }
+            capture && /^## / { exit }
+            capture { print }
+          ' CHANGELOG.md > "$NOTES_FILE"
+          grep -q '^- ' "$NOTES_FILE"
           gh release create "$GITHUB_REF_NAME" "$APK_PATH#星会计-v${VERSION}.apk" \
             --title "星会计 ${VERSION} 公测版" \
-            --notes "星会计 Android 公测版本。" \
+            --notes-file "$NOTES_FILE" \
             --latest
