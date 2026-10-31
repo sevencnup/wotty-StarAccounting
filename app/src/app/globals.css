@@ -7196,12 +7196,6 @@ img[src$="/qita.webp"] {
     grid-column: 1 / -1;
   }
 
-  .modern-category-matrix {
-    grid-auto-columns: calc((100% - 18px) / 4);
-    min-height: 184px;
-    max-height: 184px;
-  }
-
   .amount-huge-input {
     width: min(100%, 200px);
     font-size: calc(34px * var(--user-font-scale));
@@ -14710,12 +14704,6 @@ img[src$="/qita.webp"] {
   min-height: 154px;
   max-height: 154px;
   padding: 0;
-}
-
-@media (max-width: 360px) {
-  .journal-panel .modern-category-matrix {
-    grid-auto-columns: calc((100% - 18px) / 4);
-  }
 }
 
 :root {
