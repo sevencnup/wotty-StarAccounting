@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor/core";
 import { APP_UPDATE_URL, CURRENT_APP_VERSION_CODE, CURRENT_APP_VERSION_NAME, hasNewerAppVersion, type AppVersionInfo } from "@/lib/stark/app-version";
 import { setAppUpdateAvailable } from "@/lib/stark/app-update-status";
@@ -21,12 +21,13 @@ type NativeDownloadProgress = {
 };
 type NativeAppUpdate = {
   downloadAndInstall(options: { url: string; versionCode: number }): Promise<{ installationStarted: boolean }>;
+  openDownloadInBrowser(options: { url: string }): Promise<{ opened: boolean }>;
   addListener(eventName: "downloadProgress", listener: (progress: NativeDownloadProgress) => void): Promise<PluginListenerHandle>;
 };
 
 const nativeAppUpdate = registerPlugin<NativeAppUpdate>("AppUpdate");
 const initialDownload: DownloadState = { status: "idle", percent: null, downloadedBytes: 0, message: null };
-const CHECK_TIMEOUT_MS = 20_000;
+const CHECK_TIMEOUT_MS = 30_000;
 
 function isAppVersionInfo(value: unknown): value is AppVersionInfo {
   if (!value || typeof value !== "object") return false;
@@ -235,6 +236,16 @@ export function AppUpdatePrompt() {
     }
   }
 
+  async function openBrowserDownload(event: MouseEvent<HTMLAnchorElement>) {
+    if (!info.apkUrl || !Capacitor.isNativePlatform()) return;
+    event.preventDefault();
+    try {
+      await nativeAppUpdate.openDownloadInBrowser({ url: info.apkUrl });
+    } catch {
+      window.open(info.apkUrl, "_blank", "noopener,noreferrer");
+    }
+  }
+
   const progressLabel = download.status === "permission"
     ? "请允许星会计安装应用，返回后会继续打开安装界面。"
     : download.percent === null
@@ -258,6 +269,11 @@ export function AppUpdatePrompt() {
           </ul>
         ) : null}
         {update.unavailable ? <p className="app-update-unavailable">服务器尚未配置 APK 下载地址，请稍后再试。</p> : null}
+        {info.apkUrl ? (
+          <p className="app-update-fallback">
+            如下载失败，请到<a href={info.apkUrl} target="_blank" rel="noreferrer" onClick={(event) => void openBrowserDownload(event)}>下载更新</a>。
+          </p>
+        ) : null}
         {downloadBusy ? (
           <div className="app-update-download" aria-live="polite">
             {download.status === "downloading" ? (

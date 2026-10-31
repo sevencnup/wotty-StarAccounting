@@ -21,14 +21,20 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ConnectException;
 import java.net.HttpURLConnection;
+import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @CapacitorPlugin(name = "AppUpdate")
 public class AppUpdatePlugin extends Plugin {
     private static final long MAX_APK_BYTES = 500L * 1024 * 1024;
     private static final String PROGRESS_EVENT = "downloadProgress";
+    private static final int CONNECT_TIMEOUT_MS = 45_000;
+    private static final int READ_TIMEOUT_MS = 120_000;
+    private static final int MAX_DOWNLOAD_ATTEMPTS = 2;
 
     private final AtomicBoolean downloading = new AtomicBoolean(false);
     private volatile File downloadedFile;
@@ -86,7 +92,36 @@ public class AppUpdatePlugin extends Plugin {
         });
     }
 
+    @PluginMethod
+    public void openDownloadInBrowser(PluginCall call) {
+        String source = call.getString("url");
+        try {
+            requireHttps(new URL(source == null ? "" : source));
+            Intent browser = new Intent(Intent.ACTION_VIEW, Uri.parse(source));
+            browser.addCategory(Intent.CATEGORY_BROWSABLE);
+            getActivity().startActivity(browser);
+            call.resolve(new JSObject().put("opened", true));
+        } catch (Exception ignored) {
+            call.reject("无法打开浏览器，请从关于页面进入项目网站下载更新。");
+        }
+    }
+
     private File downloadApk(String source) throws IOException {
+        IOException lastError = null;
+        for (int attempt = 1; attempt <= MAX_DOWNLOAD_ATTEMPTS; attempt++) {
+            try {
+                return downloadApkOnce(source);
+            } catch (IOException error) {
+                lastError = error;
+                if (attempt == MAX_DOWNLOAD_ATTEMPTS || !isRetryableDownloadError(error)) {
+                    throw readableDownloadError(error);
+                }
+            }
+        }
+        throw readableDownloadError(lastError);
+    }
+
+    private File downloadApkOnce(String source) throws IOException {
         File directory = new File(getContext().getCacheDir(), "app-updates");
         if (!directory.isDirectory() && !directory.mkdirs()) {
             throw new IOException("无法创建安装包缓存目录。");
@@ -141,9 +176,11 @@ public class AppUpdatePlugin extends Plugin {
         for (int redirects = 0; redirects <= 5; redirects++) {
             HttpURLConnection connection = (HttpURLConnection) current.openConnection();
             connection.setInstanceFollowRedirects(false);
-            connection.setConnectTimeout(15000);
-            connection.setReadTimeout(30000);
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setUseCaches(false);
             connection.setRequestProperty("Accept", "application/vnd.android.package-archive, application/octet-stream");
+            connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android) AppleWebKit/537.36 Mobile Safari/537.36 StarAccounting-App");
             try {
                 int status = connection.getResponseCode();
                 if (status == HttpURLConnection.HTTP_OK) return connection;
@@ -164,6 +201,31 @@ public class AppUpdatePlugin extends Plugin {
             }
         }
         throw new IOException("安装包下载地址跳转次数过多。");
+    }
+
+    private boolean isRetryableDownloadError(IOException error) {
+        Throwable cause = error;
+        while (cause != null) {
+            if (cause instanceof SocketTimeoutException || cause instanceof ConnectException ||
+                    cause instanceof UnknownHostException) return true;
+            cause = cause.getCause();
+        }
+        return false;
+    }
+
+    private IOException readableDownloadError(IOException error) {
+        if (error == null) return new IOException("下载失败，请稍后重试。");
+        Throwable cause = error;
+        while (cause != null) {
+            if (cause instanceof SocketTimeoutException) {
+                return new IOException("下载连接超时，请点击下方“下载更新”改用浏览器下载。", error);
+            }
+            if (cause instanceof ConnectException || cause instanceof UnknownHostException) {
+                return new IOException("无法连接下载服务器，请检查网络后重试。", error);
+            }
+            cause = cause.getCause();
+        }
+        return error;
     }
 
     private URL requireHttps(URL url) throws IOException {
