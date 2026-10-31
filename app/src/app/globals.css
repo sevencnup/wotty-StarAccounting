@@ -10591,8 +10591,8 @@ img[src$="/qita.webp"] {
   text-align: center;
 }
 
-.settings-about > span { display: grid; place-items: center; width: 58px; height: 58px; border-radius: 17px; color: #ffffff; background: #0060c0; }
-.settings-about > span svg { width: 31px; height: 31px; }
+.settings-about > span { display: grid; width: 58px; height: 58px; overflow: hidden; border-radius: 17px; background: transparent; }
+.settings-about > span img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .settings-about > strong { margin-top: 12px; color: #172033; font-size: calc(19px * var(--user-font-scale)); font-weight: 650; }
 .settings-about p { margin: 7px 0 0; color: #657289; font-size: calc(13px * var(--user-font-scale)); }
 .settings-about small { margin-top: 14px; color: #66748b; font-size: calc(12px * var(--user-font-scale)); line-height: 1.5; }
