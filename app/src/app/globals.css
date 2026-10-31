@@ -15826,10 +15826,16 @@ html.showcase-demo .mobile-bottom-nav-icon {
   box-sizing: border-box;
   margin-top: auto;
   margin-right: -14px;
+  margin-bottom: calc(-24px - env(safe-area-inset-bottom));
   margin-left: -14px;
-  padding: 8px 14px 4px;
+  padding: 8px 14px calc(28px + env(safe-area-inset-bottom));
   background: var(--background);
   box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.journal-panel.page .journal-action-dock {
+  margin-bottom: calc(-20px - env(safe-area-inset-bottom));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
 }
 
 .journal-panel .journal-action-dock > .modern-primary-submit,
