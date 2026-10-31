@@ -8,8 +8,8 @@ android {
         applicationId "com.wotty.stark.web"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 166
-        versionName "0.8.1-beta.2"
+        versionCode 167
+        versionName "0.8.1-beta.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -22,8 +22,8 @@ android {
         web {
             dimension "edition"
             applicationId "com.wotty.stark.web"
-            versionCode 166
-            versionName "0.8.1-beta.2"
+            versionCode 167
+            versionName "0.8.1-beta.3"
             manifestPlaceholders = [
                 appLabel: "星会计 Web 壳",
                 appActivityName: "com.wotty.stark.web.MainActivity"
@@ -32,8 +32,8 @@ android {
         ktweb {
             dimension "edition"
             applicationId "com.wotty.stark.ktweb"
-            versionCode 166
-            versionName "0.8.1-beta.2"
+            versionCode 167
+            versionName "0.8.1-beta.3"
             manifestPlaceholders = [
                 appLabel: "星会计",
                 appActivityName: "com.wotty.stark.web.KtHybridActivity"

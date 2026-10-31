@@ -27,6 +27,13 @@ type NativeAppUpdate = {
 const nativeAppUpdate = registerPlugin<NativeAppUpdate>("AppUpdate");
 const initialDownload: DownloadState = { status: "idle", percent: null, downloadedBytes: 0, message: null };
 
+function parseChangelogItems(changelog: string | null | undefined) {
+  return (changelog ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[-*•]\s*/, ""))
+    .filter(Boolean);
+}
+
 export function AppUpdatePrompt() {
   const [update, setUpdate] = useState<UpdateState>(null);
   const [notice, setNotice] = useState<NoticeState>(null);
@@ -161,6 +168,7 @@ export function AppUpdatePrompt() {
   if (!update) return null;
 
   const { info } = update;
+  const changelogItems = parseChangelogItems(info.changelog);
   async function openDownload() {
     if (!info.apkUrl || downloadRunningRef.current) return;
     downloadRunningRef.current = true;
@@ -213,7 +221,11 @@ export function AppUpdatePrompt() {
         <p className="app-update-kicker">发现新版本</p>
         <h2 id="app-update-title">星会计 {info.versionName}</h2>
         <p className="app-update-copy">当前版本 {CURRENT_APP_VERSION_NAME}，有新的 App 版本可用。</p>
-        {info.changelog ? <p className="app-update-changelog">{info.changelog}</p> : null}
+        {changelogItems.length > 0 ? (
+          <ul className="app-update-changelog" aria-label="更新内容">
+            {changelogItems.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}
+          </ul>
+        ) : null}
         {update.unavailable ? <p className="app-update-unavailable">服务器尚未配置 APK 下载地址，请稍后再试。</p> : null}
         {downloadBusy ? (
           <div className="app-update-download" aria-live="polite">
