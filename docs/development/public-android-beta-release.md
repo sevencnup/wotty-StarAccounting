@@ -9,7 +9,7 @@
 - 公测目标版本：`0.7.6-beta.1`，Android `versionCode` 为 `161`。
 - 从当前 `0.7.6-dev.1` / `160` 开发包进入同一目标版本的第一版公测。
 - 仅构建现有主 Android 客户端对应的内部 `ktweb` Gradle 变体；商店及 GitHub 发行页显示为“星会计”。
-- APK 名称：`星会计-v0.7.6-beta.1.apk`。
+- GitHub 附件显示名：`星会计-v0.7.6-beta.1.apk`；下载文件名使用 `star-accounting-v0.7.6-beta.1.apk`，保留平台支持的 ASCII 文件名并在 Release 页面显示中文名称。
 - 保持与现有开发包兼容的应用签名，Android 可原位升级并保留本地数据。
 
 ## 实施步骤

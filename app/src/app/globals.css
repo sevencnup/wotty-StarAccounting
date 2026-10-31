@@ -11504,6 +11504,31 @@ img[src$="/qita.webp"] {
   color: #a15c3d;
 }
 
+.app-update-download {
+  margin-top: 14px;
+}
+
+.app-update-download p {
+  margin: 7px 0 0;
+  color: #596a83;
+  font-size: calc(11px * var(--user-font-scale));
+}
+
+.app-update-progress {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef6;
+}
+
+.app-update-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2a78d6;
+  transition: width 180ms ease;
+}
+
 .app-update-actions {
   display: grid;
   grid-template-columns: 1fr 1.25fr;
