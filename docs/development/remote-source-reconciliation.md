@@ -6,9 +6,9 @@ GitHub `master` 与 Gitea `main` 已形成两套独立历史。Gitea 从代码�
 
 ## 目标
 
-- 以本机最新业务代码为整合底稿，保留演示账本、SVG 图标路线及近期页面修复。
+- 以本机最新业务代码为整合底稿，保留演示账本及近期页面修复。
 - 恢复 GitHub 独有的 Android 应用内下载安装能力、开源协议及仍然有效的发布文档。
-- 合并并校正 GitHub Actions 工作流与 README，避免恢复已被新方案替代的旧图标资源。
+- 合并并校正 GitHub Actions 工作流与 README，避免恢复已被新方案替代的旧资源。
 - 统一应用版本，保证 Android `versionCode` 高于已发布的 `165`。
 
 ## 实施步骤
@@ -24,14 +24,13 @@ GitHub `master` 与 Gitea `main` 已形成两套独立历史。Gitea 从代码�
 - 当前 `master` 与 GitHub `origin/master` 有共同祖先，但两边各自继续开发，不能用任意一边整树覆盖。
 - Gitea `main` 是重新建立的源码快照，与 GitHub 历史没有共同祖先。Gitea 的业务变化已经包含在当前底稿中，没有发现仍缺失的独有业务功能。
 - GitHub 独有且仍需保留的能力是 Android 应用内下载并安装 APK，同时还包含 MIT 许可证、发布文档及较新的 Android、Docker 发布流程。
-- GitHub 的旧 PNG Logo、`app/public/logo.*` 和旧页面代码均已被当前 SVG 图标方案及新版页面替代，不应恢复。
 
 ## 完成结果
 
 - 恢复 Android 更新插件、插件注册、安装应用权限、下载进度、安装授权和失败重试流程。
 - 保留网页版与 Android 设置页的“检查更新”入口；网页版给出平台提示，Android 使用原生下载与安装流程。
 - 恢复 MIT 许可证和有效的发布文档，合并 README、Android Release 与联网 Docker 镜像包说明。
-- 保留当前登录 API 检测、订阅扣费、录入页底栏、横向分类选择、设置页样式、演示账本和 SVG 图标方案。
+- 保留当前登录 API 检测、订阅扣费、录入页底栏、横向分类选择、设置页样式和演示账本。
 - 应用版本统一为 `0.8.1-beta.2`，Android `versionCode` 升至 `166`；根工作区版本统一为 `0.3.1-dev.1`。
 - 完整差异通过 `git diff --check` 格式检查。
 
