@@ -949,8 +949,8 @@ export function JournalPanel({
 
                 {/* 精致分类网格 */}
                 <div className="modern-section-block">
-                  <span className="section-mini-title">消费分类</span>
-                  <div className="modern-category-matrix">
+                  <span className="section-mini-title">左右滑动选择消费类型</span>
+                  <div className="modern-category-matrix" aria-label="消费类型">
                     {categories.map((item) => (
                       <button
                         key={item}

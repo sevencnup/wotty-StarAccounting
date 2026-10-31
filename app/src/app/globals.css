@@ -6864,13 +6864,22 @@ button.stark-compass-card {
 /* Category Grid Matrix */
 .modern-category-matrix {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-content: start;
+  grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 24px) / 5);
+  grid-template-rows: repeat(3, minmax(0, 1fr));
   gap: 8px 6px;
   min-height: 184px;
   max-height: 184px;
-  overflow-y: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  touch-action: pan-x pan-y;
   padding: 2px;
+}
+
+.modern-category-matrix::-webkit-scrollbar {
+  display: none;
 }
 
 .category-tile {
@@ -7188,7 +7197,7 @@ img[src$="/qita.webp"] {
   }
 
   .modern-category-matrix {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-columns: calc((100% - 18px) / 4);
     min-height: 184px;
     max-height: 184px;
   }
@@ -14577,11 +14586,17 @@ img[src$="/qita.webp"] {
 }
 
 .journal-panel .modern-category-matrix {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-auto-columns: calc((100% - 24px) / 5);
   gap: 4px 6px;
   min-height: 154px;
   max-height: 154px;
   padding: 0;
+}
+
+@media (max-width: 360px) {
+  .journal-panel .modern-category-matrix {
+    grid-auto-columns: calc((100% - 18px) / 4);
+  }
 }
 
 :root {
